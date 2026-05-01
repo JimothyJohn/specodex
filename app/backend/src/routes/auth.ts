@@ -37,6 +37,7 @@ import {
 } from '@aws-sdk/client-cognito-identity-provider';
 import config from '../config';
 import { requireAuth } from '../middleware/auth';
+import { emitAuthEvent, auditMeta, AuthEventName } from '../middleware/auth-audit';
 
 const router = Router();
 
@@ -90,7 +91,14 @@ function badRequest(res: Response, err: z.ZodError): void {
   });
 }
 
-function cognitoError(res: Response, err: unknown): void {
+interface AuditCtx {
+  req: Request;
+  event: AuthEventName;
+  email?: string;
+  startedAt: number;
+}
+
+function cognitoError(res: Response, err: unknown, audit?: AuditCtx): void {
   const e = err as { name?: string; message?: string };
   const name = e.name || 'UnknownError';
   // Map a small handful — everything else falls through to 400.
@@ -108,6 +116,16 @@ function cognitoError(res: Response, err: unknown): void {
     UserNotFoundException: { status: 404, error: 'No account for that email' },
   };
   const mapped = map[name];
+  if (audit) {
+    emitAuthEvent({
+      ...auditMeta(audit.req),
+      event: audit.event,
+      success: false,
+      email: audit.email,
+      errorCode: name,
+      durationMs: Date.now() - audit.startedAt,
+    });
+  }
   if (mapped) {
     res.status(mapped.status).json({ success: false, error: mapped.error });
     return;
@@ -120,6 +138,8 @@ router.post('/register', async (req: Request, res: Response) => {
   if (!ensureConfigured(res)) return;
   const parsed = registerSchema.safeParse(req.body);
   if (!parsed.success) return badRequest(res, parsed.error);
+  const t0 = Date.now();
+  const audit = { req, event: 'register' as const, email: parsed.data.email, startedAt: t0 };
 
   try {
     await getClient().send(new SignUpCommand({
@@ -128,12 +148,13 @@ router.post('/register', async (req: Request, res: Response) => {
       Password: parsed.data.password,
       UserAttributes: [{ Name: 'email', Value: parsed.data.email }],
     }));
+    emitAuthEvent({ ...auditMeta(req), event: 'register', success: true, email: parsed.data.email, durationMs: Date.now() - t0 });
     res.json({
       success: true,
       data: { message: 'Verification code sent to email', next: 'confirm' },
     });
   } catch (err) {
-    cognitoError(res, err);
+    cognitoError(res, err, audit);
   }
 });
 
@@ -141,6 +162,8 @@ router.post('/confirm', async (req: Request, res: Response) => {
   if (!ensureConfigured(res)) return;
   const parsed = confirmSchema.safeParse(req.body);
   if (!parsed.success) return badRequest(res, parsed.error);
+  const t0 = Date.now();
+  const audit = { req, event: 'confirm' as const, email: parsed.data.email, startedAt: t0 };
 
   try {
     await getClient().send(new ConfirmSignUpCommand({
@@ -148,9 +171,10 @@ router.post('/confirm', async (req: Request, res: Response) => {
       Username: parsed.data.email,
       ConfirmationCode: parsed.data.code,
     }));
+    emitAuthEvent({ ...auditMeta(req), event: 'confirm', success: true, email: parsed.data.email, durationMs: Date.now() - t0 });
     res.json({ success: true, data: { message: 'Email verified', next: 'login' } });
   } catch (err) {
-    cognitoError(res, err);
+    cognitoError(res, err, audit);
   }
 });
 
@@ -174,6 +198,8 @@ router.post('/login', async (req: Request, res: Response) => {
   if (!ensureConfigured(res)) return;
   const parsed = loginSchema.safeParse(req.body);
   if (!parsed.success) return badRequest(res, parsed.error);
+  const t0 = Date.now();
+  const audit = { req, event: 'login' as const, email: parsed.data.email, startedAt: t0 };
 
   try {
     const result = await getClient().send(new InitiateAuthCommand({
@@ -186,12 +212,16 @@ router.post('/login', async (req: Request, res: Response) => {
     }));
     const auth = result.AuthenticationResult;
     if (!auth) {
+      // MFA / NEW_PASSWORD_REQUIRED challenge — not yet supported.
+      // Audit as a failure since the user isn't logged in.
+      emitAuthEvent({ ...auditMeta(req), event: 'login', success: false, email: parsed.data.email, errorCode: 'ChallengeNotSupported', durationMs: Date.now() - t0 });
       res.status(400).json({
         success: false,
         error: 'Login required additional challenge (MFA not yet supported)',
       });
       return;
     }
+    emitAuthEvent({ ...auditMeta(req), event: 'login', success: true, email: parsed.data.email, durationMs: Date.now() - t0 });
     res.json({
       success: true,
       data: {
@@ -202,7 +232,7 @@ router.post('/login', async (req: Request, res: Response) => {
       },
     });
   } catch (err) {
-    cognitoError(res, err);
+    cognitoError(res, err, audit);
   }
 });
 
@@ -282,15 +312,18 @@ router.post('/forgot', async (req: Request, res: Response) => {
   if (!ensureConfigured(res)) return;
   const parsed = forgotSchema.safeParse(req.body);
   if (!parsed.success) return badRequest(res, parsed.error);
+  const t0 = Date.now();
+  const audit = { req, event: 'forgot' as const, email: parsed.data.email, startedAt: t0 };
 
   try {
     await getClient().send(new ForgotPasswordCommand({
       ClientId: config.cognito.userPoolClientId,
       Username: parsed.data.email,
     }));
+    emitAuthEvent({ ...auditMeta(req), event: 'forgot', success: true, email: parsed.data.email, durationMs: Date.now() - t0 });
     res.json({ success: true, data: { message: 'Reset code sent if account exists' } });
   } catch (err) {
-    cognitoError(res, err);
+    cognitoError(res, err, audit);
   }
 });
 
@@ -298,6 +331,8 @@ router.post('/reset', async (req: Request, res: Response) => {
   if (!ensureConfigured(res)) return;
   const parsed = resetSchema.safeParse(req.body);
   if (!parsed.success) return badRequest(res, parsed.error);
+  const t0 = Date.now();
+  const audit = { req, event: 'reset' as const, email: parsed.data.email, startedAt: t0 };
 
   try {
     await getClient().send(new ConfirmForgotPasswordCommand({
@@ -306,9 +341,10 @@ router.post('/reset', async (req: Request, res: Response) => {
       ConfirmationCode: parsed.data.code,
       Password: parsed.data.password,
     }));
+    emitAuthEvent({ ...auditMeta(req), event: 'reset', success: true, email: parsed.data.email, durationMs: Date.now() - t0 });
     res.json({ success: true, data: { message: 'Password reset; you can now log in' } });
   } catch (err) {
-    cognitoError(res, err);
+    cognitoError(res, err, audit);
   }
 });
 
