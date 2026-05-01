@@ -150,13 +150,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [tokens]);
 
   const logout = useCallback(() => {
+    // Snapshot the refresh token before we clear local state — the
+    // server-side revoke is fire-and-forget, but if we set tokens
+    // null first we lose the value to send. apiClient.authLogout
+    // already swallows errors, so a transient network blip can't
+    // strand the user logged in client-side.
+    const refreshToken = tokens?.refreshToken;
     if (refreshTimerRef.current) {
       clearTimeout(refreshTimerRef.current);
       refreshTimerRef.current = null;
     }
     setTokens(null);
     setError(null);
-  }, []);
+    if (refreshToken) {
+      void apiClient.authLogout(refreshToken);
+    }
+  }, [tokens]);
 
   const refreshTokens = useCallback(async (refreshToken: string): Promise<void> => {
     try {

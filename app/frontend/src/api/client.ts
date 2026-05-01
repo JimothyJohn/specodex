@@ -659,6 +659,24 @@ class ApiClient {
     if (!response.data) throw new Error('Failed to remove product from project');
     return response.data;
   }
+
+  /**
+   * Revoke the refresh token at Cognito so a stolen copy can't mint
+   * new id/access tokens. Best-effort — backend returns 200 even
+   * for already-revoked tokens, but we swallow network errors here
+   * too so a transient failure doesn't strand the user logged in
+   * on the client side.
+   */
+  async authLogout(refresh_token: string): Promise<void> {
+    try {
+      await this.request('/api/auth/logout', {
+        method: 'POST',
+        body: JSON.stringify({ refresh_token }),
+      });
+    } catch {
+      // Local logout proceeds regardless.
+    }
+  }
 }
 
 // ========== Singleton Export ==========

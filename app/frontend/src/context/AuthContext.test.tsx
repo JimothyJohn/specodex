@@ -20,6 +20,10 @@ vi.mock('../api/client', () => ({
     authForgotPassword: vi.fn(),
     authResetPassword: vi.fn(),
     authRefresh: vi.fn(),
+    // Resolves immediately by default; the production implementation
+    // already swallows errors, so a never-throwing mock matches the
+    // observable contract.
+    authLogout: vi.fn().mockResolvedValue(undefined),
   },
 }));
 
@@ -138,6 +142,19 @@ describe('logout', () => {
     expect(result.current.user).toBeNull();
     expect(localStorage.getItem('specodex.auth.tokens')).toBeNull();
     expect(apiClient.setAuthToken).toHaveBeenLastCalledWith(null);
+    // Phase 5c: refresh token revocation. logout() fires
+    // authLogout with the snapshotted refresh token before
+    // tokens go to null. Fire-and-forget; we don't await the
+    // promise but the call itself must happen.
+    expect(apiClient.authLogout).toHaveBeenCalledWith('r');
+  });
+
+  it('does not call authLogout when there is no refresh token', () => {
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    // No prior login — calling logout shouldn't try to revoke a
+    // token that doesn't exist.
+    act(() => { result.current.logout(); });
+    expect(apiClient.authLogout).not.toHaveBeenCalled();
   });
 });
 
