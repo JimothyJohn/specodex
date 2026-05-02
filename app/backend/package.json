@@ -24,7 +24,7 @@
     "aws-jwt-verify": "^5.1.0",
     "axios": "^1.13.2",
     "cors": "^2.8.5",
-    "dotenv": "^16.4.7",
+    "dotenv": "^17.4.2",
     "express": "^4.21.2",
     "serverless-http": "^4.0.0",
     "uuid": "^11.0.3",
