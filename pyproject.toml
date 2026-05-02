@@ -5,15 +5,15 @@ description = "Extract technical specifications from product datasheets using AI
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "google-genai>=1.29.0",
+    "google-genai>=1.74.0",
     "pypdf2>=3.0.1",
-    "pydantic>=2.11.7",
-    "boto3>=1.40.45",
+    "pydantic>=2.13.3",
+    "boto3>=1.43.2",
     "tenacity>=8.5.0",
     "pycryptodome>=3.20.0",
-    "playwright>=1.48.0",
-    "google-api-python-client>=2.187.0",
-    "python-dotenv>=1.2.1",
+    "playwright>=1.59.0",
+    "google-api-python-client>=2.195.0",
+    "python-dotenv>=1.2.2",
     "pymupdf>=1.25.0",
     "httpx>=0.27.0",
     "selectolax>=0.3.21",
@@ -29,14 +29,14 @@ web-scraper = "specodex.web_scraper:main"
 [dependency-groups]
 dev = [
     "awslambdaric>=3.1.1",
-    "hypothesis>=6.119.0",
+    "hypothesis>=6.152.4",
     "moto[dynamodb]>=5.1.22",
-    "mypy>=1.18.2",
+    "mypy>=1.20.2",
     "pydantic-to-typescript>=2.0.0",
     "pytest>=8.4.1",
     "pytest-cov>=7.1.0",
     "pytest-mock>=3.15.1",
-    "ruff>=0.12.7",
+    "ruff>=0.15.12",
 ]
 
 [tool.setuptools]
