@@ -28,7 +28,7 @@ web-scraper = "specodex.web_scraper:main"
 
 [dependency-groups]
 dev = [
-    "awslambdaric>=3.1.1",
+    "awslambdaric>=4.0.0",
     "hypothesis>=6.119.0",
     "moto[dynamodb]>=5.1.22",
     "mypy>=1.18.2",
