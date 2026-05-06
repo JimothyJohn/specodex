@@ -6,8 +6,9 @@
 > 2026-05-02 because the codegen ships independently of the larger
 > Express → FastAPI migration and is worth tracking on its own.
 >
-> **Status:** 🚧 toolchain + drift gate ✅ shipped 2026-05-02; consumer
-> rewire (Phase 0a-ii) and Zod enum collapse (Phase 0b) pending.
+> **Status:** 🚧 toolchain + drift gate ✅ shipped 2026-05-02; Zod enum
+> + allowlist collapse (Phase 0b) ✅ shipped 2026-05-03 (commit
+> `ae71eb3`); consumer rewire (Phase 0a-ii) pending.
 
 ---
 
@@ -41,8 +42,8 @@ so rewiring it is wasted work.
 | Phase | Scope | State |
 |---|---|---|
 | **0a-ii** | Frontend `models.ts` rewritten to re-export from `generated.ts`; consumer fix-ups | ⏳ pending |
-| **0b** | Backend `routes/search.ts` Zod enum + `config/productTypes.ts` allowlist derived from generated | ⏳ pending (depends on 0a-ii or can be done in parallel) |
-| **0c** | "Adding a new product type" runbook collapses to 2 files + `gen-types` run | ⏳ pending (paperwork, lands with 0a-ii) |
+| **0b** | Backend `routes/search.ts` Zod enum + `config/productTypes.ts` allowlist derived from generated | ✅ shipped 2026-05-03 (`ae71eb3`) — `gen_types.py` emits a `generated_constants.ts` twin for Express; `productTypes.ts` re-exports `PRODUCT_TYPES`; `routes/search.ts` uses `z.enum(VALID_PRODUCT_TYPES)`. CLAUDE.md "Adding a new product type" runbook updated to drop the obsolete steps. |
+| **0c** | "Adding a new product type" runbook collapses to 2 files + `gen-types` run | 🚧 partial — backend allowlist + Zod step retired post-0b. Full collapse to 2 files awaits 0a-ii (frontend `models.ts`). |
 
 ---
 
