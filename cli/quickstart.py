@@ -22,8 +22,9 @@ Usage:
                                   (try: ./Quickstart ingest-report --help)
     ./Quickstart audit-dedupes    DEDUPE — scan dev DB for prefix-drift duplicates.
                                   Phase 1 is read-only; --apply --safe-only --yes
-                                  enables Phase 2 auto-merge of safe groups
-                                  (--dry-run previews the plan).
+                                  enables Phase 2 auto-merge of safe groups;
+                                  --apply --from-review <md> --yes applies
+                                  Phase 3 reviewer picks. --dry-run previews.
                                   (try: ./Quickstart audit-dedupes --help)
     ./Quickstart units-triage     Parse outputs/units_migration_review_*.md
                                   and group rows by pattern (auto-rescue vs
