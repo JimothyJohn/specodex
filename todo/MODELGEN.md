@@ -66,10 +66,14 @@ paired consumer pass:
    (hand, no `null` in the union). Consumers narrowing on truthy checks
    already handle this; consumers feeding into typed children may need
    `?? undefined`.
-4. **`Manufacturer.PK: string`** (generated, required by `@computed_field`)
-   vs **`PK?: string`** (hand, optional). Construction sites that don't
-   set PK will break. Two mitigations: drop `@computed_field` for `PK`/`SK`
-   in `ProductBase` (compute on read in the API), or change consumers.
+4. ~~**`Manufacturer.PK: string`** (generated, required by `@computed_field`)
+   vs **`PK?: string`** (hand, optional).~~ ✅ Resolved 2026-05-07: dropped
+   `@computed_field` on `PK`/`SK` in `Manufacturer`, `ProductBase`, and
+   `Datasheet` (now plain `@property`), so generated TS no longer carries
+   them at all. `specodex/db/dynamo.py:_serialize_item` already assigned
+   `data["PK"] = model.PK` explicitly, so the persistence layer is
+   unaffected — `model.PK` still works because `@property` keeps the
+   attribute on the instance, just out of `model_dump()`.
 5. **`ProductBase.datasheet_url?: string | null`** (generated) vs
    **`datasheet_url?: DatasheetLink`** (hand, an object with `.url` and
    `.pages`). Easier than it looks: `ProductDetailModal.tsx:209-211`
@@ -174,13 +178,14 @@ generated.
 
 ---
 
-## Open questions
+## Open answers 
 
-1. **`@computed_field` for `PK`/`SK`.** Generated TS marks them required,
-   which breaks Manufacturer construction. Decision: drop the
-   computed-field decorator and compute PK/SK on read in the API? Or
-   keep it and force consumers to always set PK/SK? Lean toward dropping
-   — the field is derivable, not authoritative.
+1. **`@computed_field` for `PK`/`SK`.** ✅ Resolved 2026-05-07. Dropped the
+   `@computed_field` decorator on `PK`/`SK` in `Manufacturer`, `ProductBase`,
+   and `Datasheet` — kept as plain `@property` so the persistence layer
+   (`specodex/db/dynamo.py:_serialize_item`) still reads `model.PK` via
+   attribute access, but the JSON-schema/codegen path no longer treats
+   them as required model fields. Closes mismatch 4 in Phase 0a-ii.
 2. **`Product` union codegen.** ✅ Resolved 2026-05-07. `gen_types.py:
    _product_union_type()` walks `SCHEMA_CHOICES.values()` and emits
    `export type Product = Contactor | Drive | ElectricCylinder | …`
