@@ -62,19 +62,27 @@ function rollUp(checks: { status: StrictStatus }[]): StrictStatus {
   return 'ok';
 }
 
-function checkVoltageFits(supply: MinMaxUnit | undefined, demand: MinMaxUnit | ValueUnit | undefined): StrictCheckResult {
+// Helper-input types: generated TS marks Optional fields as `?: T | null`,
+// so each helper accepts the wider `T | null | undefined` and treats null
+// the same as undefined.
+type Maybe<T> = T | null | undefined;
+
+function checkVoltageFits(supply: Maybe<MinMaxUnit>, demand: Maybe<MinMaxUnit | ValueUnit>): StrictCheckResult {
   if (!supply || !demand) return partial('voltage', 'one side missing voltage');
   const dMin = isMinMaxUnit(demand) ? demand.min : demand.value;
   const dMax = isMinMaxUnit(demand) ? demand.max : demand.value;
   const dUnit = demand.unit;
   if (supply.unit !== dUnit) return fail('voltage', `unit mismatch: ${supply.unit} vs ${dUnit}`);
+  if (dMin == null || dMax == null || supply.min == null || supply.max == null) {
+    return partial('voltage', 'voltage range incomplete');
+  }
   if (dMin < supply.min || dMax > supply.max) {
     return fail('voltage', `demand ${dMin}-${dMax} outside supply ${supply.min}-${supply.max} ${supply.unit}`);
   }
   return ok('voltage', `${dMin}-${dMax} within ${supply.min}-${supply.max} ${supply.unit}`);
 }
 
-function checkSupplyGeDemand(supply: ValueUnit | undefined, demand: ValueUnit | undefined, field: string): StrictCheckResult {
+function checkSupplyGeDemand(supply: Maybe<ValueUnit>, demand: Maybe<ValueUnit>, field: string): StrictCheckResult {
   if (!supply || !demand) return partial(field, `one side missing ${field}`);
   if (supply.unit !== demand.unit) return fail(field, `unit mismatch: ${supply.unit} vs ${demand.unit}`);
   if (supply.value < demand.value) {
@@ -83,24 +91,24 @@ function checkSupplyGeDemand(supply: ValueUnit | undefined, demand: ValueUnit | 
   return ok(field, `supply ${supply.value} ≥ demand ${demand.value} ${supply.unit}`);
 }
 
-function checkDemandLeMax(demand: ValueUnit | undefined, max: ValueUnit | undefined, field: string): StrictCheckResult {
+function checkDemandLeMax(demand: Maybe<ValueUnit>, max: Maybe<ValueUnit>, field: string): StrictCheckResult {
   return checkSupplyGeDemand(max, demand, field);
 }
 
-function checkEqualString(a: string | undefined, b: string | undefined, field: string): StrictCheckResult {
+function checkEqualString(a: Maybe<string>, b: Maybe<string>, field: string): StrictCheckResult {
   if (!a || !b) return partial(field, `one side missing ${field}`);
   if (a.trim().toLowerCase() !== b.trim().toLowerCase()) return fail(field, `${a} != ${b}`);
   return ok(field, a);
 }
 
-function checkMembership(value: string | undefined, options: string[] | undefined, field: string): StrictCheckResult {
+function checkMembership(value: Maybe<string>, options: Maybe<string[]>, field: string): StrictCheckResult {
   if (!value || !options || options.length === 0) return partial(field, 'one side missing');
   const v = value.trim().toLowerCase();
   if (options.some(o => o.trim().toLowerCase() === v)) return ok(field, `${value} in supported list`);
   return fail(field, `${value} not in [${options.join(', ')}]`);
 }
 
-function checkShaftFit(motorShaft: ValueUnit | undefined, bore: ValueUnit | undefined): StrictCheckResult {
+function checkShaftFit(motorShaft: Maybe<ValueUnit>, bore: Maybe<ValueUnit>): StrictCheckResult {
   if (!motorShaft || !bore) return partial('shaft_diameter', 'one side missing');
   if (motorShaft.unit !== bore.unit) return fail('shaft_diameter', `unit mismatch: ${motorShaft.unit} vs ${bore.unit}`);
   if (Math.abs(motorShaft.value - bore.value) > 0.1) {

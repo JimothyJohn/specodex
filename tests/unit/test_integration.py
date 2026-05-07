@@ -65,7 +65,7 @@ def _gearhead(**over) -> Gearhead:
         frame_size="60",
         input_shaft_diameter="14;mm",
         max_input_speed="4000;rpm",
-        rated_torque="30;Nm",
+        max_continuous_torque="30;Nm",
     )
     defaults.update(over)
     return Gearhead(**defaults)

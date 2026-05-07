@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import List, Optional
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, Field, computed_field
+from pydantic import BaseModel, Field
 
 
 from specodex.models.common import ProductType
@@ -19,11 +19,17 @@ class Manufacturer(BaseModel):
 
     model_config = {"populate_by_name": True}
 
-    @computed_field
+    # PK/SK are persistence-layer concerns — kept as plain @property so they
+    # don't appear in `model_dump()` or the generated TS interface, but are
+    # still readable as attributes for the DynamoDB writer (see
+    # specodex/db/dynamo.py:_serialize_item which assigns them explicitly).
+    # Per MODELGEN.md OQ1 (resolved 2026-05-07): "drop the computed-field
+    # decorator and compute PK/SK on read in the API."
+    @property
     def PK(self) -> str:
         return "MANUFACTURER"
 
-    @computed_field
+    @property
     def SK(self) -> str:
         return f"MANUFACTURER#{self.id}"
 
