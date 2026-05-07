@@ -91,7 +91,7 @@ or consumes generated artifacts.
 | **2**  | Frontend cuts over to v2 by default; v1 in fallback for one release | 2-3 days | medium | yes (re-flag) | one full release cycle of v2 stable |
 | **3**  | Express backend deleted from repo + CDK | 1 day | low (after Phase 2) | git revert | smoke tests green on v2 only |
 | **4**  | Rust Stripe Lambda → Python Lambda | 1-2 days | low | yes | webhook signatures verified; a $0.50 test charge round-trips |
-| **5**  | `cli/` migrations archived under `scripts/migrations/<date>-<name>.py` | 0.5 day | zero | trivial | grace period + delete |
+| **5**  | `cli/` migration scripts cleaned up ✅ shipped 2026-04-30 (commit `c322393` deleted 13 finished one-shot scripts; one archive remains under `scripts/migrations/`) | 0.5 day | zero | trivial | grace period + delete |
 
 **You can stop after any phase and the system is still shippable.** This is
 the most important property — there is no "you've started so you must
@@ -292,11 +292,19 @@ it last because:
 
 ---
 
-## Phase 5 — Migration archive cleanup
+## Phase 5 — Migration archive cleanup ✅ shipped 2026-04-30
 
 **Goal:** move one-time migration scripts out of `cli/` into
 `scripts/migrations/<date>-<name>.py`. Pure hygiene; not blocking
 anything.
+
+**What landed:** commit `c322393` deleted 13 finished one-shot scripts
+outright (`cli/migrate_electric_cylinders.py`, `cli/migrate_units_to_dict.py`,
+`cli/batch_servo_*.py`, `cli/ingest_tolomatic.py`, `cli/units_triage.py`,
+plus dead refs in FUTURE.md and Quickstart). The earlier
+`scripts/migrations/2026-04-26-batch_process.py` is the lone archived
+script kept for provenance. Net effect matches Phase 5's intent — the
+`cli/` directory now only contains active recurring tools.
 
 Effort: 0.5 day. Risk: zero. Run when the queue is empty.
 
