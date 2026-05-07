@@ -383,8 +383,9 @@ Ship before any of the above is complete:
   free integration with Search Console. **Lean Plausible** — fits the
   field-manual / no-marketing-fluff vibe.
 - **Lighthouse CI** results stored as artifacts of every CI run.
-- **Search Console weekly export** to S3, processed into the GODMODE
-  panel per [GODMODE.md](GODMODE.md) once that ships.
+- **Search Console weekly export** to S3 — manual review for now.
+  (`./Quickstart godmode` is scoped to catalog data quality, not
+  search analytics.)
 
 KPIs by month-6 (calibrate as we measure):
 

@@ -55,6 +55,12 @@
   --success: #5c5c4a;
   --warning: #c8941a;
   --danger: #7a1f1f;
+
+  /* Scrollbar — sepia thumb on transparent track so it reads as part of
+   * the page, not a system widget. STYLE.md Phase 5. */
+  --scrollbar-track: transparent;
+  --scrollbar-thumb: #b8ac85;
+  --scrollbar-thumb-hover: #8a7f5c;
 }
 
 :root[data-theme="dark"],
@@ -124,12 +130,41 @@
   --success: #a09c80;
   --warning: #c8941a;
   --danger: #a03525;
+
+  /* Scrollbar — warm-ink thumb on transparent track. STYLE.md Phase 5. */
+  --scrollbar-track: transparent;
+  --scrollbar-thumb: #5c5c4a;
+  --scrollbar-thumb-hover: #7a7a64;
 }
 
 * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+}
+
+/* Themed scrollbars — universal, no class needed. Replaces native UA
+ * scrollbar chrome (chunky gray on Windows, ghost-thin on macOS) with
+ * a sepia thumb that matches the field-manual palette in both themes.
+ * STYLE.md Phase 5. The `.header nav` rule below intentionally overrides
+ * to hide the bar on the swipeable mobile nav row. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 4px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
 }
 
 body {
@@ -6864,6 +6899,40 @@ input.transmission-param-input {
   background: color-mix(in srgb, #c2557a 22%, var(--bg-tertiary));
 }
 
+/* App-native tooltip (replaces the OS `title` attribute). Portaled to
+ * document.body, fixed-positioned by the Tooltip component. STYLE.md
+ * Phase 1.
+ *
+ * Sized small (13px text, 8px padding) so it reads as a hint, not a
+ * popover. Surface tokens match the popover/card vocabulary so the
+ * tooltip family feels coherent in both themes. */
+.app-tooltip {
+  font-family: var(--font-mono, monospace);
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text-primary);
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 6px 9px;
+  max-width: 280px;
+  box-shadow: 0 4px 12px var(--shadow-md);
+  z-index: 1100;
+  /* The component sets pointerEvents:none inline so the tooltip never
+   * intercepts the cursor; this rule just nails the visual contract. */
+}
+
+/* App-native external-link affordance (replaces bare target="_blank").
+ * The arrow-up-right icon is appended to text links so the user can see
+ * they're leaving the SPA; icon-only call sites suppress it via
+ * showIcon={false}. STYLE.md Phase 6. */
+.external-link-icon {
+  display: inline-block;
+  margin-left: 0.25em;
+  vertical-align: -1px;
+  /* Inherits the link's color via stroke="currentColor". */
+}
+
 /* Portaled popover — fixed positioning lets it escape the cell's
  * overflow:hidden. Border + shadow give it weight so it reads as a
  * separate surface above the table. */
@@ -7023,4 +7092,180 @@ input.transmission-param-input {
   border-color: var(--accent-primary) !important;
   color: var(--text-primary) !important;
   background: var(--bg-tertiary) !important;
+}
+
+/* =========================================================================
+ * Mobile densification — last-in-cascade overrides for narrow viewports.
+ *
+ * The earlier @media (max-width: 768px) block prioritized 44px-min tap
+ * targets across the board, which on a phone leaves the header, filter
+ * sidebar, and results table consuming almost the entire viewport before
+ * any data shows. This pass dials chrome and per-row chrome back so more
+ * content fits per screen, while keeping the actual tap targets — chip
+ * remove buttons, the filter expand toggle, dropdown triggers — at a
+ * usable size. The 44px floor is preserved on those; we only shrink the
+ * surrounding text + padding.
+ * ========================================================================= */
+@media (max-width: 768px) {
+  /* Smaller body text — was 15px, which on a 390px viewport reads almost
+   * as iOS system size. Drop to 13px so labels and chips compact in
+   * proportion. iOS still won't zoom inputs since input rule below pins
+   * 16px. */
+  body { font-size: 13px; }
+
+  /* Header chrome — was eating ~52px before any content. */
+  .header { padding: 0.3rem 0.6rem; }
+  .header h1 { font-size: 0.9rem; letter-spacing: 0.14em; }
+  .icon-link svg, .theme-toggle svg { width: 16px; height: 16px; }
+
+  /* Header toggles back down from the 40px floor the existing mobile
+   * block forced — the unified --control-h (32px) is the desktop sizing
+   * and reads fine for thumb on a phone. */
+  .theme-toggle, .density-toggle, .icon-link, .account-menu-trigger {
+    width: 32px; height: 32px; min-height: 32px;
+  }
+
+  /* Sign-in label must stay on one line; the global button rule pads it
+   * generously and the label wraps below ~370px otherwise. */
+  .account-menu-signin {
+    padding: 0 0.6rem !important;
+    font-size: 0.75rem;
+    white-space: nowrap;
+  }
+
+  /* Mobile filter toggle bar — was 44px+ tall with 0.95rem text. The
+   * collapsed state is the user's home screen on mobile; trim it. */
+  .mobile-filter-toggle {
+    padding: 0.4rem 0.7rem;
+    font-size: 0.85rem;
+    min-height: 36px;
+  }
+  .mobile-filter-prefix { font-size: 0.62rem; }
+  .mobile-filter-count {
+    min-width: 1.1rem; height: 1.1rem; font-size: 0.7rem;
+    padding: 0 0.3rem;
+  }
+
+  /* Filter chips inside the sidebar are list rows, not standalone
+   * buttons — the X remove and the operator toggle are the actual tap
+   * targets and have their own min sizing (1.5rem / 1.3rem already set
+   * by the existing block). Drop the global 44px floor that bloats every
+   * chip to a half-screen tall. */
+  .filter-chip,
+  .filter-chip-minimal {
+    min-height: 0;
+    padding: 0.25rem 0.45rem;
+    font-size: 0.85rem;
+  }
+
+  /* General buttons — keep them tappable but stop spending 40px when
+   * 32px works. Tap targets that genuinely need 44px (mobile filter
+   * toggle above, accordion headers) restate it explicitly. */
+  button { min-height: 32px; min-width: 32px; padding: 0.35rem 0.65rem; }
+
+  /* Results header — pagination + count strip was 0.8rem padded with
+   * default body text, eating a row on mobile. */
+  .results-header { padding: 0.35rem 0.5rem; gap: 0.4rem; }
+  .results-count, .pagination-label { font-size: 0.7rem; }
+
+  /* Page toolbar (type dropdown + clear-all) on mobile. Stays
+   * column-stacked from the existing rule, but the row heights shrink. */
+  .page-toolbar { padding: 0.4rem 0.5rem; gap: 0.4rem; }
+  .page-toolbar .custom-dropdown-trigger { font-size: 0.78rem; }
+
+  /* Results table — let it fit a 390px viewport without forcing an
+   * immediate horizontal scroll for narrow column sets, and shrink each
+   * cell's vertical footprint. The 600px floor was set when the column
+   * count was always large; today narrow types (motor, gearhead with a
+   * couple of attributes) fit. The table still scrolls horizontally for
+   * dense types — that's intentional. */
+  .product-grid { min-width: 0; }
+  .product-grid-header-item,
+  .spec-header-item { padding: 0.2rem 0.25rem; }
+  .product-grid-header-label { font-size: 0.7rem; line-height: 1.15; }
+  .product-grid-header-unit { font-size: 0.6rem; }
+  .product-grid-header-item { font-size: 0.65rem; }
+  .spec-header-value { font-size: 0.78rem; line-height: 1.2; }
+  .product-card-info { padding: 0.2rem 0.45rem; }
+  .product-info-part { font-size: 0.85rem; }
+
+  /* Comfy density on a phone is wasteful — every density-comfy override
+   * (font 1.15rem, padding 0.8rem) gets clamped back to compact sizing
+   * so the toggle's effect is barely perceptible on mobile. The control
+   * is left in place for users who flip it; we just stop letting it
+   * blow up the row height past what the viewport can spare. */
+  .product-grid.density-comfy .spec-header-item,
+  .product-grid.density-comfy .product-card-info,
+  .product-grid.density-comfy .product-grid-header-item,
+  .product-grid.density-comfy .product-grid-header-part {
+    padding-top: 0.25rem; padding-bottom: 0.25rem;
+  }
+  .product-grid.density-comfy .spec-header-value,
+  .product-grid.density-comfy .product-info-part { font-size: 0.85rem; }
+  .product-grid.density-comfy .product-grid-header-item { font-size: 0.7rem; }
+  .product-grid.density-comfy .product-grid-header-label { font-size: 0.75rem; }
+  .product-grid.density-comfy .product-grid-header-unit { font-size: 0.65rem; }
+
+  /* The earlier mobile block forced column-header cells to 88px tall to
+   * fit the histogram + slider stack. With the smaller fonts above, 60px
+   * is enough — the slider + label still clear. */
+  .product-grid-header-item.column-header { min-height: 60px; }
+
+  /* Build tray (sticky bottom) — slot pills shrink in proportion. */
+  .build-tray { padding: 0.25rem 0.5rem; }
+  .build-tray-slot { padding: 0.15rem 0.35rem; font-size: 0.7rem; }
+  .build-tray-label, .build-tray-slot-type { font-size: 0.62rem; }
+  .build-tray-clear { padding: 0.15rem 0.45rem; font-size: 0.65rem; }
+}
+
+/* Extra-small phones — second tier of compaction. The base 768px block
+ * lands at "comfortable on a 390px iPhone"; this nudges it tighter for
+ * the narrow Androids and SE-class screens. */
+@media (max-width: 400px) {
+  body { font-size: 12.5px; }
+  .header { padding: 0.25rem 0.5rem; }
+  .header h1 { font-size: 0.8rem; letter-spacing: 0.12em; }
+  .product-grid-header-label { font-size: 0.65rem; }
+  .spec-header-value { font-size: 0.72rem; }
+  .product-info-part { font-size: 0.78rem; }
+}
+
+/* =========================================================================
+ * Mobile pass 2 — fine-tune after first compaction. Targets the
+ * still-bloated parts seen in the 390×844 review:
+ *   - the "Select Product Type..." pulse trigger (heroified with
+ *     !important padding 0.7rem 0.85rem and 1rem font), which on a
+ *     390px viewport eats ~50px before any data;
+ *   - the page-toolbar wrap padding + match-bar font sizes;
+ *   - the empty-state arrow + body text, which dominate the empty
+ *     viewport on first load.
+ * ========================================================================= */
+@media (max-width: 768px) {
+  /* Hero pulse trigger — :important padding above must be matched. The
+   * pulse stays (it's the first-run nudge); we just stop it being a
+   * 50px box. */
+  .filter-controls-top .custom-dropdown-trigger[data-placeholder='true'] {
+    padding: 0.4rem 0.6rem !important;
+    font-size: 0.85rem;
+  }
+  .filter-controls-top .custom-dropdown-trigger[data-placeholder='true'] .custom-dropdown-trigger-label {
+    font-size: 0.85rem;
+  }
+
+  /* Page toolbar — narrower padding, baseline-aligned children, and the
+   * match meter shrinks the percent + numbers in proportion. */
+  .page-toolbar { padding: 0.35rem 0.4rem; gap: 0.5rem; }
+  .page-toolbar-left { min-width: 0; gap: 0.5rem; }
+  .page-toolbar-type-select { min-width: 0; }
+  .page-toolbar-match { gap: 0.15rem; flex: 1 1 auto; }
+  .page-toolbar-match-numbers { font-size: 0.7rem; }
+  .page-toolbar-match-count { font-size: 0.78rem; }
+  .page-toolbar-match-percent { font-size: 0.7rem; }
+  .page-toolbar-match-bar { height: 4px; }
+
+  /* Empty state — was 1.15rem body + 2rem arrow stacked. Trim both so the
+   * "select a type / no products" prompt reads as a label, not a banner. */
+  .empty-state-minimal { padding: 1.5rem 1rem; }
+  .empty-state-minimal p { font-size: 0.95rem; padding-top: 1.8rem; }
+  .empty-state-minimal p::before { font-size: 1.4rem; }
 }

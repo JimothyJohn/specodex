@@ -1,12 +1,8 @@
 # PYTHON_BACKEND — TypeScript → Python migration for `app/backend/`
 
-> **Status:** 📐 planned. Phase 0 (codegen) is shippable in a day; Phases 1-3
-> (FastAPI cutover) are multi-week and **gated on Phase 0 landing first** so the
-> contract between the two backends is mechanical, not eye-balled.
->
-> **Source:** `todo/REFACTOR.md` §1 (top-three "do over"s), §4.1 (polyglot tax),
-> §4.2 (six places to add a product type), §4.5 (no type-safe contract), §5.3
-> (Python end-to-end), §7 (migration sketch).
+> **Status:** 📐 planned. Phase 0 (codegen) is shipped; Phases 1-3 (FastAPI
+> cutover) are multi-week and **gated on PHASE5_RECOVERY landing first** so
+> the FastAPI auth surface mirrors the right Cognito shape.
 >
 > **Date drafted:** 2026-05-02.
 > **Owner:** Nick. **Contributors welcome on Phase 0 only** — Phases 1+ need a
@@ -16,7 +12,8 @@
 
 ## 0. Why this exists
 
-REFACTOR.md flagged three structural taxes on the current architecture:
+A code audit (in git history at `todo/REFACTOR.md`) flagged three
+structural taxes on the current architecture:
 
 1. **Polyglot stack without polyglot justification.** Python pipeline + Node
    API + Rust billing. Three runtimes, three lint configs, three deploy
@@ -41,7 +38,8 @@ decides to run them.
 - Rewriting the page-finder, scraper, or quality gate.
 - Migrating off DynamoDB or single-table design.
 - Frontend rewrites (React stays).
-- The CDK infrastructure layer stays in TypeScript — see REFACTOR.md §5.6.
+- The CDK infrastructure layer stays in TypeScript — too much
+  AWS-specific TS context to be worth porting.
 
 ---
 
@@ -68,8 +66,8 @@ or consumes generated artifacts.
 - `specodex/` Python pipeline.
 - `app/frontend/` React SPA (with `types/generated.ts` replacing the
   hand-typed `types/models.ts`).
-- `app/infrastructure/` CDK stacks (TS, single exception per REFACTOR.md
-  §5.6).
+- `app/infrastructure/` CDK stacks (TS — single exception to the
+  Python-everywhere goal).
 - DynamoDB schema, S3 upload bucket, Cognito user pool.
 
 **What goes:**
@@ -93,7 +91,7 @@ or consumes generated artifacts.
 | **2**  | Frontend cuts over to v2 by default; v1 in fallback for one release | 2-3 days | medium | yes (re-flag) | one full release cycle of v2 stable |
 | **3**  | Express backend deleted from repo + CDK | 1 day | low (after Phase 2) | git revert | smoke tests green on v2 only |
 | **4**  | Rust Stripe Lambda → Python Lambda | 1-2 days | low | yes | webhook signatures verified; a $0.50 test charge round-trips |
-| **5**  | `cli/` migrations archived under `scripts/migrations/<date>-<name>.py` | 0.5 day | zero | trivial | grace period + delete |
+| **5**  | `cli/` migration scripts cleaned up ✅ shipped 2026-04-30 (commit `c322393` deleted 13 finished one-shot scripts; one archive remains under `scripts/migrations/`) | 0.5 day | zero | trivial | grace period + delete |
 
 **You can stop after any phase and the system is still shippable.** This is
 the most important property — there is no "you've started so you must
@@ -256,10 +254,10 @@ fallback for one release cycle.
 
 ### 3.3 Don't forget
 
-- Compat routes (`app/backend/src/routes/compat.ts`) — REFACTOR.md §4.9
-  flags these as a smell. Phase 3 is the natural moment to ask "do we
-  still have any consumer of the compat shape?" If yes, port it to
-  FastAPI. If no, delete it.
+- Compat routes (`app/backend/src/routes/compat.ts`) — these are a
+  smell flagged in the original audit. Phase 3 is the natural moment
+  to ask "do we still have any consumer of the compat shape?" If yes,
+  port it to FastAPI. If no, delete it.
 
 ---
 
@@ -294,14 +292,21 @@ it last because:
 
 ---
 
-## Phase 5 — Migration archive cleanup
+## Phase 5 — Migration archive cleanup ✅ shipped 2026-04-30
 
 **Goal:** move one-time migration scripts out of `cli/` into
 `scripts/migrations/<date>-<name>.py`. Pure hygiene; not blocking
 anything.
 
-Per REFACTOR.md §4.7. Effort: 0.5 day. Risk: zero. Run when the queue is
-empty.
+**What landed:** commit `c322393` deleted 13 finished one-shot scripts
+outright (`cli/migrate_electric_cylinders.py`, `cli/migrate_units_to_dict.py`,
+`cli/batch_servo_*.py`, `cli/ingest_tolomatic.py`, `cli/units_triage.py`,
+plus dead refs in FUTURE.md and Quickstart). The earlier
+`scripts/migrations/2026-04-26-batch_process.py` is the lone archived
+script kept for provenance. Net effect matches Phase 5's intent — the
+`cli/` directory now only contains active recurring tools.
+
+Effort: 0.5 day. Risk: zero. Run when the queue is empty.
 
 ---
 
@@ -339,8 +344,8 @@ work. Each becomes its own scoped doc when it matters.
    until Phase 1 starts.
 5. **Migrating the agent / processor / scraper into the same FastAPI
    app.** Tempting, but they're cron-driven, not request-driven. Keep
-   them as separate Lambdas (current shape). REFACTOR.md §6.5 covers
-   this — no microservices unless required.
+   them as separate Lambdas (current shape). No microservices unless
+   required.
 
 ---
 
@@ -371,16 +376,15 @@ further:
   vanilla `aws-lambda-powertools` are all candidates. FastAPI is the
   strawman because (a) Pydantic-native, (b) auto OpenAPI, (c) widest
   community. Re-evaluate at Phase 1 kickoff.
-- **Mandate a Cognito → Clerk swap.** REFACTOR.md §5.8 lists Clerk as a
-  faster-to-ship alternative; PHASE5_RECOVERY.md lands Cognito first.
-  Don't conflate the two.
-- **Re-shape DynamoDB.** REFACTOR.md §4.6 calls for GSIs. That's a
-  separate plan; doing it concurrently with a backend rewrite is exactly
-  the "two refactors at once" anti-pattern.
+- **Mandate a Cognito → Clerk swap.** Clerk is a faster-to-ship
+  alternative the audit flagged, but PHASE5_RECOVERY.md lands Cognito
+  first. Don't conflate the two.
+- **Re-shape DynamoDB.** Adding GSIs is its own plan; doing it
+  concurrently with a backend rewrite is exactly the "two refactors at
+  once" anti-pattern.
 - **Promise that this collapses the polyglot stack to one language.**
-  CDK stays in TS (REFACTOR.md §5.6). Frontend stays in TS (React).
-  After Phase 4 the runtime count is 2 (Python app-layer + TS UI/IaC),
-  not 1.
+  CDK stays in TS. Frontend stays in TS (React). After Phase 4 the
+  runtime count is 2 (Python app-layer + TS UI/IaC), not 1.
 
 ---
 
@@ -405,10 +409,13 @@ regardless.**
 
 ## 8. References
 
-- `todo/REFACTOR.md` — the audit this plan operationalises.
 - `todo/PHASE5_RECOVERY.md` — auth must land before Phase 1.
 - `CLAUDE.md` — "Adding a new product type" runbook (target of Phase
   0b's collapse).
 - `pydantic-to-typescript` — https://github.com/phillipdupuis/pydantic-to-typescript
 - `Mangum` — https://mangum.fastapiexpert.com/
 - `FastAPI` — https://fastapi.tiangolo.com/
+
+The original code audit lives in git history at `todo/REFACTOR.md`
+(deleted 2026-05-03 once its findings were operationalised here, in
+`MODELGEN.md`, and in `PYTHON_STRIPE.md`).

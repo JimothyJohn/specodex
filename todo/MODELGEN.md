@@ -6,24 +6,37 @@
 > 2026-05-02 because the codegen ships independently of the larger
 > Express → FastAPI migration and is worth tracking on its own.
 >
-> **Date drafted:** 2026-05-02. **Status:** 🚧 Phase 0 (toolchain) ✅
-> shipped, Phase 0a (drift gate) ✅ shipped; consumer rewire and Zod
-> enum collapse pending.
+> **Status:** ✅ shipped — toolchain + drift gate (2026-05-02), Zod enum +
+> allowlist collapse (Phase 0b, 2026-05-03 `ae71eb3`), consumer rewire
+> (Phase 0a-ii, 2026-05-07). The frontend's `models.ts` is now a re-export
+> shim from `generated.ts`; the only remaining hand-typed mirror is
+> `app/backend/src/types/models.ts`, which retires with Express in
+> PYTHON_BACKEND.md Phase 3.
 
 ---
 
 ## What it is
 
-Today: TypeScript interfaces in `app/{backend,frontend}/src/types/models.ts`
-are hand-typed to mirror Pydantic models in `specodex/models/*.py`. CLAUDE.md
-spells out the six-place runbook for adding a new product type. Three of those
-places are typed-by-hand and silently drift.
+`./Quickstart gen-types` regenerates `app/frontend/src/types/generated.ts`
+from `specodex/models/*.py` via `pydantic2ts`. The drift gate
+(`test-codegen` job in `.github/workflows/ci.yml`) fails CI if the
+generated file isn't up to date. **What's still hand-typed and drifts:**
 
-End-state: one command (`./Quickstart gen-types`) regenerates
-`app/frontend/src/types/generated.ts` from Pydantic. Hand-typed `models.ts`
-becomes a thin re-export shim. The backend Zod enum is derived from the same
-generated artifact. Adding a product type collapses from 6 files to 2 + a
-codegen run.
+- `app/frontend/src/types/models.ts` mirrors a subset of the Pydantic
+  models. Consumers import from this, not from `generated.ts`.
+- `app/backend/src/routes/search.ts` Zod enum + `app/backend/src/config/productTypes.ts`
+  `VALID_PRODUCT_TYPES` allowlist — both repeat `ProductType` by hand.
+- `app/backend/src/types/models.ts` mirrors the Pydantic models for the
+  Express backend.
+
+End-state for this doc: hand-typed `models.ts` becomes a thin re-export
+shim from `generated.ts`. The backend Zod enum is derived from the same
+generated artifact. Adding a product type collapses from 6 files to 2 +
+a codegen run.
+
+`app/backend/src/types/models.ts` is **deliberately not migrated** —
+the Express backend is slated for deletion in PYTHON_BACKEND.md Phase 3,
+so rewiring it is wasted work.
 
 ---
 
@@ -31,15 +44,9 @@ codegen run.
 
 | Phase | Scope | State |
 |---|---|---|
-| **0** | `pydantic-to-typescript` dep, `scripts/gen_types.py`, `./Quickstart gen-types`, CLAUDE.md docs | ✅ shipped 2026-05-02 |
-| **0a-i** | `generated.ts` committed, `test-codegen` CI gate, `models.ts` migration banner | ✅ shipped 2026-05-02 |
-| **0a-ii** | Frontend `models.ts` rewritten to re-export from `generated.ts`; consumer fix-ups | ⏳ pending |
-| **0b** | Backend `routes/search.ts` Zod enum + `config/productTypes.ts` allowlist derived from generated | ⏳ pending (depends on 0a-ii or can be done in parallel) |
-| **0c** | "Adding a new product type" runbook collapses to 2 files + `gen-types` run | ⏳ pending (paperwork, lands with 0a-ii) |
-
-`app/backend/src/types/models.ts` is **deliberately not migrated** —
-the Express backend is slated for deletion in PYTHON_BACKEND.md Phase 3,
-so rewiring it is wasted work.
+| **0a-ii** | Frontend `models.ts` rewritten to re-export from `generated.ts`; consumer fix-ups | ✅ shipped 2026-05-07 — `models.ts` is a thin shim re-exporting `Motor`, `Drive`, `Gearhead`, `RobotArm`, `Contactor`, `ElectricCylinder`, `LinearActuator`, `ProductBase`, `Manufacturer`, `Datasheet`, `ValueUnit`, `MinMaxUnit`, `Dimensions`, `PRODUCT_TYPES`, plus a `Persisted<>` transform that tightens `product_id`/`product_type` on the API-facing `Product` union, plus the frontend-only `DatasheetEntry`, `ProductSummary`, and the wider `ProductType` (= `ProductTypeLiteral \| 'datasheet' \| 'all' \| null`). |
+| **0b** | Backend `routes/search.ts` Zod enum + `config/productTypes.ts` allowlist derived from generated | ✅ shipped 2026-05-03 (`ae71eb3`) — `gen_types.py` emits a `generated_constants.ts` twin for Express; `productTypes.ts` re-exports `PRODUCT_TYPES`; `routes/search.ts` uses `z.enum(VALID_PRODUCT_TYPES)`. CLAUDE.md "Adding a new product type" runbook updated to drop the obsolete steps. |
+| **0c** | "Adding a new product type" runbook collapses to 2 files + `gen-types` run | ✅ shipped 2026-05-07 — runbook now lists 3 steps: Pydantic model, `common.py` literal, `./Quickstart gen-types`. Step 4 (`app/backend/src/types/models.ts`) is the only remaining hand-edit and retires with Express deletion in PYTHON_BACKEND.md Phase 3. |
 
 ---
 
@@ -62,10 +69,14 @@ paired consumer pass:
    (hand, no `null` in the union). Consumers narrowing on truthy checks
    already handle this; consumers feeding into typed children may need
    `?? undefined`.
-4. **`Manufacturer.PK: string`** (generated, required by `@computed_field`)
-   vs **`PK?: string`** (hand, optional). Construction sites that don't
-   set PK will break. Two mitigations: drop `@computed_field` for `PK`/`SK`
-   in `ProductBase` (compute on read in the API), or change consumers.
+4. ~~**`Manufacturer.PK: string`** (generated, required by `@computed_field`)
+   vs **`PK?: string`** (hand, optional).~~ ✅ Resolved 2026-05-07: dropped
+   `@computed_field` on `PK`/`SK` in `Manufacturer`, `ProductBase`, and
+   `Datasheet` (now plain `@property`), so generated TS no longer carries
+   them at all. `specodex/db/dynamo.py:_serialize_item` already assigned
+   `data["PK"] = model.PK` explicitly, so the persistence layer is
+   unaffected — `model.PK` still works because `@property` keeps the
+   attribute on the instance, just out of `model_dump()`.
 5. **`ProductBase.datasheet_url?: string | null`** (generated) vs
    **`datasheet_url?: DatasheetLink`** (hand, an object with `.url` and
    `.pages`). Easier than it looks: `ProductDetailModal.tsx:209-211`
@@ -107,10 +118,13 @@ the same context file ask for merge pain.
 4. **`Motor`, `Drive`, `Gearhead`, `RobotArm`, `Contactor`** — the big
    product-type interfaces. Tackle `ProductBase` here too (PK/SK
    computed-field decision).
-5. **`Product` union, `ProductType` literal** — these aren't generated
-   directly by `pydantic2ts`. Either keep them hand-typed in the shim,
-   or have `gen_types.py` emit them as a postscript (extract from the
-   `Literal[...]` in `specodex/models/common.py:ProductType`).
+5. **`Product` union, `ProductType` literal** — `Product` union now
+   emitted by `gen_types.py:_product_union_type()` as a postscript,
+   walking `SCHEMA_CHOICES` so new product types auto-widen the union
+   (matches the `PRODUCT_TYPES` contract). `ProductTypeLiteral` is
+   emitted by the existing `_product_types_constant()`. The Phase 0a-ii
+   shim can now `export type { Product, ProductTypeLiteral } from
+   './generated';` instead of hand-typing.
 
 Each step: run `./Quickstart verify`. Green = ship.
 
@@ -167,17 +181,20 @@ generated.
 
 ---
 
-## Open questions
+## Open answers 
 
-1. **`@computed_field` for `PK`/`SK`.** Generated TS marks them required,
-   which breaks Manufacturer construction. Decision: drop the
-   computed-field decorator and compute PK/SK on read in the API? Or
-   keep it and force consumers to always set PK/SK? Lean toward dropping
-   — the field is derivable, not authoritative.
-2. **`Product` union codegen.** `pydantic2ts` doesn't emit unions. Do we
-   write a small postscript in `gen_types.py` that walks
-   `SCHEMA_CHOICES` and emits `export type Product = Motor | Drive | …`?
-   Yes, probably — it's three lines and seals the last hand-typed gap.
+1. **`@computed_field` for `PK`/`SK`.** ✅ Resolved 2026-05-07. Dropped the
+   `@computed_field` decorator on `PK`/`SK` in `Manufacturer`, `ProductBase`,
+   and `Datasheet` — kept as plain `@property` so the persistence layer
+   (`specodex/db/dynamo.py:_serialize_item`) still reads `model.PK` via
+   attribute access, but the JSON-schema/codegen path no longer treats
+   them as required model fields. Closes mismatch 4 in Phase 0a-ii.
+2. **`Product` union codegen.** ✅ Resolved 2026-05-07. `gen_types.py:
+   _product_union_type()` walks `SCHEMA_CHOICES.values()` and emits
+   `export type Product = Contactor | Drive | ElectricCylinder | …`
+   as a postscript to `generated.ts`. New product types auto-widen the
+   union (no hand-edit). Phase 0a-ii consumers can now re-export
+   `Product` from the generated module.
 3. **`generated_constants.ts` vs path-aliased shared module.** As above
    — defer; duplicate while Express is alive.
 
@@ -213,6 +230,5 @@ If your task touches any of these, surface this doc:
 ## References
 
 - `todo/PYTHON_BACKEND.md` — bigger plan; Phase 0 lives here now.
-- `todo/REFACTOR.md` §4.2, §4.5 — the audit findings this operationalises.
 - `scripts/gen_types.py` — the codegen wrapper.
 - `pydantic-to-typescript` — https://github.com/phillipdupuis/pydantic-to-typescript

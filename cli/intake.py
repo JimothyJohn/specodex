@@ -54,8 +54,9 @@ Extract the following metadata from the document:
     drive: input_voltage, rated_current, peak_current, rated_power, switching_frequency,
            fieldbus, encoder_feedback_support, digital_inputs, digital_outputs, ip_rating,
            dimensions, weight
-    gearhead: gear_ratio, gear_type, stages, rated_torque, backlash, efficiency,
-              input_shaft_diameter, output_shaft_diameter, ip_rating, dimensions, weight
+    gearhead: gear_ratio, gear_type, stages, max_continuous_torque, max_peak_torque,
+              backlash, efficiency, input_shaft_diameter, output_shaft_diameter,
+              ip_rating, dimensions, weight
     robot_arm: payload, reach, degrees_of_freedom, pose_repeatability, max_tcp_speed,
                ip_rating, joints, dimensions, weight
   Score 0.0 if the document contains none of these fields.

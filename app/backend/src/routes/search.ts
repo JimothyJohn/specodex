@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { DynamoDBService } from '../db/dynamodb';
 import { ProductType } from '../types/models';
 import { searchProducts } from '../services/search';
+import { VALID_PRODUCT_TYPES } from '../config/productTypes';
 import config from '../config';
 
 const router = Router();
@@ -15,7 +16,9 @@ const db = new DynamoDBService({ tableName: config.dynamodb.tableName });
 
 const SearchQuerySchema = z.object({
   q: z.string().optional(),
-  type: z.enum(['motor', 'drive', 'gearhead', 'robot_arm', 'contactor', 'electric_cylinder', 'linear_actuator']).optional(),
+  // Derived from specodex/config.py:SCHEMA_CHOICES via generated_constants.ts;
+  // adding a new product type requires only a model file + ./Quickstart gen-types.
+  type: z.enum(VALID_PRODUCT_TYPES).optional(),
   manufacturer: z.string().optional(),
   where: z.union([z.string(), z.array(z.string())]).optional(),
   sort: z.union([z.string(), z.array(z.string())]).optional(),

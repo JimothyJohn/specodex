@@ -1,13 +1,9 @@
 # PYTHON_STRIPE — Rust → Python migration for the billing Lambda
 
-> **Status:** 📐 planned. Independent of `todo/PYTHON_BACKEND.md` Phases 0–3
-> (the Express → FastAPI cutover); can ship at any time. Effort: ~1–2 days
-> of focused work plus a soak window.
->
-> **Source:** `todo/REFACTOR.md` §4.1 (polyglot tax — Rust is the worst
-> offender), §5.5 (drop the Rust Lambda), §6 (a Python Lambda is ~100
-> lines and shares the existing `boto3`). `todo/PYTHON_BACKEND.md` §9
-> Phase 4 is the seed sketch this doc operationalises.
+> **Status:** 🚧 Phase 1 layout scaffolded — `stripe_py/` exists with all 7
+> modules and 8 test files. Phase 1 deploy + Phase 2 SSM cutover + Phase 3
+> Rust deletion still pending. Independent of `todo/PYTHON_BACKEND.md`
+> Phases 0–3 (the Express → FastAPI cutover); can ship at any time.
 >
 > **Date drafted:** 2026-05-02.
 > **Owner:** Nick.
@@ -18,8 +14,8 @@
 
 The `stripe/` Rust Lambda is **the only Rust in the repo**. It is ~500
 LoC across 7 files, handles 5 endpoints in test-mode metered billing,
-and is justified in REFACTOR.md only as "fast cold starts" — a property
-that buys nothing for Stripe webhooks (async, nobody waits) or Checkout
+and was originally justified as "fast cold starts" — a property that
+buys nothing for Stripe webhooks (async, nobody waits) or Checkout
 sessions (the user is being redirected to Stripe). The cost of carrying
 it is the entire `cargo` toolchain in CI, a separate deploy path
 (`cargo lambda deploy` — not in CDK), and a third mental context for
@@ -35,7 +31,7 @@ Replacing it with a Python Lambda:
 - Drops `cargo`, `clippy`, `rust-toolchain`, the ARM64 cross-compile
   dance, and the `stripe/Cargo.toml` dep tree.
 - Brings the runtime count from 3 (Python + TS + Rust) to 2.
-- Closes the loop on REFACTOR.md §4.1's top-line concern.
+- Closes the polyglot-tax loop the original audit opened.
 
 **Out of scope (don't bundle into this work):**
 
@@ -101,7 +97,8 @@ back.
 
 | Phase | Scope | Effort | Risk | Reversible? | Gate |
 |---|---|---|---|---|---|
-| **1** | `stripe_py/` directory: Python Lambda with the 5-endpoint contract, deployed to dev with its own Function URL | 1 day | low | yes (Function URL is throwaway) | `tests/integration/test_billing_py.py` green; `$0.50` test charge round-trips end-to-end on dev |
+| **1.1 layout** | `stripe_py/` directory + 7 modules + 8 test files matching §1.1 | shipped | — | — | ✅ scaffold landed in `6ac30b0` |
+| **1.x deploy** | Test-suite green, Function URL provisioned on dev, `$0.50` test charge round-trips | 0.5–1 day | low | yes (Function URL is throwaway) | `tests/integration/test_billing_py.py` green; round-trip works on dev |
 | **2** | Cutover: update prod SSM `stripe-lambda-url` to the Python Function URL; soak 7 days; Rust Lambda stays alive but unused | 0.5 day + soak | medium | yes (one SSM `put-parameter` reverts) | zero billing-related errors in CloudWatch over the soak; one real webhook (subscription update or invoice event) processed cleanly |
 | **3** | Delete `stripe/` (Rust crate). Optional: fold `stripe_py/` into CDK as a managed `PythonFunction`. | 0.5 day | low | git revert | `./Quickstart verify` green; CDK synth clean |
 
@@ -117,7 +114,7 @@ using, and the choice to cut over is a future SSM update.
 deployed as a separate Lambda with its own Function URL. The Express
 backend keeps calling the Rust Lambda; the Python Lambda is dark.
 
-### 1.1 Layout
+### 1.1 Layout — ✅ shipped (commit `6ac30b0`)
 
 ```
 stripe_py/
@@ -392,8 +389,6 @@ Touch points to clean up afterwards:
   `cargo-lambda` steps if they exist.
 - Root `README.md` / `CLAUDE.md` — search for `Rust`, `cargo`, the
   `stripe/` directory; rewrite the references.
-- The "Audited LOC" line in `todo/REFACTOR.md` (for honesty: the
-  Rust ~500 line count is now zero).
 
 ### 3.2 Optional: fold `stripe_py/` into CDK
 
@@ -533,10 +528,9 @@ regardless.**
   `/api/subscription/{checkout,status}` on the Express side.
 - `app/backend/src/config/index.ts` — reads
   `${ssmPrefix}/stripe-lambda-url` from SSM.
-- `todo/REFACTOR.md` §4.1, §5.5, §6 — the audit this plan
-  operationalises.
-- `todo/PYTHON_BACKEND.md` §9 Phase 4 — the seed sketch this doc
-  expands.
+- `todo/PYTHON_BACKEND.md` Phase 4 — the seed sketch this doc
+  expands. The original code audit lives in git history at
+  `todo/REFACTOR.md`.
 - `stripe` Python SDK — https://github.com/stripe/stripe-python
 - `stripe.Webhook.construct_event` — https://docs.stripe.com/webhooks#verify-official-libraries
 - `aws-lambda-powertools` (Python) — https://docs.powertools.aws.dev/lambda/python/

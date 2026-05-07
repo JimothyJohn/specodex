@@ -11,45 +11,29 @@ updates:
       python-minor-patch:
         update-types: ["minor", "patch"]
 
+  # app/ is an npm workspace with one root package-lock.json that covers
+  # backend/, frontend/, and infrastructure/. Targeting sub-package
+  # directories causes Dependabot to bump a sub-package's package.json
+  # without regenerating the workspace-root lock — npm ci then fails
+  # the lock-vs-package-json sync check on every CI job. So we point a
+  # single entry at the workspace root and let Dependabot's npm
+  # ecosystem traverse the workspaces.
   - package-ecosystem: "npm"
     directory: "/app"
     schedule:
       interval: "weekly"
       day: "monday"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 10
     groups:
-      app-root-minor-patch:
+      app-minor-patch:
         update-types: ["minor", "patch"]
-
-  - package-ecosystem: "npm"
-    directory: "/app/frontend"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-    open-pull-requests-limit: 5
-    groups:
-      frontend-minor-patch:
-        update-types: ["minor", "patch"]
-
-  - package-ecosystem: "npm"
-    directory: "/app/backend"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-    open-pull-requests-limit: 5
-    groups:
-      backend-minor-patch:
-        update-types: ["minor", "patch"]
-
-  - package-ecosystem: "npm"
-    directory: "/app/infrastructure"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-    open-pull-requests-limit: 5
-    groups:
-      infra-minor-patch:
-        update-types: ["minor", "patch"]
+        # Pin pre-1.0 packages out of the auto-merge group: a 0.x→0.y
+        # bump is technically "minor" by semver but practically a
+        # breaking change (see eslint-plugin-react-refresh 0.4→0.5 in
+        # PR #11/#31, which became ESM-only and broke our CJS config).
+        exclude-patterns:
+          - "eslint-plugin-react-refresh"
+          - "esbuild"
 
   - package-ecosystem: "github-actions"
     directory: "/"

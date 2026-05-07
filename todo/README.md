@@ -4,41 +4,20 @@
 of what's left without opening each `todo/*.md`. Drill into the linked
 docs only when you're about to act on that work.
 
-> **Recently shipped (2026-04-28 / 2026-04-30).** REBRAND Stage 4 cutover
-> ✅ `www.specodex.com` is live, `datasheets.advin.io` NXDOMAIN'd.
-> All 5 CICD followups merged (`fromlookup`, `ci-hygiene`,
-> `nightly-bench`, `staging-yml-cleanup`, `late-night-dedupe-audit`),
-> plus `config.ts` apex-fallback fix, codeql.yml SHA pin (v3.35.2),
-> and `HOSTED_ZONE_ID` secret deleted. CI/CD runbook + foot-gun list
-> moved into the `/cicd` skill (`.claude/skills/cicd/SKILL.md`); only
-> apex `specodex.com` DNS remains as outstanding follow-up.
-> Frontend visual iteration ✅ (App.css palette, Welcome rework,
-> ProductList refinements, FilterChip refactor + tests, sitemap.xml).
-> UNITS ✅ (`ValueUnit` / `MinMaxUnit` end-to-end + data backfill).
-> Mobile-friendly compaction pass ✅ shipped 2026-04-30 — header / filter
-> sidebar / product grid / build tray / modal / pagination all trimmed,
-> filter sidebar 500 → 380px and no longer orphaned 96px below the header
-> (the chief "misalignment"); admin nav hides under 600px so phone
-> headers don't clip the display toggles. Verified at 1440 / 1280 / 768
-> / 414 / 375 with Playwright. CSS bundle flat (14.84 kB gzip).
-> INTEGRATION ✅ — all planned phases shipped: pairwise checker, build
-> tray, slot-aware filtering, plus the build-complete affordances (Copy
-> BOM, "looks complete" badge, ChainReviewModal). Only the "Save build
-> as preset" stretch and the explicit-future Phase D spec-first wizard
-> remain. FRONTEND_TESTING ✅ — all 8 phases shipped: per-key
-> persistence (caught L6 array bug in `isBuild`), AppContext setter
-> contract, ProductList type-switch reset bundle (caught + fixed L1
-> stale-modal bug), header toggles, FilterChip × unit system, BuildTray
-> + compat junctions, ErrorBoundary, route smoke render. Suite is now
-> 23 files / 373 tests.
+> **Recently shipped (through 2026-05-03).** REBRAND, UNITS, INTEGRATION,
+> FRONTEND_TESTING, CICD, the codegen toolchain (MODELGEN Phase 0/0a-i),
+> Projects (per-user collections), DEDUPE Phase 1 audit script, the
+> data-quality observatory (`./Quickstart godmode` — formerly tracked in
+> GODMODE.md, now fully shipped), `stripe_py/` Phase 1.1 layout, mobile-
+> friendly compaction pass, STYLE plan + CLAUDE.md "no native chrome"
+> rule, auth Phases 1–4 + 5b WAF + 5d CSP/HSTS.
 >
-> Historical plans for REBRAND, UNITS, INTEGRATION, and
-> FRONTEND_TESTING were deleted from `todo/` after their scope
-> shipped — see `git log --diff-filter=D --follow -- todo/REBRAND.md
-> todo/UNITS.md todo/INTEGRATION.md todo/FRONTEND_TESTING.md` if you
-> need the design rationale. A MOBILE.md plan proposing structural
-> changes (bottom drawer, mobile cards) was drafted but never committed;
-> the compaction pass above shipped in its place.
+> **Just deleted from `todo/`** (2026-05-03 cleanup): AUTH.md, REFACTOR.md,
+> VISUALIZATION.md, GODMODE.md — all four had their scope shipped or
+> their action items operationalised into the surviving docs. Same
+> pattern as the earlier deletions of REBRAND.md / UNITS.md /
+> INTEGRATION.md / FRONTEND_TESTING.md — `git log --diff-filter=D --follow
+> -- todo/<NAME>.md` recovers any design rationale.
 
 ## How to use it
 
@@ -57,71 +36,28 @@ Drained as of 2026-04-30. No operator-only actions outstanding.
 
 ---
 
-## ⚠ Current chaos — what's in the working tree right now
+## Working tree state
 
-Snapshot 2026-05-02. **Stale within hours; re-run `git status` and
-`git worktree list` for ground truth.** This section exists because
-multiple agents have been working concurrently and the diff is non-trivial
-to read cold.
+Snapshot 2026-05-03. **Stale within hours; re-run `git status` and
+`git worktree list` for ground truth.**
 
-### Concurrent in-flight streams
-
-| Stream | What it is | Files | State |
-|---|---|---|---|
-| **Codegen toolchain** | `pydantic2ts` → `generated.ts`, Quickstart cmd, CI drift gate | `scripts/gen_types.py`, `app/frontend/src/types/generated.ts`, `cli/quickstart.py`, `pyproject.toml`, `uv.lock`, `.github/workflows/ci.yml`, header comment in `app/frontend/src/types/models.ts` | ✅ committing 2026-05-02. Follow-up = [MODELGEN.md](MODELGEN.md). |
-| **Projects feature (Step 3)** | Per-user project collections — list page, delete action, /projects route | `app/backend/src/{db,routes,tests}/projects*`, `app/frontend/src/components/{ProjectsPage,AddToProjectMenu}*`, `app/frontend/src/context/ProjectsContext.tsx`, `app/frontend/src/types/projects.ts`, edits in `App.tsx`/`App.css`/`api/client.ts` | Step 3 locally complete; gated on the `filters.test.ts` `gearhead` decision (see "Cross-stream conflicts" below). |
-| **Auth Phase 5 recovery** | Re-apply 5a/5c/5d/5e/5f to master | `todo/PHASE5_RECOVERY.md`, the 5 `specodex-{ses,revoke,csp,audit,alarms}` worktrees, `app/backend/src/{index,middleware/readonly}.ts`, edits in `app/backend/src/types/models.ts` | 🔴 blocking. Plan = one stacked cherry-pick PR. |
-| **Stripe Python** | Drop the Rust billing Lambda for ~100 lines of Python | `todo/PYTHON_STRIPE.md` | 📐 drafted, not yet started. Likely lives under PYTHON_BACKEND.md Phase 4 and may merge into that doc. |
-| **CLI archive cleanup** | Move one-shot migrations to `scripts/migrations/<date>-<name>.py` | `scripts/migrations/2026-04-26-batch_process.py` (staged), `cli/batch_process.py` deleted, `cli/README.md` modified | Phase 5 of PYTHON_BACKEND.md, mid-execution. |
-| **Column / filter UI iteration** | `manufacturer` added to `gearhead` `COLUMN_ORDER`; filter chip refactor | `app/frontend/src/types/{columnOrder,filters,filters.test}.ts`, `app/frontend/src/components/{ColumnHeader,FilterChip,ProductDetailModal,ProductList}.tsx`, `app/frontend/src/App.css` | 🔴 `filters.test.ts` red — see below. |
-| **Pipeline edits** | `lead_time` field added to `ProductBase`; quality changes | `specodex/models/product.py`, `specodex/quality.py`, edits in `app/{frontend,backend}/src/types/models.ts` | Likely related to MODELGEN consumers; commit ownership unclear. |
-| **`todo/RUST_ONE.md` deletion** | An old Rust-era plan deleted (227 lines) | `todo/RUST_ONE.md` (D) | Looks intentional — leftover from the rust-era refactor that landed at `c076fd0`. Confirm before committing. |
-| **STYLE plan + CLAUDE.md rule** | Plan to eliminate native browser/OS chrome (tooltips, confirms, alerts, toasts, validation bubbles, scrollbars, external links). Docs-only, no code yet. | `todo/STYLE.md` (new), `CLAUDE.md` (new "No native browser/OS chrome" subsection), `todo/README.md` (this row + active-work row + trigger row) | ✅ ready to commit 2026-05-02. Docs-only — zero merge friction with any other stream. |
-
-### Cross-stream conflicts
-
-- **`filters.test.ts` red.** Test asserts `COLUMN_ORDER.gearhead === []`
-  but `columnOrder.ts` now has `['manufacturer']`. **One-line decision:**
-  either revert the `manufacturer` addition, or update `toEqual([])` →
-  `toEqual(['manufacturer'])`. Source of the addition isn't clear (not
-  the codegen stream; not the Projects stream). Mid-session edit
-  attributed by the Projects agent to "the Pydantic→TS work" but
-  actually unrelated. **Whoever owns the `manufacturer` column policy
-  must answer this.**
-- **`app/{frontend,backend}/src/types/models.ts` is touched by three
-  streams:** codegen (header comment), pipeline (`lead_time`), Auth/Projects
-  (probably). Expect merge friction; keep edits to this file small until
-  MODELGEN-0a-ii lands.
-- **`scripts/migrations/2026-04-26-batch_process.py` is staged but not
-  by the codegen agent.** Whoever owns CLI archive cleanup should commit
-  it themselves so blame stays accurate.
-
-### Active worktrees
+`master` is clean. The only remaining drift from earlier multi-agent
+work is the **four stranded auth Phase 5 worktrees** (`specodex-{ses,
+revoke,audit,alarms}`) and the **redundant `specodex-csp` worktree**
+(Phase 5d is on master; the worktree is safe to remove — see
+[PHASE5_RECOVERY.md](PHASE5_RECOVERY.md) Status section).
 
 ```
 /Users/nick/github/specodex         master                              ← this one
-/Users/nick/github/specodex-alarms  feat-auth-phase5f-alarms
-/Users/nick/github/specodex-audit   feat-auth-phase5e-audit
-/Users/nick/github/specodex-csp     feat-auth-phase5d-csp
-/Users/nick/github/specodex-revoke  feat-auth-phase5c-revoke
-/Users/nick/github/specodex-ses     feat-auth-phase5a-ses
+/Users/nick/github/specodex-alarms  feat-auth-phase5f-alarms            (stranded)
+/Users/nick/github/specodex-audit   feat-auth-phase5e-audit             (stranded)
+/Users/nick/github/specodex-csp     feat-auth-phase5d-csp               (safe to remove)
+/Users/nick/github/specodex-revoke  feat-auth-phase5c-revoke            (stranded)
+/Users/nick/github/specodex-ses     feat-auth-phase5a-ses               (stranded)
 ```
 
-The five Phase 5 worktrees are stranded (their PRs show MERGED on GitHub
-but the SHAs aren't on `origin/master`). PHASE5_RECOVERY.md owns the
-recovery plan.
-
-### Suggested whittle order
-
-To get back to a clean working tree:
-
-1. **Land the codegen commit (this PR).** Already isolated; no merge friction.
-2. **Resolve the `filters.test.ts` `gearhead` question** — owner needed.
-3. **Ship Projects Step 3** (it's locally complete, just gated on #2).
-4. **Stage + commit the cli/migrations move** (whoever owns Phase 5 cleanup).
-5. **Decide on `lead_time` + `quality.py` edits** — review and commit, or revert.
-6. **Confirm `RUST_ONE.md` deletion is intentional**, then drop it.
-7. **PHASE5_RECOVERY.md** is the heaviest remaining lift; it deserves its own clean tree before starting.
+[PHASE5_RECOVERY.md](PHASE5_RECOVERY.md) owns the cherry-pick recovery
+plan for the four stranded phases.
 
 ---
 
@@ -131,7 +67,8 @@ To get back to a clean working tree:
 
 Each card body links back to its `todo/<AREA>.md` doc. To add new work, create a card on the board referencing the doc; if the work has file-level triggers, also add a row to **Trigger conditions** below.
 
-Initial card load (2026-05-02): PHASE5_RECOVERY (P0), MODELGEN, SEO, MARKETING, DEDUPE, GODMODE, PYTHON_BACKEND, STYLE.
+Active docs (2026-05-03): PHASE5_RECOVERY (P0), MODELGEN, SEO,
+MARKETING, DEDUPE, PYTHON_BACKEND, PYTHON_STRIPE, STYLE, API.
 
 CI/CD itself is healthy (full chain green; only outstanding bit is apex
 `specodex.com` DNS) and now lives behind the `/cicd` skill rather than
@@ -142,18 +79,149 @@ a `todo/*.md` plan — invoke the skill or read
 
 ## Suggested chronological order
 
-With UNITS, REBRAND, INTEGRATION, FRONTEND_TESTING, and CICD all
-landed, the remaining order:
+With UNITS, REBRAND, INTEGRATION, FRONTEND_TESTING, GODMODE, and CICD
+all landed, the remaining order:
 
-1. **PHASE5_RECOVERY first.** It blocks PYTHON_BACKEND Phase 1 (FastAPI auth would mirror the wrong Cognito surface) and it's the highest-risk of the queue.
+1. **PHASE5_RECOVERY first.** It blocks PYTHON_BACKEND Phase 1 (FastAPI auth would mirror the wrong Cognito surface), it unblocks API.md (paid programmatic access depends on SES), and it's the highest-risk of the queue.
 2. **MODELGEN consumer rewire + Zod collapse.** Small, isolated, captures the value of the Phase 0 toolchain that's already shipped.
-3. **SEO + MARKETING.** Public launch is now possible. SEO structural lifts pair with marketing distribution; product pages serve both.
-4. **DEDUPE Phase 2+3.** Operates on post-UNITS uniform data. Audit script is shipped; auto-merge + human review queue follow.
-5. **PYTHON_BACKEND Phase 1+** once everything above stops shifting. Don't start the FastAPI parallel-deploy on a moving target.
-6. **GODMODE last.** Large surface area; lands on stable substrate so panels don't get retouched.
+3. **PYTHON_STRIPE Phase 1 deploy + Phase 2 cutover.** Code is scaffolded; just needs deploy + soak. Independent of everything else, ship in any spare slot.
+4. **SEO + MARKETING.** Public launch is now possible. SEO structural lifts pair with marketing distribution; product pages serve both.
+5. **DEDUPE Phase 2+3.** Operates on post-UNITS uniform data. Audit script is shipped; auto-merge + human review queue follow.
+6. **PYTHON_BACKEND Phase 1+** once everything above stops shifting. Don't start the FastAPI parallel-deploy on a moving target.
 7. **STYLE** runs alongside in any spare slot. Phases 1 (Tooltip), 5 (scrollbars), 6 (ExternalLink) are pure-additive and can ship anytime — they don't compete with the queue above. Phases 2-4 (ConfirmDialog, Toast, FormField) touch shared state, so single-stream them, but they don't block PYTHON_BACKEND or anything else.
 
 **Out-of-band exceptions.** Urgent bugs, security issues, or user-visible breakage jump the queue.
+
+---
+
+## Parallelism & dependencies
+
+**Hard blockers (must finish before dependent starts):**
+
+- `PHASE5_RECOVERY` ⟶ `PYTHON_BACKEND Phase 1` (FastAPI auth would otherwise mirror the wrong Cognito surface)
+- `PHASE5_RECOVERY` (5a SES specifically) ⟶ `API.md` (paid users need real receipt emails)
+- `PYTHON_STRIPE 1.x deploy` ⟶ `API.md` (paid surface assumes the billing Lambda is live)
+- `PYTHON_STRIPE 1.x deploy` ⟶ `PYTHON_STRIPE 2 cutover` ⟶ `PYTHON_STRIPE 3 delete Rust`
+- `PYTHON_BACKEND Phase 1` ⟶ `Phase 2` ⟶ `Phase 3`
+- `MODELGEN 0a-ii` ⟶ `MODELGEN 0c` (runbook collapse needs consumers cut over)
+- `SEO Phase 1` ⟶ `MARKETING Phase 1` (Show HN with broken indexing wastes the shot)
+- `DEDUPE Phase 1 (✅ shipped)` ⟶ `DEDUPE Phase 2` ⟶ `DEDUPE Phase 3`
+- `STYLE Phase 1 (Tooltip)` ⟶ `STYLE Phase 6 (ExternalLink wraps Tooltip)`
+- `STYLE Phases 1–6` ⟶ `STYLE Phase 7 (drift gates)`
+
+**Soft sequencing (ergonomic, not technical):**
+
+- `PYTHON_STRIPE Phase 3` (delete Rust) ⟶ `PYTHON_BACKEND Phase 4` is moot — the work is the same, do it once via PYTHON_STRIPE.
+- `MODELGEN 0a-ii` should land before any new product type so the runbook collapse pays off; not a hard dep.
+- STYLE Phases 2 (ConfirmDialog) and 4 (FormField) touch shared form state — single-stream them, but they don't block any non-STYLE work.
+
+**Truly independent (run in any spare slot, in parallel with anything):**
+
+- `MODELGEN 0a-ii` / `0b`
+- `PYTHON_STRIPE 1.x deploy`
+- `SEO Phase 1`
+- `DEDUPE Phase 2 + 3`
+- `STYLE Phase 1 (Tooltip)`, `Phase 5 (scrollbars)`, `Phase 6 (ExternalLink)`
+- ~~`PYTHON_BACKEND Phase 5` (cli/migrations cleanup)~~ ✅ shipped 2026-04-30 (commit `c322393`)
+
+```mermaid
+graph LR
+    P5[PHASE5_RECOVERY P0]
+    PB1[PYTHON_BACKEND Phase 1 FastAPI]
+    PB2[PYTHON_BACKEND Phase 2 frontend cutover]
+    PB3[PYTHON_BACKEND Phase 3 delete Express]
+    M1[MODELGEN 0a-ii frontend rewire]
+    M2[MODELGEN 0b zod collapse]
+    M3[MODELGEN 0c runbook]
+    S1[PYTHON_STRIPE 1.x deploy]
+    S2[PYTHON_STRIPE 2 SSM cutover]
+    S3[PYTHON_STRIPE 3 delete Rust]
+    SEO1[SEO Phase 1 prerender + sitemap]
+    SEO2[SEO Phase 2 content scaffolding]
+    MK[MARKETING Phase 1 launch]
+    D2[DEDUPE Phase 2 auto-merge]
+    D3[DEDUPE Phase 3 review queue]
+    API[API paid programmatic access]
+    ST1[STYLE 1 Tooltip]
+    ST6[STYLE 6 ExternalLink]
+    ST5[STYLE 5 Scrollbars]
+    ST2[STYLE 2 ConfirmDialog]
+    ST4[STYLE 4 FormField]
+    ST3[STYLE 3 Toast]
+    ST7[STYLE 7 drift gates]
+
+    P5 --> PB1 --> PB2 --> PB3
+    P5 --> API
+    S1 --> S2 --> S3
+    S1 --> API
+    M1 --> M3
+    M1 --> M2
+    SEO1 --> SEO2
+    SEO1 --> MK
+    D2 --> D3
+    ST1 --> ST6
+    ST2 --> ST4 --> ST3
+    ST1 --> ST7
+    ST5 --> ST7
+    ST6 --> ST7
+    ST3 --> ST7
+
+    classDef p0 fill:#fee,stroke:#c33,stroke-width:2px
+    classDef shipped fill:#efe,stroke:#393
+    class P5 p0
+```
+
+```mermaid
+gantt
+    title Specodex remaining backlog (rough estimate from 2026-05-03)
+    dateFormat YYYY-MM-DD
+    axisFormat %m/%d
+
+    section P0 critical path
+    PHASE5_RECOVERY (cherry-pick + verify + PR) :crit, p5, 2026-05-04, 3d
+
+    section MODELGEN
+    0a-ii frontend rewire           :m1, after p5, 2d
+    0b zod enum + allowlist         :m2, 2026-05-06, 1d
+    0c runbook collapse             :after m1, 1d
+
+    section PYTHON_STRIPE
+    1.x deploy + dev round-trip      :s1, 2026-05-04, 2d
+    2 SSM cutover + 7-day soak       :s2, after s1, 7d
+    3 delete Rust crate              :after s2, 1d
+
+    section SEO + MARKETING
+    SEO Phase 1 prerender + sitemap  :seo1, 2026-05-06, 14d
+    SEO Phase 2 content scaffolding  :seo2, after seo1, 21d
+    MARKETING Phase 1 launch         :after seo1, 30d
+
+    section DEDUPE
+    Phase 2 auto-merge safe cases    :d2, 2026-05-04, 1d
+    Phase 3 review-applier           :after d2, 2d
+
+    section PYTHON_BACKEND
+    Phase 1 FastAPI parallel deploy  :pb1, after p5, 14d
+    Phase 2 frontend cutover + soak  :pb2, after pb1, 10d
+    Phase 3 delete Express           :after pb2, 1d
+
+    section API (paid)
+    Programmatic access tier         :after s2, 7d
+
+    section STYLE (parallel slots)
+    Phase 1 Tooltip                  :st1, 2026-05-04, 1d
+    Phase 5 Scrollbars               :2026-05-04, 1d
+    Phase 6 ExternalLink             :after st1, 1d
+    Phase 2 ConfirmDialog            :st2, 2026-05-06, 1d
+    Phase 4 FormField                :after st2, 2d
+    Phase 3 Toast                    :2026-05-10, 2d
+    Phase 7 drift gates              :2026-05-15, 1d
+```
+
+> Bars are **rough estimates**, not commitments. The Gantt assumes a
+> single engineer working serially within each section; parallel
+> sections (MODELGEN ‖ PYTHON_STRIPE ‖ SEO ‖ DEDUPE ‖ STYLE) compress
+> the wall-clock if there's bandwidth to fan out, but most of these
+> still gate on Nick's review and merge.
 
 ---
 
@@ -218,8 +286,9 @@ If your current task matches any "trigger" entry, the linked doc is queued and w
 | Landing-page copy, "marketing", "launch", "audience", "Reddit / HN / mailing list", outreach plans, paid spend (don't), Stripe pricing surface | [MARKETING.md](MARKETING.md) |
 | `.github/workflows/`, `cli/quickstart.py`, push to master, deploy attempt, "CI red", `HOSTED_ZONE_ID`/`HOSTED_ZONE_NAME`/`DOMAIN_NAME`/`CERTIFICATE_ARN`, `gh-deploy-datasheetminer`, OIDC trust policy, apex/`www` domain support, `app/infrastructure/lib/config.ts:hostedZoneName` fallback | `/cicd` skill (`.claude/skills/cicd/SKILL.md`) |
 | `cli/admin.py:purge`/`promote`, `specodex/ids.py:compute_product_id` or `_strip_family_prefix`, new vendor catalog with prefix-form drift; user mentions "duplicate", "dedupe", "merge rows", "same product twice", "two part numbers for one motor"; promotion to staging/prod | [DEDUPE.md](DEDUPE.md) |
-| `app/backend/src/routes/admin.ts`, `AdminPanel.tsx`, `specodex/ingest_log.py`, `specodex/llm.py`, `cli/bench.py:PRICING`, "godmode/dashboard/observability/Gemini cost/Claude usage" | [GODMODE.md](GODMODE.md) |
-| `app/infrastructure/lib/auth/auth-stack.ts`, `frontend-stack.ts`, `app/backend/src/routes/auth.ts` (audit), Cognito SES sender, refresh-token revocation, CSP/HSTS response headers, WAF CloudWatch alarms; `gh pr list` showing PR #3/#5/#6/#7/#8 as merged; the `specodex-{ses,revoke,csp,audit,alarms}` worktrees | [PHASE5_RECOVERY.md](PHASE5_RECOVERY.md) |
+| `app/infrastructure/lib/auth/auth-stack.ts`, `app/backend/src/routes/auth.ts` (audit), Cognito SES sender, refresh-token revocation, WAF CloudWatch alarms; `gh pr list` showing PR #3/#5/#7/#8 as merged; the `specodex-{ses,revoke,audit,alarms}` worktrees | [PHASE5_RECOVERY.md](PHASE5_RECOVERY.md) |
 | `specodex/models/*.py`, `specodex/models/common.py:ProductType`, `app/frontend/src/types/{models,generated}.ts`, `app/backend/src/routes/search.ts` zod enum, `app/backend/src/config/productTypes.ts`, `scripts/gen_types.py`, `./Quickstart gen-types`, "pydantic2ts", "generated.ts", "drift", "add product type" | [MODELGEN.md](MODELGEN.md) |
-| `app/backend/src/` beyond a bug fix, new endpoint, new middleware, "FastAPI", "Mangum", "rewrite Express in Python", `stripe/` (Rust) | [PYTHON_BACKEND.md](PYTHON_BACKEND.md) |
+| `app/backend/src/` beyond a bug fix, new endpoint, new middleware, "FastAPI", "Mangum", "rewrite Express in Python" | [PYTHON_BACKEND.md](PYTHON_BACKEND.md) |
+| `stripe/` (Rust source), `stripe_py/` (Python port), Stripe webhook handler, `${ssmPrefix}/stripe-lambda-url`, billing Lambda deploy or cutover | [PYTHON_STRIPE.md](PYTHON_STRIPE.md) |
+| Programmatic API access, long-lived API keys, per-key rate limits, `/api/v1/*` from non-SPA callers, paid Stripe surface activation | [API.md](API.md) |
 | New JSX with `title=`, `window.confirm`, `alert(`, `<form>` without `noValidate`, bare `target="_blank"`, `<input type="checkbox">` without `appearance: none`, raw `overflow: auto/scroll` in CSS; any user-triggered `console.error` without a paired toast; reaching for `<select>`/`<input type="file">`/`<dialog>`/`<details>` | [STYLE.md](STYLE.md) |

@@ -2,16 +2,16 @@
 
 Status: 📐 not started. Depends on:
 
-- [`todo/AUTH.md`](AUTH.md) Phases 1–4 merged (Cognito identity, JWT
-  middleware, admin gating).
-- AUTH.md Phase 5a (SES) shipped — paid users need real welcome and
-  receipt emails. Bouncing the welcome on a $50/mo invoice is bad.
-- AUTH.md Phase 5b (WAF / bot protection) at least at the rate-limit
-  layer — the data plane needs a floor before any external-facing
-  reader can hit it.
-- The existing `stripe/` Lambda actually deployed and live (today
-  it's in the repo as a Rust Lambda but unwired to the production
-  stack — see `stripe/README.md` for setup).
+- Cognito identity, JWT middleware, admin gating — ✅ shipped (auth Phases 1–4).
+- SES verified-identity sender for welcome / receipt emails —
+  ⏳ stranded on `feat-auth-phase5a-ses` (see [PHASE5_RECOVERY.md](PHASE5_RECOVERY.md)).
+  Bouncing the welcome on a $50/mo invoice is bad.
+- WAF rate-limit layer — ✅ shipped (auth Phase 5b on master). The
+  data plane has a floor before any external-facing reader can hit
+  it.
+- The existing `stripe/` (Rust) or `stripe_py/` (Python port — see
+  [PYTHON_STRIPE.md](PYTHON_STRIPE.md)) Lambda actually deployed and
+  live. Today the Rust Lambda is unwired to the production stack.
 
 This doc plans the **paid programmatic access tier** as a separate
 product surface from the SPA's "logged-in user with a JWT in
@@ -21,8 +21,8 @@ shape, and the right place to apply per-call billing.
 
 ## Why this is a separate doc
 
-`AUTH.md` is the SPA-user story: register, log in, manage account,
-get admin powers. Its trust model is "interactive user in a browser."
+The SPA-user story (auth Phases 1–4 on master) is "interactive user
+in a browser": register, log in, manage account, get admin powers.
 Forcing API access to fit that model would mean issuing JWTs to
 scripts (which expire every hour and require a refresh-token dance)
 or running curl through OAuth (overkill).
@@ -179,8 +179,8 @@ On a Lambda warm container this drops typical key-auth overhead to
 Per-key sliding window. Two layers:
 
 **Edge (WAFv2 rate-based rule, keyed on Authorization header).**
-Picks up bursts before the Lambda even spawns. Cheap; ships with the
-Phase 5b WAF setup in `AUTH.md`.
+Picks up bursts before the Lambda even spawns. Cheap; piggybacks on
+the auth Phase 5b WAF stack already on master.
 
 **Application-side (Lambda + DynamoDB token bucket).** Fine-grained,
 per-key. Keeps the abuse case where one user's leaked key can't
@@ -268,11 +268,10 @@ catalog wholesale.
   `sk_test_`. Switching to live keys is a one-line config check
   inversion + a real Stripe live key, but make sure the test/live
   separation is correct end-to-end before flipping.
-- **Identity drift.** If we ever migrate off Cognito (Phase 5
-  AUTH.md decision-tree note: not optimizing for this), the user_id
-  in `stripe/`'s table needs a migration path. Cognito sub is opaque
-  — keep it that way; don't bake assumptions about its format into
-  the API code.
+- **Identity drift.** If we ever migrate off Cognito (not optimizing
+  for this today), the user_id in `stripe/`'s table needs a migration
+  path. Cognito sub is opaque — keep it that way; don't bake
+  assumptions about its format into the API code.
 
 ## What this unblocks
 
@@ -298,5 +297,6 @@ Read this doc before:
   per-call billing direction sketched above.
 - Adding a `usage` reporter to a new endpoint — keep the wire format
   consistent with `stripe/`'s `/usage` endpoint.
-- Designing the rate-limit story in `AUTH.md` Phase 5b — the per-key
-  limit lives here, not there.
+- Designing the rate-limit story (the auth Phase 5b WAF on master
+  handles edge bursts; the per-key fine-grained limit lives here,
+  not there).

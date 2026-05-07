@@ -216,9 +216,11 @@ high.
 | Newsletter / email opt-ins | 100 | TBD — needs a `/subscribe` |
 | Stripe conversions (when paid surface ships) | first 5 | Stripe dashboard |
 
-The metrics-collection itself is tracked in [GODMODE.md](GODMODE.md);
-when that lands, marketing telemetry should be a panel in the
-admin dashboard alongside ingest health and Gemini cost.
+Marketing telemetry isn't built into the data-quality observatory
+(`./Quickstart godmode`) today — that report is scoped to catalog
+quality. If we want a marketing panel later, it's its own surface;
+GA / Plausible + Search Console exports cover the audience side
+without a custom dashboard.
 
 ## Phasing
 

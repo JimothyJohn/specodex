@@ -1,7 +1,7 @@
 # Specodex — project history
 
 A reading of the git log from `0653a29 Pinging` (2025-06-28) through
-`b64876d` (2026-04-28). Where the commits are terse, the `todo/*.md`
+`6ac30b0` (2026-05-02). Where the commits are terse, the `todo/*.md`
 docs and CLAUDE.md provided the colour. Dates are commit dates.
 
 ---
@@ -352,6 +352,124 @@ user-visible benefit is zero.
 
 ---
 
+## VIII. After the cutover — auth, Projects, and the consolidation pivot — *2026-04-30 → 2026-05-03*
+
+The chain was green; attention shifted off the deploy path and onto the
+work it had been blocking. Three things landed in parallel — auth ships
+on master, the integration / frontend-testing / dedupe / units backlog
+finishes in a single flurry, and the project quietly walks back the
+Rust port in favor of consolidating onto Python. The week ends with the
+operator queue empty for the first time and a fresh planning load
+oriented around one toolchain instead of three.
+
+**The substrate-cleanup queue closes.** INTEGRATION ships its
+end-of-chain affordances — `40118ec` (Copy BOM + "looks complete" badge)
+and `0a704ab` (ChainReviewModal) — and the doc is deleted. FRONTEND_TESTING
+lands all eight phases in a single day (`11faa7c` persistence keys,
+`04422a6` AppContext setter contract, `541f908` ProductList type-switch
+reset bundle + L1 stale-modal fix, `08e4435` header toggles, `4b39ef3`
+FilterChip × unit system, `ae01e17` BuildTray + ErrorBoundary + smoke
+render); the suite is now 23 files / 373 tests, and the doc is deleted.
+DEDUPE Phase 1's audit script lands on its own branch. By the end of
+Apr 30, four todo files (REBRAND, UNITS, INTEGRATION, FRONTEND_TESTING)
+have been deleted because their scope shipped; CICD.md is deleted on
+the parked WIP because the runbook moved into the `/cicd` skill.
+
+**Auth ships on master — mostly.** Phases 1–4 land in three days:
+`0a8298d` + `4d7004e` (Cognito user pool scaffolding + AuthStack wired
+into `bin/app.ts`), `6a494d6` (backend middleware + Cognito proxy
+routes), `f45ae0b` (frontend AuthContext, modal, account menu),
+`c94fb5e` + `c3ed0d9` (Stripe + admin gating via Cognito group, drop
+the `APP_MODE` arm). Phase 5b lands as `116b4cb` (WAF rate-limit + AWS
+managed common rules at the edge). Phase 5d lands as `3ef96a7` /
+merge `c63df04` (CSP + HSTS + frame-ancestors via a CloudFront
+`ResponseHeadersPolicy` — load-bearing `script-src 'self'`,
+acknowledged `style-src 'unsafe-inline'` for React inline styles,
+`X-XSS-Protection` deliberately omitted as deprecated). **But Phases
+5a / 5c / 5e / 5f never reach master** — `gh pr list` reports them
+MERGED, but they merged into a stacked parent PR (`feat-auth-phase1`)
+that had itself already merged, so the SHAs are stranded on the local
+worktrees `specodex-{ses,revoke,audit,alarms}`. Net: ~1.1k LOC of
+auth-hardening (SES sender, refresh-token revocation, audit logging,
+WAF CloudWatch alarms) sits off-master pending recovery.
+`todo/PHASE5_RECOVERY.md` is the cleanup plan.
+
+**The polyglot retreat.** The Rust port queued in §VII as the only
+multi-week initiative gets walked back. Mid-week, an architecture
+audit on the parked `2660f92` WIP (`todo/REFACTOR.md`, 608 lines)
+calls out the project's "polyglot stack without polyglot
+justification" — Python pipeline + Node API + Rust billing, three
+toolchains for what is effectively one codebase, with the Node
+backend being a hand-typed mirror of the Pydantic layer. The
+remediation pivots away from Rust, not toward it. Three replacement
+plans land:
+
+- **`todo/MODELGEN.md`** — `pydantic2ts` regenerates
+  `app/frontend/src/types/generated.ts` from every `BaseModel` under
+  `specodex/models/`, with a CI drift gate (`test-codegen` job) that
+  fails the build if the committed file isn't up to date. Ships first
+  as `c397ec5` — the single source of truth for the Python ↔ TS type
+  contract that the Rust port was supposed to deliver, delivered
+  without leaving Python.
+- **`todo/PYTHON_BACKEND.md`** — Express → FastAPI parallel-deploy.
+  Phase 0 (codegen) is the above; Phases 1–3 are gated on
+  PHASE5_RECOVERY landing first so the FastAPI auth surface mirrors
+  the right Cognito shape.
+- **`todo/PYTHON_STRIPE.md`** — drop the `stripe/` Rust Lambda for
+  ~100 lines of Python (~500 LoC → ~100, reuses the existing `boto3`
+  + `stripe` SDK, `Webhook.construct_event` replaces the hand-rolled
+  HMAC-SHA256). Layout scaffolded under `stripe_py/` in `6ac30b0`.
+
+The Rust port is parked. `todo/RUST.md` and `todo/RUST_ONE.md` are
+retired; `cargo` stops being a third toolchain in CI's near future.
+
+**Projects ships.** First user-data feature on the catalog: `d4de0bd`
+adds `/projects` (list + detail), an `AddToProjectMenu` popover on the
+product detail modal, and a `ProjectsContext` synced through
+`useLayoutEffect` (a sibling-provider effect-order race surfaced as
+"Missing bearer token" on first popover open after a hard reload).
+Single-table layout: `PK=USER#sub`, `SK=PROJECT#id`, on the existing
+products-`<stage>` table — no new DynamoDB resource. Identity comes
+from `req.user.sub` only; the URL never carries the owner. `/projects`
+is exempted from `readonlyGuard` since per-user data isn't part of the
+catalog the public-mode write block protects.
+
+**Smaller cleanups, all on Apr 30:**
+
+- `fcabc36` absorbs the standalone `webscraper/` package into
+  `specodex/` as a sibling to the PDF scraper — drops a redundant
+  package boundary that imported six modules from `specodex.*` and
+  had no external consumers.
+- `189a715` factors the shared LLM call+parse helper into
+  `specodex/extract.py`. PDF and web scrapers now route through one
+  `call_llm_and_parse`; the divergent post-fetch behavior (chunking,
+  ID strategy, ingest-log telemetry) stays scraper-specific.
+- `c322393` drops 13 finished one-shot scripts and dead refs.
+  `cli/batch_process.py` is archived under
+  `scripts/migrations/2026-04-26-batch_process.py`.
+- `b407520` lands `todo/STYLE.md` — a 7-phase plan to eliminate native
+  browser/OS chrome (36 `title=` tooltips, 2 `window.confirm`, 1
+  `alert`, 9 forms with UA validation bubbles, 17 unstyled scrollbars,
+  3 bare `target="_blank"`, ~25 silent `console.error` paths) plus a
+  "No native browser/OS chrome" subsection in `CLAUDE.md` that
+  codifies the rule and the verify-time enforcement.
+- `8c5139d` adds Dependabot for weekly dep updates. `9f71731`
+  SHA-pins every `github/codeql-action` step to v3.35.2. `d81a5b8`
+  fixes the apex-domain `hostedZoneName` fallback (3+ parts strips
+  the leftmost label; 2 parts uses the domain itself — `specodex.com`
+  → `specodex.com`, not `"com"`). `0693efe` adds a `--quality-only`
+  flag to bench so cache→expected diffs run portably without the
+  241MB of bench PDFs that aren't in the repo.
+
+**Operating-model shift.** `todo/README.md` becomes a "what's in the
+working tree right now" snapshot rather than a stable plan; active
+work moves onto a [GitHub Projects v2 board](https://github.com/users/JimothyJohn/projects/1)
+(user `JimothyJohn`, project #1). Initial card load on May 2:
+PHASE5_RECOVERY (P0), MODELGEN, SEO, MARKETING, DEDUPE, GODMODE,
+PYTHON_BACKEND, STYLE.
+
+---
+
 ## Themes that recur across the log
 
 **Direction shifts that stuck:**
@@ -364,6 +482,10 @@ user-visible benefit is zero.
 - Structured `ValueUnit` / `MinMaxUnit` end-to-end (Apr 28). The
   compact string was a Python-only artifact masquerading as a wire
   format.
+- Pydantic-driven codegen via `pydantic2ts` (Apr 30). Single source
+  of truth for the Python ↔ TS contract; CI drift gate
+  (`test-codegen` job) fails the build if `generated.ts` falls out
+  of sync.
 
 **Direction shifts that were reverted:**
 - CSV-with-unit-in-header LLM extraction (Apr 5 → Apr 17). Lost the
@@ -371,7 +493,10 @@ user-visible benefit is zero.
 - Recommendation chat surface (Mar 29 → Apr 5). The product is a
   spec database.
 - `rust/` directory in tree (Mar 2026 → moved to its own branch,
-  Apr 2026 → reintroduced as a planned full port).
+  Apr 2026 → reintroduced as a planned full port → parked again
+  Apr 30, 2026 in favor of Python consolidation: `todo/REFACTOR.md`
+  flags the polyglot tax, `todo/PYTHON_BACKEND.md` and
+  `todo/PYTHON_STRIPE.md` replace it).
 
 **Repeating escapades:**
 - Lambda bundling determinism (`b4fefd0`, `12829d8`). Resolved by
@@ -384,6 +509,11 @@ user-visible benefit is zero.
   delete the secret.
 - Quality filter bypass in the scraper (`af964b7`). The kind of bug
   that only shows up in a log line that doesn't quite parse.
+- Stacked PRs and `gh pr list` (Apr 29–30). Phases 5a/5c/5e/5f
+  reported MERGED but never reached master because they merged into
+  a stacked parent PR that had itself already merged. Lesson lifted
+  to memory: verify with `git log origin/master --first-parent` or
+  `gh pr view <n> --json baseRefName` before trusting "MERGED."
 
 **Choices that have held:**
 - Single-table DynamoDB (`PK=PRODUCT#{type}`, `SK=PRODUCT#{id}`).
@@ -401,18 +531,22 @@ user-visible benefit is zero.
 - 18 SPEC_KEYWORDS groups in `page_finder`. A free, deterministic
   filter that keeps Gemini off pages that don't have specs.
 
-**Open work** (`todo/README.md` chronological order, post-UNITS):
-1. CICD followups — `fromLookup`, action refresh, integration tests
-   in CI, nightly bench.
-2. REBRAND Stage 4 — `specodex.com` DNS cutover, ACM cert,
-   CloudFront alt-domain.
-3. DEDUPE — one-time cross-vendor sweep for prefix-drift duplicates
-   from `--force` re-ingests pre-family-aware-ID fix.
-4. INTEGRATION next slice — chain-review modal, BOM copy,
-   "looks complete" tray state.
-5. FRONTEND_TESTING — persistence keys, AppContext setters,
-   ProductList type-switch resets.
-6. GODMODE — one-page admin dashboard (Gemini + Claude usage,
-   ingest health, DB health, repo activity, deploy state).
-7. RUST port continuation — install `cargo-lambda`, `sam build`,
-   smoke against staging, A/B in CloudFront, prod cutover.
+**Open work** (post-Apr-30, see `FUTURE.md` for the pitch-shaped view):
+1. PHASE5_RECOVERY — cherry-pick stranded 5a/5c/5e/5f auth-hardening
+   onto master (~1.1k LOC).
+2. MODELGEN — collapse hand-typed `models.ts` + Zod enum onto
+   `generated.ts`.
+3. SEO — Phase 1 structural lifts (build-time prerender, per-product
+   pages, dynamic sitemap, Lighthouse CI gate).
+4. MARKETING — Show HN + r/PLC + `awesome-*` PRs, gated on SEO
+   Phase 1.
+5. DEDUPE Phase 2+3 — auto-merge safe cases, human-review queue.
+6. PYTHON_BACKEND Phase 1+ — Express → FastAPI parallel-deploy.
+7. PYTHON_STRIPE — drop the Rust billing Lambda for ~100 lines of
+   Python.
+8. API — paid programmatic surface (Stripe-metered, gated on Phase
+   5a SES + 5b WAF).
+9. STYLE — eliminate native browser/OS chrome (Tooltip, ConfirmDialog,
+   Toast, FormField, scrollbars, ExternalLink).
+10. GODMODE — one-page admin dashboard. Lands last on stable
+    substrate.

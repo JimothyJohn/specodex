@@ -1,650 +1,401 @@
 # Specodex — what's next
 
-A reading of `todo/*.md` as of 2026-04-29. Ordered to match the
-chronological dependency chain in `todo/README.md`, not by urgency or
-size. The goal is to avoid landing work that has to be redone after a
-downstream refactor reshapes its substrate.
+It is 4pm on a Wednesday. A mechatronics engineer needs a 750 W servo
+motor with 200 V input, ≤4 × 10⁻⁵ kg·m² rotor inertia, and a drive
+that mates with both. Today they will open seven vendor PDFs in seven
+browser tabs, fill out two "request a quote" forms, and abandon the
+fifth tab when the spec table is buried behind a JavaScript carousel.
+Specodex turns that afternoon into a single search box: side-by-side
+specs across ABB / Yaskawa / Mitsubishi / Schneider / Oriental / Omron,
+deep links straight to the original datasheet, and a build tray that
+tells the engineer whether the drive they picked actually mates with
+the motor they picked.
+
+The substrate is shipped — seven product types, structured units
+end-to-end, single-table DynamoDB, page-finder front-running every
+Gemini call, motion-system builder live, auth + projects live, prod
+chain green on `www.specodex.com`. The next two quarters consolidate
+three runtimes into one (Python everywhere), light up the SEO surface
+so an engineer searching `MR-J5-40G datasheet` lands on Specodex
+instead of a distributor's lead form, and earn the audience
+engineer-to-engineer.
+
+> *A product selection frontend that only an engineer could love.*
 
 ---
 
-## Direction summary
+## Why now
 
-The next ~6 months of the project, distilled:
+- **Substrate is clean.** UNITS shipped (`ValueUnit` / `MinMaxUnit`
+  end-to-end, 273 dev + 10 prod rows backfilled). REBRAND Stage 4
+  cutover ✅ — `www.specodex.com` is live, `datasheets.advin.io` is
+  NXDOMAIN'd. Operator queue: empty.
+- **Catalog has shape.** Seven product types — motor, drive, gearhead,
+  robot_arm, contactor, electric_cylinder, linear_actuator — each with
+  a Pydantic model + a companion `.md` ADR citing source datasheets.
+  Page-finder's 18 `SPEC_KEYWORDS` groups gate every Gemini call;
+  77/410 spec pages land on a Mitsubishi contactor catalog without a
+  single API call.
+- **Builder mode works.** Pairwise compatibility (drive↔motor↔gearhead)
+  shipped with build tray, slot-aware filter, Copy BOM, "looks
+  complete" badge, ChainReviewModal. The catalog is a graph now, not
+  a flat search.
+- **Test surface is real.** 51 Python test files + 27 frontend test
+  files (373 tests) gate every push; CI runs the same
+  `./Quickstart verify` developers run locally; nightly
+  `./Quickstart bench` regression-gates the LLM pipeline.
+- **The product is open.** ~11.6k lines of Python + ~24.8k lines of
+  TypeScript on GitHub. The repo is the marketing asset.
 
-- **Public launch.** `specodex.com` DNS cutover, then SEO foundation,
-  then engineer-to-engineer marketing distribution. The product is
-  ready; the URL and the indexability aren't.
-- **Toolchain consolidation.** Python + TypeScript + small Rust crate
-  → mono-Rust. Phases 0/1/3/5 of the port are already on the `rust`
-  branch; cutover via CloudFront origin swap is the next physical
-  step.
-- **Data substrate cleanup.** UNITS shipped (the linchpin). DEDUPE is
-  the post-UNITS sweep. After that, the catalog is clean enough to
-  build features on top of without churn.
-- **Builder-mode UX.** Motion-system builder phases A+B already ship.
-  The rest is end-of-chain affordances (review modal, BOM copy,
-  "looks complete" badge) plus a future spec-first sizing wizard
-  (Phase D, separate decision).
-- **Observability.** GODMODE dashboard collapses Gemini cost, ingest
-  health, DB health, deploy state, repo activity, and Claude usage
-  onto one page. Lands last so it doesn't have to be retouched as the
-  substrate underneath changes.
+## What we've already proved
 
----
+For the long version, see [HISTORY.md](HISTORY.md). The traction line:
 
-## Active queue (chronological, dependency-ordered)
+- **Page-finder is free and accurate.** Text heuristic alone finds
+  77/410 spec pages on the Mitsubishi contactor catalog and 83/616
+  on `j5.pdf` — bundled extraction's truncate-mid-string failure
+  mode at >30 pages is gone since per-page deep-linking landed.
+- **Schemagen turns 3–5 vendor PDFs into a Pydantic model + ADR**
+  (`./Quickstart schemagen`). Multi-source input is enforced so the
+  LLM generalizes instead of hardcoding one catalog's quirks.
+- **Read path is fast.** 1242 motors round-trip through the live dev
+  DynamoDB in 1.20s; 2106 rows across all types in 1.70s.
+- **Pydantic → TypeScript codegen ✅.** `./Quickstart gen-types`
+  regenerates `generated.ts` from every `BaseModel` under
+  `specodex/models/`; the `test-codegen` CI job fails on drift.
+- **Auth is on master.** Phases 1–4 (Cognito user pool, requireAuth
+  middleware, AuthContext + modal + account menu, Stripe + admin
+  gating via Cognito group) plus Phase 5b (WAF) and Phase 5d (CSP +
+  HSTS via CloudFront `ResponseHeadersPolicy`).
+- **Projects ships.** Per-user product collections on the existing
+  single-table layout (`PK=USER#sub`, `SK=PROJECT#id`). No new
+  DynamoDB resource; identity comes from `req.user.sub`, never the URL.
+- **Frontend testing catches the spillover-bug class.** L1 stale-modal
+  regression and L6 `isBuild` array bug were caught and fixed inside
+  the FRONTEND_TESTING plan itself.
+- **Prod chain green** end-to-end (Test → Deploy Staging → Smoke Staging
+  → Deploy Prod → Smoke Prod) since 2026-04-29.
+
+## The next six months
 
 Status legend: ✅ done · 🚧 in progress · ⏸ deferred · 🔴 urgent · 📐 planned
 
+Order matches `todo/README.md`'s suggested chronological dependency
+chain. Active board: [Specodex Orchestration](https://github.com/users/JimothyJohn/projects/1).
+
 | # | Doc | Status | Effort | One-line |
 |---|---|---|---|---|
-| 1 | `/cicd` skill (`.claude/skills/cicd/SKILL.md`) | 🟢 healthy — full chain green; runbook moved into skill 2026-04-30 | 🟢 small | All followups merged. Only outstanding bit is apex `specodex.com` DNS. |
-| 2 | [REBRAND](todo/REBRAND.md) | 🚧 Stage 4 DNS cutover pending | 🟡 medium | `specodex.com` ACM cert + CloudFront alt-domain + Route 53 records + 301 redirect. Waits on registrar NS propagation. |
-| 3 | [UNITS](todo/UNITS.md) | ✅ shipped 2026-04-28 | 🟢 done | ~373 dev + 10 prod review entries pending manual triage (`±`, `;null`, `;unknown`). |
-| 4 | [DEDUPE](todo/DEDUPE.md) | 🚧 Phase 1 script shipped 2026-04-29 | 🟡 medium | One-time sweep for prefix-drift duplicates from pre-family-aware-ID `--force` re-ingests. `cli/audit_dedupes.py` exists; running against dev is the next Late Night step. |
-| 5 | [INTEGRATION](todo/INTEGRATION.md) | 🚧 phases A+B shipped | 🟢 small | Next slice: chain-review modal + BOM copy + "looks complete" tray state. UI-only, half-day. |
-| 6 | [FRONTEND_TESTING](todo/FRONTEND_TESTING.md) | 📐 planned | 🟢 small | Lock down spillover bestiary (L1–L12) — persistence keys, AppContext setters, ProductList type-switch resets. 8 phases, half-day total. |
-| 7 | [GODMODE](todo/GODMODE.md) | 📐 planned | 🔴 large | One-page admin dashboard: Gemini + Claude usage, ingest health, DB health, deploy state, backlog state. ~1 day for MVP. |
-| 8 | [RUST](todo/RUST.md) | 🚧 Phase 0+1+3+5 shipped on `rust` branch | 🔴 multi-week | Full Python+TS → Rust port. Cutover via CloudFront origin swap; Phase 4 (frontend → Leptos) explicitly deferred. |
-| 9 | [SEO](todo/SEO.md) | 🚧 Phase 0 metadata shipped 2026-04-28 | 🟡 medium | Phase 1 = SPA crawlability via build-time prerender, dynamic per-product sitemap, per-product Product JSON-LD, Lighthouse CI gate. |
-| 10 | [MARKETING](todo/MARKETING.md) | 📐 planned | 🟡 medium | Show HN, r/PLC, awesome-* PRs, blog posts, trade press. Gated on REBRAND Stage 4 + SEO Phase 1. |
+| 1 | [PHASE5_RECOVERY](todo/PHASE5_RECOVERY.md) | 🔴 blocking | 🟡 medium | Cherry-pick stranded 5a / 5c / 5e / 5f auth-hardening (~1.1k LOC) onto master. |
+| 2 | [MODELGEN](todo/MODELGEN.md) | 🚧 toolchain ✅; consumer rewire pending | 🟢 small | Collapse hand-typed `models.ts` + Zod enum onto `generated.ts`. |
+| 3 | [SEO](todo/SEO.md) | 🚧 Phase 0 metadata ✅ | 🟡 medium | Build-time prerender, dynamic per-product sitemap, `Product` JSON-LD, Lighthouse CI gate. |
+| 4 | [MARKETING](todo/MARKETING.md) | 📐 planned | 🟡 medium | Show HN, r/PLC, `awesome-*` PRs, blog, trade press. Gated on SEO Phase 1. |
+| 5 | [DEDUPE](todo/DEDUPE.md) | 🚧 Phase 1 audit script ✅ | 🟡 medium | Phase 2 auto-merge safe cases; Phase 3 human-review queue. |
+| 6 | [PYTHON_BACKEND](todo/PYTHON_BACKEND.md) | 🚧 Phase 0 codegen ✅ | 🔴 multi-week | Phase 1+: Express → FastAPI parallel-deploy. Gated on PHASE5_RECOVERY. |
+| 7 | [PYTHON_STRIPE](todo/PYTHON_STRIPE.md) | 🚧 layout scaffolded | 🟢 small | Drop the Rust billing Lambda for ~100 lines of Python. |
+| 8 | [API](todo/API.md) | 📐 paid programmatic surface | 🟡 medium | Stripe-metered curl-able API. Gated on Phase 5a SES + 5b WAF (5b ✅). |
+| 9 | [STYLE](todo/STYLE.md) | 📐 7-phase plan | 🟡 medium | Eliminate native browser/OS chrome (36 `title=`, 2 `confirm`, 1 `alert`, 17 unstyled scrollbars). |
+| 10 | GODMODE (active on the [orchestration board](https://github.com/users/JimothyJohn/projects/1); plan doc retired) | 📐 deferred | 🔴 large | One-page admin dashboard. Lands last on stable substrate. |
+
+CICD itself is healthy (chain green; full runbook in the `/cicd`
+skill at `.claude/skills/cicd/SKILL.md`) and has dropped off the
+queue. Apex `specodex.com` DNS is the only outstanding follow-up.
 
 ---
 
-## 1. CICD — autonomous followups
+## 1. PHASE5_RECOVERY — get the stranded auth-hardening onto master
 
-The chain has been green end-to-end since 2026-04-29. Operator queue
-is empty.
+`gh pr list` reports PRs #3 (5a SES), #5 (5c refresh-token revocation),
+#7 (5e audit logging), and #8 (5f WAF CloudWatch alarms) as MERGED. The
+SHAs aren't on `origin/master`. They merged into the stacked
+`feat-auth-phase1` PR branch, which had itself already merged earlier,
+so the Phase 5 commits never reached master. Net: ~1.1k LOC of
+auth-hardening — the SES sender that prevents bouncing Cognito welcome
+emails on a $50/mo invoice, the refresh-token revocation that closes
+the localStorage-token tradeoff Phase 3 acknowledged, the audit log
+that gives us a paper trail, and the alarms that let us sleep — sits
+off-master.
 
-**Shipped 2026-04-29:** items 1, 4, the deploy-artifact + `/health`
-slice of 5, plus a new item 7 (`staging.yml` repurpose). Remaining
-work: actions version refresh (2), integration tests in CI (3), the
-rest of CI hygiene (5), security scans.
+**Recovery is one stacked cherry-pick PR.** Per-commit footprint is
+3–5 files / 200–400 lines; expected conflicts are limited to
+`app/backend/src/routes/auth.ts` (touched by 5c + 5e). Don't tear down
+the four `specodex-{ses,revoke,audit,alarms}` worktrees until the
+recovery PR lands — they hold the only local copies of some commits.
 
-1. ✅ **Eliminate `HOSTED_ZONE_ID` as a secret.** `frontend-stack.ts`
-   now uses `HostedZone.fromLookup({ domainName })`; `cdk.context.json`
-   is a committed artifact and the workflow no longer exports
-   `HOSTED_ZONE_ID`.
-2. **Refresh GitHub Actions versions.** Bump `actions/checkout`,
-   `setup-node`, `astral-sh/setup-uv` (SHA-pinned). Resolves the Node
-   20 deprecation warning emitting on every run.
-3. **Wire `tests/integration/` into CI.** Eight files exist
-   (`test_pipeline.py`, `test_db_integration.py`,
-   `test_intake_guards_end_to_end.py`, `test_scraper_degraded_inputs.py`,
-   etc.) and **none** run in CI. New integration tests rot silently.
-   Add a `test-integration` job: `pytest tests/integration/ -m "not live"`
-   with moto-mocked AWS. Gate `live`-marked tests behind a nightly
-   trigger. Also: include `tests/test_cli.py` in the unit pass.
-4. ✅ **Nightly `./Quickstart bench` workflow.** Live in
-   `.github/workflows/bench.yml` with `cli/bench_compare.py` as the
-   regression gate. Currently weekly (per-run cost ~$1-5); promote to
-   nightly if the first month surfaces drift.
-5. **CI hygiene.** ✅ Shipped: `cdk.out/` upload on deploy failure +
-   unified `/health` poll between CI and `Quickstart smoke`.
-   Remaining: JUnit XML + step summary, `paths-ignore` for doc-only
-   changes, `cdk diff` PR comment.
-6. **Security scans (warn-only first):** `pip-audit`, `npm audit
-   --omit=dev`, CodeQL.
-7. ✅ **`staging.yml` refresh.** Repurposed (not deleted) so the file
-   serves a defined role under the new chain.
+Phase 5d (CSP + HSTS via CloudFront) is on master as `3ef96a7` /
+merge `c63df04`. Phase 5b (WAF rate-limit + AWS managed common rules)
+is on master as `116b4cb`. The `specodex-csp` worktree can be torn
+down at any time.
 
----
+**Why it blocks PYTHON_BACKEND:** the FastAPI cutover would mirror
+the wrong Cognito surface area if 5c (refresh-token revocation) and
+5e (audit logging) aren't already in shape on the Express side.
 
-## 2. REBRAND Stage 4 — DNS cutover for `specodex.com`
+## 2. MODELGEN — finish what `c397ec5` started
 
-Stages 1, 2, 3a–e all shipped. Stage 4 is mechanical AWS plumbing
-that touches no Python/TS code, gated on registrar NS propagation:
+The toolchain shipped: `./Quickstart gen-types` regenerates
+`app/frontend/src/types/generated.ts` from every `BaseModel` under
+`specodex/models/`, and the `test-codegen` CI job gates `deploy-staging`
+on the committed file matching source. What's left is consumer
+rewire, two pieces:
 
-- **4a. ACM cert** for `specodex.com` + `www.specodex.com`, DNS-validated
-  in `us-east-1` (CloudFront requirement).
-- **4b. CloudFront alt-domain.** Extend the prod `Distribution.domainNames`
-  with both new aliases. Keep `datasheets.advin.io` active during the
-  redirect window. CloudFront propagation is 15-30 min; cdk deploy
-  returns before that completes.
-- **4c. Route 53 A + AAAA records** for apex + www, ALIAS to the
-  distribution.
-- **4d. 301 redirect** via a CloudFront `viewer-request` function on
-  the existing distribution. `datasheets.advin.io` → equivalent path on
-  `specodex.com`. **Trigger only after 7+ days of `specodex.com`
-  serving without issue.**
-- **4e. Decommission** `datasheets.advin.io` 6 months after 4d ships
-  (review at month 5).
+- **Phase 0a-ii.** `app/frontend/src/types/models.ts` becomes a thin
+  re-export shim from `generated.ts`. Today it's a hand-typed mirror
+  with a banner comment that says so.
+- **Phase 0b.** The Zod enum in `app/backend/src/routes/search.ts` and
+  the `VALID_PRODUCT_TYPES` allowlist in
+  `app/backend/src/config/productTypes.ts` derive from the same
+  generated artifact. The "Adding a new product type" runbook
+  collapses from six files to three (Pydantic model + `common.py`
+  patch + `gen-types` run).
 
-**Pre-flight:** `dig NS specodex.com +short` from a non-AWS resolver
-must return Route 53 NS records before 4a can validate.
+Small, isolated, captures the value of the Phase 0 toolchain that's
+already shipped.
 
-**SEO ripple:** the canonical URL flips from `https://datasheets.advin.io/`
-to `https://specodex.com/`. Affects `index.html` (canonical, og:url,
-JSON-LD `url`/`@id`/`urlTemplate`), `public/robots.txt` sitemap line,
-every `<loc>` in `public/sitemap.xml`. Treat as part of 4c.
+## 3. SEO — make Specodex the answer when an engineer searches a part number
 
----
+Phase 0 (metadata foundation) shipped 2026-04-28: `robots.txt`, static
+homepage `sitemap.xml`, OG/Twitter cards, JSON-LD `WebSite` +
+`Organization`, canonical URL. The product *is* the SEO asset; every
+product row in DynamoDB is a long-tail landing page waiting to be
+rendered.
 
-## 3. UNITS — manual triage of legacy review entries
+**Phase 1 — technical foundation (must ship before any marketing push):**
 
-Code shipped. Data backfill applied to dev (273 rows fixed) and prod
-(10 rows fixed). What remains is **human triage of the deliberately
-deferred patterns** in `outputs/units_migration_review_<stage>_*.md`:
+- **1a. SPA crawlability** via build-time prerender. At `vite build`,
+  hit `/api/products`, generate one static `.html` per product with
+  the right `<title>`, `<meta>`, JSON-LD baked in. SPA shell as
+  fallback for unknown routes.
+- **1b. Dynamic per-product sitemap.** New `cli/sitemap.py` scans
+  DynamoDB, emits one `<url>` per product at `/products/{type}/{slug}`.
+  Switch to `sitemap-index.xml` past 50k URLs.
+- **1d. Per-product `<title>`, `<meta>`, `Product` JSON-LD.** Use
+  UN/CEFACT unit codes (`KWT`, `MTR`, `HUR`, `NEW`) where they exist;
+  Schema.org `unitCode` expects UN/CEFACT, not SI strings.
+- **1e. Canonical URLs** — every product → exactly one canonical
+  `/products/{type}/{slug}`.
+- **1f. Lighthouse CI in `verify`.** Gate at LCP < 2.5s, INP < 200ms,
+  CLS < 0.1, SEO score > 95.
 
-- **`±X;unit`** — semantically ambiguous. `pose_repeatability: ±0.02 mm`
-  is one number (scalar tolerance); `working_range: ±360°` is -360..+360
-  (bilateral range). The migration script can't tell field types at
-  the dict-walk layer. Auto-fixing either way is wrong half the time.
-- **`;null` / `;unknown`** — bad LLM emissions, not encoding artefacts.
-  Rescuing them silently corrupts the catalog.
+Phase 2 (category / manufacturer / comparison index pages, OG image
+generator, engineering blog) and Phase 3 (keyword strategy by intent
+tier) are concurrent / downstream. Open follow-ups: generate
+`og-default.png`, flip the apex-canonical line from `www.specodex.com`
+to apex when Stage 4 finishes.
 
-~373 dev rows + 10 prod rows. Pre-existing data quality, non-blocking.
+**Risk to watch:** `noindex` on staging leaking to prod = entire site
+disappears from Google. Add an explicit assertion in
+`./Quickstart smoke` that prod HTML has no `X-Robots-Tag: noindex`
+and no `<meta name="robots" content="noindex">`.
 
----
+## 4. MARKETING — engineer-to-engineer distribution
 
-## 4. DEDUPE — cross-vendor historical-duplicate cleanup
+No paid spend, no ads, no agency. Lean on the niche signal of the
+field-manual aesthetic and the open-source repo as proof of seriousness.
+
+**Audience, sharply:** mechatronics design engineers, system
+integrators / OEMs, robotics startup engineers, sourcing engineers,
+university capstone teams, consulting firms. Unifying trait: *they all
+know what `rotor_inertia=4.5e-5 kg·m²` means and resent UIs that hide
+it behind "request a quote".*
+
+**Anti-positioning** — re-read before any sponsorship conversation:
+not a marketplace (we don't sell, no referral fees, no shadow-ranking).
+Not a CAD/PDM/PLM tool. **Not vendor-affiliated** — search ordering
+must be deterministic and stable across vendors. *Neutrality is the
+product.*
+
+**Channels by ROI tier:**
+
+- **Tier 1.** Show HN (one-shot, after `specodex.com` apex resolves
+  and SEO Phase 1 is green). r/PLC + r/AskEngineers + r/Mechatronics
+  + r/robotics + r/AutomationEng (~600k combined, one thread per sub
+  spaced over 2-3 weeks). Eng-Tips and ControlBooth (older, smaller,
+  extremely high-trust — *soft-introduce by answering questions with
+  Specodex links before any standalone announcement*). `awesome-*` PRs
+  (`awesome-industrial`, `awesome-robotics`, `awesome-mechatronics`).
+- **Tier 2.** Engineering blog at `docs/blog/` (paired with SEO Phase
+  2d), YouTube collabs (Tim Wilborne, Tim Hyland, RealPars — pitch
+  5-min "live search demo" segments), LinkedIn long-form posts every
+  10–14 days.
+- **Tier 3.** Trade press (*Design World*, *Control Engineering*,
+  *Machine Design*) — short pitch + one image, no press release.
+  Conference attend (no booth pre-revenue). CSIA cold outbound.
+- **Don't bother.** Google/LinkedIn paid ads, generic SaaS review
+  sites, influencer marketing.
+
+**Conversion ladder.** (A) Bulk / API tier (Stripe metered, paid via
+the Python billing Lambda from PYTHON_STRIPE). (B) Sponsored ingestion
+— *only with neutrality preserved, hold off until user base makes it
+matter to them.* (C) Custom-type ingestion as a service (paid by
+integrators).
+
+## 5. DEDUPE — cross-vendor historical-duplicate cleanup
 
 The `compute_product_id` family-aware fix (2026-04-26) prevents
-**future** prefix-drift duplicates. It does **not** retroactively merge
-existing rows. The Parker MPP cleanup surfaced 22 such groups in one
-family; the same drift can hide in any catalog where the LLM sometimes
-drops the marketing prefix or where `--force` re-ingests pre-fix
-stamped fresh UUIDs.
+**future** prefix-drift duplicates. Phase 1 audit script
+(`cli/audit_dedupes.py`) shipped 2026-04-29 — read-only, scans every
+product-type partition in dev DynamoDB, groups by family-aware
+normalized core, emits JSON of every group with ≥2 rows + side-by-side
+diff classified as `identical` / `complementary` / `conflicting`.
 
-Three phases:
+**Next:**
 
-- **Phase 1 — audit (read-only, Late Night-eligible).** ✅ Script
-  shipped 2026-04-29. `cli/audit_dedupes.py` scans every product-type
-  partition in dev DynamoDB; groups by family-aware normalized core;
-  emits JSON of every group with ≥2 rows + side-by-side diff classified
-  as `identical` / `complementary` / `conflicting`. No DB writes.
-  Output: `outputs/dedupe_audit_<ts>.json` +
-  `outputs/dedupe_review_<ts>.md`. **Next step:** run it against dev
-  overnight.
 - **Phase 2 — auto-merge safe cases.** `--apply --safe-only` writes
   the merged row under the canonical (family-aware) UUID, deletes
-  orphans. Most-populated part-number form wins (e.g. `MPP-1152C` over
-  `1152C`). `pages` becomes a union; `datasheet_url` keeps the
+  orphans. Most-populated part-number form wins (`MPP-1152C` over
+  `1152C`); `pages` becomes a union; `datasheet_url` keeps the
   most-populated row's URL.
-- **Phase 3 — human review queue.** `outputs/dedupe_review_<ts>.md`
-  has one section per `conflicting` group with a 3-column field table
-  + direct PDF links. Reviewer fills in picks; `--apply --from-review`
-  merges with the chosen values.
+- **Phase 3 — human review queue.**
+  `outputs/dedupe_review_<ts>.md` has one section per `conflicting`
+  group with a 3-column field table + direct PDF links. Reviewer
+  fills in picks; `--apply --from-review` merges with chosen values.
 
-**Edge cases to respect:** `MPP` vs `MPJ` are different motors despite
-sharing a normalized core — only strip when the *exact* `product_family`
-token is the prefix, never a sibling family. Datasheet URL drift is
-normal; group on `(manufacturer, normalized_part)` and ignore the URL.
+**Edge cases worth respecting:** `MPP` vs `MPJ` are different motors
+despite sharing a normalized core — only strip when the *exact*
+`product_family` token is the prefix, never a sibling family.
+Datasheet URL drift is normal; group on
+`(manufacturer, normalized_part)` and ignore the URL.
 
-**Estimated:** half a day code, ~1 hour human review on dev.
-Promote-the-cleaned-set to staging/prod via existing `./Quickstart
-admin promote` flow once approved. No prod writes from this CLI ever.
+Estimated: half a day of code + ~1 hour of human review on dev.
+Promote to staging/prod via existing `./Quickstart admin promote`.
+No prod writes from this CLI ever.
 
----
+## 6. PYTHON_BACKEND — Express → FastAPI
 
-## 5. INTEGRATION — next slice (end-of-chain affordances)
+Phase 0 (codegen) is the substrate; see §2. Phases 1–3 are the
+multi-week part. The motivating audit lived briefly at
+`todo/REFACTOR.md` on the parked `2660f92` WIP and named three
+structural taxes:
 
-Phases A (pairwise checker) and B (build tray + slot-aware filter)
-shipped. The remaining slice is purely UI on top of the existing
-engine:
+1. **Polyglot stack without polyglot justification.** Python pipeline
+   + Node API + Rust billing → three runtimes, three lint configs,
+   three deploy paths. Only the pipeline (Python, ML libs) and the
+   frontend (React) are load-bearing.
+2. **Six places to update for a new product type** — Pydantic model
+   → TS interface → TS union → Zod enum → backend allowlist →
+   frontend union. The runbook is the smell.
+3. **No type-safe contract between Python and TypeScript.** Phase 0
+   already addressed this (`generated.ts` + drift gate); Phases 1+
+   make the backend itself the same language as the pipeline.
 
-1. **Whole-chain audit modal** — when the tray has ≥2 filled adjacent
-   slots, a "Review chain" button opens a modal stacking every
-   junction's `CompatibilityReport` (drive↔motor and motor↔gearhead).
-   Reuses `CompatChecker`'s rendering primitives; calls
-   `apiClient.checkCompat` once per adjacent pair.
-2. **BOM copy.** "Copy BOM" button emits one block to clipboard:
-   ```
-   Drive:    Bardac — P2-74250-3HF4N-T
-   Motor:    ABB — E2BA315SMB6
-   Gearhead: <part>
-   ```
-   Plus a one-line junction summary per pair. Plain text first; CSV
-   later if anyone asks. Pure clipboard-write from `useApp().build`.
-3. **"Looks complete" badge.** When all three rotary slots are filled
-   and every junction rolls up to `ok`, swap the tray's accent border
-   to green and show a small ✓ marker. Pure visual.
-4. **(Stretch) Save build as preset.** Named entries in localStorage,
-   restore via dropdown next to Clear. Skip until someone asks.
+**Gated on PHASE5_RECOVERY landing first** so the FastAPI auth
+surface mirrors the right Cognito shape.
 
-**Files:** new `ChainReviewModal.tsx`; edits to `BuildTray.tsx` and
-`App.css`. **No backend touch.** ~half-day, mostly CSS + clipboard.
+## 7. PYTHON_STRIPE — drop the Rust billing Lambda for ~100 lines of Python
 
-**Phase D (spec-first wizard)** is named explicitly so the architecture
-doesn't preclude it. User states load mass / stroke / duty cycle /
-target speed; system proposes ranked candidate chains end-to-end.
-Requires a sizing engine (RMS torque, gear-ratio sweep) +
-application templates + probably ML re-ranking. Not in scope; not
-near-term.
+The `stripe/` Rust Lambda is the only Rust in the repo: ~500 LoC
+across 7 files, 5 endpoints, originally justified as "fast cold
+starts" — a property that buys nothing for Stripe webhooks (async,
+nobody waits) or Checkout sessions (the user is being redirected to
+Stripe). The cost of carrying it: the entire `cargo` toolchain in CI,
+a separate deploy path (`cargo lambda deploy`, not in CDK), and a
+third mental context.
 
-**Open questions worth recording:**
-- Bidirectional voltage on drive↔motor: `_drive_ports` declares
-  `motor_output.voltage = d.input_voltage` (drive reproduces input on
-  output via PWM). False for some 24 VDC → 48 VDC bus-boost drives.
-  Acceptable approximation; revisit on a false-pass report.
-- `partial` vs `fail` policy in slot-aware filtering: strict mode
-  hides too much when datasheets are incomplete; permissive is the
-  right default but should be a user toggle.
-- Where does `Contactor` sit in the chain? Has a `load_output` that
-  fits a motor's `power_input` — could optionally precede the drive
-  (line contactor) or replace it (across-the-line motor start).
-  Doesn't fit the four-slot model. Park as optional fifth slot or
-  hide.
+**Phase 1 layout scaffolded** (`6ac30b0`): `stripe_py/` exists with
+all 7 modules + 8 test files. Replacement reuses the existing `boto3`
++ `python-dotenv` already in `pyproject.toml`, plus the official
+`stripe` Python SDK — `Webhook.construct_event` replaces the
+hand-rolled HMAC-SHA256 signature check.
 
----
+**Pending:** Phase 1 deploy + Phase 2 SSM cutover + Phase 3 Rust
+deletion. Independent of PYTHON_BACKEND; can ship at any time.
 
-## 6. FRONTEND_TESTING — close the spillover gaps
+## 8. API — paid programmatic surface
 
-The frontend has 14 test files (~260 passing). What it doesn't cover
-is the class of bug that has bitten this app most often: **state
-spilling across product-type switches, persisted state surviving a
-schema change in a broken shape, toggles that look like they work
-but don't propagate**.
+Engineering teams want curl, scripts, CI integrations — a different
+auth shape, a different rate-limit shape, a different billing shape
+than the SPA's "logged-in user with a JWT in localStorage" path. Long
+API keys with embedded JWT-shaped claims signed by a separate KMS key,
+per-API-key rate limits at the WAF layer, Stripe metered usage on the
+read side.
 
-**Pre-req — fix 2 currently failing tests** in
-`AttributeSelector.test.tsx`. Likely stale assertions against
-pre-rebrand copy or pre-categorised attribute layout. CI red noise
-hides anything new this plan introduces; fix first.
+**Dependencies:**
 
-**The bestiary** (each test below maps to one of these):
+- Cognito identity, JWT middleware, admin gating — ✅ shipped (auth
+  Phases 1–4).
+- SES verified-identity sender for welcome / receipt emails —
+  ⏳ stranded on `feat-auth-phase5a-ses` (PHASE5_RECOVERY).
+- WAF rate-limit layer — ✅ shipped (auth Phase 5b on master).
+- Either the existing `stripe/` (Rust) or the upcoming `stripe_py/`
+  Lambda actually deployed to production. Today the Rust Lambda is
+  unwired to the production stack.
 
-| # | Failure mode |
-|---|---|
-| L1 | Selected product modal stays open after switching product type |
-| L2 | Filter chips from `motor` carry into `drive` view |
-| L3 | Sort state survives type switch and produces nonsense column refs |
-| L4 | Pagination `currentPage=7` survives a type switch with only 2 pages |
-| L5 | `productListHiddenColumns` from `motor` hides nonexistent columns on `drive` |
-| L6 | `specodex.build` written by older schema crashes context init on next visit |
-| L7 | `unitSystem='imperial'` doesn't propagate to a chip's slider min/max |
-| L8 | `rowDensity='comfy'` written but `ProductList` reads from a stale prop |
-| L9 | Build tray slot replacement leaves the old product visible for a frame |
-| L10 | `compatibleOnly=true` on initial load filters to zero rows when build is empty |
-| L11 | Theme toggle writes localStorage but DOM `data-theme` stays light next load |
-| L12 | `safeLoad` accepts `{}` for a value typed as `string[]` (validator too loose) |
+## 9. STYLE — eliminate native browser/OS chrome
 
-**Eight phases, each independently shippable, ~half-day total:**
+The frontend is already 80% of the way there: focus rings styled,
+modals custom, single-select dropdowns custom, no native `<dialog>`,
+`<details>`, `<select>`, file pickers, drag-drop, or `window.open`.
+What remains is the long tail of native chrome that still shows up
+daily.
 
-1. **Persistence keys** (`localStorage.persistence.test.ts`) —
-   table-driven, 4 cases per persisted key (default-when-absent,
-   default-when-malformed, default-when-wrong-shape, valid-roundtrip).
-   ~1 h. Cheapest, highest value.
-2. **AppContext as a black box** — render `<AppProvider>` with a test
-   consumer; exercise `setUnitSystem`, `setRowDensity`, `addToBuild`
-   slot replacement, `clearBuild`, `setCompatibleOnly`, stale build
-   shape recovery. ~2 h.
-3. **ProductList type-switch reset** — *the single most important
-   file in this plan.* L1–L4 live here. Mock `useApp()` to control
-   `currentProductType`, render, assert `selectedProduct`/`filters`/
-   `sorts` clear and `currentPage` resets to 1. ~2 h.
-4. **Header toggles** — `UnitToggle`, `DensityToggle`, `GitHubLink`. ~1 h.
-5. **FilterChip × unitSystem** — extend existing test file. L7. ~1 h.
-6. **BuildTray** — hidden when empty, slot order, remove buttons,
-   junction badges, Clear. ~1 h.
-7. **ErrorBoundary** — child throws → fallback UI; healthy child → no
-   fallback. 3 cases, ~30 lines.
-8. **Smoke-render every page** — `<App />` in `MemoryRouter` for each
-   route with `apiClient` mocked. Catches "I broke the imports"
-   before CI does.
+**Inventory (snapshot 2026-05-02):**
 
-**Out of scope:** Playwright/visual-regression (separate effort, see
-`webapp-testing` skill); backend route tests (owned by
-`app/backend/`); coverage threshold enforcement.
+| Surface | Count | Owner phase |
+|---|---|---|
+| `title=` native tooltips | 36 | Phase 1 (Tooltip) |
+| `window.confirm()` | 2 | Phase 2 (ConfirmDialog) |
+| `alert()` | 1 | Phase 3 (Toast) |
+| `<form>` without `noValidate` | 9 | Phase 4 (FormField) |
+| Unstyled scrollbars (`overflow: auto/scroll`) | 17 | Phase 5 (`.scrollable` utility) |
+| Bare `target="_blank"` | 3 | Phase 6 (ExternalLink) |
+| Silent `console.error` in user flows | ~25 | Phase 3 (paired toast) |
 
----
+After each phase the surface it owns is *closed* — no new code is
+allowed to introduce native chrome in that category, and a
+`./Quickstart verify` lint rule enforces it. Phases 1, 5, 6 are pure-
+additive and can ship in any spare slot; Phases 2–4 touch shared
+state, so single-stream them.
 
-## 7. GODMODE — one-page admin dashboard
+## 10. GODMODE — one-page admin dashboard
 
 Single URL — `/godmode` in the React app, gated by `adminOnly` — that
 answers "what the hell is going on with this project right now?"
 without context-switching across AWS Console, GitHub, CloudWatch,
 terminal, and three Quickstart commands.
 
-**Six panels:**
+**Six panels.** AI usage (Gemini token spend, Claude transcripts).
+Pipeline health (recent ingest attempts, top failing manufacturers,
+p50/p95 wall-clock). Database health (products by type, last-24h
+writes, "unhealthy" rows). Repo activity (commits last 7/30 d, LOC by
+language, churn, test pass rate). Deploy state (per-stage stack
+version, `/health`, last 10 CloudWatch errors). Backlog state (`todo/`
+count by status, urgency).
 
-1. **AI usage** — Gemini token spend / RPM / error rate (from
-   ingest_log); Claude Code token spend (from local
-   `~/.claude/projects/*/conversations/*.jsonl`). Cost in dollars.
-2. **Pipeline health** — recent ingest attempts, success vs
-   quality_fail vs extract_fail, top failing manufacturers, p50/p95
-   wall-clock per attempt.
-3. **Database health** — products by type, products written last 24h,
-   "unhealthy" rows (quality-floor breach, missing prices, stale
-   `createdAt`, orphan `INGEST#` records).
-4. **Repo activity** — commits last 7/30 d, LOC by language, churn
-   (lines added/removed), test pass rate from last `./Quickstart test`.
-5. **Deploy state** — current stack version per stage, `/health`
-   response, last 10 CloudWatch errors.
-6. **Backlog state** — `todo/*.md` count by status, urgency surfaced.
-
-**Architecture: A + B, split by data locality.** Deployed (Option A,
-React + Express endpoints) covers cloud data: Gemini usage, ingest
-pipeline, DynamoDB health, deploy state, CloudWatch errors. Local
-(Option B, `./Quickstart godmode` writes
-`outputs/godmode/latest.html`) covers Claude transcripts, git, LOC,
-last test run, backlog state — things a Lambda can't see. Both
+**Architecture: A + B, split by data locality.** Deployed (React +
+Express endpoints) covers cloud data. Local (`./Quickstart godmode`
+writes `outputs/godmode/latest.html`) covers Claude transcripts, git,
+LOC, last test run, backlog state — things a Lambda can't see. Both
 render with the same panel CSS so they feel like one tool.
 
-**MVP slice (~1 day):**
-
-- 3 deployed endpoints under `/api/admin/godmode/*` + 3 React panels.
-- 1 local CLI for git/LOC/Claude/backlog.
-- Tiny extension to `specodex/llm.py` to log non-ingest Gemini calls
-  (schemagen, price-LLM) under an `LLM#<kind>#<sha>` PK so the
-  dashboard counts every call.
-
-**Non-goals:** no new metrics infrastructure (no CloudWatch custom
-metrics, no Prometheus, no Datadog); no real-time push (refresh
-button); no historical timeseries store; no ML/anomaly detection; no
-Claude org admin API integration (read local transcripts only); no
-mobile responsiveness.
-
-**Open questions:**
-- Auth — reuse `adminOnly` `ADMIN_TOKEN`, or a separate godmode
-  token in case of limited shares to teammates?
-- Cost constants — single canonical `cli/bench.py:PRICING` module
-  read by both bench and godmode? Probably yes.
-- DynamoDB scan budget — MVP caps at 1000 rows sampled. If prod
-  grows past 50k, precompute a daily `STATS#YYYY-MM-DD` row.
-- Claude usage scope — current project only, or all projects with a
-  `--all-projects` flag?
-- Refresh cadence — manual button (recommended) vs auto-refresh.
+**Lands last** so panels read finalized substrates. ~1 day for MVP.
 
 ---
 
-## 8. RUST — pure-Rust port (the multi-week one)
+## What winning looks like
 
-The repo runs Python (~23.4k LOC), TypeScript (~13k LOC), and a small
-Rust crate (Stripe). That's the maximally awkward shape. Going Rust
-collapses three toolchains into one and aligns with the "one language
-per project" preference in global CLAUDE.md.
+Concrete end-state markers — what "shipped" means at the project level:
 
-**Already shipped on the `rust` branch (2026-04-28):**
-
-- **Phase 0 — risk-burn spikes** (both green). Gemini structured-output
-  spike: 84 motor variants from omron-g-series-servo-motors.pdf in
-  12.5s, deserialized cleanly. PDF parity spike: 7/7 benchmark fixtures
-  match Python exactly, including the j5.pdf 616-page monster (83 spec
-  pages each side) and the Mitsubishi 410-page catalog (77 each side).
-  **Caveat:** the spike used Poppler shell-out for text extraction.
-  Production engine choice (`pdfium-render` vs `mupdf-rs`) is a
-  separable Phase 1 decision.
-- **Phase 1 — `specodex-core` + `specodex-db`.** All seven product
-  models, units, quality scoring, blacklist, admin ops
-  (diff/promote/demote). 170/170 tests pass. Live smoke against dev:
-  1242 motors round-trip in 1.20s, 2106 rows across all types in 1.70s.
-- **Phase 3 — `specodex-api`** (Axum). Drop-in compatible with the
-  Express service for every route the frontend calls. Same response
-  envelope, same spec-filter language, same summary projection. 28
-  contract tests cover validation. `readonly_guard` and `admin_only`
-  middleware via `route_layer` so unmatched paths still 404.
-- **Phase 5 IaC** — `rust/infra/` standalone SAM template. Lambda
-  (`provided.al2023`, arm64) + HTTP API + CORS, validates with `sam
-  validate --lint`.
-
-**Unblocked next step:** install `cargo-lambda`, run `sam build && sam
-deploy --config-env default`, smoke against staging, A/B in CloudFront,
-prod cutover. Express stack stays put until Rust API has baked.
-
-**Deferred Phase 3 routes** (Express keeps these until they land):
-
-- `/api/upload` — S3 presigned URL flow.
-- `/api/v1/compat/check` — pairwise compat (needs the full compat
-  engine port from `specodex/integration/`).
-- `/api/subscription` — Stripe billing surface (already a Rust crate
-  at `stripe/`, separate stack).
-- `/api/docs` — OpenAPI spec (mechanical).
-
-**Phase 1 polish items:**
-
-- Family-filtering wrappers (Python `Voltage`/`Torque`/etc. that drop
-  wrong-family units to `None`). Currently fields use plain
-  `Option<ValueUnit>` / `Option<MinMaxUnit>` — wrong-family units
-  keep their unit as-is rather than zeroing the field.
-- Schema generation (`to_gemini_schema` Rust equivalent via `schemars`
-  + Gemini adapter).
-- `purge` admin operation — skeleton in `admin.rs`, not wired (needs
-  paginated key-only delete).
-- `testcontainers-rs` LocalStack integration for CI without live AWS
-  creds.
-- Forgiving `IpRating` coercion (Motor's `ip_rating` is currently
-  plain `Option<i32>`; Python accepts `"IP54"`, `"54"`, `{"value": 54}`).
-
-**Phase 4 — frontend → Leptos/WASM: explicitly deferred.** ~12.7k LOC
-of plain React → ~12.7k LOC of Leptos = a multi-week rewrite for
-**zero user-visible benefit**. WASM bundle is *bigger* than the
-current Vite build for a UI this size. Recommendation in the doc is
-to keep React indefinitely. Phase 4 should require a separate
-decision once everything else has landed.
-
-**Phases left after cutover (Phase 6 — cleanup):** delete
-`pyproject.toml`, `uv.lock`, `.python-version`, all `package.json` /
-lockfiles, `cdk.json`, `tsconfig.json`s, Vite config. Update
-root CLAUDE.md to describe the Rust project shape. Single `cargo`
-job replaces three CI stages. `./Quickstart verify` runs in <5 min.
-
-**Honest tradeoffs called out in the doc:** no official Gemini Rust
-SDK (hand-rolled HTTP client, pin to API version); no Pydantic
-equivalent (~30% more boilerplate per model); PDF parsing fidelity
-(`pdfium-render` adds a binary dep; bundle in Lambda layer); Playwright
-in pricing enrichment (defer — keep as Python sidecar); test ecosystem
-gap (LocalStack via `testcontainers-rs` instead of `moto`); CLI
-ergonomics regress slightly (`clap` derive + `cargo-watch` mitigate).
-
----
-
-## 9. SEO — make Specodex the answer when an engineer searches a part number
-
-**Phase 0 (metadata foundation) shipped 2026-04-28:** `robots.txt`,
-static homepage `sitemap.xml`, OG/Twitter cards, JSON-LD `WebSite` +
-`Organization`, canonical URL, refined `<title>`/`<meta>`.
-
-**Open follow-ups from Phase 0:**
-- Generate `og-default.png` (1200×630). Until then link unfurls fall
-  back to text.
-- Flip canonical URL from `https://datasheets.advin.io/` to
-  `https://specodex.com/` when REBRAND Phase 4c lands. Affects
-  `index.html` (3 places), `public/robots.txt` (sitemap line),
-  `public/sitemap.xml` (every `<loc>`).
-
-**Phase 1 — technical foundation (must ship before any marketing push):**
-
-- **1a. SPA crawlability.** Pick build-time prerender via
-  `vite-plugin-prerender`. At `vite build`, hit `/api/products`,
-  generate one static `.html` per product with the right `<title>`,
-  `<meta>`, JSON-LD baked in, write to S3 with the SPA shell as
-  fallback for unknown routes. Ship behind a `--prerender` flag in
-  `./Quickstart deploy` first; default once green for a week on
-  staging. Cost: build time grows with product count; mitigate via
-  incremental rebuild.
-- **1b. Dynamic per-product sitemap.** New `cli/sitemap.py` scans
-  DynamoDB, emits one `<url>` per product at `/products/{type}/{slug}`
-  + static routes. `<lastmod>` from `updated_at`. Switch to
-  `sitemap-index.xml` past 50k URLs. Wire into `./Quickstart deploy`.
-- **1d. Per-product `<title>`, `<meta>`, JSON-LD `Product`.**
-  - Title: `{Manufacturer} {Part Number} — {Type} {one key spec} | Specodex`
-    (60-char target, 70 hard cap; truncate spec, never the part number).
-  - Meta description: `{Type} from {Manufacturer}, part {Part Number}.
-    {2-3 key specs}. View full spec table, datasheet, and cross-vendor
-    alternatives on Specodex.` (155-char target).
-  - JSON-LD `schema.org/Product` with `additionalProperty[]` mapped
-    from `ValueUnit`/`MinMaxUnit` shapes. **Use UN/CEFACT unit codes**
-    (`KWT`, `MTR`, `HUR`, `NEW`) where they exist; fall back to
-    custom `unitText`. Schema.org `unitCode` expects UN/CEFACT, not
-    SI strings — this is the most common mistake.
-- **1e. Canonical URLs.** Every product → exactly one canonical
-  `/products/{type}/{slug}` where `slug = {manufacturer}-{part_number}`
-  lowercased + hyphenated. Self-canonical on the canonical URL;
-  `<link rel="canonical">` on aliases.
-- **1f. Lighthouse CI in `verify`.** Gate at LCP < 2.5s, INP < 200ms,
-  CLS < 0.1, SEO score > 95. Risk: JSON-LD payload bloat on product
-  pages with hundreds of fields — measure before tuning.
-
-**Phase 2 — content scaffolding (concurrent with Phase 1):**
-
-- **2a. Category index pages** (`/products/motor`, etc.) — H1, filter
-  snapshot, links to sub-categories + top 10 manufacturers. Highest-
-  traffic SEO pages on this kind of site.
-- **2b. Manufacturer index pages** (`/manufacturer/{slug}`) — vendor's
-  products grouped by type, one-paragraph auto-generated intro,
-  marked up with `Organization` schema.
-- **2c. Comparison pages — programmatic.**
-  `/compare/{type}/{mfr-a}-vs-{mfr-b}`. Cap to top vendor pairs per
-  type (only generate if both have ≥ 5 products of that type) — Google
-  penalizes thin content.
-- **2d. Engineering blog at `docs/blog/`** (Jekyll, GitHub Pages
-  already serves `docs/`). Three foundational posts:
-  - Page-finder benchmark write-up (technical, links repo).
-  - Cross-vendor servo motor benchmark (pure data, ranks 5-10 vendors).
-  - Building a 3-axis motion stage (application walkthrough).
-  Cross-link from blog into catalog and footer back into blog. The
-  link graph is the second-biggest SEO lever after prerendering.
-- **2e. OG image generator.** `cli/og-image.py` renders 1200×630 PNG
-  per product at build time. Field-manual aesthetic — paper, OD-green
-  header bar, part number in condensed sans, key specs in tabular
-  monospace. Without these, Slack/LinkedIn previews look broken,
-  undermining engineer-to-engineer sharing.
-
-**Phase 3 — keyword strategy (layered by intent):**
-
-- **Tier 1 — exact part numbers** (`{mfr} {part}`, `{part} datasheet`,
-  `{part} specs`). Massive aggregate volume; prerendered product page
-  with structured data wins on UX once indexed.
-- **Tier 2 — manufacturer + family** (`mitsubishi mr-j5`, `yaskawa
-  sigma-7`, `abb acs880`). Manufacturer + category index pages.
-- **Tier 3 — spec-driven category searches** (`2kw servo motor 200v`,
-  `gearhead ratio 100:1 backlash`). Filtered category pages where
-  every filter combination is a canonical URL. **Cap to 200-500
-  pre-curated filter pages chosen by search-volume data** — uncapped
-  generates millions of thin URLs.
-- **Tier 4 — broad informational** (`what is a servo drive`). Blog
-  content; embedded interactive search.
-- **Don't pursue:** generic head terms (Wikipedia outranks); brand
-  keywords for distributors (trademark issues); geo-targeted variants
-  (Specodex isn't a distributor).
-
-**Phase 4 — backlinks.** Don't buy, earn. `awesome-*` PRs (slow-burn
-but each merge ≈ 50-200 referrals/month forever); HN front page;
-Eng-Tips/ControlBooth/r/PLC referral traffic; trade press placements;
-occasional Wikipedia external-links sections.
-
-**Phase 5 — measurement.** Google Search Console + Bing Webmaster
-verified on `specodex.com`. **Plausible over GA4** to fit the
-field-manual / no-marketing-fluff vibe (and so we can advertise "we
-don't track you"). Lighthouse CI artifacts. Search Console weekly
-export feeds the GODMODE panel.
-
-**Risks specific to SEO:**
-- Prerender + DynamoDB schema drift — every prerendered page becomes
-  stale on a backfill. Solve: rebuild prerender as a deploy-time
-  step that always pulls latest, never a checked-in artifact.
-- Thin/duplicate content from over-generation. Cap aggressively.
-- JSON-LD that doesn't validate — silently demotes the page. Use
-  Google's Rich Results Test on 10 sample pages before shipping.
-- Crawler budget. Past ~100k products, Googlebot may not crawl all.
-  Solve via tight sitemap + good internal linking + `<priority>` hints.
-- `noindex` on staging leaking to prod = entire site disappears from
-  Google. Add an explicit assertion in `./Quickstart smoke` that prod
-  HTML has no `X-Robots-Tag: noindex` and no
-  `<meta name="robots" content="noindex">`.
-
----
-
-## 10. MARKETING — engineer-to-engineer distribution
-
-No paid spend, no ads, no agency. Engineer-to-engineer distribution,
-leaning on the niche-signal of the field-manual aesthetic and the
-open-source repo as proof of seriousness.
-
-**The audience, sharply:** mechatronics design engineers, system
-integrators / OEMs, robotics startup engineers, sourcing engineers,
-university capstone teams, consulting firms. Unifying trait: *they
-all know what `rotor_inertia=4.5e-5 kg·m²` means and resent UIs
-that hide it behind "request a quote".*
-
-**Anti-positioning:** not a marketplace (we don't sell, no referral
-fees, no shadow-ranking). Not a CAD/PDM/PLM tool. **Not vendor-
-affiliated** — the product shows ABB / Siemens / Rockwell / Yaskawa /
-Mitsubishi / Schneider / Oriental Motor / Maxon / Nidec / Omron
-without preferential ordering. *Neutrality is the product.* Re-read
-this rule before any sponsorship conversation.
-
-**Tagline (canonical, do not soften):**
-
-> A product selection frontend that only an engineer could love.
-
-**Channels ranked by ROI:**
-
-- **Tier 1 (highest leverage, do first):**
-  1. **Hacker News Show HN.** One-shot, 10k+ engineers in a single
-     morning if it lands. Submit *after* `specodex.com` DNS cutover
-     so the URL is stable. Title formula: `Show HN: Specodex —
-     cross-vendor spec database for motors, drives, gearheads
-     (datasheet-mined)`. Maintainer ready to answer comments live for
-     the first 4 hours. Single attempt; if it flops, wait 90 days
-     before resubmitting with substantially new material.
-  2. **r/PLC, r/AskEngineers, r/Mechatronics, r/robotics,
-     r/AutomationEng.** Five subs, ~600k combined. One thread per sub,
-     spaced over 2-3 weeks (Reddit detects coordinated posting).
-     Engage every comment in the first 48 hours.
-  3. **Eng-Tips and ControlBooth forums.** Older, smaller, extremely
-     high-trust. **Soft-introduce by answering questions with Specodex
-     links before posting any standalone announcement.**
-  4. **GitHub repo as a marketing asset.** Top-of-README screenshot
-     + live-app one-liner. Submit to `awesome-industrial`,
-     `awesome-robotics`, `awesome-mechatronics`, `awesome-engineering-resources`.
-- **Tier 2 (sustained content):** engineering blog posts (Phase 2d
-  of SEO); YouTube collabs (Tim Wilborne, Tim Hyland, RealPars —
-  pitch 5-min "live search demo" segments); LinkedIn long-form
-  posts every 10-14 days.
-- **Tier 3 (slower-burn):** trade press (*Design World*, *Control
-  Engineering*, *Machine Design*, *Motion Control & Sensors*,
-  *Automation World* — short pitch + one image, no press release);
-  conference attend (no booth pre-revenue — Automate / IMTS / Pack
-  Expo / NI Week); CSIA cold outbound (only worth it once a second
-  engineer can handle volume).
-- **Don't bother:** Google/LinkedIn paid ads (CPM is brutal); generic
-  SaaS review sites (audience doesn't use them); influencer marketing
-  (not a thing in this niche).
-
-**Conversion ladder:**
-- (A) **Bulk / API tier** (paid via Stripe metered billing — already
-  plumbed in `stripe/` Rust Lambda). Engineers wanting programmatic
-  access, CSV export, BOM-import.
-- (B) **Sponsored ingestion** (paid by manufacturers — *not yet, only
-  with neutrality preserved*). Manufacturers get guaranteed coverage,
-  no ranking changes. **Hold off until user base makes it matter to
-  them.**
-- (C) **Custom-type ingestion as a service** (paid by integrators).
-  A consulting firm has a niche product type they want indexed; we
-  run schemagen against their PDF pile. Low-volume, high-margin.
-
-**Phasing:**
-
-| Phase | Window | Gate to next |
-|---|---|---|
-| **0 — Pre-flight.** REBRAND Stage 4 + SEO Phase 1. | Until `specodex.com` resolves and Google has indexed > 50 product pages. | Both gates green. |
-| **1 — Soft launch.** Show HN. r/PLC + r/AskEngineers thread. README screenshot. `awesome-*` PRs. | 30 days. | > 200 sessions/week sustained; > 50 GitHub stars; no critical UX bugs. |
-| **2 — Content.** 3 blog posts. 2 YouTube collab pitches. 3 trade-press pitches. | 60 days. | At least one trade-press placement / YouTube mention / second HN appearance. |
-| **3 — Outbound.** CSIA cold outreach, LinkedIn cadence, conference attend. Begin paid Stripe surface once free funnel produces > 1,000 sessions/week. | Indefinite. | Stripe MRR > $0. |
-| **4 — Scale.** Re-evaluate paid ads, conference booths, partnerships. | TBD. | — |
-
-**Risks:**
-- **Looking like a vendor's affiliate.** If users perceive Specodex as
-  ranking ABB above Siemens (or vice versa), trust collapses
-  permanently. Search ordering must be deterministic and stable across
-  vendors.
-- **Datasheet copyright pushback.** Specs themselves are facts and not
-  copyrightable; verbatim text and images are. Specodex *links* to the
-  original datasheet rather than re-hosting — preserve that hard line.
-  If a takedown notice arrives, comply on the specific item, document,
-  continue. Don't capitulate site-wide.
-- **Quality regressions visible to early users.** A high-profile post
-  on HN/Reddit with a broken comparison is worse than no post. Run
-  `./Quickstart bench --live` and `./Quickstart smoke` against prod
-  immediately before any high-traffic announcement.
-- **Email collection without a privacy story.** If we add `/subscribe`,
-  it needs a one-paragraph privacy statement.
-
-**Targets by month-3 of active marketing:** 1,000 sessions/week,
-> 25% returning ratio, 250 GitHub stars, 5,000 weekly search
-impressions, 30 real referring domains, 100 newsletter opt-ins,
-first 5 Stripe conversions.
+- **Specodex is the URL.** `specodex.com` apex serves the app
+  directly (Stage 4d/e complete). `datasheets.advin.io` redirected
+  for ≥6 months, then decommissioned.
+- **One language, one toolchain.** Express → FastAPI cutover'd. Rust
+  billing Lambda replaced by Python. CI runs a single Python lint +
+  test stage instead of three. `./Quickstart verify` < 5 min.
+- **Two files, not six.** Adding a new product type is `<type>.py` +
+  `<type>.md` + a one-line patch to `common.py`'s `ProductType`
+  literal. Everything else generates.
+- **Engineers find Specodex via Google.** SEO Phase 1 shipped; an
+  engineer searching `MR-J5-40G datasheet` lands on a per-product
+  page with structured `Product` JSON-LD. Lighthouse CI gates SEO ≥ 95.
+- **Stripe MRR > $0.** First paid bulk-API engineer cleared through
+  the metered billing Lambda. The conversion ladder works at all.
+- **The dashboard tells the story.** GODMODE answers "what's going
+  on" without context-switching; oncall doesn't need three terminal
+  windows.
+- **The `todo/` queue is empty or epic-sized.** Every shipped doc
+  deleted; remaining docs are multi-quarter Phase 2 epics (e.g.
+  spec-first sizing wizard) named explicitly so architecture
+  doesn't preclude them.
 
 ---
 
@@ -657,11 +408,11 @@ four criteria: bounded, dev-only writes, recoverable, morning-checkable.
 
 | Task | Command | Output |
 |---|---|---|
-| Bench (offline) | `./Quickstart bench` | `outputs/benchmarks/<ts>.json` — diff vs `latest.json` |
+| Bench (offline) | `./Quickstart bench --quality-only` | `outputs/benchmarks/<ts>.json` — diff vs `latest.json` |
 | Ingest-report | `./Quickstart ingest-report --email-template` | `outputs/ingest_report_*.md` |
-| UNITS review triage | parse `outputs/units_migration_review_dev_*.md`, group by pattern | `outputs/units_triage_<ts>.md` |
+| UNITS review triage | `./Quickstart units-triage outputs/units_migration_review_dev_*.md` | pattern groups + suggested action per group |
 | Integration test sweep | `./Quickstart verify --integration` | exit code; stale tests surface as failures |
-| DEDUPE Phase 1 audit | run `uv run python -m cli.audit_dedupes` against dev | `outputs/dedupe_audit_<ts>.json` + `dedupe_review_<ts>.md` |
+| DEDUPE Phase 1 audit | `./Quickstart audit-dedupes --stage dev` | `outputs/dedupe_audit_dev_<ts>.json` + `dedupe_review_dev_<ts>.md` |
 
 **Tier 2 — small Gemini cost, dev DB writes only:**
 
@@ -677,58 +428,55 @@ four criteria: bounded, dev-only writes, recoverable, morning-checkable.
 | Bench (live) | ~$1–5/run | precision/recall delta + cache delta |
 | Process upload queue (dev) | unbounded — only with known queue size | products via `/api/v1/search` |
 
-**Morning checklist before promoting to prod:**
-
-1. `tail -100 .logs/*.log` — no unhandled exceptions, no rate-limit
-   spirals.
-2. `diff outputs/benchmarks/latest.json outputs/benchmarks/<ts>.json`.
-   Drop > 5pp on any fixture is a stop signal.
-3. Hit dev `/health`, `/api/products/categories`,
-   `/api/v1/search?type=motor&limit=5`. All 200 with expected shape.
-4. If schemagen ran: read each `<type>.md` ADR. Reject anything that
-   hardcodes one vendor's quirks.
-5. UI walkthrough on http://localhost:5173: pick the new type,
-   confirm filter chips + table columns render.
-6. **If green:** `./Quickstart admin promote --stage staging --since
-   <ts>`, smoke staging, then `--stage prod`.
-7. **If red:** damage is dev-only. `./Quickstart admin purge --stage
-   dev --since <ts>` rolls back, then triage.
+**Morning checklist** — `tail -100 .logs/*.log`, diff bench, hit dev
+`/health` + `/api/products/categories` + `/api/v1/search`, read
+schemagen ADRs if any, UI walkthrough, then promote staging → prod
+via `./Quickstart admin promote`.
 
 **Not Late Night material:** anything in `app/infrastructure/` (CDK)
 or `.github/workflows/`; any prod write or `--stage prod` promotion;
-REBRAND Stage 4 DNS cutover; INTEGRATION UI changes (visual review
-required).
+SEO structural lifts (per-product page rendering, dynamic sitemap)
+— needs build + manual crawl check.
 
 ---
 
 ## Cross-cutting themes
 
 **The substrate ordering matters more than urgency.** UNITS was the
-linchpin everything else compiles against (Pydantic + DynamoDB +
-frontend rendering). DEDUPE only makes sense on post-UNITS uniform
-data. INTEGRATION UI lands on the cleaned-up rendering path.
-FRONTEND_TESTING tests against canonical post-UNITS shape. GODMODE
-panels read finalized substrates.
+linchpin everything else compiles against. PHASE5_RECOVERY now
+plays that role for PYTHON_BACKEND — the FastAPI parallel-deploy on a
+Cognito surface that's still moving will mirror the wrong shape.
+DEDUPE only makes sense on post-UNITS uniform data. STYLE phases
+unblock as primitives, not as a cliff. GODMODE panels read finalized
+substrates.
 
 **Class-of-bug eliminations are queued, not just specific fixes.**
 `HOSTED_ZONE_ID` secret → `fromLookup`. `??` vs `||` lifted into
 global CLAUDE.md. The DEDUPE forward fix prevents new prefix-drift;
 the audit cleans the historical mess. Same pattern for UNITS — fix
 the parser **and** delete the compact-string layer so the next
-exotic value can't regress.
+exotic value can't regress. Stacked-PR `gh pr list` lying about
+MERGED → memory entry to verify with
+`git log origin/master --first-parent` before trusting status.
 
-**Operator queue stays empty.** Followups in CICD, REBRAND, UNITS
-are explicitly partitioned into "operator action required" vs.
-"autonomous followups." When the operator queue refills, it's named
-(secret rotation, environment approval, IAM policy review) rather
-than a vague "ask the human."
+**The polyglot retreat is a stuck shift.** Python pipeline + Node API
++ Rust billing → Python everywhere. The Rust port queued in HISTORY
+§VII as the only multi-week initiative is parked; Phase 0 codegen
+(`pydantic2ts` → `generated.ts`) delivers the single-source-of-truth
+benefit the Rust port was supposed to deliver, without leaving Python.
 
-**Neutrality is non-negotiable.** Search ordering, vendor
-visibility, sponsorship policy — every load-bearing surface defends
-the rule that Specodex doesn't favor any manufacturer. Re-read the
-MARKETING anti-positioning before any sponsorship conversation.
+**Operator queue stays empty.** Followups in CICD, REBRAND, UNITS,
+PHASE5_RECOVERY are explicitly partitioned into "operator action
+required" vs. "autonomous followups." When the operator queue refills,
+it's named (secret rotation, environment approval, IAM policy review)
+rather than a vague "ask the human."
 
-**The Rust port is the only multi-week item.** Everything else in the
-queue is half-day to a few days. The port is the multi-week
-commitment, sequenced behind the substrate cleanups (UNITS, DEDUPE)
-so the Rust models port a stable shape.
+**Neutrality is non-negotiable.** Search ordering, vendor visibility,
+sponsorship policy — every load-bearing surface defends the rule that
+Specodex doesn't favor any manufacturer. Re-read MARKETING anti-
+positioning before any sponsorship conversation.
+
+**The next multi-week item is PYTHON_BACKEND.** Everything else is
+half-day to a few days. PYTHON_BACKEND is the one that needs a single
+hand on the rudder, sequenced behind PHASE5_RECOVERY so the FastAPI
+auth surface ports a stable shape.

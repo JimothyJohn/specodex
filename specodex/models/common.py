@@ -32,8 +32,6 @@ ProductType = Literal[
     "drive",
     "gearhead",
     "robot_arm",
-    "factory",
-    "datasheet",
     "contactor",
     "electric_cylinder",
     "linear_actuator",

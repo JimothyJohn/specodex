@@ -1,33 +1,28 @@
 /**
  * Product Types Configuration
  *
- * This file defines all valid product types that the system supports.
+ * Single source of truth for "what product types exist" is now the
+ * generated constant `PRODUCT_TYPES` derived from
+ * `specodex/config.py:SCHEMA_CHOICES` (auto-discovered from
+ * `specodex/models/*.py`). Regenerate with `./Quickstart gen-types`;
+ * CI fails on drift.
  *
- * To add a new product type:
- * 1. Add the type to this array
- * 2. Update the data models and UI components as needed
+ * Adding a new product type:
+ * 1. Drop a new file under `specodex/models/`.
+ * 2. `./Quickstart gen-types`.
+ * (Old runbook had 6 places; this file is no longer one of them.)
  */
 
-/**
- * All valid product types in the system
- */
-export const VALID_PRODUCT_TYPES = [
-  'motor',
-  'drive',
-  'gearhead',
-  'robot_arm',
-  'contactor',
-  'electric_cylinder',
-  'linear_actuator',
-] as const;
+import { PRODUCT_TYPES, ProductTypeLiteral } from '../types/generated_constants';
+
+/** All valid product types in the system. */
+export const VALID_PRODUCT_TYPES = PRODUCT_TYPES;
+
+/** Type helper for valid product types. */
+export type ValidProductType = ProductTypeLiteral;
 
 /**
- * Type helper for valid product types
- */
-export type ValidProductType = typeof VALID_PRODUCT_TYPES[number];
-
-/**
- * Format a product type as a display name
+ * Format a product type as a display name.
  * Examples: "motor" -> "Motors", "robot_arm" -> "Robot Arms"
  */
 export function formatDisplayName(type: string): string {

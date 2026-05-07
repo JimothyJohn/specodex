@@ -1,7 +1,12 @@
 const tseslint = require("@typescript-eslint/eslint-plugin");
 const tsparser = require("@typescript-eslint/parser");
 const reactHooks = require("eslint-plugin-react-hooks");
-const reactRefresh = require("eslint-plugin-react-refresh");
+// eslint-plugin-react-refresh@0.5 became ESM-only and reshaped its CJS
+// interop: require() returns { __esModule, default, reactRefresh } now,
+// not the flat plugin object. Reach for .default (also present on 0.4.x)
+// so this works across both lines.
+const reactRefreshModule = require("eslint-plugin-react-refresh");
+const reactRefresh = reactRefreshModule.default ?? reactRefreshModule;
 
 module.exports = [
   {
