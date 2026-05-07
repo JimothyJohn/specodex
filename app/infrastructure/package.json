@@ -14,16 +14,16 @@
     "destroy": "cdk destroy"
   },
   "dependencies": {
-    "aws-cdk-lib": "^2.173.4",
+    "aws-cdk-lib": "^2.252.0",
     "constructs": "^10.4.2"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",
     "@types/node": "^25.6.0",
-    "aws-cdk": "^2.173.4",
+    "aws-cdk": "^2.1120.0",
     "esbuild": "^0.28.0",
     "jest": "^30.3.0",
-    "ts-jest": "^29.2.5",
+    "ts-jest": "^29.4.9",
     "ts-node": "^10.9.2",
     "typescript": "^6.0.3"
   }
