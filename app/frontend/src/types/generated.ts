@@ -1342,3 +1342,11 @@ export const PRODUCT_TYPES = [
   "robot_arm",
 ] as const;
 export type ProductTypeLiteral = (typeof PRODUCT_TYPES)[number];
+
+// ─────────────────────────────────────────────────────────────
+// Generated discriminated union — same auto-discovery contract
+// as PRODUCT_TYPES (one interface per concrete ProductBase
+// subclass under specodex/models/). Discriminator is the
+// ``product_type`` literal on each interface.
+// ─────────────────────────────────────────────────────────────
+export type Product = Contactor | Drive | ElectricCylinder | Gearhead | LinearActuator | Motor | RobotArm;
