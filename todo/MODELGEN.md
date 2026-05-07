@@ -6,9 +6,12 @@
 > 2026-05-02 because the codegen ships independently of the larger
 > Express → FastAPI migration and is worth tracking on its own.
 >
-> **Status:** 🚧 toolchain + drift gate ✅ shipped 2026-05-02; Zod enum
-> + allowlist collapse (Phase 0b) ✅ shipped 2026-05-03 (commit
-> `ae71eb3`); consumer rewire (Phase 0a-ii) pending.
+> **Status:** ✅ shipped — toolchain + drift gate (2026-05-02), Zod enum +
+> allowlist collapse (Phase 0b, 2026-05-03 `ae71eb3`), consumer rewire
+> (Phase 0a-ii, 2026-05-07). The frontend's `models.ts` is now a re-export
+> shim from `generated.ts`; the only remaining hand-typed mirror is
+> `app/backend/src/types/models.ts`, which retires with Express in
+> PYTHON_BACKEND.md Phase 3.
 
 ---
 
@@ -41,9 +44,9 @@ so rewiring it is wasted work.
 
 | Phase | Scope | State |
 |---|---|---|
-| **0a-ii** | Frontend `models.ts` rewritten to re-export from `generated.ts`; consumer fix-ups | ⏳ pending |
+| **0a-ii** | Frontend `models.ts` rewritten to re-export from `generated.ts`; consumer fix-ups | ✅ shipped 2026-05-07 — `models.ts` is a thin shim re-exporting `Motor`, `Drive`, `Gearhead`, `RobotArm`, `Contactor`, `ElectricCylinder`, `LinearActuator`, `ProductBase`, `Manufacturer`, `Datasheet`, `ValueUnit`, `MinMaxUnit`, `Dimensions`, `PRODUCT_TYPES`, plus a `Persisted<>` transform that tightens `product_id`/`product_type` on the API-facing `Product` union, plus the frontend-only `DatasheetEntry`, `ProductSummary`, and the wider `ProductType` (= `ProductTypeLiteral \| 'datasheet' \| 'all' \| null`). |
 | **0b** | Backend `routes/search.ts` Zod enum + `config/productTypes.ts` allowlist derived from generated | ✅ shipped 2026-05-03 (`ae71eb3`) — `gen_types.py` emits a `generated_constants.ts` twin for Express; `productTypes.ts` re-exports `PRODUCT_TYPES`; `routes/search.ts` uses `z.enum(VALID_PRODUCT_TYPES)`. CLAUDE.md "Adding a new product type" runbook updated to drop the obsolete steps. |
-| **0c** | "Adding a new product type" runbook collapses to 2 files + `gen-types` run | 🚧 partial — backend allowlist + Zod step retired post-0b. Full collapse to 2 files awaits 0a-ii (frontend `models.ts`). |
+| **0c** | "Adding a new product type" runbook collapses to 2 files + `gen-types` run | ✅ shipped 2026-05-07 — runbook now lists 3 steps: Pydantic model, `common.py` literal, `./Quickstart gen-types`. Step 4 (`app/backend/src/types/models.ts`) is the only remaining hand-edit and retires with Express deletion in PYTHON_BACKEND.md Phase 3. |
 
 ---
 

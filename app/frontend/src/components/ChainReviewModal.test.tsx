@@ -33,8 +33,6 @@ function product(product_type: string, opts: { id: string; manufacturer?: string
     product_type,
     manufacturer: opts.manufacturer ?? 'TestCo',
     part_number: opts.part_number,
-    PK: `PK#${product_type}#${opts.id}`,
-    SK: `SK#${opts.id}`,
   } as Product;
 }
 
