@@ -111,10 +111,13 @@ the same context file ask for merge pain.
 4. **`Motor`, `Drive`, `Gearhead`, `RobotArm`, `Contactor`** — the big
    product-type interfaces. Tackle `ProductBase` here too (PK/SK
    computed-field decision).
-5. **`Product` union, `ProductType` literal** — these aren't generated
-   directly by `pydantic2ts`. Either keep them hand-typed in the shim,
-   or have `gen_types.py` emit them as a postscript (extract from the
-   `Literal[...]` in `specodex/models/common.py:ProductType`).
+5. **`Product` union, `ProductType` literal** — `Product` union now
+   emitted by `gen_types.py:_product_union_type()` as a postscript,
+   walking `SCHEMA_CHOICES` so new product types auto-widen the union
+   (matches the `PRODUCT_TYPES` contract). `ProductTypeLiteral` is
+   emitted by the existing `_product_types_constant()`. The Phase 0a-ii
+   shim can now `export type { Product, ProductTypeLiteral } from
+   './generated';` instead of hand-typing.
 
 Each step: run `./Quickstart verify`. Green = ship.
 
@@ -178,10 +181,12 @@ generated.
    computed-field decorator and compute PK/SK on read in the API? Or
    keep it and force consumers to always set PK/SK? Lean toward dropping
    — the field is derivable, not authoritative.
-2. **`Product` union codegen.** `pydantic2ts` doesn't emit unions. Do we
-   write a small postscript in `gen_types.py` that walks
-   `SCHEMA_CHOICES` and emits `export type Product = Motor | Drive | …`?
-   Yes, probably — it's three lines and seals the last hand-typed gap.
+2. **`Product` union codegen.** ✅ Resolved 2026-05-07. `gen_types.py:
+   _product_union_type()` walks `SCHEMA_CHOICES.values()` and emits
+   `export type Product = Contactor | Drive | ElectricCylinder | …`
+   as a postscript to `generated.ts`. New product types auto-widen the
+   union (no hand-edit). Phase 0a-ii consumers can now re-export
+   `Product` from the generated module.
 3. **`generated_constants.ts` vs path-aliased shared module.** As above
    — defer; duplicate while Express is alive.
 
