@@ -19,12 +19,19 @@ on a live dev table: writes the merged canonical row under the
 family-aware product_id, then deletes the orphans. Per todo/DEDUPE.md.
 Refuses to run without ``--stage dev`` and without ``--apply``.
 
+Phase 3 (``--apply --from-review <md>``) reads a filled-in review
+markdown — the file Phase 1 generates, edited with reviewer picks for
+the ``review`` and ``delete-junk`` groups — and applies the chosen
+merge / delete-all per group. Same dry-run / yes guards as Phase 2.
+
 Usage:
     uv run python -m cli.audit_dedupes --stage dev
     uv run python -m cli.audit_dedupes --stage dev --output /tmp/audit.json
     uv run python -m cli.audit_dedupes --rows tests/fixtures/sample.json  # offline
     uv run python -m cli.audit_dedupes --stage dev --apply --safe-only --dry-run
     uv run python -m cli.audit_dedupes --stage dev --apply --safe-only --yes
+    uv run python -m cli.audit_dedupes --stage dev --apply --from-review review.md --dry-run
+    uv run python -m cli.audit_dedupes --stage dev --apply --from-review review.md --yes
 """
 
 from __future__ import annotations
@@ -33,6 +40,7 @@ import argparse
 import json
 import logging
 import os
+import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -196,6 +204,22 @@ def diff_group(rows: list[dict]) -> dict[str, str]:
     }
 
 
+def conflicting_values_for(
+    rows: list[dict], classifications: dict[str, str]
+) -> dict[str, list[Any]]:
+    """For each `conflicting` field, return per-row values (None for absent).
+
+    Lets the review-md renderer show side-by-side disagreements without
+    re-reading the source rows, and lets the Phase 3 ``--from-review``
+    applier resolve picks (``row 1``, ``row 2``, …) back to a value.
+    """
+    return {
+        field: _values_for(rows, field)
+        for field, c in classifications.items()
+        if c == "conflicting"
+    }
+
+
 def audit(rows: Iterable[dict]) -> list[dict[str, Any]]:
     """Return a list of group reports with diffs + suggested action.
 
@@ -242,6 +266,9 @@ def audit(rows: Iterable[dict]) -> list[dict[str, Any]]:
                     for r in group_rows_list
                 ],
                 "field_classifications": classifications,
+                "conflicting_values": conflicting_values_for(
+                    group_rows_list, classifications
+                ),
                 "family_mismatch": family_mismatch,
                 "suggested_action": action,
             }
@@ -252,11 +279,28 @@ def audit(rows: Iterable[dict]) -> list[dict[str, Any]]:
 # ── Rendering ──────────────────────────────────────────────────────────
 
 
+def _format_value_md(value: Any) -> str:
+    """Format a DynamoDB value for the markdown table — JSON in backticks.
+
+    The Phase 3 parser does the inverse: strip backticks + json.loads. Falls
+    back to ``str(value)`` for non-JSON-serialisable values; the parser
+    treats those as opaque strings.
+    """
+    if value is None:
+        return "—"
+    try:
+        encoded = json.dumps(value, sort_keys=True, default=str)
+    except (TypeError, ValueError):
+        return f"`{value}`"
+    return f"`{encoded}`"
+
+
 def render_review_md(reports: list[dict[str, Any]]) -> str:
     """Markdown review queue for the `review` and `delete-junk` groups.
 
-    Reviewer reads top-down, picks per disagreeing field, runs Phase 3
-    `--from-review` (not in this PR).
+    Each section is a fillable form: the reviewer changes the ``Pick:``
+    line and the per-field ``pick`` column, then feeds the file to
+    ``--from-review`` (Phase 3). See ``parse_review_md`` for the contract.
     """
     review = [r for r in reports if r["suggested_action"] != "merge"]
     lines: list[str] = [
@@ -266,6 +310,18 @@ def render_review_md(reports: list[dict[str, Any]]) -> str:
         "",
         f"Total groups needing review: **{len(review)}** "
         f"(out of {len(reports)} groups with >= 2 rows)",
+        "",
+        "**How to fill this in:**",
+        "",
+        "- Per group, change the `Pick:` line to one of `merge`, "
+        "`delete-all`, or `skip` (default).",
+        "- For `merge`, fill the `pick` column on each conflicting field "
+        "with the row number whose value to take (1, 2, …) — leave any "
+        "blank to skip the entire group.",
+        "- `delete-all` deletes every row in the group (use for junk-only "
+        "groups). `skip` leaves the rows alone.",
+        "- Run `./Quickstart audit-dedupes --stage dev --apply --from-review "
+        "<this file> --dry-run` to preview, then `--yes` to apply.",
         "",
     ]
     if not review:
@@ -279,6 +335,7 @@ def render_review_md(reports: list[dict[str, Any]]) -> str:
                 "",
                 f"- {r['row_count']} rows in this group"
                 + (" · ⚠ family mismatch" if r["family_mismatch"] else ""),
+                "- Pick: `skip`  <!-- change to merge | delete-all | skip -->",
                 "",
                 "### Source rows",
                 "",
@@ -297,17 +354,28 @@ def render_review_md(reports: list[dict[str, Any]]) -> str:
             f for f, c in r["field_classifications"].items() if c == "conflicting"
         ]
         if conflicting:
+            row_count = r["row_count"]
+            conflicting_values = r.get("conflicting_values") or {}
             lines.extend(
                 [
                     "",
                     "### Conflicting fields",
                     "",
                     "| field | "
-                    + " | ".join(f"row {i + 1}" for i in range(r["row_count"]))
-                    + " |",
-                    "|---|" + "|".join(["---"] * r["row_count"]) + "|",
+                    + " | ".join(f"row {i + 1}" for i in range(row_count))
+                    + " | pick |",
+                    "|---|" + "|".join(["---"] * row_count) + "|---|",
                 ]
             )
+            for field in conflicting:
+                values = conflicting_values.get(field) or [None] * row_count
+                # Pad/truncate defensively in case rows shifted post-audit.
+                if len(values) < row_count:
+                    values = values + [None] * (row_count - len(values))
+                value_cells = " | ".join(
+                    _format_value_md(v) for v in values[:row_count]
+                )
+                lines.append(f"| `{field}` | {value_cells} |  |")
         lines.append("")
     return "\n".join(lines) + "\n"
 
@@ -472,6 +540,162 @@ def merge_safe_group(rows: list[dict]) -> dict:
     return merged
 
 
+def merge_with_picks(rows: list[dict], picks: dict[str, int]) -> dict:
+    """Phase 3 — merge a `review` group using reviewer picks for conflicts.
+
+    `picks` maps field name → 1-indexed row number whose value to take.
+    Fields not in `picks` are merged via the Phase 2 ``merge_safe_group``
+    rule (non-null wins). Used by ``--from-review`` for groups whose
+    reviewer chose ``Pick: merge``.
+
+    Raises ValueError if any pick references a row index out of range.
+    """
+    if not rows:
+        raise ValueError("merge_with_picks requires at least one row")
+
+    n = len(rows)
+    for field, idx in picks.items():
+        if not 1 <= idx <= n:
+            raise ValueError(
+                f"merge_with_picks: pick {idx!r} for field {field!r} out of "
+                f"range 1..{n}"
+            )
+
+    merged = merge_safe_group(rows)
+    for field, idx in picks.items():
+        chosen = rows[idx - 1].get(field)
+        if chosen is None or chosen == "" or chosen == [] or chosen == {}:
+            # Reviewer asked to take an empty value — clear the field.
+            merged.pop(field, None)
+        else:
+            merged[field] = chosen
+    return merged
+
+
+# ── Phase 3 — review-md parser ────────────────────────────────────────
+
+
+_HEADER_RE = re.compile(
+    r"^##\s+\d+\.\s+`(?P<mfg>[^`]+)`\s*/\s*`(?P<core>[^`]+)`\s*"
+    r"—\s*(?P<action>review|delete-junk)\s*$"
+)
+_PICK_DIRECTIVE_RE = re.compile(
+    r"^-\s*Pick:\s*`?(?P<pick>merge|delete-all|skip)`?", re.IGNORECASE
+)
+# Markdown table row: `| `field` | val | val | <pick> |`
+_TABLE_ROW_RE = re.compile(r"^\|(.+)\|\s*$")
+_BACKTICK_VALUE_RE = re.compile(r"^`(.*)`$")
+
+
+def _strip_md_cell(cell: str) -> str:
+    return cell.strip()
+
+
+def _parse_value_cell(cell: str) -> Any:
+    """Inverse of `_format_value_md`. Returns None for an em-dash placeholder."""
+    s = _strip_md_cell(cell)
+    if not s or s == "—":
+        return None
+    m = _BACKTICK_VALUE_RE.match(s)
+    if m:
+        inner = m.group(1)
+        try:
+            return json.loads(inner)
+        except (TypeError, ValueError):
+            return inner
+    return s
+
+
+def parse_review_md(text: str) -> list[dict[str, Any]]:
+    """Parse a filled-in review markdown into per-group action+picks.
+
+    Returns one entry per group with::
+
+        {
+            "manufacturer": str,
+            "normalized_core": str,
+            "audit_action": "review" | "delete-junk",
+            "pick": "merge" | "delete-all" | "skip",
+            "field_picks": {field: row_index_1_based},
+        }
+
+    The applier looks each entry up in the current audit by
+    ``(manufacturer, normalized_core)`` and acts only on entries whose
+    ``pick`` is ``merge`` or ``delete-all``. Groups with ``pick == skip``
+    or with incomplete field picks are skipped (the operator decides).
+    """
+    groups: list[dict[str, Any]] = []
+    current: dict[str, Any] | None = None
+    in_conflict_table = False
+    column_count = 0
+
+    for raw in text.splitlines():
+        line = raw.rstrip()
+        header = _HEADER_RE.match(line)
+        if header:
+            if current is not None:
+                groups.append(current)
+            current = {
+                "manufacturer": header.group("mfg"),
+                "normalized_core": header.group("core"),
+                "audit_action": header.group("action"),
+                "pick": "skip",
+                "field_picks": {},
+            }
+            in_conflict_table = False
+            column_count = 0
+            continue
+        if current is None:
+            continue
+        pick_directive = _PICK_DIRECTIVE_RE.match(line)
+        if pick_directive:
+            current["pick"] = pick_directive.group("pick").lower()
+            continue
+        if line.startswith("### Conflicting fields"):
+            in_conflict_table = True
+            column_count = 0
+            continue
+        if line.startswith("### ") or line.startswith("## "):
+            in_conflict_table = False
+        if not in_conflict_table:
+            continue
+        m = _TABLE_ROW_RE.match(line)
+        if not m:
+            continue
+        cells = [c for c in m.group(1).split("|")]
+        # Skip the header row (`field | row 1 | row 2 | pick`) and the
+        # separator (`---|---|---|---`).
+        joined = "".join(cells).strip()
+        if not joined or set(joined) <= set("- "):
+            # Separator row — also tells us the column count.
+            column_count = len(cells)
+            continue
+        if column_count == 0:
+            # Header row of the conflict table — count columns.
+            column_count = len(cells)
+            continue
+        if len(cells) < 3:
+            continue
+        # Layout: ['', ' `field` ', ' val1 ', ..., ' pick ', '']
+        field_cell = _strip_md_cell(cells[0])
+        field_name_match = _BACKTICK_VALUE_RE.match(field_cell)
+        if not field_name_match:
+            continue
+        field = field_name_match.group(1)
+        pick_cell = _strip_md_cell(cells[-1])
+        if not pick_cell:
+            continue
+        try:
+            pick_idx = int(pick_cell)
+        except ValueError:
+            continue
+        current["field_picks"][field] = pick_idx
+
+    if current is not None:
+        groups.append(current)
+    return groups
+
+
 def plan_safe_merges(
     reports: list[dict[str, Any]], rows_by_pksk: dict[tuple[str, str], dict]
 ) -> list[dict[str, Any]]:
@@ -519,6 +743,136 @@ def plan_safe_merges(
     return plan
 
 
+def plan_from_review(
+    review_entries: list[dict[str, Any]],
+    reports: list[dict[str, Any]],
+    rows_by_pksk: dict[tuple[str, str], dict],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Build a write-plan from parsed review entries + a fresh audit.
+
+    Returns ``(plan, skipped)``. Plan entries have the same shape as
+    ``plan_safe_merges`` so they flow through ``apply_plan`` unchanged.
+    Skipped entries record the reason so the dry-run output can show
+    why each one was dropped (lets the operator fix the file and re-run).
+
+    Skip reasons:
+    - ``not_in_audit`` — manufacturer/core not in the current audit
+      (rows changed since the file was rendered).
+    - ``row_count_mismatch`` — audit row count differs from the file's;
+      treat as stale.
+    - ``pick_skip`` — reviewer left ``Pick: skip``.
+    - ``incomplete_picks`` — ``Pick: merge`` but at least one conflicting
+      field has no row index.
+    - ``unresolvable_rows`` — audit references rows we can't find in the
+      live scan (rows deleted between audit and apply).
+    - ``invalid_pick_index`` — a pick index is out of range for the group.
+    """
+    by_key = {(g["manufacturer"], g["normalized_core"]): g for g in reports}
+    plan: list[dict[str, Any]] = []
+    skipped: list[dict[str, Any]] = []
+
+    for entry in review_entries:
+        key = (entry["manufacturer"], entry["normalized_core"])
+        group = by_key.get(key)
+        if group is None:
+            skipped.append({"entry": entry, "reason": "not_in_audit"})
+            continue
+        if (
+            group["row_count"] != len(entry.get("field_picks", {}) or {})
+            and entry["pick"] == "merge"
+        ):
+            # row count check happens below; the picks count check is per-conflict
+            pass
+        if entry["pick"] == "skip":
+            skipped.append({"entry": entry, "reason": "pick_skip", "group": group})
+            continue
+
+        full_rows: list[dict] = []
+        for row_ref in group.get("rows", []):
+            pk, sk = row_ref.get("PK"), row_ref.get("SK")
+            if pk is None or sk is None:
+                continue
+            full = rows_by_pksk.get((pk, sk))
+            if full is not None:
+                full_rows.append(full)
+        if len(full_rows) != group["row_count"]:
+            skipped.append(
+                {"entry": entry, "reason": "unresolvable_rows", "group": group}
+            )
+            continue
+
+        if entry["pick"] == "delete-all":
+            deletes = [
+                (r["PK"], r["SK"]) for r in full_rows if r.get("PK") and r.get("SK")
+            ]
+            plan.append(
+                {
+                    "group": group,
+                    "merged": None,  # signals "deletes-only" to apply_plan
+                    "deletes": deletes,
+                    "review_pick": "delete-all",
+                }
+            )
+            continue
+
+        if entry["pick"] != "merge":
+            skipped.append({"entry": entry, "reason": "pick_skip", "group": group})
+            continue
+
+        # Pick == merge: every conflicting field needs a row index.
+        conflicting = [
+            f
+            for f, c in group.get("field_classifications", {}).items()
+            if c == "conflicting"
+        ]
+        picks = entry.get("field_picks") or {}
+        missing = [f for f in conflicting if f not in picks]
+        if missing:
+            skipped.append(
+                {
+                    "entry": entry,
+                    "reason": "incomplete_picks",
+                    "group": group,
+                    "missing_fields": missing,
+                }
+            )
+            continue
+
+        try:
+            merged = merge_with_picks(full_rows, picks)
+        except ValueError as exc:
+            skipped.append(
+                {
+                    "entry": entry,
+                    "reason": "invalid_pick_index",
+                    "group": group,
+                    "error": str(exc),
+                }
+            )
+            continue
+
+        canonical_sk = merged.get("SK")
+        deletes: list[tuple[str, str]] = []
+        for r in full_rows:
+            pk, sk = r.get("PK"), r.get("SK")
+            if pk is None or sk is None:
+                continue
+            if sk == canonical_sk:
+                continue
+            deletes.append((pk, sk))
+
+        plan.append(
+            {
+                "group": group,
+                "merged": merged,
+                "deletes": deletes,
+                "review_pick": "merge",
+            }
+        )
+
+    return plan, skipped
+
+
 def apply_plan(
     plan: list[dict[str, Any]],
     put_item: Callable[[dict], None],
@@ -531,8 +885,10 @@ def apply_plan(
     """
     tally = {"groups": 0, "puts": 0, "deletes": 0}
     for entry in plan:
-        put_item(entry["merged"])
-        tally["puts"] += 1
+        merged = entry.get("merged")
+        if merged is not None:
+            put_item(merged)
+            tally["puts"] += 1
         for pk, sk in entry["deletes"]:
             delete_item(pk, sk)
             tally["deletes"] += 1
@@ -568,6 +924,68 @@ def render_plan_md(plan: list[dict[str, Any]]) -> str:
                 "",
             ]
         )
+    return "\n".join(lines) + "\n"
+
+
+def render_review_plan_md(
+    plan: list[dict[str, Any]], skipped: list[dict[str, Any]]
+) -> str:
+    """Render a Phase 3 plan + skip-reason summary."""
+    merges = [e for e in plan if e.get("review_pick") == "merge"]
+    deletes = [e for e in plan if e.get("review_pick") == "delete-all"]
+    lines: list[str] = [
+        "# DEDUPE Phase 3 — review-applier plan",
+        "",
+        f"Generated: {datetime.now(timezone.utc).isoformat(timespec='seconds')}",
+        "",
+        f"Merges: **{len(merges)}** · "
+        f"Delete-all groups: **{len(deletes)}** · "
+        f"Skipped: **{len(skipped)}**",
+        "",
+    ]
+    if merges:
+        lines.append("## Merges")
+        lines.append("")
+        for i, entry in enumerate(merges, 1):
+            g = entry["group"]
+            merged = entry["merged"] or {}
+            lines.extend(
+                [
+                    f"### {i}. `{g['manufacturer']}` / `{g['normalized_core']}`",
+                    "",
+                    f"- Canonical SK: `{merged.get('SK') or '—'}`",
+                    f"- Orphan deletes: {len(entry['deletes'])}",
+                    "",
+                ]
+            )
+    if deletes:
+        lines.append("## Delete-all")
+        lines.append("")
+        for i, entry in enumerate(deletes, 1):
+            g = entry["group"]
+            lines.extend(
+                [
+                    f"### {i}. `{g['manufacturer']}` / `{g['normalized_core']}`",
+                    "",
+                    f"- Rows to delete: {len(entry['deletes'])}",
+                    "",
+                ]
+            )
+    if skipped:
+        lines.append("## Skipped")
+        lines.append("")
+        for s in skipped:
+            entry = s["entry"]
+            extra = ""
+            if s.get("missing_fields"):
+                extra = f" (missing picks: {', '.join(s['missing_fields'])})"
+            elif s.get("error"):
+                extra = f" ({s['error']})"
+            lines.append(
+                f"- `{entry['manufacturer']}` / `{entry['normalized_core']}` "
+                f"— **{s['reason']}**{extra}"
+            )
+        lines.append("")
     return "\n".join(lines) + "\n"
 
 
@@ -681,6 +1099,13 @@ def main(argv: list[str] | None = None) -> int:
         help="With --apply, write the merge plan markdown here "
         "(default: outputs/dedupe_plan_<stage>_<ts>.md)",
     )
+    parser.add_argument(
+        "--from-review",
+        type=Path,
+        help="Phase 3: apply a filled-in review markdown (the file Phase 1 "
+        "writes — see `Pick:` directives). Combine with --apply --dry-run "
+        "to preview, then --apply --yes to write.",
+    )
     args = parser.parse_args(argv)
 
     logging.basicConfig(
@@ -736,11 +1161,20 @@ def main(argv: list[str] | None = None) -> int:
     if not args.apply:
         return 0
 
-    # Phase 2 — safe-merge writes.
-    if not args.safe_only:
+    # Apply path — Phase 2 (--safe-only) or Phase 3 (--from-review).
+    if args.from_review and args.safe_only:
         print(
-            "--apply requires --safe-only in Phase 2 (`review` and "
-            "`delete-junk` groups belong to Phase 3 / human review).",
+            "--from-review and --safe-only are mutually exclusive: "
+            "--safe-only is the Phase 2 auto-merge path, --from-review "
+            "is the Phase 3 reviewer-driven path. Pick one.",
+            file=sys.stderr,
+        )
+        return 2
+    if not args.from_review and not args.safe_only:
+        print(
+            "--apply requires --safe-only (Phase 2 auto-merge) or "
+            "--from-review <md> (Phase 3 reviewer-driven). The bare "
+            "--apply form is ambiguous on purpose.",
             file=sys.stderr,
         )
         return 2
@@ -766,28 +1200,53 @@ def main(argv: list[str] | None = None) -> int:
             continue
         rows_by_pksk[(pk, sk)] = r
 
-    plan = plan_safe_merges(reports, rows_by_pksk)
-    plan_path = args.plan_output or OUTPUT_DIR / f"dedupe_plan_{args.stage}_{ts}.md"
-    plan_path.write_text(render_plan_md(plan))
-    log.info("Wrote merge plan: %s", plan_path)
+    skipped: list[dict[str, Any]] = []
+    if args.from_review:
+        if not args.from_review.exists():
+            print(
+                f"--from-review file not found: {args.from_review}",
+                file=sys.stderr,
+            )
+            return 2
+        review_entries = parse_review_md(args.from_review.read_text())
+        plan, skipped = plan_from_review(review_entries, reports, rows_by_pksk)
+        plan_path = (
+            args.plan_output or OUTPUT_DIR / f"dedupe_review_plan_{args.stage}_{ts}.md"
+        )
+        plan_path.write_text(render_review_plan_md(plan, skipped))
+        log.info(
+            "Wrote review-applier plan: %s (merges=%s, deletes=%s, skipped=%s)",
+            plan_path,
+            sum(1 for e in plan if e.get("review_pick") == "merge"),
+            sum(1 for e in plan if e.get("review_pick") == "delete-all"),
+            len(skipped),
+        )
+    else:
+        plan = plan_safe_merges(reports, rows_by_pksk)
+        plan_path = args.plan_output or OUTPUT_DIR / f"dedupe_plan_{args.stage}_{ts}.md"
+        plan_path.write_text(render_plan_md(plan))
+        log.info("Wrote merge plan: %s", plan_path)
+
+    total_puts = sum(1 for e in plan if e.get("merged") is not None)
+    total_deletes = sum(len(e["deletes"]) for e in plan)
 
     if args.dry_run:
         log.info(
-            "Dry-run: %s groups would merge (puts=%s, deletes=%s). "
+            "Dry-run: %s plan entries (puts=%s, deletes=%s). "
             "Re-run with --yes (without --dry-run) to apply.",
             len(plan),
-            len(plan),
-            sum(len(p["deletes"]) for p in plan),
+            total_puts,
+            total_deletes,
         )
         return 0
 
     table_name = args.table or f"products-{args.stage}"
     log.warning(
-        "Applying %s merges to %s — puts=%s, deletes=%s",
+        "Applying %s entries to %s — puts=%s, deletes=%s",
         len(plan),
         table_name,
-        len(plan),
-        sum(len(p["deletes"]) for p in plan),
+        total_puts,
+        total_deletes,
     )
 
     import boto3  # type: ignore
@@ -807,7 +1266,7 @@ def main(argv: list[str] | None = None) -> int:
 
     tally = apply_plan(plan, _put, _delete)
     log.info(
-        "Applied: %s groups merged, %s puts, %s deletes",
+        "Applied: %s entries, %s puts, %s deletes",
         tally["groups"],
         tally["puts"],
         tally["deletes"],
