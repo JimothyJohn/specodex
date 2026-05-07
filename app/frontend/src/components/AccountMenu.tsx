@@ -12,6 +12,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import AuthModal from './AuthModal';
+import Tooltip from './ui/Tooltip';
 
 export default function AccountMenu() {
   const { user, isAdmin, logout } = useAuth();
@@ -59,7 +60,9 @@ export default function AccountMenu() {
         aria-expanded={menuOpen}
         onClick={() => setMenuOpen(o => !o)}
       >
-        <span className="account-menu-email" title={user.email}>{user.email || 'Account'}</span>
+        <Tooltip content={user.email || 'Account'}>
+          <span className="account-menu-email">{user.email || 'Account'}</span>
+        </Tooltip>
         {isAdmin && <span className="account-menu-admin-pill">ADMIN</span>}
       </button>
       {menuOpen && (

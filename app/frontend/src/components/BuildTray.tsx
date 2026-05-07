@@ -21,6 +21,7 @@ import { BUILD_SLOTS, BuildSlot, check } from '../utils/compat';
 import type { Product } from '../types/models';
 import CompatBadge from './CompatBadge';
 import ChainReviewModal, { adjacentFilledPairs } from './ChainReviewModal';
+import Tooltip from './ui/Tooltip';
 
 const SLOT_LABEL: Record<BuildSlot, string> = {
   drive: 'Drive',
@@ -130,9 +131,11 @@ export default function BuildTray() {
       <div className="build-tray-inner">
         <span className="build-tray-label">Build:</span>
         {isComplete && (
-          <span className="build-tray-complete-mark" aria-label="Build complete" title="All slots filled and every junction is compatible">
-            ✓
-          </span>
+          <Tooltip content="All slots filled and every junction is compatible">
+            <span className="build-tray-complete-mark" aria-label="Build complete">
+              ✓
+            </span>
+          </Tooltip>
         )}
         {BUILD_SLOTS.map((slot, idx) => {
           const product = build[slot];
@@ -150,15 +153,16 @@ export default function BuildTray() {
                       {product.manufacturer || 'Unknown'}
                       {product.part_number ? ` — ${product.part_number}` : ''}
                     </span>
-                    <button
-                      type="button"
-                      className="build-tray-remove"
-                      onClick={() => removeFromBuild(slot)}
-                      aria-label={`Remove ${SLOT_LABEL[slot]} from build`}
-                      title="Remove"
-                    >
-                      ×
-                    </button>
+                    <Tooltip content="Remove">
+                      <button
+                        type="button"
+                        className="build-tray-remove"
+                        onClick={() => removeFromBuild(slot)}
+                        aria-label={`Remove ${SLOT_LABEL[slot]} from build`}
+                      >
+                        ×
+                      </button>
+                    </Tooltip>
                   </>
                 ) : (
                   <span className="build-tray-slot-empty">empty</span>
@@ -177,23 +181,25 @@ export default function BuildTray() {
           );
         })}
         {adjacentPairCount > 0 && (
+          <Tooltip content="Open a side-by-side compatibility audit of every adjacent pair">
+            <button
+              type="button"
+              className="build-tray-review"
+              onClick={() => setReviewOpen(true)}
+            >
+              Review chain
+            </button>
+          </Tooltip>
+        )}
+        <Tooltip content="Copy a plain-text bill of materials to the clipboard">
           <button
             type="button"
-            className="build-tray-review"
-            onClick={() => setReviewOpen(true)}
-            title="Open a side-by-side compatibility audit of every adjacent pair"
+            className="build-tray-copy"
+            onClick={copyBom}
           >
-            Review chain
+            {copyState === 'copied' ? 'Copied!' : copyState === 'failed' ? 'Copy failed' : 'Copy BOM'}
           </button>
-        )}
-        <button
-          type="button"
-          className="build-tray-copy"
-          onClick={copyBom}
-          title="Copy a plain-text bill of materials to the clipboard"
-        >
-          {copyState === 'copied' ? 'Copied!' : copyState === 'failed' ? 'Copy failed' : 'Copy BOM'}
-        </button>
+        </Tooltip>
         <button type="button" className="build-tray-clear" onClick={clearBuild}>
           Clear
         </button>

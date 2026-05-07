@@ -53,9 +53,14 @@ describe('ThemeToggle', () => {
     expect(button.getAttribute('aria-label')).toBe('Switch to dark mode');
   });
 
-  it('has a title attribute for tooltip', () => {
+  it('exposes the tooltip label via aria-label (themed Tooltip replaces native title)', () => {
+    // Native `title=` was migrated to the app-native Tooltip component
+    // (STYLE.md Phase 1). The accessible label still lives on the button
+    // via aria-label so screen readers and the tooltip content stay in
+    // sync.
     render(<ThemeToggle />);
     const button = screen.getByRole('button');
-    expect(button.getAttribute('title')).toBe('Switch to light mode');
+    expect(button.getAttribute('aria-label')).toBe('Switch to light mode');
+    expect(button.getAttribute('title')).toBeNull();
   });
 });

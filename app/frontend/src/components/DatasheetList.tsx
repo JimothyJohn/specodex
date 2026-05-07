@@ -7,6 +7,7 @@ import DatasheetFilterBar from './DatasheetFilterBar';
 import DatasheetEditModal from './DatasheetEditModal';
 import Dropdown from './Dropdown';
 import ExternalLink from './ui/ExternalLink';
+import Tooltip from './ui/Tooltip';
 import { sanitizeUrl } from '../utils/sanitize';
 
 export default function DatasheetList() {
@@ -245,13 +246,13 @@ export default function DatasheetList() {
                   </td>
                   <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                      <Tooltip content="Delete Datasheet">
                       <button
                         className="btn-icon delete"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleDelete(datasheet.product_id || '', datasheet.component_type);
                         }}
-                        title="Delete Datasheet"
                         style={{ padding: '0.25rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                       >
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -261,6 +262,7 @@ export default function DatasheetList() {
                           <line x1="14" y1="11" x2="14" y2="17"></line>
                         </svg>
                       </button>
+                      </Tooltip>
                     </div>
                   </td>
                 </tr>
