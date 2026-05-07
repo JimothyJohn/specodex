@@ -15,6 +15,7 @@ import {
 } from '../utils/unitConversion';
 import CompatChecker from './CompatChecker';
 import AddToProjectMenu from './AddToProjectMenu';
+import ExternalLink from './ui/ExternalLink';
 import { BUILD_SLOTS, BuildSlot } from '../utils/compat';
 
 interface ProductDetailModalProps {
@@ -223,21 +224,14 @@ export default function ProductDetailModal({ product, onClose, clickPosition }: 
           <div>
             <h2>{product.manufacturer || 'Unknown Manufacturer'}</h2>
             {datasheetUrl ? (
-              <a
+              <ExternalLink
                 href={sanitizeUrl(datasheetUrl)}
-                target="_blank"
-                rel="noopener noreferrer"
+                tooltip="View datasheet PDF"
                 className="product-detail-part product-detail-part-link"
-                title="View datasheet PDF"
                 onClick={(e) => e.stopPropagation()}
               >
                 {product.part_number || 'N/A'}
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                  <polyline points="15 3 21 3 21 9"></polyline>
-                  <line x1="10" y1="14" x2="21" y2="3"></line>
-                </svg>
-              </a>
+              </ExternalLink>
             ) : (
               <p className="product-detail-part">{product.part_number || 'N/A'}</p>
             )}

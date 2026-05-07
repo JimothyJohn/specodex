@@ -6,6 +6,7 @@ import { useColumnResize } from '../utils/hooks';
 import DatasheetFilterBar from './DatasheetFilterBar';
 import DatasheetEditModal from './DatasheetEditModal';
 import Dropdown from './Dropdown';
+import ExternalLink from './ui/ExternalLink';
 import { sanitizeUrl } from '../utils/sanitize';
 
 export default function DatasheetList() {
@@ -217,14 +218,14 @@ export default function DatasheetList() {
                   }}
                 >
                   <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    <a
+                    <ExternalLink
                       href={sanitizeUrl(datasheet.url)}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                      tooltip={`Open ${datasheet.product_name} datasheet PDF`}
                       style={{ fontWeight: 500, color: 'var(--accent-primary)', textDecoration: 'none' }}
+                      onClick={(e) => e.stopPropagation()}
                     >
                       {datasheet.product_name}
-                    </a>
+                    </ExternalLink>
                   </td>
                   <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.9rem', textTransform: 'capitalize', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{datasheet.component_type || '-'}</td>
                   <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{datasheet.product_family || '-'}</td>
