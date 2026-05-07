@@ -166,16 +166,30 @@ class TestConfigConsistency:
             )
 
     def test_frontend_models_define_all_types(self):
-        """Frontend Product union type must include all hardware types."""
-        models_file = FRONTEND / "src" / "types" / "models.ts"
-        content = models_file.read_text()
+        """Frontend type module must export all hardware-product types.
+
+        Post-MODELGEN Phase 0a-ii (2026-05-07), `models.ts` is a thin
+        re-export shim from `generated.ts` — Motor/Drive/Gearhead/RobotArm
+        are no longer declared as `interface` blocks here, they're
+        re-exported. The contract is "they're reachable from this module",
+        which is what consumers actually depend on. The interface
+        definitions themselves live in `generated.ts` (and the codegen
+        drift gate in `test-codegen` proves they're up to date with
+        Pydantic).
+        """
+        models_content = (FRONTEND / "src" / "types" / "models.ts").read_text()
+        generated_content = (FRONTEND / "src" / "types" / "generated.ts").read_text()
         for t in ["Motor", "Drive", "RobotArm", "Gearhead"]:
-            assert f"interface {t}" in content, f"Missing interface {t} in models.ts"
-        # Check Product union includes all
-        assert "Motor" in content
-        assert "Drive" in content
-        assert "RobotArm" in content
-        assert "Gearhead" in content
+            # Symbol must be reachable from models.ts (either re-exported
+            # or hand-typed).
+            assert t in models_content, f"Symbol {t} not reachable from models.ts"
+            # Underlying interface must exist in generated.ts so the
+            # re-export resolves to a real shape.
+            assert f"interface {t}" in generated_content, (
+                f"Missing interface {t} in generated.ts — Pydantic source "
+                f"under specodex/models/ may need a re-run of "
+                f"./Quickstart gen-types."
+            )
 
     def test_frontend_filters_cover_all_types(self):
         """getAttributesForType must have a branch for each product type."""

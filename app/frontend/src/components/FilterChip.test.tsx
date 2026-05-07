@@ -61,7 +61,7 @@ describe('FilterChip', () => {
       />
     );
 
-    const removeButton = screen.getByTitle(/Remove/i);
+    const removeButton = screen.getByRole('button', { name: /Remove spec/i });
     fireEvent.click(removeButton);
 
     expect(mockRemove).toHaveBeenCalledTimes(1);
@@ -273,7 +273,7 @@ describe('FilterChip', () => {
       expect(screen.getByText('5')).toBeInTheDocument();
       expect(screen.getByText('100')).toBeInTheDocument();
       // Readout button shows "<value> Nm".
-      const readout = screen.getByTitle(/type an exact value/i);
+      const readout = screen.getByRole("button", { name: /type an exact value/i });
       expect(readout.textContent).toContain('Nm');
       expect(readout.textContent).not.toContain('in·lb');
     });
@@ -284,7 +284,7 @@ describe('FilterChip', () => {
       // to 4 sig figs (44.25 and 885.1).
       expect(screen.getByText('44.25')).toBeInTheDocument();
       expect(screen.getByText('885.1')).toBeInTheDocument();
-      const readout = screen.getByTitle(/type an exact value/i);
+      const readout = screen.getByRole("button", { name: /type an exact value/i });
       expect(readout.textContent).toContain('in·lb');
       expect(readout.textContent).not.toMatch(/\bNm\b/);
     });
@@ -294,7 +294,7 @@ describe('FilterChip', () => {
       onUpdate.mockClear();   // discard the auto-seed call from useEffect
 
       // Open the value editor.
-      fireEvent.click(screen.getByTitle(/type an exact value/i));
+      fireEvent.click(screen.getByRole("button", { name: /type an exact value/i }));
       const input = screen.getByLabelText(/override slider with typed value/i) as HTMLInputElement;
 
       // User types 100 in·lb. Canonical = 100 / 8.850746 ≈ 11.30 Nm.

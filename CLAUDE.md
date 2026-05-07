@@ -85,27 +85,30 @@ Single provider: everything uses `GEMINI_API_KEY`. Model id is pinned in `specod
 
 ## Adding a new product type
 
-The Python side auto-discovers, but the TypeScript side has four hardcoded allowlists that silently drop unknown types. Touch all of them or the type won't show up on the site:
+The Python side auto-discovers. MODELGEN Phases 0b (shipped 2026-05-03)
+and 0a-ii (shipped 2026-05-07) collapsed the backend allowlist + Zod
+enum and the frontend `models.ts` mirror onto the codegen output —
+all four of those hand-edits are gone. The frontend's `models.ts` is
+now a thin re-export shim from `generated.ts`.
 
 1. `specodex/models/<type>.py` — Pydantic model inheriting `ProductBase`, with `product_type: Literal["<type>"] = "<type>"`.
 2. `specodex/models/common.py` — add `"<type>"` to the `ProductType` literal.
-3. `app/backend/src/config/productTypes.ts` — add to `VALID_PRODUCT_TYPES`. Without this, `getCategories()` filters the type out of the dropdown.
-4. `app/backend/src/types/models.ts` — add a `<Type>` interface + include it in the `Product` and `ProductType` unions.
-5. `app/backend/src/routes/search.ts` — add to the zod `type` enum. Without this, `/api/v1/search?type=<type>` returns 400.
-6. `app/frontend/src/types/models.ts` — add to the `ProductType` union.
+3. `./Quickstart gen-types` — regenerates `app/frontend/src/types/generated.ts` and the backend `generated_constants.ts` twin. The new type auto-flows into `VALID_PRODUCT_TYPES` (backend), the search Zod enum, the frontend `Product` union, and the frontend `ProductType` literal — no hand-edits needed.
+4. `app/backend/src/types/models.ts` — still hand-typed, **for now**. Add a `<Type>` interface + include it in the `Product` and `ProductType` unions. Goes away with the Express deletion in `todo/PYTHON_BACKEND.md` Phase 3 (see `todo/MODELGEN.md` "Don't migrate `app/backend/src/types/models.ts`" — wasted work to migrate before deletion).
 
-> **Heads up:** `todo/PYTHON_BACKEND.md` Phase 0a/b retires steps 4–6 by
-> regenerating `app/frontend/src/types/generated.ts` via
-> `./Quickstart gen-types`. Once that lands, the runbook collapses to
-> steps 1–3 + a `gen-types` run. Until then, do all six.
+> **Heads up:** Phase 0b retired the old steps 3 (`VALID_PRODUCT_TYPES`)
+> and the search Zod enum; Phase 0a-ii retired the frontend `models.ts`
+> hand-edit. The only remaining hand-edit is the Express-backend mirror
+> (step 4 above), and that retires when Express does in
+> PYTHON_BACKEND.md Phase 3.
 
 Step 1 can be scaffolded with `./Quickstart schemagen <pdf>... --type <name>`, which runs the standard `page_finder → Gemini → ProposedModel` pipeline and writes the model file plus the `common.py` patch. **Pass 3-5 vendors' datasheets** (ABB, Schneider, Siemens, Allen-Bradley, etc.) so the LLM generalizes across vendors instead of tuning the schema to one catalog's quirks — a single-source proposal will happily hardcode vendor-specific voltage columns or frame codes. The CLI also writes a companion `<type>.md` doc citing the sources and explaining non-obvious design decisions; treat that `.md` as the schema's reviewable ADR, not scratchwork.
 
 ### Smoke-testing a new type end-to-end
 
-After touching the six files above, run this loop locally before pushing. Skipping any step is how types silently 400 in prod.
+After touching the five files above, run this loop locally before pushing. Skipping any step is how types silently 400 in prod.
 
-1. **Pre-push gate.** `./Quickstart verify` runs the same lint + tests + build that CI runs (Python ruff + pytest, backend lint + jest + tsc, frontend lint + vitest + tsc + vite). Green here means CI will be green; red here is your problem to fix before pushing. A missing `common.py` patch fails the Python pytest stage; a missing zod enum or interface fails the TypeScript build stage.
+1. **Pre-push gate.** `./Quickstart verify` runs the same lint + tests + build that CI runs (Python ruff + pytest, backend lint + jest + tsc, frontend lint + vitest + tsc + vite). Green here means CI will be green; red here is your problem to fix before pushing. A missing `common.py` patch fails the Python pytest stage; a forgotten `gen-types` run fails the `test-codegen` drift gate; a missing backend or frontend interface fails the TypeScript build stage.
 2. **Seed at least one record.** Drop a PDF in `tests/benchmark/datasheets/`, add a fixture entry, and run `./Quickstart bench --live --update-cache --filter <slug>` — the extraction path writes nothing to DynamoDB but validates the model end-to-end. To actually populate dev DynamoDB, point `./Quickstart process` at a local S3 upload (see "Processing the upload queue" in `cli/processor.py`).
 3. **Start dev servers** with `./Quickstart dev` (backend: `localhost:3001`, frontend Vite: `localhost:5173`).
 4. **Verify API surface:**
@@ -113,7 +116,7 @@ After touching the six files above, run this loop locally before pushing. Skippi
         curl -s localhost:3001/api/products/categories | jq '.data[].type'       # new type listed
         curl -s "localhost:3001/api/v1/search?type=<new>" | jq '.success'         # returns true (not 400)
 
-   If `categories` omits the type, step 3 (`VALID_PRODUCT_TYPES`) is missing. If `search` 400s, step 5 (zod enum) is missing.
+   If `categories` omits the type or `search` 400s, `./Quickstart gen-types` wasn't run (step 3) — `VALID_PRODUCT_TYPES` and the search Zod enum both derive from the generated artifact.
 5. **UI check.** Load `http://localhost:5173`, select the new type in the sidebar dropdown, confirm filter chips and table columns render. Missing frontend `ProductType` entry manifests as "type is not assignable" at compile time OR as the type silently filtered out by `deriveAttributesFromRecords`.
 
 ## Frontend UI conventions

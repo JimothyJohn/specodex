@@ -42,8 +42,6 @@ function product(product_type: string, product_id: string): Product {
     product_id,
     product_type,
     manufacturer: 'TestCo',
-    PK: `PK#${product_type}#${product_id}`,
-    SK: `SK#${product_id}`,
   } as Product;
 }
 

@@ -81,7 +81,7 @@ SUMMARY_SPECS: dict[str, list[str]] = {
         "gear_ratio",
         "gear_type",
         "stages",
-        "rated_torque",
+        "max_continuous_torque",
         "backlash",
         "efficiency",
     ],
