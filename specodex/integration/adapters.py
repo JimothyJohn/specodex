@@ -103,8 +103,8 @@ def _gearhead_ports(g: Gearhead) -> Dict[str, Port]:
         "shaft_output": MechanicalShaftPort(
             direction="output",
             shaft_diameter=g.output_shaft_diameter,
-            rated_torque=g.rated_torque,
-            peak_torque=g.peak_torque,
+            rated_torque=g.max_continuous_torque,
+            peak_torque=g.max_peak_torque,
         ),
     }
 

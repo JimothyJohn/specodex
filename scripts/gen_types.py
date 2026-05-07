@@ -117,6 +117,36 @@ def _product_types_constant() -> str:
     )
 
 
+def _product_union_type() -> str:
+    """Return TypeScript source for the ``Product`` discriminated union.
+
+    ``pydantic2ts`` emits one interface per Pydantic class but does not
+    emit unions. The hand-typed ``app/frontend/src/types/models.ts``
+    has historically maintained a ``Product`` union by hand; this
+    postscript closes that last gap so the generated module is a true
+    superset and Phase 0a-ii (consumer rewire) can re-export ``Product``
+    from here instead of hand-typing it.
+
+    The members come from ``SCHEMA_CHOICES`` so adding a new product
+    type under ``specodex/models/`` automatically widens the union with
+    no further edits — same auto-discovery contract as ``PRODUCT_TYPES``.
+    """
+    from specodex.config import SCHEMA_CHOICES
+
+    class_names = sorted(cls.__name__ for cls in SCHEMA_CHOICES.values())
+    members = " | ".join(class_names)
+    return (
+        "\n"
+        "// ─────────────────────────────────────────────────────────────\n"
+        "// Generated discriminated union — same auto-discovery contract\n"
+        "// as PRODUCT_TYPES (one interface per concrete ProductBase\n"
+        "// subclass under specodex/models/). Discriminator is the\n"
+        "// ``product_type`` literal on each interface.\n"
+        "// ─────────────────────────────────────────────────────────────\n"
+        f"export type Product = {members};\n"
+    )
+
+
 def _backend_constants_module() -> str:
     """Standalone TS module for the backend (Express can't reach into
     the frontend's generated.ts). Re-exports the same constant.
@@ -175,7 +205,15 @@ def main() -> int:
     )
     # Append the PRODUCT_TYPES postscript so consumers have one file to
     # import both interfaces and the canonical product-type tuple from.
-    OUTPUT.write_text(banner + OUTPUT.read_text() + "\n" + _product_types_constant())
+    # Then append the Product union — pydantic2ts doesn't emit unions
+    # itself, and the Phase 0a-ii rewire needs it generated, not hand-typed.
+    OUTPUT.write_text(
+        banner
+        + OUTPUT.read_text()
+        + "\n"
+        + _product_types_constant()
+        + _product_union_type()
+    )
     print(f"wrote {OUTPUT.relative_to(ROOT)}")
 
     OUTPUT_BACKEND_CONSTANTS.write_text(_backend_constants_module())

@@ -72,11 +72,11 @@ class Gearhead(ProductBase):
     max_input_speed: Speed = Field(
         None, description="Maximum allowable input speed (e.g., in rpm)"
     )
-    rated_torque: Torque = Field(
-        None, description="Nominal output torque (T2N) (e.g., in Nm)"
+    max_continuous_torque: Torque = Field(
+        None, description="Nominal continuous output torque (T2N) (e.g., in Nm)"
     )
-    peak_torque: Torque = Field(
-        None, description="Emergency stop torque (T2NOT) (e.g., in Nm)"
+    max_peak_torque: Torque = Field(
+        None, description="Emergency-stop / transient peak torque (T2NOT) (e.g., in Nm)"
     )
     # arcmin is neither a length nor any other family — keep generic.
     backlash: Optional[ValueUnit] = Field(

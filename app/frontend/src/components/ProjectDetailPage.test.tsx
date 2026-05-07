@@ -60,6 +60,7 @@ function motor(over: Partial<Motor> = {}): Motor {
     product_type: 'motor',
     manufacturer: 'Acme',
     part_number: 'AC-100',
+    product_name: 'AC-100',
     ...over,
   } as Motor;
 }

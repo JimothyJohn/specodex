@@ -49,9 +49,11 @@ FIELD_RULES: dict[str, FieldRule] = {
     # Current
     "rated_current": (0.001, 10_000.0),
     "peak_current": (0.001, 20_000.0),
-    # Torque
+    # Torque — motor uses rated/peak; gearhead uses max_continuous/max_peak
     "rated_torque": (0.0, 100_000.0),
     "peak_torque": (0.0, 200_000.0),
+    "max_continuous_torque": (0.0, 100_000.0),
+    "max_peak_torque": (0.0, 200_000.0),
     # Power
     "rated_power": (0.0, 5_000_000.0),
     # Electrical

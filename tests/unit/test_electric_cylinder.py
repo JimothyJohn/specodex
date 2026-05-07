@@ -32,7 +32,6 @@ class TestElectricCylinderCreation:
             max_pull_force="50;N",
             continuous_force="30;N",
             max_linear_speed="65;mm/s",
-            linear_speed_at_rated_load="40;mm/s",
             positioning_repeatability="0.05;mm",
             rated_voltage="12-24;V",
             rated_current="0.8;A",
@@ -40,7 +39,6 @@ class TestElectricCylinderCreation:
             rated_power="15;W",
             motor_type="brushless dc",
             lead_screw_pitch="0.5;mm/rev",
-            gear_ratio=14.0,
             backlash="0.1;mm",
             max_radial_load="30;N",
             max_axial_load="100;N",
@@ -57,7 +55,6 @@ class TestElectricCylinderCreation:
         assert ec.max_pull_force == ValueUnit(value=50, unit="N")
         assert ec.continuous_force == ValueUnit(value=30, unit="N")
         assert ec.rated_voltage == MinMaxUnit(min=12, max=24, unit="V")
-        assert ec.gear_ratio == 14.0
         assert ec.motor_type == "brushless dc"
         assert ec.SK == f"PRODUCT#{DETERMINISTIC_UUID}"
 
@@ -149,10 +146,6 @@ class TestElectricCylinderMechanical:
         )
         assert ec.lead_screw_pitch == ValueUnit(value=1.0, unit="mm/rev")
 
-    def test_gear_ratio(self):
-        ec = ElectricCylinder(product_name="Test", manufacturer=MFG, gear_ratio=14.0)
-        assert ec.gear_ratio == 14.0
-
     def test_backlash(self):
         ec = ElectricCylinder(product_name="Test", manufacturer=MFG, backlash="0.08;mm")
         assert ec.backlash == ValueUnit(value=0.08, unit="mm")
@@ -169,7 +162,6 @@ class TestElectricCylinderDefaults:
         assert ec.max_pull_force is None
         assert ec.continuous_force is None
         assert ec.max_linear_speed is None
-        assert ec.linear_speed_at_rated_load is None
         assert ec.positioning_repeatability is None
         assert ec.rated_voltage is None
         assert ec.rated_current is None
@@ -177,7 +169,6 @@ class TestElectricCylinderDefaults:
         assert ec.rated_power is None
         assert ec.motor_type is None
         assert ec.lead_screw_pitch is None
-        assert ec.gear_ratio is None
         assert ec.backlash is None
         assert ec.max_radial_load is None
         assert ec.max_axial_load is None

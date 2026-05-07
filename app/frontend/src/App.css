@@ -6922,6 +6922,17 @@ input.transmission-param-input {
    * intercepts the cursor; this rule just nails the visual contract. */
 }
 
+/* App-native external-link affordance (replaces bare target="_blank").
+ * The arrow-up-right icon is appended to text links so the user can see
+ * they're leaving the SPA; icon-only call sites suppress it via
+ * showIcon={false}. STYLE.md Phase 6. */
+.external-link-icon {
+  display: inline-block;
+  margin-left: 0.25em;
+  vertical-align: -1px;
+  /* Inherits the link's color via stroke="currentColor". */
+}
+
 /* Portaled popover — fixed positioning lets it escape the cell's
  * overflow:hidden. Border + shadow give it weight so it reads as a
  * separate surface above the table. */
