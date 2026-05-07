@@ -296,10 +296,10 @@ class TestPydanticIntegration:
             product_name="Test",
             manufacturer="Test",
             product_type="gearhead",
-            rated_torque={"value": 100, "unit": "oz-in"},
+            max_continuous_torque={"value": 100, "unit": "oz-in"},
         )
-        assert gh.rated_torque.unit == "Nm"
-        assert gh.rated_torque.value == pytest.approx(0.706155, rel=1e-3)
+        assert gh.max_continuous_torque.unit == "Nm"
+        assert gh.max_continuous_torque.value == pytest.approx(0.706155, rel=1e-3)
 
     def test_gearhead_force_kN_normalized(self):
         from specodex.models.gearhead import Gearhead

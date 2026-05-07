@@ -549,10 +549,6 @@ export interface ElectricCylinder {
    */
   max_linear_speed?: ValueUnit | null;
   /**
-   * Linear speed at rated load (e.g., in mm/s)
-   */
-  linear_speed_at_rated_load?: ValueUnit | null;
-  /**
    * Repeatability of positioning (e.g., in mm)
    */
   positioning_repeatability?: ValueUnit | null;
@@ -580,10 +576,6 @@ export interface ElectricCylinder {
    * Lead screw pitch (e.g., in mm/rev)
    */
   lead_screw_pitch?: ValueUnit | null;
-  /**
-   * Internal gear ratio if geared (e.g., 14.0 for 14:1)
-   */
-  gear_ratio?: number | null;
   /**
    * Mechanical backlash (e.g., in mm)
    */
@@ -717,13 +709,13 @@ export interface Gearhead {
    */
   max_input_speed?: ValueUnit | null;
   /**
-   * Nominal output torque (T2N) (e.g., in Nm)
+   * Nominal continuous output torque (T2N) (e.g., in Nm)
    */
-  rated_torque?: ValueUnit | null;
+  max_continuous_torque?: ValueUnit | null;
   /**
-   * Emergency stop torque (T2NOT) (e.g., in Nm)
+   * Emergency-stop / transient peak torque (T2NOT) (e.g., in Nm)
    */
-  peak_torque?: ValueUnit | null;
+  max_peak_torque?: ValueUnit | null;
   /**
    * Rotational lost motion (e.g., in arcminutes)
    */

@@ -52,9 +52,6 @@ class ElectricCylinder(ProductBase):
     max_linear_speed: Optional[ValueUnit] = Field(
         None, description="Maximum linear speed unloaded (e.g., in mm/s)"
     )
-    linear_speed_at_rated_load: Optional[ValueUnit] = Field(
-        None, description="Linear speed at rated load (e.g., in mm/s)"
-    )
     positioning_repeatability: Length = Field(
         None, description="Repeatability of positioning (e.g., in mm)"
     )
@@ -75,9 +72,6 @@ class ElectricCylinder(ProductBase):
     # mm/rev is compound — keep generic.
     lead_screw_pitch: Optional[ValueUnit] = Field(
         None, description="Lead screw pitch (e.g., in mm/rev)"
-    )
-    gear_ratio: Optional[float] = Field(
-        None, description="Internal gear ratio if geared (e.g., 14.0 for 14:1)"
     )
     backlash: Length = Field(None, description="Mechanical backlash (e.g., in mm)")
     max_radial_load: Force = Field(

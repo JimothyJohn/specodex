@@ -219,7 +219,7 @@ class TestFilterProducts:
             gear_ratio=10.0,
             stages=2,
             efficiency=0.97,
-            rated_torque="50;Nm",
+            max_continuous_torque="50;Nm",
             backlash="3;arcmin",
             part_number="GH-001",
         )
