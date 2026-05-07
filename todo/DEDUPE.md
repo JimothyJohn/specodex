@@ -65,13 +65,20 @@ For each group, the report includes:
 
 No DB writes in this phase.
 
-### Phase 2 — Auto-merge the safe cases
+### Phase 2 — Auto-merge the safe cases ✅ shipped
 
-`cli/audit_dedupes.py --apply --safe-only`: for groups where every
-field is `identical` or `complementary`, write the merged row under the
-canonical (family-aware) UUID, then delete the orphan rows. The
-canonical row uses the **most-populated** part number form as the
-`part_number` field — Parker style, that's `MPP-1152C`, not `1152C`.
+`./Quickstart audit-dedupes --stage dev --apply --safe-only --dry-run`
+previews the plan; `--yes` (without `--dry-run`) writes to DynamoDB.
+For groups where every field is `identical` or `complementary`, the
+merged row is written under the canonical (family-aware) UUID and
+the orphan rows are deleted. Canonical row uses the **most-populated**
+part-number form (longest wins — Parker style, that's `MPP-1152C`,
+not `1152C`).
+
+Refused combinations (CLI returns 2):
+- `--apply` without `--safe-only` (Phase 3 belongs to a separate flow).
+- `--apply` with `--rows` (offline mode has no DB).
+- `--apply` without `--yes` or `--dry-run` (refuses ambiguous intent).
 
 What "merged row" means concretely:
 
@@ -81,6 +88,8 @@ What "merged row" means concretely:
 - `pages` becomes the union of all source rows' page lists (so
   provenance stays).
 - `datasheet_url` keeps the URL of the row with the most fields filled.
+- `product_id` / `SK` are recomputed from the canonical
+  (manufacturer, family-aware part_number) so future ingests upsert.
 
 ### Phase 3 — Human review queue for conflicting groups
 
