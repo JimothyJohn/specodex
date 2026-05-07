@@ -122,7 +122,7 @@ all landed, the remaining order:
 - `SEO Phase 1`
 - `DEDUPE Phase 2 + 3`
 - `STYLE Phase 1 (Tooltip)`, `Phase 5 (scrollbars)`, `Phase 6 (ExternalLink)`
-- `PYTHON_BACKEND Phase 5` (cli/migrations cleanup)
+- ~~`PYTHON_BACKEND Phase 5` (cli/migrations cleanup)~~ ✅ shipped 2026-04-30 (commit `c322393`)
 
 ```mermaid
 graph LR
@@ -130,7 +130,6 @@ graph LR
     PB1[PYTHON_BACKEND Phase 1 FastAPI]
     PB2[PYTHON_BACKEND Phase 2 frontend cutover]
     PB3[PYTHON_BACKEND Phase 3 delete Express]
-    PB5[PYTHON_BACKEND Phase 5 cli archive]
     M1[MODELGEN 0a-ii frontend rewire]
     M2[MODELGEN 0b zod collapse]
     M3[MODELGEN 0c runbook]
@@ -204,7 +203,6 @@ gantt
     Phase 1 FastAPI parallel deploy  :pb1, after p5, 14d
     Phase 2 frontend cutover + soak  :pb2, after pb1, 10d
     Phase 3 delete Express           :after pb2, 1d
-    Phase 5 cli/migrations cleanup   :2026-05-04, 1d
 
     section API (paid)
     Programmatic access tier         :after s2, 7d

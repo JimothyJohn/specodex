@@ -244,8 +244,6 @@ export interface Contactor {
    * Supported mounting styles, e.g. ['din_rail_35mm', 'panel_screw'].
    */
   mounting_types?: string[] | null;
-  PK: string;
-  SK: string;
 }
 /**
  * Represents physical dimensions of an object.
@@ -472,8 +470,6 @@ export interface Drive {
   max_humidity?: number | null;
   ip_rating?: number | null;
   operating_temp?: MinMaxUnit | null;
-  PK: string;
-  SK: string;
 }
 /**
  * Linear actuator with integrated motor — produces force (N), not torque (Nm).
@@ -553,10 +549,6 @@ export interface ElectricCylinder {
    */
   max_linear_speed?: ValueUnit | null;
   /**
-   * Linear speed at rated load (e.g., in mm/s)
-   */
-  linear_speed_at_rated_load?: ValueUnit | null;
-  /**
    * Repeatability of positioning (e.g., in mm)
    */
   positioning_repeatability?: ValueUnit | null;
@@ -584,10 +576,6 @@ export interface ElectricCylinder {
    * Lead screw pitch (e.g., in mm/rev)
    */
   lead_screw_pitch?: ValueUnit | null;
-  /**
-   * Internal gear ratio if geared (e.g., 14.0 for 14:1)
-   */
-  gear_ratio?: number | null;
   /**
    * Mechanical backlash (e.g., in mm)
    */
@@ -624,8 +612,6 @@ export interface ElectricCylinder {
    * Noise level (e.g., in dBA)
    */
   noise_level?: ValueUnit | null;
-  PK: string;
-  SK: string;
 }
 /**
  * Defines the specifications of the built-in force/torque sensor.
@@ -723,13 +709,13 @@ export interface Gearhead {
    */
   max_input_speed?: ValueUnit | null;
   /**
-   * Nominal output torque (T2N) (e.g., in Nm)
+   * Nominal continuous output torque (T2N) (e.g., in Nm)
    */
-  rated_torque?: ValueUnit | null;
+  max_continuous_torque?: ValueUnit | null;
   /**
-   * Emergency stop torque (T2NOT) (e.g., in Nm)
+   * Emergency-stop / transient peak torque (T2NOT) (e.g., in Nm)
    */
-  peak_torque?: ValueUnit | null;
+  max_peak_torque?: ValueUnit | null;
   /**
    * Rotational lost motion (e.g., in arcminutes)
    */
@@ -786,8 +772,6 @@ export interface Gearhead {
    * Type of lubrication used
    */
   lubrication_type?: string | null;
-  PK: string;
-  SK: string;
 }
 /**
  * Defines the specifications for a single robot joint.
@@ -975,8 +959,6 @@ export interface LinearActuator {
    * Cleanroom classification (e.g., 'ISO Class 5')
    */
   cleanroom_class?: string | null;
-  PK: string;
-  SK: string;
 }
 /**
  * A Pydantic model representing a manufacturer of industrial equipment.
@@ -1001,8 +983,6 @@ export interface Manufacturer {
   offered_product_types?:
     | ("motor" | "drive" | "gearhead" | "robot_arm" | "contactor" | "electric_cylinder" | "linear_actuator")[]
     | null;
-  PK: string;
-  SK: string;
 }
 /**
  * A Pydantic model representing the specifications of a motor.
@@ -1078,8 +1058,6 @@ export interface Motor {
   radial_load_force_rating?: MinMaxUnit | null;
   shaft_diameter?: ValueUnit | null;
   frame_size?: string | null;
-  PK: string;
-  SK: string;
 }
 /**
  * A base model for products with common attributes, designed for DynamoDB.
@@ -1142,8 +1120,6 @@ export interface ProductBase {
    * 1-indexed PDF pages where this product's specs were found. Used for #page=N deep-linking.
    */
   pages?: number[] | null;
-  PK: string;
-  SK: string;
 }
 /**
  * A Pydantic model representing a collaborative robot arm.
@@ -1267,8 +1243,6 @@ export interface RobotArm {
    * List of safety certifications
    */
   safety_certifications?: string[] | null;
-  PK: string;
-  SK: string;
 }
 /**
  * Defines the I/O ports available at the tool (end-effector) flange.
@@ -1342,3 +1316,11 @@ export const PRODUCT_TYPES = [
   "robot_arm",
 ] as const;
 export type ProductTypeLiteral = (typeof PRODUCT_TYPES)[number];
+
+// ─────────────────────────────────────────────────────────────
+// Generated discriminated union — same auto-discovery contract
+// as PRODUCT_TYPES (one interface per concrete ProductBase
+// subclass under specodex/models/). Discriminator is the
+// ``product_type`` literal on each interface.
+// ─────────────────────────────────────────────────────────────
+export type Product = Contactor | Drive | ElectricCylinder | Gearhead | LinearActuator | Motor | RobotArm;
