@@ -354,60 +354,72 @@ export class DynamoDBService {
   }
 
   /**
+   * Count rows for a single product_type via Query with Select=COUNT.
+   *
+   * Pulls only the per-page count back from DynamoDB (no items, no
+   * attributes) — ~99% less data transferred than the prior
+   * full-list-then-count.length approach.
+   */
+  private async countByType(productType: ProductType): Promise<number> {
+    const typeUpper = productType.toUpperCase();
+    const pk = productType === 'datasheet' ? `DATASHEET#${typeUpper}` : `PRODUCT#${typeUpper}`;
+    let total = 0;
+    let lastEvaluatedKey: Record<string, AttributeValue> | undefined = undefined;
+    do {
+      const result: QueryCommandOutput = await this.client.send(
+        new QueryCommand({
+          TableName: this.tableName,
+          KeyConditionExpression: 'PK = :pk',
+          ExpressionAttributeValues: marshall({ ':pk': pk }),
+          Select: 'COUNT',
+          ExclusiveStartKey: lastEvaluatedKey,
+        })
+      );
+      total += result.Count ?? 0;
+      lastEvaluatedKey = result.LastEvaluatedKey;
+    } while (lastEvaluatedKey);
+    return total;
+  }
+
+  /**
    * Count products by type
-   * Uses the fixed list method which now paginates through all results
    * Returns counts for all valid product types dynamically
    */
   async count(): Promise<Record<string, number> & { total: number }> {
-    // Query all product types in parallel
     const countPromises = VALID_PRODUCT_TYPES.map(async type => ({
       type,
-      products: await this.list(type as ProductType)
+      n: await this.countByType(type as ProductType),
     }));
-
     const results = await Promise.all(countPromises);
 
-    // Build dynamic count object
     const counts: Record<string, number> & { total: number } = { total: 0 };
-
-    for (const { type, products } of results) {
-      const count = products.length;
-      counts[type + 's'] = count; // e.g., "motors", "drives", "robot_arms"
-      counts.total += count;
+    for (const { type, n } of results) {
+      counts[type + 's'] = n; // e.g., "motors", "drives", "robot_arms"
+      counts.total += n;
     }
-
     return counts;
   }
 
   /**
    * Get all unique product categories and their counts
-   * Returns ALL valid product types (from config) with counts from database
-   * Shows types with 0 count if they have no products yet
-   * Handles case-insensitive matching since database may have inconsistent casing
+   * Returns ALL valid product types (from config) with counts from database.
+   * Shows types with 0 count if they have no products yet.
    */
   async getCategories(): Promise<Array<{ type: string; count: number; display_name: string }>> {
     try {
-      // Get all products from database
-      const allProducts = await this.listAll();
-
-      // Count products by type (case-insensitive)
-      const categoryCountMap = new Map<string, number>();
-      for (const product of allProducts) {
-        const type = product.product_type.toLowerCase(); // Normalize to lowercase
-        categoryCountMap.set(type, (categoryCountMap.get(type) || 0) + 1);
-      }
-
-      // Create array with ALL valid types (including those with 0 count)
-      const categories = VALID_PRODUCT_TYPES.map(type => ({
+      const countPromises = VALID_PRODUCT_TYPES.map(async type => ({
         type,
-        count: categoryCountMap.get(type.toLowerCase()) || 0, // Case-insensitive lookup
-        display_name: formatDisplayName(type)
+        count: await this.countByType(type as ProductType),
       }));
+      const counts = await Promise.all(countPromises);
 
-      // Sort by type name
-      categories.sort((a, b) => a.type.localeCompare(b.type));
-
-      console.log('[DynamoDB] Categories:', categories);
+      const categories = counts
+        .map(({ type, count }) => ({
+          type,
+          count,
+          display_name: formatDisplayName(type),
+        }))
+        .sort((a, b) => a.type.localeCompare(b.type));
 
       return categories;
     } catch (error) {

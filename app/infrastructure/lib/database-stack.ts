@@ -28,6 +28,10 @@ export class DatabaseStack extends cdk.Stack {
       pointInTimeRecoverySpecification: {
         pointInTimeRecoveryEnabled: true,
       },
+      // Belt and suspenders for prod: even with RETAIN removal policy,
+      // an explicit DeleteTable API call would still drop the table.
+      // deletionProtection refuses that until the flag is flipped off.
+      deletionProtection: config.stage === 'prod',
       removalPolicy: config.stage === 'prod'
         ? cdk.RemovalPolicy.RETAIN
         : cdk.RemovalPolicy.DESTROY,

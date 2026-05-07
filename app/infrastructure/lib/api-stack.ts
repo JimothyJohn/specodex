@@ -22,9 +22,16 @@ export class ApiStack extends cdk.Stack {
 
     const { table, uploadBucket } = props;
 
-    // Lambda function (backend API)
-    const handler = new lambda.Function(this, 'ApiHandler', {
-      functionName: `specodex-api-${config.stage}`,
+    // Two Lambdas, same code, IAM split by HTTP method:
+    //   GET / HEAD            → readHandler (table grantReadData, bucket grantRead)
+    //   POST / PUT / PATCH /  → handler     (table grantReadWriteData, bucket grantReadWrite)
+    //   DELETE
+    // The Express app already gates writes via APP_MODE='public' + a
+    // readonlyGuard middleware. The IAM split is the second layer:
+    // even if a handler bug bypasses the app-level guard, the IAM
+    // policy on the read Lambda physically can't write.
+
+    const sharedLambdaProps: lambda.FunctionProps = {
       runtime: lambda.Runtime.NODEJS_22_X,
       handler: 'lambda.handler',
       code: lambda.Code.fromAsset(path.join(__dirname, '../../backend/dist')),
@@ -39,20 +46,36 @@ export class ApiStack extends cdk.Stack {
         AWS_ACCOUNT_ID: config.env.account,
         SSM_PREFIX: config.ssmPrefix,
       },
+    };
+
+    const handler = new lambda.Function(this, 'ApiHandler', {
+      ...sharedLambdaProps,
+      functionName: `specodex-api-${config.stage}`,
+    });
+
+    const readHandler = new lambda.Function(this, 'ApiReadHandler', {
+      ...sharedLambdaProps,
+      functionName: `specodex-api-read-${config.stage}`,
     });
 
     table.grantReadWriteData(handler);
     uploadBucket.grantReadWrite(handler);
 
-    // SSM read access for runtime config (stripe-lambda-url). GEMINI_API_KEY
-    // is not provisioned in SSM — the deployed app doesn't scrape; scraping
-    // runs locally via the Python CLI with the key in .env.
-    handler.addToRolePolicy(new iam.PolicyStatement({
+    table.grantReadData(readHandler);
+    uploadBucket.grantRead(readHandler);
+
+    // Both Lambdas need SSM read access for runtime config
+    // (stripe-lambda-url etc.). GEMINI_API_KEY is not provisioned in SSM —
+    // the deployed app doesn't scrape; scraping runs locally via the
+    // Python CLI with the key in .env.
+    const ssmPolicy = new iam.PolicyStatement({
       actions: ['ssm:GetParameter', 'ssm:GetParameters'],
       resources: [
         `arn:aws:ssm:${config.env.region}:${config.env.account}:parameter${config.ssmPrefix}/*`,
       ],
-    }));
+    });
+    handler.addToRolePolicy(ssmPolicy);
+    readHandler.addToRolePolicy(ssmPolicy);
 
     // HTTP API
     this.api = new apigw.HttpApi(this, 'HttpApi', {
@@ -64,11 +87,23 @@ export class ApiStack extends cdk.Stack {
       },
     });
 
-    const integration = new apigwIntegrations.HttpLambdaIntegration('LambdaIntegration', handler);
+    const writeIntegration = new apigwIntegrations.HttpLambdaIntegration('LambdaIntegration', handler);
+    const readIntegration = new apigwIntegrations.HttpLambdaIntegration('ReadLambdaIntegration', readHandler);
+
     this.api.addRoutes({
       path: '/{proxy+}',
-      methods: [apigw.HttpMethod.ANY],
-      integration,
+      methods: [apigw.HttpMethod.GET, apigw.HttpMethod.HEAD],
+      integration: readIntegration,
+    });
+    this.api.addRoutes({
+      path: '/{proxy+}',
+      methods: [
+        apigw.HttpMethod.POST,
+        apigw.HttpMethod.PUT,
+        apigw.HttpMethod.PATCH,
+        apigw.HttpMethod.DELETE,
+      ],
+      integration: writeIntegration,
     });
 
     new cdk.CfnOutput(this, 'ApiUrl', { value: this.api.url || '' });
