@@ -206,10 +206,13 @@ export default function ProductDetailModal({ product, onClose, clickPosition }: 
 
   const groupedSpecs = groupSpecs();
 
-  // Resolve datasheet URL — only linkable if it's an HTTP(S) URL
-  const rawDatasheetUrl = typeof product.datasheet_url === 'string'
-    ? product.datasheet_url
-    : (product.datasheet_url as any)?.url ?? null;
+  // Resolve datasheet URL — only linkable if it's an HTTP(S) URL.
+  // For DatasheetEntry the URL lives on `.url`; for products it lives on
+  // `.datasheet_url` (a flat string field — no DatasheetLink wrapper).
+  const rawDatasheetUrl =
+    product.product_type === 'datasheet'
+      ? product.url
+      : product.datasheet_url ?? null;
   const datasheetUrl = rawDatasheetUrl?.startsWith('http') ? rawDatasheetUrl : null;
   return (
     <div className="product-detail-overlay">

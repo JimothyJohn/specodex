@@ -85,25 +85,22 @@ Single provider: everything uses `GEMINI_API_KEY`. Model id is pinned in `specod
 
 ## Adding a new product type
 
-The Python side auto-discovers. MODELGEN Phase 0b (shipped 2026-05-03)
-collapsed the backend allowlist + Zod enum onto the codegen output, so
-those two hand-edits are gone — `./Quickstart gen-types` updates them.
-The remaining hand-edits live in the two `models.ts` mirrors that
-Phase 0a-ii (frontend) and PYTHON_BACKEND.md Phase 3 (backend deletion)
-will retire.
+The Python side auto-discovers. MODELGEN Phases 0b (shipped 2026-05-03)
+and 0a-ii (shipped 2026-05-07) collapsed the backend allowlist + Zod
+enum and the frontend `models.ts` mirror onto the codegen output —
+all four of those hand-edits are gone. The frontend's `models.ts` is
+now a thin re-export shim from `generated.ts`.
 
 1. `specodex/models/<type>.py` — Pydantic model inheriting `ProductBase`, with `product_type: Literal["<type>"] = "<type>"`.
 2. `specodex/models/common.py` — add `"<type>"` to the `ProductType` literal.
-3. `./Quickstart gen-types` — regenerates `app/frontend/src/types/generated.ts` and the backend `generated_constants.ts` twin. This is what now propagates the new type into `VALID_PRODUCT_TYPES` (`app/backend/src/config/productTypes.ts`) and the search Zod enum (`app/backend/src/routes/search.ts`); both files re-export from the generated artifact, no hand-edit needed.
-4. `app/backend/src/types/models.ts` — add a `<Type>` interface + include it in the `Product` and `ProductType` unions. (Still hand-typed; goes away with the Express deletion in `todo/PYTHON_BACKEND.md` Phase 3, see also `todo/MODELGEN.md` "Don't migrate `app/backend/src/types/models.ts`".)
-5. `app/frontend/src/types/models.ts` — add to the `ProductType` union. (Still hand-typed; will retire with `todo/MODELGEN.md` Phase 0a-ii.)
+3. `./Quickstart gen-types` — regenerates `app/frontend/src/types/generated.ts` and the backend `generated_constants.ts` twin. The new type auto-flows into `VALID_PRODUCT_TYPES` (backend), the search Zod enum, the frontend `Product` union, and the frontend `ProductType` literal — no hand-edits needed.
+4. `app/backend/src/types/models.ts` — still hand-typed, **for now**. Add a `<Type>` interface + include it in the `Product` and `ProductType` unions. Goes away with the Express deletion in `todo/PYTHON_BACKEND.md` Phase 3 (see `todo/MODELGEN.md` "Don't migrate `app/backend/src/types/models.ts`" — wasted work to migrate before deletion).
 
-> **Heads up:** what 0b retired is steps 3 (`VALID_PRODUCT_TYPES`) and
-> the old step 5 (search Zod enum) — those are auto-generated now.
-> What's still hand-typed are the two `models.ts` mirrors (steps 4–5
-> above). MODELGEN.md Phase 0a-ii collapses the frontend mirror to a
-> re-export shim; the backend mirror only goes when Express does, in
-> PYTHON_BACKEND.md Phase 3. Until 0a-ii lands, do all five steps.
+> **Heads up:** Phase 0b retired the old steps 3 (`VALID_PRODUCT_TYPES`)
+> and the search Zod enum; Phase 0a-ii retired the frontend `models.ts`
+> hand-edit. The only remaining hand-edit is the Express-backend mirror
+> (step 4 above), and that retires when Express does in
+> PYTHON_BACKEND.md Phase 3.
 
 Step 1 can be scaffolded with `./Quickstart schemagen <pdf>... --type <name>`, which runs the standard `page_finder → Gemini → ProposedModel` pipeline and writes the model file plus the `common.py` patch. **Pass 3-5 vendors' datasheets** (ABB, Schneider, Siemens, Allen-Bradley, etc.) so the LLM generalizes across vendors instead of tuning the schema to one catalog's quirks — a single-source proposal will happily hardcode vendor-specific voltage columns or frame codes. The CLI also writes a companion `<type>.md` doc citing the sources and explaining non-obvious design decisions; treat that `.md` as the schema's reviewable ADR, not scratchwork.
 
