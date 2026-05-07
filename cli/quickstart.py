@@ -20,8 +20,10 @@ Usage:
                                   (try: ./Quickstart price-enrich --help)
     ./Quickstart ingest-report    Group ingest-log quality-fails by manufacturer
                                   (try: ./Quickstart ingest-report --help)
-    ./Quickstart audit-dedupes    DEDUPE Phase 1 — scan dev DB for prefix-drift
-                                  duplicates. Read-only; writes JSON + MD review.
+    ./Quickstart audit-dedupes    DEDUPE — scan dev DB for prefix-drift duplicates.
+                                  Phase 1 is read-only; --apply --safe-only --yes
+                                  enables Phase 2 auto-merge of safe groups
+                                  (--dry-run previews the plan).
                                   (try: ./Quickstart audit-dedupes --help)
     ./Quickstart units-triage     Parse outputs/units_migration_review_*.md
                                   and group rows by pattern (auto-rescue vs

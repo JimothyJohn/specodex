@@ -13,6 +13,7 @@ import {
   displayUnit,
   isIntegerUnit,
 } from '../utils/unitConversion';
+import Tooltip from './ui/Tooltip';
 
 interface FilterChipProps {
   filter: FilterCriterion;
@@ -571,29 +572,33 @@ export default function FilterChip({
   return (
     <div className={`filter-chip-minimal${filter.mode === 'exclude' ? ' filter-chip-exclude-mode' : ''}`} data-operator={filter.operator || '='}>
       <div className="filter-chip-header">
-        <button
-          className={`filter-mode-toggle ${filter.mode === 'exclude' ? 'filter-mode-exclude' : 'filter-mode-include'}`}
-          onClick={() => onUpdate({ ...filter, mode: filter.mode === 'exclude' ? 'include' : 'exclude' })}
-          aria-label={filter.mode === 'exclude' ? 'Excluding these values — click to include instead' : 'Including these values — click to exclude instead'}
-          title={filter.mode === 'exclude' ? 'Excluding — click to include' : 'Including — click to exclude'}
-        >
-          {filter.mode === 'exclude' ? '≠' : '='}
-        </button>
-        <span
-          className="filter-attribute"
-          onClick={(e) => onEditAttribute({ x: e.clientX, y: e.clientY })}
-          style={{ cursor: 'pointer' }}
-          title="Click to change spec"
-        >
-          {filter.displayName}
-        </span>
-        <button
-          className="filter-remove"
-          onClick={onRemove}
-          title="Remove spec"
-        >
-          ×
-        </button>
+        <Tooltip content={filter.mode === 'exclude' ? 'Excluding — click to include' : 'Including — click to exclude'}>
+          <button
+            className={`filter-mode-toggle ${filter.mode === 'exclude' ? 'filter-mode-exclude' : 'filter-mode-include'}`}
+            onClick={() => onUpdate({ ...filter, mode: filter.mode === 'exclude' ? 'include' : 'exclude' })}
+            aria-label={filter.mode === 'exclude' ? 'Excluding these values — click to include instead' : 'Including these values — click to exclude instead'}
+          >
+            {filter.mode === 'exclude' ? '≠' : '='}
+          </button>
+        </Tooltip>
+        <Tooltip content="Click to change spec">
+          <span
+            className="filter-attribute"
+            onClick={(e) => onEditAttribute({ x: e.clientX, y: e.clientY })}
+            style={{ cursor: 'pointer' }}
+          >
+            {filter.displayName}
+          </span>
+        </Tooltip>
+        <Tooltip content="Remove spec">
+          <button
+            className="filter-remove"
+            onClick={onRemove}
+            aria-label="Remove spec"
+          >
+            ×
+          </button>
+        </Tooltip>
       </div>
 
       {/* Show selected values for multi-select fields (hide if slider is shown to avoid redundancy/glitch) */}
@@ -623,22 +628,23 @@ export default function FilterChip({
               }}
             >
               {String(val)}
-              <button
-                onClick={() => handleRemoveValue(val)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: 'white',
-                  cursor: 'pointer',
-                  padding: 0,
-                  fontSize: '0.9rem',
-                  lineHeight: 1,
-                  opacity: 0.8
-                }}
-                title="Remove value"
-              >
-                ×
-              </button>
+              <Tooltip content="Remove value">
+                <button
+                  onClick={() => handleRemoveValue(val)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: 'white',
+                    cursor: 'pointer',
+                    padding: 0,
+                    fontSize: '0.9rem',
+                    lineHeight: 1,
+                    opacity: 0.8
+                  }}
+                >
+                  ×
+                </button>
+              </Tooltip>
             </span>
           ))}
         </div>
@@ -648,14 +654,15 @@ export default function FilterChip({
         {/* Operator cycle button. Sliders toggle '>=' ↔ '<';
             other numeric fields walk whatever the data supports. */}
         {showOperatorButton && (
-          <button
-            className="filter-operator"
-            data-operator={filter.operator || cycleOperators[0] || '='}
-            onClick={cycleOperator}
-            title={`Click to cycle operator: ${cycleOperators.join(' → ')}`}
-          >
-            {filter.operator || cycleOperators[0] || '='}
-          </button>
+          <Tooltip content={`Click to cycle operator: ${cycleOperators.join(' → ')}`}>
+            <button
+              className="filter-operator"
+              data-operator={filter.operator || cycleOperators[0] || '='}
+              onClick={cycleOperator}
+            >
+              {filter.operator || cycleOperators[0] || '='}
+            </button>
+          </Tooltip>
         )}
 
 
@@ -708,16 +715,17 @@ export default function FilterChip({
                 />
               </div>
               <div className="filter-slider-value">
-                <button
-                  type="button"
-                  className="filter-slider-operator"
-                  data-operator={filter.operator || '>='}
-                  onClick={cycleOperator}
-                  title={`Click to cycle operator: ${cycleOperators.join(' → ')}`}
-                  aria-label={`Operator ${filter.operator || '>='} — click to cycle`}
-                >
-                  {filter.operator || '>='}
-                </button>
+                <Tooltip content={`Click to cycle operator: ${cycleOperators.join(' → ')}`}>
+                  <button
+                    type="button"
+                    className="filter-slider-operator"
+                    data-operator={filter.operator || '>='}
+                    onClick={cycleOperator}
+                    aria-label={`Operator ${filter.operator || '>='} — click to cycle`}
+                  >
+                    {filter.operator || '>='}
+                  </button>
+                </Tooltip>
                 {' '}
                 {editingSliderValue ? (
                   <span className="filter-slider-value-edit">
@@ -746,28 +754,30 @@ export default function FilterChip({
                     {dispUnit && <span className="filter-slider-value-unit">{dispUnit}</span>}
                   </span>
                 ) : (
-                  <button
-                    type="button"
-                    className="filter-slider-value-readout"
-                    onClick={() => {
-                      // Integer units (rpm, V) seed the override draft as
-                      // a whole number; fractional units keep two decimals
-                      // so the user sees what they're editing.
-                      const draft = isIntegerUnit(rangeInfo.unit)
-                        ? String(Math.round(dispCurrent))
-                        : String(Number(dispCurrent.toFixed(2)));
-                      setSliderValueDraft(draft);
-                      setEditingSliderValue(true);
-                    }}
-                    title="Click to type an exact value"
-                  >
-                    <span>
-                      {isIntegerUnit(rangeInfo.unit)
-                        ? Math.round(dispCurrent)
-                        : dispCurrent.toFixed(1)} {dispUnit}
-                    </span>
-                    <span className="filter-slider-value-edit-hint" aria-hidden="true">✎</span>
-                  </button>
+                  <Tooltip content="Click to type an exact value">
+                    <button
+                      type="button"
+                      className="filter-slider-value-readout"
+                      aria-label="Click to type an exact value"
+                      onClick={() => {
+                        // Integer units (rpm, V) seed the override draft as
+                        // a whole number; fractional units keep two decimals
+                        // so the user sees what they're editing.
+                        const draft = isIntegerUnit(rangeInfo.unit)
+                          ? String(Math.round(dispCurrent))
+                          : String(Number(dispCurrent.toFixed(2)));
+                        setSliderValueDraft(draft);
+                        setEditingSliderValue(true);
+                      }}
+                    >
+                      <span>
+                        {isIntegerUnit(rangeInfo.unit)
+                          ? Math.round(dispCurrent)
+                          : dispCurrent.toFixed(1)} {dispUnit}
+                      </span>
+                      <span className="filter-slider-value-edit-hint" aria-hidden="true">✎</span>
+                    </button>
+                  </Tooltip>
                 )}
               </div>
             </div>

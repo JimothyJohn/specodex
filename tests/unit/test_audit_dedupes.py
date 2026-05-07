@@ -304,3 +304,224 @@ class TestMain:
             raise AssertionError("expected SystemExit for --stage prod")
         except SystemExit as e:
             assert e.code != 0
+
+
+# ── Phase 2 — safe-merge logic ─────────────────────────────────────────
+
+
+class TestPickCanonicalPartNumber:
+    def test_longest_form_wins(self) -> None:
+        rows = [
+            row(part_number="MPP-1152C"),
+            row(part_number="MPP1152C"),
+            row(part_number="1152C"),
+        ]
+        assert audit_dedupes.pick_canonical_part_number(rows) == "MPP-1152C"
+
+    def test_skips_empty(self) -> None:
+        rows = [row(part_number=None), row(part_number="MPP-1152C")]
+        assert audit_dedupes.pick_canonical_part_number(rows) == "MPP-1152C"
+
+    def test_returns_none_when_all_empty(self) -> None:
+        rows = [row(part_number=None), row(part_number=None)]
+        assert audit_dedupes.pick_canonical_part_number(rows) is None
+
+
+class TestMergeSafeGroup:
+    def test_takes_non_null_per_field(self) -> None:
+        rows = [
+            row(
+                pk="PRODUCT#MOTOR",
+                product_id="aaa",
+                part_number="MPP-1152C",
+                product_family="MPP",
+                rated_torque={"value": 10, "unit": "Nm"},
+                product_type="motor",
+            ),
+            row(
+                pk="PRODUCT#MOTOR",
+                product_id="bbb",
+                part_number="MPP1152C",
+                product_family="MPP",
+                product_type="motor",
+                max_speed={"value": 5000, "unit": "rpm"},
+            ),
+        ]
+        merged = audit_dedupes.merge_safe_group(rows)
+        assert merged["rated_torque"] == {"value": 10, "unit": "Nm"}
+        assert merged["max_speed"] == {"value": 5000, "unit": "rpm"}
+        assert merged["part_number"] == "MPP-1152C"  # longest wins
+        assert merged["product_family"] == "MPP"
+        assert merged["manufacturer"] == "Parker"
+        assert merged["product_type"] == "motor"
+        assert merged["PK"] == "PRODUCT#MOTOR"
+        assert merged["SK"].startswith("PRODUCT#")
+        # New family-aware product_id ≠ either source row's id.
+        assert merged["product_id"] not in {"aaa", "bbb"}
+
+    def test_unions_pages(self) -> None:
+        rows = [
+            row(part_number="MPP-1152C", product_type="motor", pages=[10, 11]),
+            row(part_number="MPP1152C", product_type="motor", pages=[15, 11, 16]),
+        ]
+        merged = audit_dedupes.merge_safe_group(rows)
+        assert merged["pages"] == [10, 11, 15, 16]
+
+    def test_picks_datasheet_url_from_richest_row(self) -> None:
+        rows = [
+            row(
+                part_number="MPP-1152C",
+                product_type="motor",
+                datasheet_url="https://thin.example/ds.pdf",
+            ),
+            row(
+                part_number="MPP1152C",
+                product_type="motor",
+                datasheet_url="https://rich.example/ds.pdf",
+                rated_torque={"value": 10, "unit": "Nm"},
+                max_speed={"value": 5000, "unit": "rpm"},
+                rated_power={"value": 2.5, "unit": "kW"},
+            ),
+        ]
+        merged = audit_dedupes.merge_safe_group(rows)
+        assert merged["datasheet_url"] == "https://rich.example/ds.pdf"
+
+    def test_canonical_id_collapses_prefix_drift(self) -> None:
+        # Both rows hash to the same family-aware id once `_strip_family_prefix`
+        # is applied, so the merged row inherits that single canonical id.
+        rows = [
+            row(part_number="MPP-1152C", product_family="MPP", product_type="motor"),
+            row(part_number="1152C", product_family="MPP", product_type="motor"),
+        ]
+        merged = audit_dedupes.merge_safe_group(rows)
+        from specodex.ids import compute_product_id
+
+        expected = compute_product_id(
+            manufacturer="Parker",
+            part_number="MPP-1152C",
+            product_name=None,
+            product_family="MPP",
+        )
+        assert merged["product_id"] == str(expected)
+
+
+class TestPlanSafeMerges:
+    def test_only_merge_action_groups_planned(self) -> None:
+        rows = [
+            row(part_number="MPP-1152C", product_type="motor", rated_torque=10),
+            row(part_number="MPP1152C", product_type="motor"),
+            # Conflict pair → review action, no plan entry.
+            row(
+                part_number="SGM7-100A",
+                product_family="SGM7",
+                product_type="motor",
+                rated_torque=10,
+            ),
+            row(
+                part_number="SGM7100A",
+                product_family="SGM7",
+                product_type="motor",
+                rated_torque=20,
+            ),
+        ]
+        rows_by_pksk = {(r["PK"], r["SK"]): r for r in rows}
+        reports = audit_dedupes.audit(rows)
+        plan = audit_dedupes.plan_safe_merges(reports, rows_by_pksk)
+        assert len(plan) == 1
+        assert plan[0]["group"]["normalized_core"] == "1152c"
+        assert len(plan[0]["deletes"]) >= 1
+        # The canonical SK must not be in the delete list.
+        canonical_sk = plan[0]["merged"]["SK"]
+        assert all(sk != canonical_sk for _, sk in plan[0]["deletes"])
+
+    def test_skips_group_with_unresolvable_rows(self) -> None:
+        rows = [
+            row(part_number="MPP-1152C", product_type="motor"),
+            row(part_number="MPP1152C", product_type="motor"),
+        ]
+        reports = audit_dedupes.audit(rows)
+        # Empty rows_by_pksk → audit knows about the group but plan can't
+        # resolve the rows; it skips rather than half-merging.
+        plan = audit_dedupes.plan_safe_merges(reports, {})
+        assert plan == []
+
+
+class TestApplyPlan:
+    def test_executes_puts_and_deletes(self) -> None:
+        plan = [
+            {
+                "group": {"manufacturer": "parker", "normalized_core": "1152c"},
+                "merged": {"PK": "PRODUCT#MOTOR", "SK": "PRODUCT#new", "x": 1},
+                "deletes": [
+                    ("PRODUCT#MOTOR", "PRODUCT#old1"),
+                    ("PRODUCT#MOTOR", "PRODUCT#old2"),
+                ],
+            }
+        ]
+        puts: list[dict] = []
+        deletes: list[tuple[str, str]] = []
+        tally = audit_dedupes.apply_plan(
+            plan, puts.append, lambda pk, sk: deletes.append((pk, sk))
+        )
+        assert tally == {"groups": 1, "puts": 1, "deletes": 2}
+        assert puts == [{"PK": "PRODUCT#MOTOR", "SK": "PRODUCT#new", "x": 1}]
+        assert deletes == [
+            ("PRODUCT#MOTOR", "PRODUCT#old1"),
+            ("PRODUCT#MOTOR", "PRODUCT#old2"),
+        ]
+
+
+class TestApplyCli:
+    def test_apply_requires_safe_only(self, tmp_path: Path, monkeypatch) -> None:
+        monkeypatch.setattr(audit_dedupes, "OUTPUT_DIR", tmp_path)
+        rows_file = tmp_path / "rows.json"
+        rows_file.write_text("[]")
+        rc = audit_dedupes.main(
+            ["--stage", "dev", "--rows", str(rows_file), "--apply", "--quiet"]
+        )
+        assert rc == 2
+
+    def test_apply_refuses_with_rows_file(self, tmp_path: Path, monkeypatch) -> None:
+        monkeypatch.setattr(audit_dedupes, "OUTPUT_DIR", tmp_path)
+        rows_file = tmp_path / "rows.json"
+        rows_file.write_text("[]")
+        rc = audit_dedupes.main(
+            [
+                "--stage",
+                "dev",
+                "--rows",
+                str(rows_file),
+                "--apply",
+                "--safe-only",
+                "--dry-run",
+                "--quiet",
+            ]
+        )
+        # Even with safe-only + dry-run, --rows is incompatible with --apply.
+        assert rc == 2
+
+    def test_apply_requires_yes_or_dry_run(self, tmp_path: Path, monkeypatch) -> None:
+        # Skip the DB scan path by stubbing fetch_rows_from_dynamo.
+        monkeypatch.setattr(audit_dedupes, "OUTPUT_DIR", tmp_path)
+        monkeypatch.setattr(audit_dedupes, "fetch_rows_from_dynamo", lambda _t: [])
+        rc = audit_dedupes.main(["--stage", "dev", "--apply", "--safe-only", "--quiet"])
+        assert rc == 2
+
+    def test_dry_run_writes_plan_and_returns_zero(
+        self, tmp_path: Path, monkeypatch
+    ) -> None:
+        monkeypatch.setattr(audit_dedupes, "OUTPUT_DIR", tmp_path)
+        rows = [
+            row(part_number="MPP-1152C", product_type="motor", rated_torque=10),
+            row(part_number="MPP1152C", product_type="motor"),
+        ]
+        monkeypatch.setattr(audit_dedupes, "fetch_rows_from_dynamo", lambda _t: rows)
+        rc = audit_dedupes.main(
+            ["--stage", "dev", "--apply", "--safe-only", "--dry-run", "--quiet"]
+        )
+        assert rc == 0
+        plan_files = list(tmp_path.glob("dedupe_plan_dev_*.md"))
+        assert len(plan_files) == 1
+        text = plan_files[0].read_text()
+        assert "DEDUPE Phase 2" in text
+        assert "1152c" in text
