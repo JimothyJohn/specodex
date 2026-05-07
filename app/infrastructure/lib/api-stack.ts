@@ -25,7 +25,7 @@ export class ApiStack extends cdk.Stack {
     // Lambda function (backend API)
     const handler = new lambda.Function(this, 'ApiHandler', {
       functionName: `specodex-api-${config.stage}`,
-      runtime: lambda.Runtime.NODEJS_18_X,
+      runtime: lambda.Runtime.NODEJS_22_X,
       handler: 'lambda.handler',
       code: lambda.Code.fromAsset(path.join(__dirname, '../../backend/dist')),
       memorySize: 512,
