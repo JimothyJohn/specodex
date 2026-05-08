@@ -11,6 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useProjects } from '../context/ProjectsContext';
 import type { Project } from '../types/projects';
+import { useConfirm } from './ui/ConfirmDialog';
 
 function formatDate(iso: string): string {
   try {
@@ -88,6 +89,7 @@ export default function ProjectsPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { projects, loading, error, deleteProject } = useProjects();
+  const confirm = useConfirm();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -105,9 +107,12 @@ export default function ProjectsPage() {
   );
 
   const handleDelete = async (project: Project) => {
-    const ok = window.confirm(
-      `Delete project "${project.name}"? This can't be undone.`,
-    );
+    const ok = await confirm({
+      title: 'Delete project?',
+      body: `"${project.name}" and all its product references will be removed. This can't be undone.`,
+      confirmLabel: 'Delete',
+      confirmVariant: 'danger',
+    });
     if (!ok) return;
     setActionError(null);
     setBusyId(project.id);

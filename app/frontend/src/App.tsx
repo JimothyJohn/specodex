@@ -27,6 +27,7 @@ import { BrowserRouter, Routes, Route, NavLink, Navigate, useLocation } from 're
 import { AppProvider } from './context/AppContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ProjectsProvider } from './context/ProjectsContext';
+import { ConfirmProvider } from './components/ui/ConfirmDialog';
 import ThemeToggle from './components/ThemeToggle';
 import GitHubLink from './components/GitHubLink';
 import DensityToggle from './components/DensityToggle';
@@ -176,9 +177,11 @@ function App() {
     <AuthProvider>
       <ProjectsProvider>
         <AppProvider>
-          <BrowserRouter>
-            <AppShell />
-          </BrowserRouter>
+          <ConfirmProvider>
+            <BrowserRouter>
+              <AppShell />
+            </BrowserRouter>
+          </ConfirmProvider>
         </AppProvider>
       </ProjectsProvider>
     </AuthProvider>

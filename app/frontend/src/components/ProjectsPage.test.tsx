@@ -33,6 +33,7 @@ vi.mock('../context/AuthContext', () => ({
 }));
 
 import { ProjectsProvider } from '../context/ProjectsContext';
+import { ConfirmProvider } from './ui/ConfirmDialog';
 
 function project(over: Partial<Project> = {}): Project {
   const now = new Date().toISOString();
@@ -50,7 +51,9 @@ function project(over: Partial<Project> = {}): Project {
 const wrap = (ui: ReactNode) =>
   render(
     <MemoryRouter>
-      <ProjectsProvider>{ui}</ProjectsProvider>
+      <ProjectsProvider>
+        <ConfirmProvider>{ui}</ConfirmProvider>
+      </ProjectsProvider>
     </MemoryRouter>,
   );
 
@@ -120,7 +123,6 @@ describe('logged in', () => {
   it('delete confirms then calls the API; card disappears on success', async () => {
     mockListProjects.mockResolvedValueOnce([project({ id: 'p1', name: 'Doomed' })]);
     mockDeleteProject.mockResolvedValueOnce(undefined);
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValueOnce(true);
 
     await act(async () => {
       wrap(<ProjectsPage />);
@@ -131,35 +133,47 @@ describe('logged in', () => {
       fireEvent.click(screen.getByRole('button', { name: /delete/i }));
     });
 
-    expect(confirmSpy).toHaveBeenCalled();
+    // ConfirmDialog opens — click its Delete button to confirm.
+    const dialog = await screen.findByRole('dialog');
+    await act(async () => {
+      const confirmBtn = Array.from(dialog.querySelectorAll('button')).find(
+        b => b.textContent === 'Delete',
+      );
+      fireEvent.click(confirmBtn!);
+    });
+
     expect(mockDeleteProject).toHaveBeenCalledWith('p1');
     await waitFor(() => expect(screen.queryByText('Doomed')).toBeNull());
-
-    confirmSpy.mockRestore();
   });
 
   it('delete is a no-op when the user cancels confirm', async () => {
     mockListProjects.mockResolvedValueOnce([project({ id: 'p1', name: 'Safe' })]);
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValueOnce(false);
 
     await act(async () => {
       wrap(<ProjectsPage />);
     });
 
     await screen.findByText('Safe');
-    fireEvent.click(screen.getByRole('button', { name: /delete/i }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /delete/i }));
+    });
 
-    expect(confirmSpy).toHaveBeenCalled();
+    // ConfirmDialog opens — click Cancel.
+    const dialog = await screen.findByRole('dialog');
+    await act(async () => {
+      const cancelBtn = Array.from(dialog.querySelectorAll('button')).find(
+        b => b.textContent === 'Cancel',
+      );
+      fireEvent.click(cancelBtn!);
+    });
+
     expect(mockDeleteProject).not.toHaveBeenCalled();
     expect(screen.getByText('Safe')).toBeDefined();
-
-    confirmSpy.mockRestore();
   });
 
   it('surfaces an error when delete fails', async () => {
     mockListProjects.mockResolvedValueOnce([project({ id: 'p1', name: 'Cursed' })]);
     mockDeleteProject.mockRejectedValueOnce(new Error('Network down'));
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValueOnce(true);
 
     await act(async () => {
       wrap(<ProjectsPage />);
@@ -170,9 +184,15 @@ describe('logged in', () => {
       fireEvent.click(screen.getByRole('button', { name: /delete/i }));
     });
 
+    const dialog = await screen.findByRole('dialog');
+    await act(async () => {
+      const confirmBtn = Array.from(dialog.querySelectorAll('button')).find(
+        b => b.textContent === 'Delete',
+      );
+      fireEvent.click(confirmBtn!);
+    });
+
     await waitFor(() => expect(screen.getByText(/network down/i)).toBeDefined());
     expect(screen.getByText('Cursed')).toBeDefined();
-
-    confirmSpy.mockRestore();
   });
 });

@@ -24,11 +24,13 @@
   --border-color: #5c5c4a;
   --border-color-light: #b8ac85;
 
-  /* Khaki-amber accents (highlighter on a field manual, used sparingly). */
-  --accent-primary: #9c7a16;
-  --accent-secondary: #7d6112;
-  --accent-gradient-start: #9c7a16;
-  --accent-gradient-end: #9c7a16;
+  /* Khaki-amber accents (highlighter on a field manual, used sparingly).
+   * Saturation pulled further down from #9c7a16 (75% sat) to a muted
+   * brass so accents recede into the paper instead of jumping off it. */
+  --accent-primary: #866c25;
+  --accent-secondary: #6a541c;
+  --accent-gradient-start: #866c25;
+  --accent-gradient-end: #866c25;
 
   /* Card on slightly lighter paper */
   --card-bg: #efead2;
@@ -48,7 +50,7 @@
   --shadow-md: rgba(26, 26, 20, 0.10);
   --shadow-lg: rgba(26, 26, 20, 0.14);
   --shadow-xl: rgba(26, 26, 20, 0.18);
-  --glow-accent: rgba(156, 122, 22, 0.20);
+  --glow-accent: rgba(134, 108, 37, 0.18);
 
   /* Status colors — ink for success (was olive, fed the Christmas vibe),
    * amber for warning, stamp-red for danger. */
@@ -98,13 +100,14 @@
   --border-color: #5c5c4a;
   --border-color-light: #3a3a2e;
 
-  /* Khaki-amber accents — same hue family as light theme. Backed off
-   * from #d4a52a to a lower-saturation tone so the yellow stops
-   * shouting at every pill on the page. */
-  --accent-primary: #b8912a;
-  --accent-secondary: #d4a82a;
-  --accent-gradient-start: #b8912a;
-  --accent-gradient-end: #b8912a;
+  /* Khaki-amber accents — same hue family as light theme. Pulled down
+   * twice now: first from #d4a52a → #b8912a (drop the shout), then to
+   * #a18a55 here (drop saturation further so accents read as muted
+   * brass against the dark sepia, not a yellow highlighter). */
+  --accent-primary: #a18a55;
+  --accent-secondary: #bba26b;
+  --accent-gradient-start: #a18a55;
+  --accent-gradient-end: #a18a55;
 
   /* Cards on shaded sepia */
   --card-bg: #2a2218;
@@ -124,7 +127,7 @@
   --shadow-md: rgba(0, 0, 0, 0.22);
   --shadow-lg: rgba(0, 0, 0, 0.28);
   --shadow-xl: rgba(0, 0, 0, 0.32);
-  --glow-accent: rgba(212, 165, 42, 0.18);
+  --glow-accent: rgba(187, 162, 107, 0.16);
 
   /* Status colors — success was olive (read green), now warm sand */
   --success: #a09c80;
@@ -6250,6 +6253,83 @@ input.transmission-param-input {
 }
 .auth-form-submit:hover { filter: brightness(1.08); }
 .auth-form-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* ── ConfirmDialog (STYLE.md Phase 2) ─────────────────────────────── */
+.confirm-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 110;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  /* Subtle entry animation; skip on reduced-motion. */
+  animation: confirm-dialog-fade 120ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .confirm-dialog-overlay { animation: none; }
+}
+@keyframes confirm-dialog-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.confirm-dialog {
+  width: min(420px, 100%);
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  padding: 1.4rem 1.4rem 1.15rem;
+  color: var(--text-primary);
+}
+.confirm-dialog-title {
+  margin: 0 0 0.7rem;
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+.confirm-dialog-body {
+  font-size: 0.92rem;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  margin-bottom: 1.2rem;
+}
+.confirm-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+}
+.confirm-dialog-cancel,
+.confirm-dialog-confirm {
+  font: inherit;
+  font-size: 0.9rem;
+  letter-spacing: 0.02em;
+  padding: 0.5rem 1.1rem;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.confirm-dialog-cancel:hover {
+  background: var(--surface-hover, rgba(0, 0, 0, 0.04));
+}
+.confirm-dialog-confirm--default {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: var(--header-text);
+}
+.confirm-dialog-confirm--default:hover { filter: brightness(1.08); }
+.confirm-dialog-confirm--danger {
+  background: #b03232;
+  border-color: #b03232;
+  color: #fff;
+}
+.confirm-dialog-confirm--danger:hover { filter: brightness(1.08); }
+.confirm-dialog-cancel:focus-visible,
+.confirm-dialog-confirm:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
 .auth-form-links {
   display: flex;
   justify-content: space-between;
