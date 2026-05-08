@@ -22,6 +22,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { AppProvider } from '../context/AppContext';
 import { AuthProvider } from '../context/AuthContext';
+import { ConfirmProvider } from '../components/ui/ConfirmDialog';
 import { AppShell } from '../App';
 
 vi.mock('../api/client', () => ({
@@ -61,9 +62,11 @@ function renderRoute(path: string) {
   return render(
     <AuthProvider>
       <AppProvider>
-        <MemoryRouter initialEntries={[path]}>
-          <AppShell />
-        </MemoryRouter>
+        <ConfirmProvider>
+          <MemoryRouter initialEntries={[path]}>
+            <AppShell />
+          </MemoryRouter>
+        </ConfirmProvider>
       </AppProvider>
     </AuthProvider>,
   );

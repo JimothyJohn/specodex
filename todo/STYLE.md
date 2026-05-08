@@ -127,11 +127,26 @@ in both light and dark mode, with no native OS tooltip ever appearing.
 
 ---
 
-## Phase 2 — Confirm + Alert dialog primitive (replaces `window.confirm` and `alert`)
+## Phase 2 — Confirm + Alert dialog primitive (replaces `window.confirm` and `alert`) ✅ shipped 2026-05-07
 
 `window.confirm` and `alert` block the JS thread, render in the OS's
 modal style, and can't be themed or animated. Three call sites today;
 zero allowed after this phase.
+
+**What landed:** `app/frontend/src/components/ui/ConfirmDialog.tsx`
+exports `ConfirmProvider` + `useConfirm()`. The provider holds at most
+one pending confirm and resolves a `Promise<boolean>`. Mounted in
+`App.tsx` next to `AppProvider`. Esc / backdrop click / Cancel resolve
+`false`; Enter / Confirm resolve `true`. Returns focus to the trigger
+on close. Theme matches `--bg-primary` / `--border` / `--accent-primary`
+tokens; danger variant uses the existing `#b03232`. The native `alert`
+in `DatasheetEditModal.tsx:65` is **deliberately not migrated** — that's
+a Phase 3 toast scenario per the plan.
+
+Migrated sites: `ProjectsPage.tsx`, `ProjectDetailPage.tsx`,
+`DatasheetList.tsx`. 7 new unit tests on the primitive itself + 3
+existing tests updated to drive the dialog instead of stubbing
+`window.confirm`.
 
 ### 2.1 Build `app/frontend/src/components/ui/ConfirmDialog.tsx` + `useConfirm()` hook
 

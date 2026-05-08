@@ -16,6 +16,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useProjects } from '../context/ProjectsContext';
+import { useConfirm } from './ui/ConfirmDialog';
 import { apiClient } from '../api/client';
 import type { Product, ProductType } from '../types/models';
 import type { ProductRef } from '../types/projects';
@@ -49,6 +50,7 @@ export default function ProjectDetailPage() {
     deleteProject,
     removeProductFrom,
   } = useProjects();
+  const confirm = useConfirm();
 
   const project = projects.find(p => p.id === id);
 
@@ -127,9 +129,12 @@ export default function ProjectDetailPage() {
   };
 
   const handleDelete = async () => {
-    const ok = window.confirm(
-      `Delete project "${project.name}"? This can't be undone.`,
-    );
+    const ok = await confirm({
+      title: 'Delete project?',
+      body: `"${project.name}" and all its product references will be removed. This can't be undone.`,
+      confirmLabel: 'Delete',
+      confirmVariant: 'danger',
+    });
     if (!ok) return;
     setActionError(null);
     try {

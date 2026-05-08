@@ -8,10 +8,12 @@ import DatasheetEditModal from './DatasheetEditModal';
 import Dropdown from './Dropdown';
 import ExternalLink from './ui/ExternalLink';
 import Tooltip from './ui/Tooltip';
+import { useConfirm } from './ui/ConfirmDialog';
 import { sanitizeUrl } from '../utils/sanitize';
 
 export default function DatasheetList() {
   const { products, loadProducts, loading, error, deleteProduct } = useApp();
+  const confirm = useConfirm();
   const [filters, setFilters] = useState<FilterCriterion[]>([]);
   const [sorts, setSorts] = useState<{ attribute: string; direction: 'asc' | 'desc' }[]>([]);
   const [itemsPerPage, setItemsPerPage] = useState<number>(25);
@@ -101,9 +103,14 @@ export default function DatasheetList() {
   );
 
   const handleDelete = async (id: string, componentType?: string) => {
-    if (window.confirm('Are you sure you want to delete this datasheet?')) {
-      await deleteProduct(id, 'datasheet', componentType);
-    }
+    const ok = await confirm({
+      title: 'Delete datasheet?',
+      body: 'The datasheet record will be removed from the catalog.',
+      confirmLabel: 'Delete',
+      confirmVariant: 'danger',
+    });
+    if (!ok) return;
+    await deleteProduct(id, 'datasheet', componentType);
   };
 
   const handleColumnSort = (attribute: string) => {
