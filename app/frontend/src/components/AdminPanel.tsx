@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import Dropdown from './Dropdown';
+import Tooltip from './ui/Tooltip';
 import './AdminPanel.css';
 
 type Stage = 'dev' | 'staging' | 'prod';
@@ -465,15 +466,16 @@ function PromoteForm({
         >
           {loading ? 'Running…' : 'Dry run'}
         </button>
-        <button
-          type="button"
-          className="btn-apply"
-          onClick={() => submit(true)}
-          disabled={loading || !canApply}
-          title={canApply ? '' : 'Run a dry run first with the current form values'}
-        >
-          {applyLabel}
-        </button>
+        <Tooltip content={canApply ? 'Apply the migration' : 'Run a dry run first with the current form values'}>
+          <button
+            type="button"
+            className="btn-apply"
+            onClick={() => submit(true)}
+            disabled={loading || !canApply}
+          >
+            {applyLabel}
+          </button>
+        </Tooltip>
       </div>
 
       {error && <div className="alert alert-error">{error}</div>}

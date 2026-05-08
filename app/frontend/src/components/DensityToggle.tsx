@@ -4,6 +4,7 @@
  */
 
 import { useApp } from '../context/AppContext';
+import Tooltip from './ui/Tooltip';
 
 export default function DensityToggle() {
   const { rowDensity, setRowDensity } = useApp();
@@ -18,12 +19,12 @@ export default function DensityToggle() {
     : 'Row density: comfortable — click for compact spacing';
 
   return (
+    <Tooltip content={title}>
     <button
       className="theme-toggle density-toggle"
       onClick={toggle}
       aria-label={title}
       aria-pressed={isCompact}
-      title={title}
     >
       {isCompact ? (
         <svg
@@ -52,5 +53,6 @@ export default function DensityToggle() {
         </svg>
       )}
     </button>
+    </Tooltip>
   );
 }

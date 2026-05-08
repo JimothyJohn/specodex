@@ -3,6 +3,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import Tooltip from './ui/Tooltip';
 
 export default function ThemeToggle() {
   const [isDark, setIsDark] = useState(true); // Default to dark mode
@@ -23,12 +24,13 @@ export default function ThemeToggle() {
     document.documentElement.setAttribute('data-theme', themeValue);
   };
 
+  const label = isDark ? 'Switch to light mode' : 'Switch to dark mode';
   return (
+    <Tooltip content={label}>
     <button
       className="theme-toggle"
       onClick={toggleTheme}
-      aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-      title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+      aria-label={label}
     >
       {isDark ? (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -48,5 +50,6 @@ export default function ThemeToggle() {
         </svg>
       )}
     </button>
+    </Tooltip>
   );
 }

@@ -11,6 +11,7 @@ import { FilterCriterion, SortConfig, applyFilters, sortProducts, getAttributesF
 // change what columns appear and in what order.
 import { orderColumnAttributes } from '../types/columnOrder';
 import { formatValue, computeAutoColumnWidths } from '../utils/formatting';
+import Tooltip from './ui/Tooltip';
 import { displayUnit, convertValueUnit, convertMinMaxUnit } from '../utils/unitConversion';
 import { numericFromValue } from '../utils/filterValues';
 import { useColumnResize } from '../utils/hooks';
@@ -936,17 +937,18 @@ export default function ProductList() {
               </div>
             )}
             {filters.length > 0 && (
-              <button
-                type="button"
-                className="page-toolbar-clear"
-                onClick={() => {
-                  setFilters([]);
-                  setSorts([]);
-                }}
-                title="Clear all filters and sorts"
-              >
-                Clear
-              </button>
+              <Tooltip content="Clear all filters and sorts">
+                <button
+                  type="button"
+                  className="page-toolbar-clear"
+                  onClick={() => {
+                    setFilters([]);
+                    setSorts([]);
+                  }}
+                >
+                  Clear
+                </button>
+              </Tooltip>
             )}
           </div>
         </div>
@@ -1059,11 +1061,11 @@ export default function ProductList() {
             <div className={`product-grid density-${rowDensity}`}>
             {/* Column headers */}
             <div className="product-grid-headers">
+              <Tooltip content="Click anywhere to sort • click again to reverse, again to clear">
               <div
                 className="product-grid-header-part clickable"
                 style={{ width: columnWidths['part_number'] ?? defaultPartWidth }}
                 onClick={() => handleColumnSort('part_number')}
-                title="Click anywhere to sort • click again to reverse, again to clear"
               >
                 Part Number
                 <span className="sort-indicator">
@@ -1075,6 +1077,7 @@ export default function ProductList() {
                 </span>
                 <div className="col-resize-handle" onMouseDown={(e) => startResize('part_number', e)} />
               </div>
+              </Tooltip>
               {/* Gear ratio (computed). Shown only when an active torque
                   filter forces a gear pick — otherwise it's all 1:1
                   noise. Per-row value comes from gearMap; rated_torque
@@ -1156,17 +1159,18 @@ export default function ProductList() {
               {/* Restore-hidden-column button — only rendered when
                   there's something to restore. */}
               {hiddenColumnAttributes.length > 0 && (
-                <button
-                  ref={(el) => setAddColumnBtnRef(el)}
-                  className="add-column-btn"
-                  onClick={(e) => {
-                    setColumnSelectorCursor({ x: e.clientX, y: e.clientY });
-                    setShowSortSelector(true);
-                  }}
-                  title={`Add spec column (${hiddenColumnAttributes.length} available)`}
-                >
-                  + Add Spec
-                </button>
+                <Tooltip content={`Add spec column (${hiddenColumnAttributes.length} available)`}>
+                  <button
+                    ref={(el) => setAddColumnBtnRef(el)}
+                    className="add-column-btn"
+                    onClick={(e) => {
+                      setColumnSelectorCursor({ x: e.clientX, y: e.clientY });
+                      setShowSortSelector(true);
+                    }}
+                  >
+                    + Add Spec
+                  </button>
+                </Tooltip>
               )}
             </div>
 

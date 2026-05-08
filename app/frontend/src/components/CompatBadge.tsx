@@ -4,6 +4,7 @@
  * tooltip on hover/focus.
  */
 import { CheckStatus } from '../types/compat';
+import Tooltip from './ui/Tooltip';
 
 interface CompatBadgeProps {
   status: CheckStatus;
@@ -19,12 +20,14 @@ const STATUS_LABEL: Record<CheckStatus, string> = {
 export default function CompatBadge({ status, label, detail }: CompatBadgeProps) {
   const text = label ?? STATUS_LABEL[status];
   return (
-    <span
-      className={`compat-badge compat-badge-${status}`}
-      title={detail || text}
-      aria-label={detail ? `${text}: ${detail}` : text}
-    >
-      {text}
-    </span>
+    <Tooltip content={detail || text}>
+      <span
+        className={`compat-badge compat-badge-${status}`}
+        aria-label={detail ? `${text}: ${detail}` : text}
+        tabIndex={0}
+      >
+        {text}
+      </span>
+    </Tooltip>
   );
 }

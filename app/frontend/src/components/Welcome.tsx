@@ -1,6 +1,7 @@
 import { useEffect, type ReactElement } from 'react';
 import { Link } from 'react-router-dom';
 import ThemeToggle from './ThemeToggle';
+import Tooltip from './ui/Tooltip';
 import GitHubLink from './GitHubLink';
 import './Welcome.css';
 
@@ -205,13 +206,15 @@ export default function Welcome() {
             <span className="specodex-favicon-label">Favicon · 32 px</span>
             <div className="specodex-favicon-row">
               {T1_RATIO_STUDIES.map((mark) => (
-                <div
-                  key={mark.id}
-                  className="specodex-favicon-tile"
-                  title={`${mark.id} — ${mark.name}`}
-                >
-                  {mark.svg}
-                </div>
+                <Tooltip key={mark.id} content={`${mark.id} — ${mark.name}`}>
+                  <div
+                    className="specodex-favicon-tile"
+                    tabIndex={0}
+                    aria-label={`${mark.id} — ${mark.name}`}
+                  >
+                    {mark.svg}
+                  </div>
+                </Tooltip>
               ))}
             </div>
           </div>

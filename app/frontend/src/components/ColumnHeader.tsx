@@ -41,6 +41,7 @@ import {
 } from '../utils/unitConversion';
 import DistributionChart from './DistributionChart';
 import MultiSelectFilterPopover from './MultiSelectFilterPopover';
+import Tooltip from './ui/Tooltip';
 
 interface ColumnHeaderProps {
   attribute: AttributeMetadata;
@@ -428,28 +429,29 @@ export default function ColumnHeader({
        * hide-column. They share a flex row so the X no longer floats over
        * the histogram. */}
       <div className="column-header-top">
-        <button
-          type="button"
-          className="column-header-sort"
-          onClick={onSort}
-          title="Click to sort • click again to reverse, again to clear"
-        >
-          <span className="column-header-label-text">{label}</span>
-          <span className="sort-indicator">
-            {sortConfig?.direction === 'asc' && '↑'}
-            {sortConfig?.direction === 'desc' && '↓'}
-            {sortConfig && totalSorts > 1 && (
-              <span className="sort-order">{sortIndex + 1}</span>
-            )}
-          </span>
-        </button>
+        <Tooltip content="Click to sort • click again to reverse, again to clear">
+          <button
+            type="button"
+            className="column-header-sort"
+            onClick={onSort}
+          >
+            <span className="column-header-label-text">{label}</span>
+            <span className="sort-indicator">
+              {sortConfig?.direction === 'asc' && '↑'}
+              {sortConfig?.direction === 'desc' && '↓'}
+              {sortConfig && totalSorts > 1 && (
+                <span className="sort-order">{sortIndex + 1}</span>
+              )}
+            </span>
+          </button>
+        </Tooltip>
+        <Tooltip content="Hide column">
         <button
           className="column-remove-btn"
           onClick={(e) => {
             e.stopPropagation();
             onRemove();
           }}
-          title="Hide column"
         >
           <svg
             width="10"
@@ -464,6 +466,7 @@ export default function ColumnHeader({
             <path d="M2 2 L8 8 M8 2 L2 8" />
           </svg>
         </button>
+        </Tooltip>
       </div>
 
       {/* Histogram strip — anchored to allProducts for a stable x-range,
@@ -546,29 +549,30 @@ export default function ColumnHeader({
                 aria-label="Override slider with typed value"
               />
             ) : (
-              <button
-                type="button"
-                className="readout-value"
-                onClick={() => {
-                  if (dispCurrent != null) {
-                    setValueDraft(
-                      intLikeUnit
-                        ? String(Math.round(dispCurrent))
-                        : String(Number(dispCurrent.toFixed(2))),
-                    );
-                  } else {
-                    setValueDraft('');
-                  }
-                  setEditingValue(true);
-                }}
-                title="Click to type an exact value"
-              >
-                {dispCurrent != null
-                  ? intLikeUnit
-                    ? Math.round(dispCurrent).toLocaleString()
-                    : dispCurrent.toFixed(1)
-                  : 'any'}
-              </button>
+              <Tooltip content="Click to type an exact value">
+                <button
+                  type="button"
+                  className="readout-value"
+                  onClick={() => {
+                    if (dispCurrent != null) {
+                      setValueDraft(
+                        intLikeUnit
+                          ? String(Math.round(dispCurrent))
+                          : String(Number(dispCurrent.toFixed(2))),
+                      );
+                    } else {
+                      setValueDraft('');
+                    }
+                    setEditingValue(true);
+                  }}
+                >
+                  {dispCurrent != null
+                    ? intLikeUnit
+                      ? Math.round(dispCurrent).toLocaleString()
+                      : dispCurrent.toFixed(1)
+                    : 'any'}
+                </button>
+              </Tooltip>
             )}
           </div>
 
@@ -576,25 +580,27 @@ export default function ColumnHeader({
            * smallest controls sit at the very bottom of the header so the
            * value box above them gets the full visual weight. */}
           <div className="column-header-bottom">
-            <button
-              type="button"
-              className="readout-operator"
-              onClick={cycleOperator}
-              title={`Operator ${operator} — click to flip (>= ↔ <)`}
-              aria-label={`Filter operator ${operator}`}
-            >
-              {operator === '>=' ? '≥' : operator === '<=' ? '≤' : operator}
-            </button>
-            {dispUnit && (
+            <Tooltip content={`Operator ${operator} — click to flip (>= ↔ <)`}>
               <button
                 type="button"
-                className="readout-unit"
-                onClick={handleUnitClick}
-                title={`Click to switch units (currently ${unitSystem})`}
-                aria-label={`Unit ${dispUnit} — click to swap unit system`}
+                className="readout-operator"
+                onClick={cycleOperator}
+                aria-label={`Filter operator ${operator}`}
               >
-                {dispUnit}
+                {operator === '>=' ? '≥' : operator === '<=' ? '≤' : operator}
               </button>
+            </Tooltip>
+            {dispUnit && (
+              <Tooltip content={`Click to switch units (currently ${unitSystem})`}>
+                <button
+                  type="button"
+                  className="readout-unit"
+                  onClick={handleUnitClick}
+                  aria-label={`Unit ${dispUnit} — click to swap unit system`}
+                >
+                  {dispUnit}
+                </button>
+              </Tooltip>
             )}
           </div>
         </>
@@ -608,6 +614,13 @@ export default function ColumnHeader({
        * column-header's has-include/has-exclude class. */}
       {!isSliderEligible && multiSelectOptions.length > 0 && (
         <>
+          <Tooltip
+            content={
+              multiSelectedCount === 0
+                ? 'Click to filter values'
+                : `${multiSelectedCount} ${filterMode === 'exclude' ? 'excluded' : 'included'} — click to edit`
+            }
+          >
           <button
             ref={multiTriggerRef}
             type="button"
@@ -618,16 +631,12 @@ export default function ColumnHeader({
             }}
             aria-haspopup="listbox"
             aria-expanded={multiOpen}
-            title={
-              multiSelectedCount === 0
-                ? 'Click to filter values'
-                : `${multiSelectedCount} ${filterMode === 'exclude' ? 'excluded' : 'included'} — click to edit`
-            }
           >
             {multiSelectedCount === 0
               ? 'any'
               : `${multiSelectedCount} ${filterMode === 'exclude' ? 'excluded' : 'selected'}`}
           </button>
+          </Tooltip>
           <MultiSelectFilterPopover
             open={multiOpen}
             anchorEl={multiTriggerRef.current}

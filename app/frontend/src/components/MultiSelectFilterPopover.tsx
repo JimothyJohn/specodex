@@ -18,6 +18,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { FilterCriterion, FilterValue } from '../types/filters';
+import Tooltip from './ui/Tooltip';
 
 interface MultiSelectFilterPopoverProps {
   open: boolean;
@@ -177,30 +178,34 @@ export default function MultiSelectFilterPopover({
       }}
     >
       <div className="multi-filter-popover-header">
-        <span className="multi-filter-popover-title" title={attributeLabel}>
-          {attributeLabel}
-        </span>
+        <Tooltip content={attributeLabel}>
+          <span className="multi-filter-popover-title" tabIndex={0}>
+            {attributeLabel}
+          </span>
+        </Tooltip>
         <div className="multi-filter-popover-mode" role="radiogroup" aria-label="Filter mode">
-          <button
-            type="button"
-            role="radio"
-            aria-checked={mode === 'include'}
-            className={`multi-filter-popover-mode-btn multi-filter-popover-mode-btn--include${mode === 'include' ? ' is-active' : ''}`}
-            onClick={() => setMode('include')}
-            title="Include selected values"
-          >
-            +
-          </button>
-          <button
-            type="button"
-            role="radio"
-            aria-checked={mode === 'exclude'}
-            className={`multi-filter-popover-mode-btn multi-filter-popover-mode-btn--exclude${mode === 'exclude' ? ' is-active' : ''}`}
-            onClick={() => setMode('exclude')}
-            title="Exclude selected values"
-          >
-            −
-          </button>
+          <Tooltip content="Include selected values">
+            <button
+              type="button"
+              role="radio"
+              aria-checked={mode === 'include'}
+              className={`multi-filter-popover-mode-btn multi-filter-popover-mode-btn--include${mode === 'include' ? ' is-active' : ''}`}
+              onClick={() => setMode('include')}
+            >
+              +
+            </button>
+          </Tooltip>
+          <Tooltip content="Exclude selected values">
+            <button
+              type="button"
+              role="radio"
+              aria-checked={mode === 'exclude'}
+              className={`multi-filter-popover-mode-btn multi-filter-popover-mode-btn--exclude${mode === 'exclude' ? ' is-active' : ''}`}
+              onClick={() => setMode('exclude')}
+            >
+              −
+            </button>
+          </Tooltip>
         </div>
       </div>
       <ul className="multi-filter-popover-list" role="listbox" aria-multiselectable="true">
