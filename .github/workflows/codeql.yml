@@ -38,6 +38,11 @@ jobs:
         uses: github/codeql-action/init@e46ed2cbd01164d986452f91f178727624ae40d7 # v4.35.3
         with:
           languages: ${{ matrix.language }}
+          # Config file documents the accepted-known alert exclusions
+          # (and the compensating control for each). The workflow keeps
+          # the `queries:` line so the suite choice stays grep-able here
+          # — the config-file inherits it.
+          config-file: ./.github/codeql/codeql-config.yml
           # Use security-and-quality queries for slightly higher signal
           # than security-extended. Drop to security-extended only if the
           # quality queries produce too many low-priority findings.

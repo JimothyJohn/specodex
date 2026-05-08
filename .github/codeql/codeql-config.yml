@@ -1,0 +1,39 @@
+# CodeQL scan configuration for Specodex.
+#
+# Inherits the default `security-and-quality` query suites configured
+# in `.github/workflows/codeql.yml`. The exclusions below document
+# alerts that are accepted-known and the compensating control.
+#
+# Process for adding a new exclusion:
+#   1. The alert must reflect tech debt the team has consciously
+#      accepted, NOT a bug to fix later. Add a comment explaining the
+#      compensating control.
+#   2. Scope the exclusion as narrowly as possible — single rule,
+#      single file path. Never disable a whole query class.
+#   3. PR the change so the reasoning is reviewable.
+
+name: "Specodex CodeQL"
+
+# Run the default queries the workflow asks for.
+queries:
+  - uses: security-and-quality
+
+query-filters:
+  # `js/missing-rate-limiting` on the auth proxy routes.
+  #
+  # Rate-limiting is enforced at the CloudFront edge by the WAF web ACL
+  # provisioned in Phase 5b (`app/infrastructure/lib/waf/site-web-acl.ts`).
+  # Defaults: 60 requests per IP per 5 minutes for `/api/auth/*` (twice
+  # the read-rate-limit for the rest of the API). Phase 5f
+  # (`app/infrastructure/lib/waf/waf-alarms.ts`) wires CloudWatch alarms
+  # on credential-stuffing-pattern blocks so an unusual spike pages
+  # oncall.
+  #
+  # Adding express-rate-limit middleware on top would be defense-in-
+  # depth, but the existing WAF protection is the production rate-limit
+  # of record. Tracking the express-side addition as a follow-up rather
+  # than blocking auth-hardening recovery on it.
+  - exclude:
+      id: js/missing-rate-limiting
+      paths:
+        - app/backend/src/routes/auth.ts
