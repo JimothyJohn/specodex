@@ -4,13 +4,20 @@
 of what's left without opening each `todo/*.md`. Drill into the linked
 docs only when you're about to act on that work.
 
-> **Recently shipped (through 2026-05-03).** REBRAND, UNITS, INTEGRATION,
-> FRONTEND_TESTING, CICD, the codegen toolchain (MODELGEN Phase 0/0a-i),
-> Projects (per-user collections), DEDUPE Phase 1 audit script, the
-> data-quality observatory (`./Quickstart godmode` — formerly tracked in
-> GODMODE.md, now fully shipped), `stripe_py/` Phase 1.1 layout, mobile-
-> friendly compaction pass, STYLE plan + CLAUDE.md "no native chrome"
-> rule, auth Phases 1–4 + 5b WAF + 5d CSP/HSTS.
+> **Recently shipped (through 2026-05-07).** REBRAND, UNITS, INTEGRATION,
+> FRONTEND_TESTING, CICD, the codegen toolchain (**MODELGEN Phase 0 +
+> 0a-i + 0a-ii + 0b + 0c, end-to-end** — `models.ts` is now a re-export
+> shim from `generated.ts`), Projects (per-user collections), **DEDUPE
+> end-to-end** (Phase 1 audit + Phase 2 safe-merge + Phase 3 review-
+> applier), data-quality observatory (`./Quickstart godmode`),
+> `stripe_py/` Phase 1.1 layout, mobile-friendly compaction pass,
+> **STYLE Phases 1 (Tooltip), 2 (ConfirmDialog), 5 (themed scrollbars),
+> 6 (ExternalLink)** + CLAUDE.md "no native chrome" rule,
+> **PYTHON_BACKEND Phase 5** (cli/ migration cleanup via deletion),
+> auth Phases 1–4 + 5b WAF + 5d CSP/HSTS, **DB platform-harden**
+> (IAM split, getCategories N+1 fix, prod deletion protection, Lambda
+> Node 22, PITR), DB_CLEANUP (gearhead torque rename + electric_cylinder
+> field drops + field-coverage audit CLI).
 >
 > **Just deleted from `todo/`** (2026-05-03 cleanup): AUTH.md, REFACTOR.md,
 > VISUALIZATION.md, GODMODE.md — all four had their scope shipped or
@@ -38,20 +45,17 @@ Drained as of 2026-04-30. No operator-only actions outstanding.
 
 ## Working tree state
 
-Snapshot 2026-05-03. **Stale within hours; re-run `git status` and
+Snapshot 2026-05-07. **Stale within hours; re-run `git status` and
 `git worktree list` for ground truth.**
 
-`master` is clean. The only remaining drift from earlier multi-agent
-work is the **four stranded auth Phase 5 worktrees** (`specodex-{ses,
-revoke,audit,alarms}`) and the **redundant `specodex-csp` worktree**
-(Phase 5d is on master; the worktree is safe to remove — see
-[PHASE5_RECOVERY.md](PHASE5_RECOVERY.md) Status section).
+`master` is clean. The redundant `specodex-csp` worktree was removed
+on 2026-05-07. The only remaining drift is the **four stranded auth
+Phase 5 worktrees** (`specodex-{ses,revoke,audit,alarms}`).
 
 ```
 /Users/nick/github/specodex         master                              ← this one
 /Users/nick/github/specodex-alarms  feat-auth-phase5f-alarms            (stranded)
 /Users/nick/github/specodex-audit   feat-auth-phase5e-audit             (stranded)
-/Users/nick/github/specodex-csp     feat-auth-phase5d-csp               (safe to remove)
 /Users/nick/github/specodex-revoke  feat-auth-phase5c-revoke            (stranded)
 /Users/nick/github/specodex-ses     feat-auth-phase5a-ses               (stranded)
 ```
@@ -67,8 +71,10 @@ plan for the four stranded phases.
 
 Each card body links back to its `todo/<AREA>.md` doc. To add new work, create a card on the board referencing the doc; if the work has file-level triggers, also add a row to **Trigger conditions** below.
 
-Active docs (2026-05-03): PHASE5_RECOVERY (P0), MODELGEN, SEO,
-MARKETING, DEDUPE, PYTHON_BACKEND, PYTHON_STRIPE, STYLE, API.
+Active docs (2026-05-07): PHASE5_RECOVERY (P0), SEO, MARKETING,
+PYTHON_BACKEND (Phases 1–3 only), PYTHON_STRIPE, STYLE (Phases 3, 4, 7),
+API. **Recently retired**: MODELGEN (end-to-end shipped) and DEDUPE
+(Phases 1+2+3 shipped) — docs may be deleted in the next cleanup pass.
 
 CI/CD itself is healthy (full chain green; only outstanding bit is apex
 `specodex.com` DNS) and now lives behind the `/cicd` skill rather than
@@ -79,16 +85,15 @@ a `todo/*.md` plan — invoke the skill or read
 
 ## Suggested chronological order
 
-With UNITS, REBRAND, INTEGRATION, FRONTEND_TESTING, GODMODE, and CICD
-all landed, the remaining order:
+With UNITS, REBRAND, INTEGRATION, FRONTEND_TESTING, GODMODE, CICD,
+**MODELGEN end-to-end**, and **DEDUPE end-to-end** all landed, the
+remaining order:
 
 1. **PHASE5_RECOVERY first.** It blocks PYTHON_BACKEND Phase 1 (FastAPI auth would mirror the wrong Cognito surface), it unblocks API.md (paid programmatic access depends on SES), and it's the highest-risk of the queue.
-2. **MODELGEN consumer rewire + Zod collapse.** Small, isolated, captures the value of the Phase 0 toolchain that's already shipped.
-3. **PYTHON_STRIPE Phase 1 deploy + Phase 2 cutover.** Code is scaffolded; just needs deploy + soak. Independent of everything else, ship in any spare slot.
-4. **SEO + MARKETING.** Public launch is now possible. SEO structural lifts pair with marketing distribution; product pages serve both.
-5. **DEDUPE Phase 2+3.** Operates on post-UNITS uniform data. Audit script is shipped; auto-merge + human review queue follow.
-6. **PYTHON_BACKEND Phase 1+** once everything above stops shifting. Don't start the FastAPI parallel-deploy on a moving target.
-7. **STYLE** runs alongside in any spare slot. Phases 1 (Tooltip), 5 (scrollbars), 6 (ExternalLink) are pure-additive and can ship anytime — they don't compete with the queue above. Phases 2-4 (ConfirmDialog, Toast, FormField) touch shared state, so single-stream them, but they don't block PYTHON_BACKEND or anything else.
+2. **PYTHON_STRIPE Phase 1 deploy + Phase 2 cutover.** Code is scaffolded; just needs deploy + soak. Independent of everything else, ship in any spare slot.
+3. **SEO + MARKETING.** Public launch is now possible. SEO structural lifts pair with marketing distribution; product pages serve both.
+4. **PYTHON_BACKEND Phase 1+** once everything above stops shifting. Don't start the FastAPI parallel-deploy on a moving target.
+5. **STYLE** runs alongside in any spare slot. Phases 3 (Toast) and 4 (FormField) are next; Phase 7 (drift gates) closes the plan once the others ship.
 
 **Out-of-band exceptions.** Urgent bugs, security issues, or user-visible breakage jump the queue.
 
@@ -103,25 +108,19 @@ all landed, the remaining order:
 - `PYTHON_STRIPE 1.x deploy` ⟶ `API.md` (paid surface assumes the billing Lambda is live)
 - `PYTHON_STRIPE 1.x deploy` ⟶ `PYTHON_STRIPE 2 cutover` ⟶ `PYTHON_STRIPE 3 delete Rust`
 - `PYTHON_BACKEND Phase 1` ⟶ `Phase 2` ⟶ `Phase 3`
-- `MODELGEN 0a-ii` ⟶ `MODELGEN 0c` (runbook collapse needs consumers cut over)
 - `SEO Phase 1` ⟶ `MARKETING Phase 1` (Show HN with broken indexing wastes the shot)
-- `DEDUPE Phase 1 (✅ shipped)` ⟶ `DEDUPE Phase 2` ⟶ `DEDUPE Phase 3`
-- `STYLE Phase 1 (Tooltip)` ⟶ `STYLE Phase 6 (ExternalLink wraps Tooltip)`
-- `STYLE Phases 1–6` ⟶ `STYLE Phase 7 (drift gates)`
+- `STYLE Phases 3 + 4` ⟶ `STYLE Phase 7 (drift gates)`
 
 **Soft sequencing (ergonomic, not technical):**
 
 - `PYTHON_STRIPE Phase 3` (delete Rust) ⟶ `PYTHON_BACKEND Phase 4` is moot — the work is the same, do it once via PYTHON_STRIPE.
-- `MODELGEN 0a-ii` should land before any new product type so the runbook collapse pays off; not a hard dep.
-- STYLE Phases 2 (ConfirmDialog) and 4 (FormField) touch shared form state — single-stream them, but they don't block any non-STYLE work.
+- STYLE Phases 3 (Toast) and 4 (FormField) both touch shared state — single-stream them, but they don't block any non-STYLE work.
 
 **Truly independent (run in any spare slot, in parallel with anything):**
 
-- `MODELGEN 0a-ii` / `0b`
 - `PYTHON_STRIPE 1.x deploy`
 - `SEO Phase 1`
-- `DEDUPE Phase 2 + 3`
-- `STYLE Phase 1 (Tooltip)`, `Phase 5 (scrollbars)`, `Phase 6 (ExternalLink)`
+- `STYLE Phase 3 (Toast)` — closes ~25 silent failure paths in AppContext / DatasheetEditModal alert
 - ~~`PYTHON_BACKEND Phase 5` (cli/migrations cleanup)~~ ✅ shipped 2026-04-30 (commit `c322393`)
 
 ```mermaid
@@ -130,74 +129,48 @@ graph LR
     PB1[PYTHON_BACKEND Phase 1 FastAPI]
     PB2[PYTHON_BACKEND Phase 2 frontend cutover]
     PB3[PYTHON_BACKEND Phase 3 delete Express]
-    M1[MODELGEN 0a-ii frontend rewire]
-    M2[MODELGEN 0b zod collapse]
-    M3[MODELGEN 0c runbook]
     S1[PYTHON_STRIPE 1.x deploy]
     S2[PYTHON_STRIPE 2 SSM cutover]
     S3[PYTHON_STRIPE 3 delete Rust]
     SEO1[SEO Phase 1 prerender + sitemap]
     SEO2[SEO Phase 2 content scaffolding]
     MK[MARKETING Phase 1 launch]
-    D2[DEDUPE Phase 2 auto-merge]
-    D3[DEDUPE Phase 3 review queue]
     API[API paid programmatic access]
-    ST1[STYLE 1 Tooltip]
-    ST6[STYLE 6 ExternalLink]
-    ST5[STYLE 5 Scrollbars]
-    ST2[STYLE 2 ConfirmDialog]
-    ST4[STYLE 4 FormField]
     ST3[STYLE 3 Toast]
+    ST4[STYLE 4 FormField]
     ST7[STYLE 7 drift gates]
 
     P5 --> PB1 --> PB2 --> PB3
     P5 --> API
     S1 --> S2 --> S3
     S1 --> API
-    M1 --> M3
-    M1 --> M2
     SEO1 --> SEO2
     SEO1 --> MK
-    D2 --> D3
-    ST1 --> ST6
-    ST2 --> ST4 --> ST3
-    ST1 --> ST7
-    ST5 --> ST7
-    ST6 --> ST7
     ST3 --> ST7
+    ST4 --> ST7
 
     classDef p0 fill:#fee,stroke:#c33,stroke-width:2px
-    classDef shipped fill:#efe,stroke:#393
     class P5 p0
 ```
 
 ```mermaid
 gantt
-    title Specodex remaining backlog (rough estimate from 2026-05-03)
+    title Specodex remaining backlog (rough estimate from 2026-05-07)
     dateFormat YYYY-MM-DD
     axisFormat %m/%d
 
     section P0 critical path
-    PHASE5_RECOVERY (cherry-pick + verify + PR) :crit, p5, 2026-05-04, 3d
-
-    section MODELGEN
-    0a-ii frontend rewire           :m1, after p5, 2d
-    0b zod enum + allowlist         :m2, 2026-05-06, 1d
-    0c runbook collapse             :after m1, 1d
+    PHASE5_RECOVERY (cherry-pick + verify + PR) :crit, p5, 2026-05-08, 3d
 
     section PYTHON_STRIPE
-    1.x deploy + dev round-trip      :s1, 2026-05-04, 2d
+    1.x deploy + dev round-trip      :s1, 2026-05-08, 2d
     2 SSM cutover + 7-day soak       :s2, after s1, 7d
     3 delete Rust crate              :after s2, 1d
 
     section SEO + MARKETING
-    SEO Phase 1 prerender + sitemap  :seo1, 2026-05-06, 14d
+    SEO Phase 1 prerender + sitemap  :seo1, 2026-05-08, 14d
     SEO Phase 2 content scaffolding  :seo2, after seo1, 21d
     MARKETING Phase 1 launch         :after seo1, 30d
-
-    section DEDUPE
-    Phase 2 auto-merge safe cases    :d2, 2026-05-04, 1d
-    Phase 3 review-applier           :after d2, 2d
 
     section PYTHON_BACKEND
     Phase 1 FastAPI parallel deploy  :pb1, after p5, 14d
@@ -208,13 +181,9 @@ gantt
     Programmatic access tier         :after s2, 7d
 
     section STYLE (parallel slots)
-    Phase 1 Tooltip                  :st1, 2026-05-04, 1d
-    Phase 5 Scrollbars               :2026-05-04, 1d
-    Phase 6 ExternalLink             :after st1, 1d
-    Phase 2 ConfirmDialog            :st2, 2026-05-06, 1d
-    Phase 4 FormField                :after st2, 2d
-    Phase 3 Toast                    :2026-05-10, 2d
-    Phase 7 drift gates              :2026-05-15, 1d
+    Phase 3 Toast                    :st3, 2026-05-10, 2d
+    Phase 4 FormField                :st4, after st3, 2d
+    Phase 7 drift gates              :after st4, 1d
 ```
 
 > Bars are **rough estimates**, not commitments. The Gantt assumes a
