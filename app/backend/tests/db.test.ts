@@ -255,11 +255,17 @@ describe('DynamoDBService', () => {
 
   describe('count', () => {
     it('should return counts per type', async () => {
-      jest.spyOn(db, 'list').mockImplementation(async (type) => {
-        if (type === 'motor') return [{ product_id: '1' }] as any[];
-        if (type === 'drive') return [{ product_id: '2' }, { product_id: '3' }] as any[];
-        return [];
-      });
+      // count() uses the private countByType helper, which under the
+      // hood issues a Query with Select=COUNT. Spy on the helper to
+      // avoid coupling the test to the AWS SDK command shape.
+      jest
+        .spyOn(db as any, 'countByType')
+        .mockImplementation(async (...args: unknown[]) => {
+          const type = args[0] as string;
+          if (type === 'motor') return 1;
+          if (type === 'drive') return 2;
+          return 0;
+        });
 
       const counts = await db.count();
       expect(counts.total).toBeGreaterThanOrEqual(3);

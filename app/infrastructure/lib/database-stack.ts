@@ -21,6 +21,17 @@ export class DatabaseStack extends cdk.Stack {
       partitionKey: { name: 'PK', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'SK', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      // PITR on every stage — a bad migration on dev now has a 35-day
+      // restore window instead of being unrecoverable. Already enabled
+      // out-of-band on prod (verified 2026-05-07); declaring it in CDK
+      // brings prod back into IaC parity.
+      pointInTimeRecoverySpecification: {
+        pointInTimeRecoveryEnabled: true,
+      },
+      // Belt and suspenders for prod: even with RETAIN removal policy,
+      // an explicit DeleteTable API call would still drop the table.
+      // deletionProtection refuses that until the flag is flipped off.
+      deletionProtection: config.stage === 'prod',
       removalPolicy: config.stage === 'prod'
         ? cdk.RemovalPolicy.RETAIN
         : cdk.RemovalPolicy.DESTROY,
