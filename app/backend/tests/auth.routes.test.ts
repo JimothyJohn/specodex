@@ -22,6 +22,7 @@ jest.mock('@aws-sdk/client-cognito-identity-provider', () => {
     ForgotPasswordCommand: class extends FakeCommand { _kind = 'ForgotPassword'; },
     ConfirmForgotPasswordCommand: class extends FakeCommand { _kind = 'ConfirmForgotPassword'; },
     ResendConfirmationCodeCommand: class extends FakeCommand { _kind = 'ResendConfirmationCode'; },
+    RevokeTokenCommand: class extends FakeCommand { _kind = 'RevokeToken'; },
   };
 });
 
@@ -193,5 +194,50 @@ describe('GET /api/auth/me', () => {
   it('401s without auth', async () => {
     const res = await request(app).get('/api/auth/me');
     expect(res.status).toBe(401);
+  });
+});
+
+describe('POST /api/auth/logout', () => {
+  it('400s on missing refresh_token', async () => {
+    const res = await request(app).post('/api/auth/logout').send({});
+    expect(res.status).toBe(400);
+  });
+
+  it('503s when Cognito client ID is unset', async () => {
+    config.cognito.userPoolClientId = '';
+    const res = await request(app).post('/api/auth/logout').send({ refresh_token: 'r' });
+    expect(res.status).toBe(503);
+  });
+
+  it('200s when Cognito accepts the revoke', async () => {
+    mockSend.mockResolvedValueOnce({});
+    const res = await request(app).post('/api/auth/logout').send({ refresh_token: 'r' });
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    // Confirm the right command was issued
+    const lastCall = mockSend.mock.calls.at(-1);
+    expect((lastCall?.[0] as { _kind?: string })._kind).toBe('RevokeToken');
+  });
+
+  it('200s when Cognito returns NotAuthorizedException (token already invalid)', async () => {
+    const err = new Error('token already revoked');
+    err.name = 'NotAuthorizedException';
+    mockSend.mockRejectedValueOnce(err);
+    const res = await request(app).post('/api/auth/logout').send({ refresh_token: 'r' });
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+  });
+
+  it('falls through to cognitoError on unexpected Cognito errors', async () => {
+    // The shared cognitoError helper maps unknown errors to 400 (the
+    // codebase's convention for "request failed at upstream"). The
+    // important guarantee for /logout is just that we don't 200 on
+    // a real server error and silently lie about revocation.
+    const err = new Error('boom');
+    err.name = 'InternalErrorException';
+    mockSend.mockRejectedValueOnce(err);
+    const res = await request(app).post('/api/auth/logout').send({ refresh_token: 'r' });
+    expect(res.status).not.toBe(200);
+    expect(res.body.success).toBe(false);
   });
 });

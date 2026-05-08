@@ -67,8 +67,27 @@ function pathStartsWith(prefix: string): wafv2.CfnWebACL.StatementProperty {
   };
 }
 
+/**
+ * The CloudWatch metric names this construct emits, exposed as a
+ * stable shape so alarms (Phase 5f) can reference them without
+ * restating the format string.
+ *
+ * The `WebACL` and `Rule` dimensions on AWS/WAFV2 metrics use the
+ * `metricName` from each `visibilityConfig`, not the rule's `Name`
+ * field. Get this wrong and CloudWatch silently shows a flat-zero
+ * graph. The shape below is the source of truth.
+ */
+export interface SiteWebAclMetricNames {
+  webAcl: string;
+  readRateLimit: string;
+  authRateLimit: string;
+  commonRules: string;
+  botControl?: string;
+}
+
 export class SiteWebAcl extends Construct {
   public readonly webAcl: wafv2.CfnWebACL;
+  public readonly metricNames: SiteWebAclMetricNames;
 
   constructor(scope: Construct, id: string, props: SiteWebAclProps) {
     super(scope, id);
@@ -179,6 +198,14 @@ export class SiteWebAcl extends Construct {
         sampledRequestsEnabled: true,
       },
     });
+
+    this.metricNames = {
+      webAcl: `specodex-${stage}-edge-acl`,
+      readRateLimit: `specodex-${stage}-read-rate-limit`,
+      authRateLimit: `specodex-${stage}-auth-rate-limit`,
+      commonRules: `specodex-${stage}-common-rules`,
+      ...(props.botControlEnabled ? { botControl: `specodex-${stage}-bot-control` } : {}),
+    };
 
     new cdk.CfnOutput(this, 'WebAclArn', {
       value: this.webAcl.attrArn,

@@ -1,0 +1,39 @@
+# CodeQL scan configuration for Specodex.
+#
+# Inherits the default `security-and-quality` query suites configured
+# in `.github/workflows/codeql.yml`. The exclusions below document
+# alerts that are accepted-known and the compensating control.
+#
+# Process for adding a new exclusion:
+#   1. The alert must reflect tech debt the team has consciously
+#      accepted, NOT a bug to fix later. Add a comment explaining the
+#      compensating control.
+#   2. Scope as narrowly as possible — single rule. CodeQL's
+#      `query-filters` doesn't take a `paths` modifier, so an exclusion
+#      is repository-wide. Use sparingly.
+#   3. PR the change so the reasoning is reviewable.
+
+name: "Specodex CodeQL"
+
+# Run the default queries the workflow asks for.
+queries:
+  - uses: security-and-quality
+
+query-filters:
+  # `js/missing-rate-limiting` repository-wide.
+  #
+  # Rate-limiting is enforced at the CloudFront edge by the WAF web ACL
+  # provisioned in Phase 5b (`app/infrastructure/lib/waf/site-web-acl.ts`).
+  # Defaults: 600 req/IP/5min for the read API, 60 req/IP/5min for
+  # `/api/auth/*`. Phase 5f (`app/infrastructure/lib/waf/waf-alarms.ts`)
+  # wires CloudWatch alarms on credential-stuffing-pattern blocks so
+  # an unusual spike pages oncall.
+  #
+  # Every Express handler in this repo runs behind that WAF, so the
+  # `js/missing-rate-limiting` rule is suppressed repository-wide:
+  # the rule looks for express-rate-limit middleware, but our actual
+  # rate-limit boundary is one network layer up. Adding the middleware
+  # would be defense-in-depth but is tracked as follow-up tech debt,
+  # not blocking on this scan.
+  - exclude:
+      id: js/missing-rate-limiting
