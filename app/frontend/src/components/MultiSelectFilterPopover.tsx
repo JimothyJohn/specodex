@@ -72,9 +72,20 @@ export default function MultiSelectFilterPopover({
   const popoverRef = useRef<HTMLDivElement>(null);
   const [rect, setRect] = useState<{ top: number; left: number; maxHeight: number } | null>(null);
 
-  // Mode = 'include' (green, default) or 'exclude' (red). Pulled from
-  // the existing filter, defaults to 'include' for fresh selections.
-  const mode: 'include' | 'exclude' = filter?.mode === 'exclude' ? 'exclude' : 'include';
+  // Mode = 'include' (green, default) or 'exclude' (red). Tracked locally
+  // so the user can pick exclude *before* selecting any values — when no
+  // filter exists yet, buildFilter returns null and the mode would
+  // otherwise be silently dropped. Re-syncs to the filter prop whenever
+  // an external filter shows up (mode toggle elsewhere, popover reopened).
+  const [localMode, setLocalMode] = useState<'include' | 'exclude'>(
+    filter?.mode === 'exclude' ? 'exclude' : 'include',
+  );
+  useEffect(() => {
+    if (filter) {
+      setLocalMode(filter.mode === 'exclude' ? 'exclude' : 'include');
+    }
+  }, [filter]);
+  const mode = localMode;
   const selected = useMemo(() => filterValuesToSet(filter), [filter]);
 
   useLayoutEffect(() => {
@@ -155,8 +166,14 @@ export default function MultiSelectFilterPopover({
   };
 
   const setMode = (next: 'include' | 'exclude') => {
-    const restored = options.filter(o => selected.has(String(o)));
-    onChange(buildFilter(restored, next));
+    setLocalMode(next);
+    // Only push an update if there's actually something to filter; with no
+    // selection yet, the mode just sits in local state and applies to the
+    // first value the user picks.
+    if (selected.size > 0) {
+      const restored = options.filter(o => selected.has(String(o)));
+      onChange(buildFilter(restored, next));
+    }
   };
 
   const clearAll = () => {
@@ -189,6 +206,7 @@ export default function MultiSelectFilterPopover({
               type="button"
               role="radio"
               aria-checked={mode === 'include'}
+              aria-label="Include selected values"
               className={`multi-filter-popover-mode-btn multi-filter-popover-mode-btn--include${mode === 'include' ? ' is-active' : ''}`}
               onClick={() => setMode('include')}
             >
@@ -200,6 +218,7 @@ export default function MultiSelectFilterPopover({
               type="button"
               role="radio"
               aria-checked={mode === 'exclude'}
+              aria-label="Exclude selected values"
               className={`multi-filter-popover-mode-btn multi-filter-popover-mode-btn--exclude${mode === 'exclude' ? ' is-active' : ''}`}
               onClick={() => setMode('exclude')}
             >

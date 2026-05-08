@@ -212,8 +212,20 @@ export function Tooltip({
 
   // Clone the child to attach event handlers + the ref + aria-describedby.
   // Non-element children get a span wrapper so the same affordances work.
-  const child = isValidElement(children) ? (
-    cloneElement(
+  // Preserve any existing ref on the child — cloneElement would otherwise
+  // overwrite it, silently breaking callers like ColumnHeader that anchor
+  // a popover to the same button via their own ref.
+  const child = isValidElement(children) ? (() => {
+    const existingRef = (children as unknown as { ref?: React.Ref<HTMLElement> }).ref;
+    const setAnchor = (node: HTMLElement | null) => {
+      anchorRef.current = node;
+      if (typeof existingRef === 'function') {
+        existingRef(node);
+      } else if (existingRef && typeof existingRef === 'object') {
+        (existingRef as React.MutableRefObject<HTMLElement | null>).current = node;
+      }
+    };
+    return cloneElement(
       children as ReactElement<{
         ref?: (node: HTMLElement | null) => void;
         onMouseEnter?: (e: React.MouseEvent) => void;
@@ -223,14 +235,12 @@ export function Tooltip({
         'aria-describedby'?: string;
       }>,
       {
-        ref: (node: HTMLElement | null) => {
-          anchorRef.current = node;
-        },
+        ref: setAnchor,
         ...handlers,
         'aria-describedby': open ? id : undefined,
       },
-    )
-  ) : (
+    );
+  })() : (
     <span
       ref={(node) => {
         anchorRef.current = node;

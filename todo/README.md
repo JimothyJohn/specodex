@@ -17,7 +17,11 @@ docs only when you're about to act on that work.
 > auth Phases 1–4 + 5b WAF + 5d CSP/HSTS, **DB platform-harden**
 > (IAM split, getCategories N+1 fix, prod deletion protection, Lambda
 > Node 22, PITR), DB_CLEANUP (gearhead torque rename + electric_cylinder
-> field drops + field-coverage audit CLI).
+> field drops + field-coverage audit CLI), filter-UX bug fixes
+> (Tooltip ref-merging — column-header multi-select popovers were
+> silently failing to anchor when wrapped in `<Tooltip>`; popover
+> mode-before-selection — clicking exclude before any value picked was
+> dropped) plus 19 new vitest cases covering the popover contract.
 >
 > **Just deleted from `todo/`** (2026-05-03 cleanup): AUTH.md, REFACTOR.md,
 > VISUALIZATION.md, GODMODE.md — all four had their scope shipped or
@@ -211,7 +215,8 @@ Curated tasks safe to run autonomously overnight on dev. Each one meets four cri
 | Ingest-report | `./Quickstart ingest-report --email-template` | `outputs/ingest_report_*.md` — quality fails grouped by manufacturer |
 | UNITS review triage | `./Quickstart units-triage outputs/units_migration_review_dev_*.md` (script lives on branch `late-night-units-triage`) | `outputs/units_triage_<stage>_<source-ts>_triaged_<run-ts>.md` — pattern groups + suggested action per group |
 | Integration test sweep | `./Quickstart verify --integration` | exit code; stale tests surface as failures |
-| DEDUPE Phase 1 audit | `./Quickstart audit-dedupes --stage dev` (script lives on branch `late-night-dedupe-audit` — read-only on dev DB) | `outputs/dedupe_audit_dev_<ts>.json` + `outputs/dedupe_review_dev_<ts>.md` |
+| DEDUPE audit (Phase 1) | `./Quickstart audit-dedupes --stage dev` — read-only on dev DB | `outputs/dedupe_audit_dev_<ts>.json` + `outputs/dedupe_review_dev_<ts>.md`. Phases 2 (`--apply --safe-only`) and 3 (`--apply --from-review`) shipped 2026-05-07 — both write to dev only. |
+| Field-coverage audit | `uv run python -m cli.audit_fields --stage dev` | `outputs/audit_fields_dev_<ts>.md` — drives `todo/DB_CLEANUP.md` Phase 2+ |
 
 ### Tier 2 — small Gemini cost, dev DB writes only
 

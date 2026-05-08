@@ -18,6 +18,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, fireEvent, act, cleanup } from '@testing-library/react';
+import { useRef } from 'react';
 import { Tooltip } from './Tooltip';
 
 beforeEach(() => {
@@ -139,5 +140,49 @@ describe('Tooltip', () => {
     fireEvent.mouseEnter(text);
     advance(0);
     expect(screen.getByRole('tooltip')).toHaveTextContent('Hint');
+  });
+
+  it('preserves an existing ref on the child (regression: anchored popovers)', () => {
+    // Regression for the ColumnHeader multi-select popover bug: cloneElement
+    // was overwriting the caller's ref so callers like
+    // `<button ref={triggerRef}>` ended up with triggerRef.current === null,
+    // and the anchored popover never opened on click.
+    let captured: HTMLButtonElement | null = null;
+    function Harness() {
+      const ref = useRef<HTMLButtonElement | null>(null);
+      // Capture into the outer-scope variable so the assertion can read it
+      // after render, regardless of whether the ref is a ref-object or callback.
+      const callbackRef = (node: HTMLButtonElement | null) => {
+        ref.current = node;
+        captured = node;
+      };
+      return (
+        <Tooltip content="Hint" delay={0}>
+          <button ref={callbackRef} type="button">Trigger</button>
+        </Tooltip>
+      );
+    }
+    render(<Harness />);
+    const trigger = screen.getByRole('button', { name: 'Trigger' });
+    expect(captured).toBe(trigger);
+  });
+
+  it('preserves a ref-object on the child (mutable .current)', () => {
+    // Same regression, but exercising the React.RefObject<T> branch in
+    // mergeRefs so both ref shapes are covered.
+    let observed: HTMLButtonElement | null = null;
+    function Harness() {
+      const ref = useRef<HTMLButtonElement | null>(null);
+      // Re-read after each render so the assertion sees the latest value.
+      observed = ref.current;
+      return (
+        <Tooltip content="Hint" delay={0}>
+          <button ref={ref} type="button">Trigger</button>
+        </Tooltip>
+      );
+    }
+    const { rerender } = render(<Harness />);
+    rerender(<Harness />);
+    expect(observed).toBe(screen.getByRole('button', { name: 'Trigger' }));
   });
 });
