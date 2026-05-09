@@ -69,6 +69,8 @@ class TestValidatorPerformance:
                 try:
                     ValueUnit.model_validate(inp)
                 except Exception:
+                    # Some inputs are intentionally invalid; the perf test
+                    # measures throughput including the failure path.
                     pass
         elapsed = (time.perf_counter() - start) * 1000
         assert elapsed < 600, f"4000 validator calls took {elapsed:.1f}ms"
@@ -86,6 +88,8 @@ class TestValidatorPerformance:
                 try:
                     MinMaxUnit.model_validate(inp)
                 except Exception:
+                    # Some inputs are intentionally invalid; the perf test
+                    # measures throughput including the failure path.
                     pass
         elapsed = (time.perf_counter() - start) * 1000
         assert elapsed < 600, f"4000 validator calls took {elapsed:.1f}ms"

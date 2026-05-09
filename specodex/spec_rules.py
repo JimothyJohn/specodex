@@ -136,6 +136,8 @@ def _null_all_spec_fields(product: ProductBase) -> None:
         try:
             setattr(product, field_name, None)
         except (ValueError, TypeError):
+            # Some fields are non-nullable per Pydantic — skipping them is
+            # fine because the surrounding null-out loop is best-effort.
             pass
 
 

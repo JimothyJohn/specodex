@@ -313,15 +313,23 @@ def render_review_md(reports: list[dict[str, Any]]) -> str:
         "",
         "**How to fill this in:**",
         "",
-        "- Per group, change the `Pick:` line to one of `merge`, "
-        "`delete-all`, or `skip` (default).",
-        "- For `merge`, fill the `pick` column on each conflicting field "
-        "with the row number whose value to take (1, 2, …) — leave any "
-        "blank to skip the entire group.",
-        "- `delete-all` deletes every row in the group (use for junk-only "
-        "groups). `skip` leaves the rows alone.",
-        "- Run `./Quickstart audit-dedupes --stage dev --apply --from-review "
-        "<this file> --dry-run` to preview, then `--yes` to apply.",
+        (
+            "- Per group, change the `Pick:` line to one of `merge`, "
+            "`delete-all`, or `skip` (default)."
+        ),
+        (
+            "- For `merge`, fill the `pick` column on each conflicting field "
+            "with the row number whose value to take (1, 2, …) — leave any "
+            "blank to skip the entire group."
+        ),
+        (
+            "- `delete-all` deletes every row in the group (use for junk-only "
+            "groups). `skip` leaves the rows alone."
+        ),
+        (
+            "- Run `./Quickstart audit-dedupes --stage dev --apply --from-review "
+            "<this file> --dry-run` to preview, then `--yes` to apply."
+        ),
         "",
     ]
     if not review:

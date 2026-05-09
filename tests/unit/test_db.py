@@ -235,7 +235,8 @@ class TestCRUD:
     def test_delete_success(self, mock_boto3: MagicMock) -> None:
         client, mock_table = _make_client(mock_boto3)
         uid = str(uuid4())
-        assert client.delete(uid, Motor) is True
+        deleted = client.delete(uid, Motor)
+        assert deleted is True
         mock_table.delete_item.assert_called_once()
 
 

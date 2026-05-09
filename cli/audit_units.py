@@ -41,9 +41,6 @@ import boto3  # type: ignore
 from specodex.config import REGION, TABLE_NAME
 
 
-logger: logging.Logger = logging.getLogger("dsm.audit-units")
-
-
 # A signed decimal (optionally with scientific-notation exponent) or a
 # range of two such decimals. The audit's false-positive floor: values like
 # "1.98E-6" and "2.59e-4" must pass, while "G-Series-230" and "IP65" must not.
