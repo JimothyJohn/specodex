@@ -52,7 +52,14 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
     const where = toArray(parsed.data.where);
     const sort = toArray(parsed.data.sort);
 
-    console.log(`[search] q=${q || ''} type=${type || 'all'} manufacturer=${manufacturer || ''} where=${where?.join(',') || ''} sort=${sort?.join(',') || ''} limit=${limit}`);
+    // CR/LF strip inline on each user-controlled value (CodeQL
+    // js/log-injection barrier; see util/log.ts). `type` is a zod-validated
+    // enum and `limit` is a number — neither needs sanitization.
+    const safeQ = (q || '').replace(/\r|\n/g, '');
+    const safeMfg = (manufacturer || '').replace(/\r|\n/g, '');
+    const safeWhere = where?.map(s => s.replace(/\r|\n/g, '')).join(',') || '';
+    const safeSort = sort?.map(s => s.replace(/\r|\n/g, '')).join(',') || '';
+    console.log(`[search] q=${safeQ} type=${type || 'all'} manufacturer=${safeMfg} where=${safeWhere} sort=${safeSort} limit=${limit}`);
 
     // Fetch products from database
     const productType = (type || 'all') as ProductType;

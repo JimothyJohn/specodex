@@ -320,7 +320,11 @@ router.delete('/:id', async (req: Request, res: Response): Promise<void> => {
             const remainingProducts = await db.hasProductsForDatasheetUrl(dsUrl);
             
             if (!remainingProducts) {
-                console.log(`[Delete] No products remaining for datasheet: ${dsUrl}. Resetting status.`);
+                // dsUrl embeds the user-supplied filename via s3Key — strip
+                // CR/LF inline before logging (CodeQL js/log-injection barrier;
+                // see util/log.ts).
+                const safeDsUrl = dsUrl.replace(/\r|\n/g, '');
+                console.log(`[Delete] No products remaining for datasheet: ${safeDsUrl}. Resetting status.`);
                 const datasheet = await db.getDatasheetByUrl(dsUrl);
                 
                 if (datasheet && datasheet.datasheet_id) {
