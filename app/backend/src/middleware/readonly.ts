@@ -8,6 +8,7 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
+import { safeLog } from '../util/log';
 
 const ALLOWED_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
@@ -37,7 +38,7 @@ export function readonlyGuard(req: Request, res: Response, next: NextFunction): 
     return;
   }
 
-  console.warn(`[readonly] Blocked ${req.method} ${req.path} — public mode is read-only`);
+  console.warn(`[readonly] Blocked ${req.method} ${safeLog(req.path)} — public mode is read-only`);
   res.status(403).json({
     success: false,
     error: 'This endpoint is read-only in public mode',

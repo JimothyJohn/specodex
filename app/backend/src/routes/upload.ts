@@ -17,6 +17,7 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { DynamoDBService } from '../db/dynamodb';
 import { v4 as uuidv4 } from 'uuid';
 import config from '../config';
+import { safeLog } from '../util/log';
 
 const router = Router();
 const db = new DynamoDBService({ tableName: config.dynamodb.tableName });
@@ -80,7 +81,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     });
     const uploadUrl = await getSignedUrl(s3, command, { expiresIn: 900 });
 
-    console.log(`[upload] Queued datasheet ${datasheetId} (key=${s3Key})`);
+    console.log(`[upload] Queued datasheet ${datasheetId} (key=${safeLog(s3Key)})`);
 
     res.status(201).json({
       success: true,
