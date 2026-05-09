@@ -54,6 +54,34 @@
             <div class="divider"><span>▮▮▮ RECENT PULL REQUESTS ▮▮▮</span></div>
             <ol class="pr-cards">
                 <li>
+                    <a class="pr-card" href="84.html">
+                        <div class="pr-card-head">
+                            <span class="pr-num">PR #84</span>
+                            <h2 class="pr-title">security — preempt three more log-injection sites CodeQL hasn't flagged</h2>
+                        </div>
+                        <div class="pr-card-meta">
+                            <span>Opened 2026-05-09</span>
+                            <span>+17 / −3 across 3 files (+ self-page)</span>
+                            <span>Branch <code>auto/codeql-loginjection-audit-20260509</code></span>
+                        </div>
+                        <p class="pr-card-body">
+                            Audit pass following <a href="83.html">PR #83</a>.
+                            Three more <code>console.log</code> /
+                            <code>console.error</code> sites that
+                            interpolate user-controlled values (search
+                            query string, delete-cascade
+                            <code>dsUrl</code>, DynamoDB SK on delete
+                            failure) get the same inline
+                            <code>.replace(/\r|\n/g, '')</code> treatment.
+                            CodeQL hasn't flagged them on this scan, but
+                            same shape, same fix — defense-in-depth and
+                            consistent pattern across the backend so a
+                            copy-paste doesn't re-introduce a bare
+                            interpolation.
+                        </p>
+                    </a>
+                </li>
+                <li>
                     <a class="pr-card" href="83.html">
                         <div class="pr-card-head">
                             <span class="pr-num">PR #83</span>

@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Specodex PR #84 — preempt three more js/log-injection sites CodeQL hasn't flagged, defense-in-depth follow-up to PR #83.">
+    <meta name="theme-color" content="#3A2C1C">
+    <title>Specodex — PR #84: preempt three more log-injection sites</title>
+    <link rel="icon" type="image/svg+xml" href="../logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-issue="PR-84">
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="band">
+        <div class="band-inner">
+            <a class="band-brand" href="../index.html">
+                <svg class="band-mark" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <rect width="120" height="120" fill="#E8E2C9"/>
+                    <rect x="14" y="14" width="92" height="92" fill="none" stroke="#1A1A14" stroke-width="3"/>
+                    <rect x="14" y="14" width="92" height="22" fill="#3A2C1C"/>
+                    <rect x="62" y="60" width="40" height="10" fill="#A88A1C"/>
+                    <line x1="14" y1="56" x2="106" y2="56" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="74" x2="106" y2="74" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="92" x2="106" y2="92" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="60" y1="36" x2="60" y2="106" stroke="#1A1A14" stroke-width="2"/>
+                </svg>
+                <span class="wordmark">SPECODEX</span>
+            </a>
+            <nav class="band-nav" aria-label="Section">
+                <a href="../index.html">Catalog</a>
+                <a href="./" class="active">Pull Requests</a>
+                <a href="https://github.com/JimothyJohn/specodex" rel="noreferrer">GitHub</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="hero-tag">▮▮▮ PULL REQUEST #84 ▮▮▮</div>
+            <h1 class="hero-title">security — preempt three more log-injection sites CodeQL hasn't flagged</h1>
+            <p class="hero-sub">
+                Audit pass following <a href="83.html">PR #83</a>.
+                While extending the inline
+                <code>.replace(/\r|\n/g, '')</code> pattern, three more
+                <code>console.log</code> / <code>console.error</code>
+                sites turned up that interpolate user-controlled values
+                without sanitization. Same shape as alerts #60–#65 that
+                #83 closed, just not on CodeQL's hit list yet — fix now
+                before a future analyzer update opens them.
+            </p>
+            <dl class="pr-meta">
+                <div><dt>Branch</dt><dd><code>auto/codeql-loginjection-audit-20260509</code></dd></div>
+                <div><dt>Opened</dt><dd>2026-05-09</dd></div>
+                <div><dt>Diff</dt><dd>+17 / −3 across 3 files (+ this self-page)</dd></div>
+                <div><dt>Files</dt><dd>3 backend (TypeScript): search route, products route, DynamoDB client</dd></div>
+                <div><dt>Type</dt><dd>Security / defense-in-depth (preemptive)</dd></div>
+            </dl>
+            <div class="cta-row">
+                <a class="cta cta-primary" href="https://github.com/JimothyJohn/specodex/pull/84" rel="noreferrer">View on GitHub →</a>
+                <a class="cta cta-ghost" href="./">All requests</a>
+            </div>
+        </section>
+
+        <section aria-label="Sites touched">
+            <div class="divider"><span>▮▮▮ SITES TOUCHED ▮▮▮</span></div>
+            <table class="spec-table">
+                <thead><tr><th>File</th><th>Line</th><th>User-controlled value</th><th>Reach</th></tr></thead>
+                <tbody>
+                    <tr>
+                        <td><code>routes/search.ts</code></td><td>55</td>
+                        <td><code>q</code>, <code>manufacturer</code>, <code>where</code>, <code>sort</code></td>
+                        <td>Public <code>/api/v1/search</code> query string</td>
+                    </tr>
+                    <tr>
+                        <td><code>routes/products.ts</code></td><td>323</td>
+                        <td><code>dsUrl</code> (embeds upload filename via <code>s3Key</code>)</td>
+                        <td>Admin delete-cascade</td>
+                    </tr>
+                    <tr>
+                        <td><code>db/dynamodb.ts</code></td><td>179</td>
+                        <td><code>item.SK?.S</code> (carries product names from <code>PRODUCT#TYPE#NAME</code>)</td>
+                        <td><code>deleteByScan</code> failure path (admin)</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section aria-label="What changes">
+            <div class="divider"><span>▮▮▮ WHAT CHANGES ▮▮▮</span></div>
+            <ol class="cell-list">
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">B-1</span><h2 class="cell-title">search.ts:55 — four interpolations, four strips</h2></div>
+                    <p class="cell-body">
+                        <code>q</code> and <code>manufacturer</code> are
+                        zod <code>z.string()</code> (free-form);
+                        <code>where</code> and <code>sort</code> are
+                        <code>z.union([z.string(), z.array(z.string())])</code>
+                        normalized to arrays. <code>type</code> is a
+                        zod-enum and <code>limit</code> is a number — both
+                        skip sanitization. Strip per element on the array
+                        cases <em>before</em> the join, so a CR/LF in any
+                        single entry doesn't survive.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">B-2</span><h2 class="cell-title">products.ts:323 — dsUrl strip</h2></div>
+                    <p class="cell-body">
+                        <code>dsUrl</code> is
+                        <code>s3://&lt;bucket&gt;/&lt;s3Key&gt;</code> where
+                        <code>s3Key</code> is built from the user-supplied
+                        <code>filename</code> in <code>upload.ts</code>.
+                        Inline strip before the delete-cascade log line.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">B-3</span><h2 class="cell-title">dynamodb.ts:179 — SK strip on delete-failure</h2></div>
+                    <p class="cell-body">
+                        <code>item.SK?.S</code> is <code>string | undefined</code>;
+                        the optional-chained replace + <code>'&lt;no-sk&gt;'</code>
+                        fallback covers both the missing-SK and the
+                        sanitized-SK cases. Reach is admin-only
+                        (<code>deleteByScan</code> is the helper for
+                        <code>deleteByProductName</code>) but the cost of
+                        the strip is one line, so defense-in-depth wins.
+                    </p>
+                </li>
+            </ol>
+        </section>
+
+        <section aria-label="Why preempt now">
+            <div class="divider"><span>▮▮▮ WHY PREEMPT NOW ▮▮▮</span></div>
+            <p class="prose">
+                These three sites have the same shape as alerts #60–#65
+                that PR #83 just closed; CodeQL's
+                <code>js/log-injection</code> rule simply doesn't trace
+                <em>these</em> particular flows on the current scan.
+                That's not a guarantee — a future analyzer update or
+                rule tweak could open them as new alerts on the next
+                run. Fixing now also keeps the inline-replace pattern
+                consistent across the backend, so a developer copying
+                a nearby line doesn't accidentally re-introduce a bare
+                <code>console.log(`...${user}...`)</code>.
+            </p>
+        </section>
+
+        <section aria-label="How to verify">
+            <div class="divider"><span>▮▮▮ HOW TO VERIFY ▮▮▮</span></div>
+            <ol class="cell-list">
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">V-1</span><h2 class="cell-title">Local pre-push gate</h2></div>
+                    <p class="cell-body">
+                        <code>./Quickstart verify --only backend</code> ran
+                        clean before push — eslint clean (only pre-existing
+                        <code>any</code> warnings), Jest 454 passed, tsc
+                        green.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">V-2</span><h2 class="cell-title">CodeQL re-run</h2></div>
+                    <p class="cell-body">
+                        After merge, the next CodeQL run on
+                        <code>master</code> should not open any new
+                        <code>js/log-injection</code> alerts. Check with:
+                        <code>gh api '/repos/JimothyJohn/specodex/code-scanning/alerts?state=open&amp;severity=medium' --jq 'length'</code>
+                        — should still be <code>0</code>.
+                    </p>
+                </li>
+            </ol>
+        </section>
+
+        <a class="back-link" href="./">← back to requests log</a>
+    </main>
+
+    <footer>
+        <div class="footer-inner">
+            <span>© 2026 Specodex · PR #84</span>
+            <span class="footer-rule" aria-hidden="true"></span>
+            <a class="footer-link" href="https://github.com/JimothyJohn/specodex/pull/84" rel="noreferrer">View on GitHub</a>
+            <a class="footer-link" href="./">All requests</a>
+        </div>
+    </footer>
+</body>
+</html>
