@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Specodex PR #72 — in-app feedback modal + header trigger + empty-state CTAs.">
+    <meta name="theme-color" content="#3A2C1C">
+    <title>Specodex — PR #72: in-app feedback modal</title>
+    <link rel="icon" type="image/svg+xml" href="../logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-issue="PR-72">
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="band">
+        <div class="band-inner">
+            <a class="band-brand" href="../index.html">
+                <svg class="band-mark" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <rect width="120" height="120" fill="#E8E2C9"/>
+                    <rect x="14" y="14" width="92" height="92" fill="none" stroke="#1A1A14" stroke-width="3"/>
+                    <rect x="14" y="14" width="92" height="22" fill="#3A2C1C"/>
+                    <rect x="62" y="60" width="40" height="10" fill="#A88A1C"/>
+                    <line x1="14" y1="56" x2="106" y2="56" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="74" x2="106" y2="74" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="92" x2="106" y2="92" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="60" y1="36" x2="60" y2="106" stroke="#1A1A14" stroke-width="2"/>
+                </svg>
+                <span class="wordmark">SPECODEX</span>
+            </a>
+            <nav class="band-nav" aria-label="Section">
+                <a href="../index.html">Catalog</a>
+                <a href="./" class="active">Pull Requests</a>
+                <a href="https://github.com/JimothyJohn/specodex" rel="noreferrer">GitHub</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="hero-tag">▮▮▮ PULL REQUEST #72 ▮▮▮</div>
+            <h1 class="hero-title">feat(feedback) — in-app feedback modal + header + empty-state CTAs</h1>
+            <p class="hero-sub">
+                Three entry points where the user can flag a missing product, a wrong spec,
+                "no results match my application", or send general feedback — all flowing through
+                a <code>mailto:nick@advin.io</code> with a structured subject and a
+                triage-friendly body that auto-appends app context (current route, product type,
+                active filters). Zero backend, ships today; a POST endpoint to S3/SES is the
+                obvious follow-up if volume warrants.
+            </p>
+            <dl class="pr-meta">
+                <div><dt>Branch</dt><dd><code>feat/feedback-modal</code></dd></div>
+                <div><dt>Opened</dt><dd>2026-05-09</dd></div>
+                <div><dt>Diff</dt><dd>+736 / −1 across 7 files</dd></div>
+                <div><dt>Tests</dt><dd>16 new (8 helper + 8 modal)</dd></div>
+                <div><dt>Type</dt><dd>Frontend / feature</dd></div>
+            </dl>
+            <div class="cta-row">
+                <a class="cta cta-primary" href="https://github.com/JimothyJohn/specodex/pull/72" rel="noreferrer">View on GitHub →</a>
+                <a class="cta cta-ghost" href="./">All requests</a>
+            </div>
+        </section>
+
+        <section aria-label="Three entry points">
+            <div class="divider"><span>▮▮▮ THREE ENTRY POINTS ▮▮▮</span></div>
+            <ol class="cell-list">
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">E-1</span><h2 class="cell-title">Header — always-on</h2></div>
+                    <p class="cell-body">
+                        New <code>Feedback</code> button in the <code>header-options</code>
+                        group, sitting between the OPTIONS label and the Density / Theme / Account
+                        toggles. Opens the modal with no pre-fill — the General path for users
+                        who came in to send something specific without a context to anchor it.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">E-2</span><h2 class="cell-title">Empty state — "I filtered to zero"</h2></div>
+                    <p class="cell-body">
+                        Replaces the flat <em>"No results match your specs"</em> at
+                        <code>ProductList.tsx:1020</code> with a follow-up card. Pre-selects
+                        <em>"I can't find what I need"</em> and threads the active product type
+                        plus serialized filter set into the mail body. The highest-signal moment —
+                        the user just demonstrated a coverage or filtering gap.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">E-3</span><h2 class="cell-title">Empty state — "DB is empty for this type"</h2></div>
+                    <p class="cell-body">
+                        Same card, different copy. When <code>products.length === 0</code> the
+                        button reads <em>"Tell us what to add"</em> and pre-selects
+                        <em>"A product is missing"</em>. Hits early-stage product types where
+                        the catalog has the schema but no rows yet.
+                    </p>
+                </li>
+            </ol>
+        </section>
+
+        <section aria-label="Mail body shape">
+            <div class="divider"><span>▮▮▮ MAIL BODY SHAPE ▮▮▮</span></div>
+            <pre style="background: var(--paper); border: 1px solid var(--ink); padding: 1rem; font-family: 'IBM Plex Mono', monospace; font-size: 0.85rem; line-height: 1.5; white-space: pre-wrap; max-width: 80ch; overflow-x: auto;">Subject: [Specodex] I can't find what I need (motor)
+
+&lt;user message&gt;
+
+---
+Sent from the Specodex feedback form.
+Category: I can't find what I need
+Route: /?type=motor
+Product type: motor
+Active filters:
+  - Rated Voltage &gt;= 200
+  - NOT Manufacturer = Acme</pre>
+            <p style="max-width: 80ch; color: var(--ink-soft); margin-top: 0.8rem;">
+                Triage-friendly: each filter on its own line with the human-readable
+                <code>displayName</code> instead of the dot-notation key, and
+                <code>NOT</code>-prefix on <code>mode: 'exclude'</code> so the inversion isn't
+                lost. Neutral / empty filters are dropped.
+            </p>
+        </section>
+
+        <section aria-label="Files touched">
+            <div class="divider"><span>▮▮▮ FILES TOUCHED ▮▮▮</span></div>
+            <table class="spec-table">
+                <thead><tr><th>Path</th><th>Change</th></tr></thead>
+                <tbody>
+                    <tr><td><code>app/frontend/src/utils/feedback.ts</code></td><td>NEW — <code>buildFeedbackMailto()</code> helper, category labels, filter formatter</td></tr>
+                    <tr><td><code>app/frontend/src/utils/feedback.test.ts</code></td><td>NEW — 8 tests</td></tr>
+                    <tr><td><code>app/frontend/src/components/ui/FeedbackModal.tsx</code></td><td>NEW — modal component (overlay + form + submit)</td></tr>
+                    <tr><td><code>app/frontend/src/components/ui/FeedbackModal.test.tsx</code></td><td>NEW — 8 tests</td></tr>
+                    <tr><td><code>app/frontend/src/App.tsx</code></td><td>Mount modal at app root + header trigger button</td></tr>
+                    <tr><td><code>app/frontend/src/components/ProductList.tsx</code></td><td>Empty-state CTA + per-list modal mount with productType + filters context</td></tr>
+                    <tr><td><code>app/frontend/src/App.css</code></td><td><code>.feedback-modal-*</code>, <code>.feedback-trigger</code>, <code>.empty-state-feedback</code> styles</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section aria-label="Why mailto">
+            <div class="divider"><span>▮▮▮ WHY MAILTO ▮▮▮</span></div>
+            <p style="max-width: 80ch; color: var(--ink-soft);">
+                Zero infra, no auth, no PII to design, no rate-limit / abuse surface.
+                <code>buildFeedbackMailto()</code> is a pure function returning a
+                <code>mailto:</code> URL; submit assigns it to <code>window.location.href</code>
+                so the user's mail client opens with the body already filled. They edit before
+                sending if they want; if they don't, what arrives reads like a small bug report.
+            </p>
+            <p style="max-width: 80ch; color: var(--ink-soft);">
+                A <code>POST /api/feedback</code> Lambda → DynamoDB or SES is the obvious
+                follow-up if volume warrants. That pulls in <code>app/infrastructure/**</code>
+                which is off-limits for autonomous work — it needs explicit sign-off and an IAM
+                policy rev. Not a regression risk to ship the mailto path now and graduate later.
+            </p>
+        </section>
+
+        <section aria-label="App-native chrome">
+            <div class="divider"><span>▮▮▮ APP-NATIVE CHROME ▮▮▮</span></div>
+            <ol class="cell-list">
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">S-1</span><h2 class="cell-title">Modal scaffolding</h2></div>
+                    <p class="cell-body">
+                        Reuses <code>.confirm-dialog-overlay</code> / <code>.confirm-dialog</code>
+                        — same overlay, fade animation, focus return, Esc-to-cancel as the
+                        existing ConfirmDialog. No <code>&lt;dialog&gt;</code>, no UA backdrop.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">S-2</span><h2 class="cell-title">Form validation</h2></div>
+                    <p class="cell-body">
+                        <code>noValidate</code> on the form per <code>todo/STYLE.md</code>; UA
+                        validation bubbles are banned. Empty message is allowed (helper inserts
+                        a <em>(No additional message)</em> placeholder) — submission with just
+                        a category + context is still useful signal.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">S-3</span><h2 class="cell-title">No alert / confirm</h2></div>
+                    <p class="cell-body">
+                        Submit dispatches the mailto in the same tab and closes the modal.
+                        No success toast yet — the mail-client launch is the visible feedback.
+                        If we add a success toast later it goes through <code>useToast()</code>,
+                        not <code>window.alert</code>.
+                    </p>
+                </li>
+            </ol>
+        </section>
+
+        <section aria-label="How to verify">
+            <div class="divider"><span>▮▮▮ HOW TO VERIFY ▮▮▮</span></div>
+            <ol class="cell-list">
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">V-1</span><h2 class="cell-title">Pre-push gate</h2></div>
+                    <p class="cell-body">
+                        <code>./Quickstart verify --only frontend</code> — green. Lint (0 new
+                        warnings), 469 vitest passing (16 new), codegen drift gate, build,
+                        STYLE drift gates.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">V-2</span><h2 class="cell-title">Header path</h2></div>
+                    <p class="cell-body">
+                        Click <em>Feedback</em> in the header. Modal opens; <em>General feedback</em>
+                        is selected by default. Type a message, click <em>Compose email</em>.
+                        Mail client opens with subject <code>[Specodex] General feedback</code>.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">V-3</span><h2 class="cell-title">Empty-state path</h2></div>
+                    <p class="cell-body">
+                        Pick a product type, add a filter that narrows results to zero. Card
+                        shows <em>"Specs too tight, or expecting a product to show up?"</em>
+                        + <em>"Tell us what you need"</em>. Click → modal opens with
+                        <em>"I can't find what I need"</em> pre-selected. Submit; the mail
+                        body lists the active filter set under <em>Active filters:</em>.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">V-4</span><h2 class="cell-title">Cancel paths</h2></div>
+                    <p class="cell-body">
+                        Esc, backdrop click, and <em>Cancel</em> all close the modal without
+                        navigating. Reopening the modal resets the message field — stale text
+                        from a previous open doesn't bleed through.
+                    </p>
+                </li>
+            </ol>
+        </section>
+
+        <section aria-label="What this PR doesn't do">
+            <div class="divider"><span>▮▮▮ WHAT THIS PR DOESN'T DO ▮▮▮</span></div>
+            <ol class="cell-list">
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">N-1</span><h2 class="cell-title">No backend endpoint</h2></div>
+                    <p class="cell-body">
+                        No <code>POST /api/feedback</code>, no DynamoDB table, no SES wiring.
+                        Mailto is the entire submission path. Graduating to a backend is a
+                        follow-up gated on actual volume.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">N-2</span><h2 class="cell-title">No per-product report link</h2></div>
+                    <p class="cell-body">
+                        The proposal included a <em>"Report this listing"</em> link inside
+                        <code>ProductDetailModal</code> for spec-level corrections. Trimmed
+                        from V1 — global modal handles "wrong spec" feedback today; per-row
+                        reporting can land in a follow-up if the global category proves too
+                        coarse for triage.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">N-3</span><h2 class="cell-title">No proactive nudges</h2></div>
+                    <p class="cell-body">
+                        The user comes to the modal; the modal doesn't come to the user. Toast
+                        prompts after N filtered-to-zero events, post-search surveys, etc. are
+                        deliberately out of scope — discoverable but not pushy is the V1 stance.
+                    </p>
+                </li>
+            </ol>
+        </section>
+
+        <a class="back-link" href="./">← back to requests log</a>
+    </main>
+
+    <footer>
+        <div class="footer-inner">
+            <span>© 2026 Specodex · PR #72</span>
+            <span class="footer-rule" aria-hidden="true"></span>
+            <a class="footer-link" href="https://github.com/JimothyJohn/specodex/pull/72" rel="noreferrer">View on GitHub</a>
+            <a class="footer-link" href="./">All requests</a>
+        </div>
+    </footer>
+</body>
+</html>
