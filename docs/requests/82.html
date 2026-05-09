@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Specodex PR #82 — clear 31 unrated CodeQL quality alerts, taking the open queue to zero.">
+    <meta name="theme-color" content="#3A2C1C">
+    <title>Specodex — PR #82: clear 31 unrated CodeQL quality alerts</title>
+    <link rel="icon" type="image/svg+xml" href="../logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-issue="PR-82">
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="band">
+        <div class="band-inner">
+            <a class="band-brand" href="../index.html">
+                <svg class="band-mark" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <rect width="120" height="120" fill="#E8E2C9"/>
+                    <rect x="14" y="14" width="92" height="92" fill="none" stroke="#1A1A14" stroke-width="3"/>
+                    <rect x="14" y="14" width="92" height="22" fill="#3A2C1C"/>
+                    <rect x="62" y="60" width="40" height="10" fill="#A88A1C"/>
+                    <line x1="14" y1="56" x2="106" y2="56" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="74" x2="106" y2="74" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="92" x2="106" y2="92" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="60" y1="36" x2="60" y2="106" stroke="#1A1A14" stroke-width="2"/>
+                </svg>
+                <span class="wordmark">SPECODEX</span>
+            </a>
+            <nav class="band-nav" aria-label="Section">
+                <a href="../index.html">Catalog</a>
+                <a href="./" class="active">Pull Requests</a>
+                <a href="https://github.com/JimothyJohn/specodex" rel="noreferrer">GitHub</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="hero-tag">▮▮▮ PULL REQUEST #82 ▮▮▮</div>
+            <h1 class="hero-title">chore — clear 31 unrated CodeQL quality alerts</h1>
+            <p class="hero-sub">
+                Last of the three CodeQL-cleanup PRs (high → <a href="80.html">#80</a>,
+                medium → <a href="81.html">#81</a>, this one). After this lands the
+                open-alert count is <strong>0</strong> across every severity level.
+                31 small, mechanically-driven fixes spread across 17 files; +125/−101.
+                One side-effect-in-assert fix matters beyond hygiene — under
+                <code>python -O</code> asserts strip, so a mutating call inside
+                <code>assert</code> disappears from the bytecode. Extracting to a
+                local first keeps the side effect.
+            </p>
+            <dl class="pr-meta">
+                <div><dt>Branch</dt><dd><code>auto/codeql-quality-fixes-20260509</code></dd></div>
+                <div><dt>Opened</dt><dd>2026-05-09</dd></div>
+                <div><dt>Diff</dt><dd>+125 / −101 across 17 files (+ this self-page)</dd></div>
+                <div><dt>Files</dt><dd>3 frontend (TS/TSX), 9 Python production, 5 test files</dd></div>
+                <div><dt>Type</dt><dd>Quality / CodeQL hygiene</dd></div>
+            </dl>
+            <div class="cta-row">
+                <a class="cta cta-primary" href="https://github.com/JimothyJohn/specodex/pull/82" rel="noreferrer">View on GitHub →</a>
+                <a class="cta cta-ghost" href="./">All requests</a>
+            </div>
+        </section>
+
+        <section aria-label="Categories">
+            <div class="divider"><span>▮▮▮ THE 31, BY CATEGORY ▮▮▮</span></div>
+            <ol class="cell-list">
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">F-1</span><h2 class="cell-title">Frontend (4 alerts)</h2></div>
+                    <p class="cell-body">
+                        Two <code>js/useless-assignment-to-local</code> hits in
+                        <code>ColumnHeader.tsx</code> and <code>FilterChip.tsx</code>:
+                        <code>let next = idx;</code> followed by a switch where every
+                        case overwrites <code>next</code> and the default returns
+                        early. Drop the dead initial value
+                        (<code>let next: number;</code>). Two
+                        <code>js/comparison-between-incompatible-types</code> in
+                        <code>types/filters.ts</code>: reorder
+                        <code>v !== null &amp;&amp; typeof v === 'object'</code> so
+                        the null check happens before the typeof narrowing — the
+                        canonical pattern in JS, since
+                        <code>typeof null === 'object'</code>.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">P-1</span><h2 class="cell-title">Python production (12 alerts)</h2></div>
+                    <p class="cell-body">
+                        Mostly small touch-ups: drop two unused module-level loggers
+                        (<code>cli/audit_units.py</code>,
+                        <code>specodex/models/common.py</code>); pre-bind two locals
+                        whose flow analyzers couldn't track
+                        (<code>cli/query.py</code> <code>num_filter</code>;
+                        <code>specodex/scraper.py</code> <code>validated_api_key</code>);
+                        explanatory comments on three empty-except handlers
+                        (<code>quickstart.py</code> health-check retry,
+                        <code>spec_rules.py</code> non-nullable Pydantic skip,
+                        <code>utils.py</code> SECLEVEL fallback);
+                        <code>raise SystemExit</code> instead of
+                        <code>sys.exit</code> in <code>schemagen._detect_mime</code>
+                        so flow analyzers see NoReturn; switch one
+                        <code>import x as y</code> to
+                        <code>from pkg import x as y</code> to use a single import
+                        style across <code>schemagen.py</code>; wrap intentional
+                        multi-line strings in parens in <code>audit_dedupes.py</code>
+                        so CodeQL sees them as expressions, not list-comma typos.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">P-2</span><h2 class="cell-title">cmd_dev: bare open() → with-block</h2></div>
+                    <p class="cell-body">
+                        Two <code>py/file-not-closed</code> alerts on the
+                        <code>backend_log</code> / <code>frontend_log</code> opens in
+                        <code>cmd_dev</code>. The existing code closed them in the
+                        signal handler, which works in practice but isn't traceable
+                        by CodeQL. Refactor to a parenthesized
+                        <code>with open(...) as backend_log, open(...) as frontend_log:</code>
+                        block — the signal handler's manual close goes away because
+                        <code>sys.exit</code> raises <code>SystemExit</code>, which
+                        propagates through the with-block and runs <code>__exit__</code>.
+                        Slightly larger diff (~70 lines indented one level), zero
+                        behavior change.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">T-1</span><h2 class="cell-title">Tests: side-effect-in-assert (8 alerts)</h2></div>
+                    <p class="cell-body">
+                        Across <code>test_admin.py</code>, <code>test_db.py</code>,
+                        <code>test_db_integration.py</code>, and
+                        <code>test_resilience.py</code>: extract mutation calls
+                        (<code>bl.remove(...)</code>, <code>client.delete(...)</code>,
+                        <code>db.delete(...)</code>) to a local before asserting on
+                        the result. <strong>Why it matters:</strong> under
+                        <code>python -O</code> asserts strip from the bytecode
+                        entirely; if the mutation lives inside the assert
+                        expression it vanishes too, so any test that depends on
+                        the prior mutation having happened silently fails on the
+                        next assertion. Extracting first keeps the side effect.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">T-2</span><h2 class="cell-title">Tests: empty-except (2 alerts)</h2></div>
+                    <p class="cell-body">
+                        <code>test_performance.py:71, 88</code> —
+                        <code>except Exception: pass</code> with no comment. The
+                        perf test deliberately measures the failure path (1000
+                        iterations × 4 invalid inputs). One-line comment inside
+                        each except block.
+                    </p>
+                </li>
+            </ol>
+        </section>
+
+        <section aria-label="The bigger picture">
+            <div class="divider"><span>▮▮▮ THE BIGGER PICTURE ▮▮▮</span></div>
+            <table class="spec-table">
+                <thead><tr><th>PR</th><th>Severity</th><th>Count</th><th>Status</th></tr></thead>
+                <tbody>
+                    <tr><td><a href="80.html">#80</a></td><td>High</td><td>3</td><td>Merged</td></tr>
+                    <tr><td><a href="81.html">#81</a></td><td>Medium</td><td>7</td><td>Open (draft)</td></tr>
+                    <tr><td>#82 (this)</td><td>Unrated quality</td><td>31</td><td>Open (draft)</td></tr>
+                    <tr><td colspan="2"><strong>Open-alert total after all three merge</strong></td><td colspan="2"><strong>0</strong></td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section aria-label="How to verify">
+            <div class="divider"><span>▮▮▮ HOW TO VERIFY ▮▮▮</span></div>
+            <ol class="cell-list">
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">V-1</span><h2 class="cell-title">Local pre-push gate</h2></div>
+                    <p class="cell-body">
+                        Full <code>./Quickstart verify</code> ran clean before push.
+                        Python: 1146 passed, 1 skipped. Backend: lint clean, Jest
+                        454 passed, <code>tsc</code> green. Frontend: Vitest 479
+                        passed (1 skipped), <code>tsc</code> green, Vite build clean.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">V-2</span><h2 class="cell-title">CodeQL re-run</h2></div>
+                    <p class="cell-body">
+                        After merge, the next CodeQL run on <code>master</code>
+                        should mark every one of these 31 alerts as
+                        <em>fixed</em>. Confirm with:
+                        <code>gh api repos/JimothyJohn/specodex/code-scanning/alerts -q '[.[] | select(.state=="open")] | length'</code>
+                        — should return <code>0</code>.
+                    </p>
+                </li>
+            </ol>
+        </section>
+
+        <a class="back-link" href="./">← back to requests log</a>
+    </main>
+
+    <footer>
+        <div class="footer-inner">
+            <span>© 2026 Specodex · PR #82</span>
+            <span class="footer-rule" aria-hidden="true"></span>
+            <a class="footer-link" href="https://github.com/JimothyJohn/specodex/pull/82" rel="noreferrer">View on GitHub</a>
+            <a class="footer-link" href="./">All requests</a>
+        </div>
+    </footer>
+</body>
+</html>

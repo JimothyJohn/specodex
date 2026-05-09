@@ -54,6 +54,30 @@
             <div class="divider"><span>▮▮▮ RECENT PULL REQUESTS ▮▮▮</span></div>
             <ol class="pr-cards">
                 <li>
+                    <a class="pr-card" href="82.html">
+                        <div class="pr-card-head">
+                            <span class="pr-num">PR #82</span>
+                            <h2 class="pr-title">chore — clear 31 unrated CodeQL quality alerts</h2>
+                        </div>
+                        <div class="pr-card-meta">
+                            <span>Opened 2026-05-09</span>
+                            <span>+125 / −101 across 17 files (+ self-page)</span>
+                            <span>Branch <code>auto/codeql-quality-fixes-20260509</code></span>
+                        </div>
+                        <p class="pr-card-body">
+                            Last of the three CodeQL-cleanup PRs (high → <a href="80.html">#80</a>,
+                            medium → <a href="81.html">#81</a>, this one). 31 small
+                            mechanical fixes — useless-assign, type-narrowing
+                            reorders, unused-globals, mixed-returns,
+                            uninitialized-locals, empty-except comments,
+                            implicit-string-concat, file-not-closed → with-block,
+                            and 8× side-effect-in-assert (which matters under
+                            <code>python -O</code>). Open-alert count goes to
+                            <strong>0</strong> after this lands.
+                        </p>
+                    </a>
+                </li>
+                <li>
                     <a class="pr-card" href="80.html">
                         <div class="pr-card-head">
                             <span class="pr-num">PR #80</span>
