@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Specodex PR #62 — STYLE Phase 1 long-tail: native title= → themed Tooltip across 12 files.">
+    <meta name="theme-color" content="#3A2C1C">
+    <title>Specodex — PR #62: title= → Tooltip migration</title>
+    <link rel="icon" type="image/svg+xml" href="../logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-issue="PR-62">
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="band">
+        <div class="band-inner">
+            <a class="band-brand" href="../index.html">
+                <svg class="band-mark" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <rect width="120" height="120" fill="#E8E2C9"/>
+                    <rect x="14" y="14" width="92" height="92" fill="none" stroke="#1A1A14" stroke-width="3"/>
+                    <rect x="14" y="14" width="92" height="22" fill="#3A2C1C"/>
+                    <rect x="62" y="60" width="40" height="10" fill="#A88A1C"/>
+                    <line x1="14" y1="56" x2="106" y2="56" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="74" x2="106" y2="74" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="92" x2="106" y2="92" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="60" y1="36" x2="60" y2="106" stroke="#1A1A14" stroke-width="2"/>
+                </svg>
+                <span class="wordmark">SPECODEX</span>
+            </a>
+            <nav class="band-nav" aria-label="Section">
+                <a href="../index.html">Catalog</a>
+                <a href="./" class="active">Pull Requests</a>
+                <a href="https://github.com/JimothyJohn/specodex" rel="noreferrer">GitHub</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="hero-tag">▮▮▮ PULL REQUEST #62 ▮▮▮</div>
+            <h1 class="hero-title">STYLE Phase 1 long-tail — title= → Tooltip across 12 files</h1>
+            <p class="hero-sub">
+                Frontend QoL pass. Every native-chrome <code>title=</code> attribute on a user-actionable
+                control now uses the themed <code>Tooltip</code> primitive. Native <code>title</code>
+                rendered as an OS-styled bubble after a ~1.5 s delay with no theming; Tooltip is themed,
+                faster (~300 ms), and respects keyboard focus. Closes the long tail of STYLE.md Phase 1
+                — Phase 1 itself shipped FilterChip back in PR #49.
+            </p>
+            <dl class="pr-meta">
+                <div><dt>Branch</dt><dd><code>auto/style-tooltip-remaining-sites-20260507</code></dd></div>
+                <div><dt>Merged</dt><dd>2026-05-08</dd></div>
+                <div><dt>Diff</dt><dd>+207 / −160</dd></div>
+                <div><dt>Files</dt><dd>12 changed</dd></div>
+                <div><dt>Closes</dt><dd>STYLE.md Phase 1</dd></div>
+            </dl>
+            <div class="cta-row">
+                <a class="cta cta-primary" href="https://github.com/JimothyJohn/specodex/pull/62" rel="noreferrer">View on GitHub →</a>
+                <a class="cta cta-ghost" href="./">All requests</a>
+            </div>
+        </section>
+
+        <section aria-label="Sites migrated">
+            <div class="divider"><span>▮▮▮ SITES MIGRATED ▮▮▮</span></div>
+            <table class="spec-table">
+                <thead><tr><th>File</th><th>Sites</th></tr></thead>
+                <tbody>
+                    <tr><td><code>ProductList.tsx</code></td><td>Clear-filters, part-number sort header, + Add Spec button</td></tr>
+                    <tr><td><code>BuildTray.tsx</code></td><td>Build-complete badge, slot-remove ×, Review chain, Copy BOM</td></tr>
+                    <tr><td><code>ColumnHeader.tsx</code></td><td>Sort, hide-X, value-readout, operator flip, unit switch, multi-select trigger</td></tr>
+                    <tr><td><code>MultiSelectFilterPopover.tsx</code></td><td>Include/exclude buttons, truncated attribute label</td></tr>
+                    <tr><td><code>DatasheetList.tsx</code></td><td>Delete-datasheet icon button</td></tr>
+                    <tr><td><code>AdminPanel.tsx</code></td><td>Apply button (disabled-state hint)</td></tr>
+                    <tr><td><code>ThemeToggle.tsx</code> + <code>DensityToggle.tsx</code></td><td>Top-right toggle buttons</td></tr>
+                    <tr><td><code>AccountMenu.tsx</code></td><td>Account-email truncated label</td></tr>
+                    <tr><td><code>CompatBadge.tsx</code></td><td>Status badge (now keyboard-focusable via tabIndex)</td></tr>
+                    <tr><td><code>Welcome.tsx</code></td><td>Favicon-study tile labels</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section aria-label="Deliberately not migrated">
+            <div class="divider"><span>▮▮▮ DELIBERATELY NOT MIGRATED ▮▮▮</span></div>
+            <ol class="cell-list">
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">SKIP-1</span><h2 class="cell-title">DistributionChart prop</h2></div>
+                    <p class="cell-body">
+                        <code>ColumnHeader.tsx:482</code> — <code>title=""</code> is the
+                        <code>DistributionChart</code> component's <em>prop</em>, not a native HTML
+                        attribute. Migrating it would change behavior. Allowlisted at the lint level.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">SKIP-2</span><h2 class="cell-title">SVG &lt;title&gt; elements</h2></div>
+                    <p class="cell-body">
+                        These are an accessibility primitive (the equivalent of <code>alt</code> for
+                        inline SVG). Tooltip is the wrong tool — they get read by screen readers, not
+                        rendered as a hover bubble.
+                    </p>
+                </li>
+            </ol>
+        </section>
+
+        <section aria-label="Top files touched">
+            <div class="divider"><span>▮▮▮ TOP FILES TOUCHED ▮▮▮</span></div>
+            <table class="spec-table">
+                <thead><tr><th>Path</th><th class="num">+</th><th class="num">−</th></tr></thead>
+                <tbody>
+                    <tr><td><code>app/frontend/src/components/ColumnHeader.tsx</code></td><td class="num">68</td><td class="num">59</td></tr>
+                    <tr><td><code>app/frontend/src/components/BuildTray.tsx</code></td><td class="num">31</td><td class="num">25</td></tr>
+                    <tr><td><code>app/frontend/src/components/MultiSelectFilterPopover.tsx</code></td><td class="num">28</td><td class="num">23</td></tr>
+                    <tr><td><code>app/frontend/src/components/AdminPanel.tsx</code></td><td class="num">11</td><td class="num">9</td></tr>
+                    <tr><td><code>app/frontend/src/components/CompatBadge.tsx</code></td><td class="num">10</td><td class="num">7</td></tr>
+                    <tr><td><code>app/frontend/src/components/AccountMenu.tsx</code></td><td class="num">4</td><td class="num">1</td></tr>
+                    <tr><td><code>app/frontend/src/components/DatasheetList.tsx</code></td><td class="num">3</td><td class="num">1</td></tr>
+                    <tr><td><code>app/frontend/src/components/DensityToggle.tsx</code></td><td class="num">3</td><td class="num">1</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <a class="back-link" href="./">← back to requests log</a>
+    </main>
+
+    <footer>
+        <div class="footer-inner">
+            <span>© 2026 Specodex · PR #62</span>
+            <span class="footer-rule" aria-hidden="true"></span>
+            <a class="footer-link" href="https://github.com/JimothyJohn/specodex/pull/62" rel="noreferrer">View on GitHub</a>
+            <a class="footer-link" href="./">All requests</a>
+        </div>
+    </footer>
+</body>
+</html>

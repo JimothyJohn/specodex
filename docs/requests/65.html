@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Specodex PR #65 — auth Phase 5 tail: SES sender, refresh-token revocation, audit logging, WAF alarms.">
+    <meta name="theme-color" content="#3A2C1C">
+    <title>Specodex — PR #65: auth Phase 5 tail</title>
+    <link rel="icon" type="image/svg+xml" href="../logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-issue="PR-65">
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="band">
+        <div class="band-inner">
+            <a class="band-brand" href="../index.html">
+                <svg class="band-mark" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <rect width="120" height="120" fill="#E8E2C9"/>
+                    <rect x="14" y="14" width="92" height="92" fill="none" stroke="#1A1A14" stroke-width="3"/>
+                    <rect x="14" y="14" width="92" height="22" fill="#3A2C1C"/>
+                    <rect x="62" y="60" width="40" height="10" fill="#A88A1C"/>
+                    <line x1="14" y1="56" x2="106" y2="56" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="74" x2="106" y2="74" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="92" x2="106" y2="92" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="60" y1="36" x2="60" y2="106" stroke="#1A1A14" stroke-width="2"/>
+                </svg>
+                <span class="wordmark">SPECODEX</span>
+            </a>
+            <nav class="band-nav" aria-label="Section">
+                <a href="../index.html">Catalog</a>
+                <a href="./" class="active">Pull Requests</a>
+                <a href="https://github.com/JimothyJohn/specodex" rel="noreferrer">GitHub</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="hero-tag">▮▮▮ PULL REQUEST #65 ▮▮▮</div>
+            <h1 class="hero-title">auth Phase 5 tail — SES, refresh-token revocation, audit logging, WAF alarms</h1>
+            <p class="hero-sub">
+                Recovers four stranded auth-hardening phases — roughly 1.1k lines of code that had been
+                merged into a stacked-PR base branch instead of master and silently never reached production.
+                Each commit is the original phase commit cherry-picked verbatim; the three remaining
+                conflicts were pure-additive (env-var section, import list, stack body) and resolved as
+                "keep both, in order."
+            </p>
+            <dl class="pr-meta">
+                <div><dt>Branch</dt><dd><code>feat-auth-phase5-tail</code></dd></div>
+                <div><dt>Merged</dt><dd>2026-05-08</dd></div>
+                <div><dt>Diff</dt><dd>+1138 / −24</dd></div>
+                <div><dt>Files</dt><dd>17 changed</dd></div>
+                <div><dt>Closes</dt><dd><code>todo/PHASE5_RECOVERY.md</code></dd></div>
+            </dl>
+            <div class="cta-row">
+                <a class="cta cta-primary" href="https://github.com/JimothyJohn/specodex/pull/65" rel="noreferrer">View on GitHub →</a>
+                <a class="cta cta-ghost" href="./">All requests</a>
+            </div>
+        </section>
+
+        <section aria-label="What changes">
+            <div class="divider"><span>▮▮▮ WHAT CHANGES ▮▮▮</span></div>
+            <ol class="cell-list">
+                <li class="cell">
+                    <div class="cell-head">
+                        <span class="cell-code">5a · SES</span>
+                        <h2 class="cell-title">Cognito sender via SES</h2>
+                    </div>
+                    <p class="cell-body">
+                        Cognito email defaults are unauthenticated and rate-limited. Wires SES as the
+                        sender for verification + reset emails, opt-in via env so dev/local stay on the
+                        no-ops path. New <code>app/.env.example</code> entries; CDK stack picks them up.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head">
+                        <span class="cell-code">5c · REVOKE</span>
+                        <h2 class="cell-title">Refresh-token revocation on logout</h2>
+                    </div>
+                    <p class="cell-body">
+                        Logout previously dropped only the access token; the refresh token stayed valid
+                        until natural expiry. Backend now calls
+                        <code>cognito-idp:RevokeToken</code> on the refresh handle as part of the logout
+                        flow. Frontend client mirrors with an explicit <code>authLogout()</code>.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head">
+                        <span class="cell-code">5e · AUDIT</span>
+                        <h2 class="cell-title">Structured audit logging on /api/auth/*</h2>
+                    </div>
+                    <p class="cell-body">
+                        New <code>auth-audit.ts</code> middleware emits a structured CloudWatch line per
+                        request — IP, user-agent fingerprint, outcome, latency. 117 lines of middleware,
+                        241 lines of tests pinning the field set. Forensic surface for the next time
+                        someone asks "who logged in from where, when."
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head">
+                        <span class="cell-code">5f · ALARMS</span>
+                        <h2 class="cell-title">WAF CloudWatch alarms + SNS topic</h2>
+                    </div>
+                    <p class="cell-body">
+                        WAF was already enabled on the API; alarms were not. Adds a CloudWatch alarm on
+                        blocked-request-rate and an SNS topic so an actual page goes out when someone
+                        starts probing. Touches the frontend stack (CSP) + alarms imports + body.
+                    </p>
+                </li>
+            </ol>
+        </section>
+
+        <section aria-label="Cherry-pick table">
+            <div class="divider"><span>▮▮▮ CHERRY-PICKS (IN ORDER) ▮▮▮</span></div>
+            <table class="spec-table">
+                <thead>
+                    <tr><th>Phase</th><th>New commit</th><th>Original</th><th>Conflicts</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>5a SES email sender</td><td><code>aa3d1aa</code></td><td><code>a14613a</code></td><td><code>app/.env.example</code> (additive)</td></tr>
+                    <tr><td>5c refresh-token revocation</td><td><code>a18ad87</code></td><td><code>a679fdf</code></td><td><code>app/frontend/src/api/client.ts</code> (additive)</td></tr>
+                    <tr><td>5e auth audit logging</td><td><code>3fe223a</code></td><td><code>28d6fdc</code></td><td>none (auto-merge)</td></tr>
+                    <tr><td>5f WAF CloudWatch alarms</td><td><code>478318f</code></td><td><code>ae1144c</code></td><td><code>app/.env.example</code> + frontend stack (additive)</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section aria-label="Top files touched">
+            <div class="divider"><span>▮▮▮ TOP FILES TOUCHED ▮▮▮</span></div>
+            <table class="spec-table">
+                <thead><tr><th>Path</th><th class="num">+</th><th class="num">−</th></tr></thead>
+                <tbody>
+                    <tr><td><code>.github/codeql/codeql-config.yml</code></td><td class="num">39</td><td class="num">0</td></tr>
+                    <tr><td><code>.github/workflows/codeql.yml</code></td><td class="num">5</td><td class="num">0</td></tr>
+                    <tr><td><code>app/.env.example</code></td><td class="num">29</td><td class="num">0</td></tr>
+                    <tr><td><code>app/backend/src/middleware/auth-audit.ts</code></td><td class="num">117</td><td class="num">0</td></tr>
+                    <tr><td><code>app/backend/src/routes/auth.ts</code></td><td class="num">86</td><td class="num">6</td></tr>
+                    <tr><td><code>app/backend/tests/auth-audit.test.ts</code></td><td class="num">241</td><td class="num">0</td></tr>
+                    <tr><td><code>app/backend/tests/auth.routes.test.ts</code></td><td class="num">46</td><td class="num">0</td></tr>
+                    <tr><td><code>app/frontend/src/api/client.ts</code></td><td class="num">18</td><td class="num">0</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section aria-label="How to verify">
+            <div class="divider"><span>▮▮▮ HOW TO VERIFY ▮▮▮</span></div>
+            <ol class="cell-list">
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">V-1</span><h2 class="cell-title">Stack diff</h2></div>
+                    <p class="cell-body">
+                        <code>cdk diff</code> against the current prod stack should show ONLY: SES domain
+                        identity (5a), WAF alarms + SNS topic (5f). No drift on existing resources.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">V-2</span><h2 class="cell-title">Revocation flag</h2></div>
+                    <p class="cell-body">
+                        Post-deploy, <code>aws cognito-idp describe-user-pool-client</code> should report
+                        the refresh-token revocation flag enabled.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">V-3</span><h2 class="cell-title">Audit lines in CloudWatch</h2></div>
+                    <p class="cell-body">
+                        Trigger a sign-in; <code>aws logs tail --follow</code> on the API log group should
+                        emit one structured audit line per <code>/api/auth/*</code> hit.
+                    </p>
+                </li>
+            </ol>
+        </section>
+
+        <a class="back-link" href="./">← back to requests log</a>
+    </main>
+
+    <footer>
+        <div class="footer-inner">
+            <span>© 2026 Specodex · PR #65</span>
+            <span class="footer-rule" aria-hidden="true"></span>
+            <a class="footer-link" href="https://github.com/JimothyJohn/specodex/pull/65" rel="noreferrer">View on GitHub</a>
+            <a class="footer-link" href="./">All requests</a>
+        </div>
+    </footer>
+</body>
+</html>

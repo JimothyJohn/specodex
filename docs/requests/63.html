@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Specodex PR #63 — STYLE Phase 2: ConfirmDialog primitive replaces window.confirm.">
+    <meta name="theme-color" content="#3A2C1C">
+    <title>Specodex — PR #63: ConfirmDialog primitive</title>
+    <link rel="icon" type="image/svg+xml" href="../logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-issue="PR-63">
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="band">
+        <div class="band-inner">
+            <a class="band-brand" href="../index.html">
+                <svg class="band-mark" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <rect width="120" height="120" fill="#E8E2C9"/>
+                    <rect x="14" y="14" width="92" height="92" fill="none" stroke="#1A1A14" stroke-width="3"/>
+                    <rect x="14" y="14" width="92" height="22" fill="#3A2C1C"/>
+                    <rect x="62" y="60" width="40" height="10" fill="#A88A1C"/>
+                    <line x1="14" y1="56" x2="106" y2="56" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="74" x2="106" y2="74" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="92" x2="106" y2="92" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="60" y1="36" x2="60" y2="106" stroke="#1A1A14" stroke-width="2"/>
+                </svg>
+                <span class="wordmark">SPECODEX</span>
+            </a>
+            <nav class="band-nav" aria-label="Section">
+                <a href="../index.html">Catalog</a>
+                <a href="./" class="active">Pull Requests</a>
+                <a href="https://github.com/JimothyJohn/specodex" rel="noreferrer">GitHub</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="hero-tag">▮▮▮ PULL REQUEST #63 ▮▮▮</div>
+            <h1 class="hero-title">STYLE Phase 2 — ConfirmDialog primitive replaces window.confirm</h1>
+            <p class="hero-sub">
+                <code>window.confirm</code> blocks the JS thread, renders in OS chrome that can't be
+                themed, and traps tests in a synchronous dialog the runner can't dismiss. The new
+                <code>ConfirmDialog</code> primitive is async, themed, keyboard-friendly, and lets
+                tests resolve programmatically by clicking the rendered buttons.
+            </p>
+            <dl class="pr-meta">
+                <div><dt>Branch</dt><dd><code>auto/style-phase2-confirm-dialog-20260507</code></dd></div>
+                <div><dt>Merged</dt><dd>2026-05-08</dd></div>
+                <div><dt>Diff</dt><dd>+531 / −46</dd></div>
+                <div><dt>Files</dt><dd>11 changed</dd></div>
+                <div><dt>Closes</dt><dd>STYLE.md Phase 2</dd></div>
+            </dl>
+            <div class="cta-row">
+                <a class="cta cta-primary" href="https://github.com/JimothyJohn/specodex/pull/63" rel="noreferrer">View on GitHub →</a>
+                <a class="cta cta-ghost" href="./">All requests</a>
+            </div>
+        </section>
+
+        <section aria-label="The new API">
+            <div class="divider"><span>▮▮▮ THE NEW API ▮▮▮</span></div>
+            <p style="margin-bottom: 0.8rem; max-width: 80ch; color: var(--ink-soft);">
+                Imperative, mirroring <code>window.confirm</code> — no JSX wrapper, no
+                <code>open</code>/<code>setOpen</code> ceremony at the call site:
+            </p>
+            <div class="code-frame">
+                <pre><span class="kw">const</span> confirm = <span class="cmd">useConfirm</span>();
+<span class="kw">if</span> (!(<span class="kw">await</span> <span class="cmd">confirm</span>({
+    <span class="arg">title</span>: <span class="str">'Delete project?'</span>,
+    <span class="arg">body</span>: <span class="str">'"Foo" and all its product references will be removed.'</span>,
+    <span class="arg">confirmLabel</span>: <span class="str">'Delete'</span>,
+    <span class="arg">confirmVariant</span>: <span class="str">'danger'</span>,
+}))) <span class="kw">return</span>;</pre>
+            </div>
+        </section>
+
+        <section aria-label="What's new">
+            <div class="divider"><span>▮▮▮ WHAT'S NEW ▮▮▮</span></div>
+            <ol class="cell-list">
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">API</span><h2 class="cell-title">Provider + hook</h2></div>
+                    <p class="cell-body">
+                        <code>app/frontend/src/components/ui/ConfirmDialog.tsx</code> exports
+                        <code>ConfirmProvider</code> + <code>useConfirm()</code>. Provider holds at
+                        most one pending confirm; a second call cancels the first (resolves
+                        <code>false</code>) and replaces it.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">UX</span><h2 class="cell-title">Keyboard + focus</h2></div>
+                    <p class="cell-body">
+                        Esc / backdrop click / Cancel resolve <code>false</code>; Enter / Confirm
+                        resolve <code>true</code>. Returns focus to the trigger element on close.
+                        120 ms fade-in respects <code>prefers-reduced-motion</code>.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">STYLE</span><h2 class="cell-title">Themed via tokens</h2></div>
+                    <p class="cell-body">
+                        Uses existing <code>--bg-primary</code> / <code>--border</code> /
+                        <code>--accent-primary</code>. Danger variant uses <code>#b03232</code>
+                        (matches AuthModal). No new design tokens introduced.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">WIRING</span><h2 class="cell-title">Mounted in App.tsx</h2></div>
+                    <p class="cell-body">
+                        <code>&lt;ConfirmProvider&gt;</code> sits between <code>AppProvider</code> and
+                        <code>BrowserRouter</code> so the whole route tree can call
+                        <code>useConfirm()</code>.
+                    </p>
+                </li>
+            </ol>
+        </section>
+
+        <section aria-label="Migrations">
+            <div class="divider"><span>▮▮▮ MIGRATIONS (3 SITES) ▮▮▮</span></div>
+            <table class="spec-table">
+                <thead><tr><th>File</th><th>What it confirms</th></tr></thead>
+                <tbody>
+                    <tr><td><code>ProjectsPage.tsx</code></td><td>Delete-project confirm</td></tr>
+                    <tr><td><code>ProjectDetailPage.tsx</code></td><td>Delete-project confirm</td></tr>
+                    <tr><td><code>DatasheetList.tsx</code></td><td>Delete-datasheet confirm</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section aria-label="Top files touched">
+            <div class="divider"><span>▮▮▮ TOP FILES TOUCHED ▮▮▮</span></div>
+            <table class="spec-table">
+                <thead><tr><th>Path</th><th class="num">+</th><th class="num">−</th></tr></thead>
+                <tbody>
+                    <tr><td><code>app/frontend/src/components/ui/ConfirmDialog.test.tsx</code></td><td class="num">134</td><td class="num">0</td></tr>
+                    <tr><td><code>app/frontend/src/App.css</code></td><td class="num">94</td><td class="num">14</td></tr>
+                    <tr><td><code>app/frontend/src/components/ProjectsPage.test.tsx</code></td><td class="num">33</td><td class="num">13</td></tr>
+                    <tr><td><code>app/frontend/src/components/ProjectDetailPage.test.tsx</code></td><td class="num">12</td><td class="num">3</td></tr>
+                    <tr><td><code>app/frontend/src/components/DatasheetList.tsx</code></td><td class="num">10</td><td class="num">3</td></tr>
+                    <tr><td><code>app/frontend/src/components/ProjectsPage.tsx</code></td><td class="num">8</td><td class="num">3</td></tr>
+                    <tr><td><code>app/frontend/src/components/ProjectDetailPage.tsx</code></td><td class="num">8</td><td class="num">3</td></tr>
+                    <tr><td><code>app/frontend/src/App.tsx</code></td><td class="num">6</td><td class="num">3</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <a class="back-link" href="./">← back to requests log</a>
+    </main>
+
+    <footer>
+        <div class="footer-inner">
+            <span>© 2026 Specodex · PR #63</span>
+            <span class="footer-rule" aria-hidden="true"></span>
+            <a class="footer-link" href="https://github.com/JimothyJohn/specodex/pull/63" rel="noreferrer">View on GitHub</a>
+            <a class="footer-link" href="./">All requests</a>
+        </div>
+    </footer>
+</body>
+</html>

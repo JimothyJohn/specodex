@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Specodex PR #56 — docs(python-backend): mark Phase 5 ✅ shipped via the 2026-04-30 cleanup.">
+    <meta name="theme-color" content="#3A2C1C">
+    <title>Specodex — PR #56: mark Phase 5 shipped</title>
+    <link rel="icon" type="image/svg+xml" href="../logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-issue="PR-56">
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="band">
+        <div class="band-inner">
+            <a class="band-brand" href="../index.html">
+                <svg class="band-mark" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <rect width="120" height="120" fill="#E8E2C9"/>
+                    <rect x="14" y="14" width="92" height="92" fill="none" stroke="#1A1A14" stroke-width="3"/>
+                    <rect x="14" y="14" width="92" height="22" fill="#3A2C1C"/>
+                    <rect x="62" y="60" width="40" height="10" fill="#A88A1C"/>
+                    <line x1="14" y1="56" x2="106" y2="56" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="74" x2="106" y2="74" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="92" x2="106" y2="92" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="60" y1="36" x2="60" y2="106" stroke="#1A1A14" stroke-width="2"/>
+                </svg>
+                <span class="wordmark">SPECODEX</span>
+            </a>
+            <nav class="band-nav" aria-label="Section">
+                <a href="../index.html">Catalog</a>
+                <a href="./" class="active">Pull Requests</a>
+                <a href="https://github.com/JimothyJohn/specodex" rel="noreferrer">GitHub</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="hero-tag">▮▮▮ PULL REQUEST #56 ▮▮▮</div>
+            <h1 class="hero-title">docs(python-backend) — mark Phase 5 ✅ shipped</h1>
+            <p class="hero-sub">
+                Pure doc-only update. PYTHON_BACKEND.md Phase 5's intent ("get one-time migration
+                scripts out of <code>cli/</code>") was already accomplished on 2026-04-30 in commit
+                <code>c322393</code> (<em>cleanup: drop 13 finished one-shot scripts + dead refs</em>)
+                — but the doc still listed Phase 5 as upcoming work. This sweeps the phantom item
+                off the backlog.
+            </p>
+            <dl class="pr-meta">
+                <div><dt>Branch</dt><dd><code>auto/python-backend-phase5-mark-shipped-20260507</code></dd></div>
+                <div><dt>Merged</dt><dd>2026-05-07</dd></div>
+                <div><dt>Diff</dt><dd>+11 / −5</dd></div>
+                <div><dt>Files</dt><dd>2 changed</dd></div>
+                <div><dt>Type</dt><dd>Doc-only</dd></div>
+            </dl>
+            <div class="cta-row">
+                <a class="cta cta-primary" href="https://github.com/JimothyJohn/specodex/pull/56" rel="noreferrer">View on GitHub →</a>
+                <a class="cta cta-ghost" href="./">All requests</a>
+            </div>
+        </section>
+
+        <section aria-label="What changes">
+            <div class="divider"><span>▮▮▮ WHAT CHANGES ▮▮▮</span></div>
+            <ol class="cell-list">
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">PB</span><h2 class="cell-title">PYTHON_BACKEND.md</h2></div>
+                    <p class="cell-body">
+                        Phase 5 row in the phase table + the section header now marked ✅ shipped,
+                        with a "what landed" paragraph citing <code>c322393</code> and the lone
+                        surviving <code>scripts/migrations/2026-04-26-batch_process.py</code> archive.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">RM</span><h2 class="cell-title">todo/README.md</h2></div>
+                    <p class="cell-body">
+                        "Truly independent" list line for Phase 5 struck through with the same shipped
+                        reference. The Mermaid dependency graph and Gantt chart drop the now-shipped
+                        <code>PB5</code> node.
+                    </p>
+                </li>
+            </ol>
+        </section>
+
+        <section aria-label="What did NOT change">
+            <div class="divider"><span>▮▮▮ WHAT DID NOT CHANGE ▮▮▮</span></div>
+            <p style="max-width: 80ch; color: var(--ink-soft);">
+                No code, no Quickstart wiring, no migrations actually moved. The deletion already
+                happened months ago — this is just synchronizing the doc with reality. The full
+                pattern (do the work first, sync the doc later) is fine when the doc is a
+                forward-looking plan; risky when a future operator might pick up a "phase" that's
+                already done. PR #64 is the broader pass that catches more of these.
+            </p>
+        </section>
+
+        <section aria-label="Top files touched">
+            <div class="divider"><span>▮▮▮ FILES TOUCHED ▮▮▮</span></div>
+            <table class="spec-table">
+                <thead><tr><th>Path</th><th class="num">+</th><th class="num">−</th></tr></thead>
+                <tbody>
+                    <tr><td><code>todo/PYTHON_BACKEND.md</code></td><td class="num">10</td><td class="num">2</td></tr>
+                    <tr><td><code>todo/README.md</code></td><td class="num">1</td><td class="num">3</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <a class="back-link" href="./">← back to requests log</a>
+    </main>
+
+    <footer>
+        <div class="footer-inner">
+            <span>© 2026 Specodex · PR #56</span>
+            <span class="footer-rule" aria-hidden="true"></span>
+            <a class="footer-link" href="https://github.com/JimothyJohn/specodex/pull/56" rel="noreferrer">View on GitHub</a>
+            <a class="footer-link" href="./">All requests</a>
+        </div>
+    </footer>
+</body>
+</html>
