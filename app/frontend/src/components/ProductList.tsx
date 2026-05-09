@@ -24,6 +24,8 @@ import ColumnHeader from './ColumnHeader';
 import ProductDetailModal from './ProductDetailModal';
 import AttributeSelector from './AttributeSelector';
 import Dropdown from './Dropdown';
+import FeedbackModal from './ui/FeedbackModal';
+import type { FeedbackCategory } from '../utils/feedback';
 import { ADJACENT_TYPES, BuildSlot, check as compatCheck } from '../utils/compat';
 
 /**
@@ -73,6 +75,11 @@ export default function ProductList() {
   const [clickPosition, setClickPosition] = useState<{ x: number; y: number } | null>(null);
   const [showSortSelector, setShowSortSelector] = useState(false);
   const [columnSelectorCursor, setColumnSelectorCursor] = useState<{ x: number; y: number } | null>(null);
+  // Empty-state feedback launcher. Stored alongside its category so the
+  // same modal can be opened from "no products in DB" (missing_product)
+  // or "filtered to zero" (no_match) without splitting into two modals.
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [feedbackCategory, setFeedbackCategory] = useState<FeedbackCategory>('no_match');
   // Page size is fixed — narrowing past 25 results is the user's job via
   // sort/filter, not via a "show 500 at once" lever. Removing the picker
   // keeps the toolbar a single tight row.
@@ -1026,6 +1033,27 @@ export default function ProductList() {
                 ? 'No products in database'
                 : 'No results match your specs'}
             </p>
+            {productType !== null && (
+              <div className="empty-state-feedback">
+                <p className="empty-state-feedback-hint">
+                  {products.length === 0
+                    ? "Looking for a manufacturer or part we don't carry?"
+                    : 'Specs too tight, or expecting a product to show up?'}
+                </p>
+                <button
+                  type="button"
+                  className="feedback-trigger"
+                  onClick={() => {
+                    setFeedbackCategory(
+                      products.length === 0 ? 'missing_product' : 'no_match',
+                    );
+                    setFeedbackOpen(true);
+                  }}
+                >
+                  {products.length === 0 ? 'Tell us what to add' : 'Tell us what you need'}
+                </button>
+              </div>
+            )}
           </div>
         ) : (
           <>
@@ -1303,6 +1331,13 @@ export default function ProductList() {
         isOpen={showSortSelector}
         anchorElement={addColumnBtnRef}
         cursorPosition={columnSelectorCursor}
+      />
+
+      <FeedbackModal
+        open={feedbackOpen}
+        onClose={() => setFeedbackOpen(false)}
+        defaultCategory={feedbackCategory}
+        context={{ productType, filters }}
       />
     </div>
   );
