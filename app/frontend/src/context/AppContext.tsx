@@ -23,6 +23,7 @@ import { apiClient } from '../api/client';
 import { UnitSystem } from '../utils/unitConversion';
 import { safeLoad, safeLoadString, safeSave } from '../utils/localStorage';
 import { BUILD_SLOTS, BuildSlot } from '../utils/compat';
+import { useToast } from '../components/ui/Toast';
 
 /**
  * The motion-system build under construction. Each slot holds either the
@@ -140,6 +141,11 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
  * @param children - React components to wrap with context
  */
 export function AppProvider({ children }: { children: ReactNode }) {
+  // Toast notifications for user-triggered mutation failures (Phase 3).
+  // Background refreshes intentionally stay silent — see comments at
+  // each retained `console.warn` site below.
+  const toast = useToast();
+
   // ========== Core State ==========
   const [products, setProducts] = useState<Product[]>([]);
   const [summary, setSummary] = useState<ProductSummary | null>(null);
@@ -498,6 +504,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Failed to add product';
       console.error('[AppContext] Failed to add product:', err);
+      toast.error('Failed to add product', { detail: errorMsg });
       setError(errorMsg);
 
       // ===== REVERT OPTIMISTIC UPDATES =====
@@ -509,7 +516,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [summary, currentProductType, loadProducts, loadSummary]);
+  }, [summary, currentProductType, loadProducts, loadSummary, toast]);
 
   /**
    * Create a new datasheet via the datasheets endpoint
@@ -526,11 +533,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Failed to create datasheet';
       console.error('[AppContext] Failed to create datasheet:', err);
+      toast.error('Failed to create datasheet', { detail: errorMsg });
       setError(errorMsg);
     } finally {
       setLoading(false);
     }
-  }, [currentProductType, loadProducts]);
+  }, [currentProductType, loadProducts, toast]);
 
   /**
    * Update a product with optimistic UI update
@@ -573,6 +581,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Failed to update product';
       console.error('[AppContext] Failed to update product:', err);
+      toast.error('Failed to update product', { detail: errorMsg });
       setError(errorMsg);
 
       // ===== REVERT OPTIMISTIC UPDATES =====
@@ -582,7 +591,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [currentProductType, loadProducts]);
+  }, [currentProductType, loadProducts, toast]);
 
   /**
    * Delete a product with optimistic UI update
@@ -650,6 +659,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Failed to delete product';
       console.error('[AppContext] Failed to delete product:', err);
+      toast.error('Failed to delete product', { detail: errorMsg });
       setError(errorMsg);
 
       // ===== REVERT OPTIMISTIC UPDATES =====
@@ -661,7 +671,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [products, summary, currentProductType, loadProducts, loadSummary]);
+  }, [products, summary, currentProductType, loadProducts, loadSummary, toast]);
 
   /**
    * Force refresh all data by clearing cache
@@ -695,11 +705,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Failed to refresh';
       console.error('[AppContext] Force refresh failed:', err);
+      toast.error('Failed to refresh', { detail: errorMsg });
       setError(errorMsg);
     } finally {
       setLoading(false);
     }
-  }, [currentProductType, loadProducts, loadSummary, loadCategories]);
+  }, [currentProductType, loadProducts, loadSummary, loadCategories, toast]);
 
   // ========== Context Value Assembly ==========
 

@@ -61,8 +61,10 @@ export default function DatasheetEditModal({ datasheet, onClose, clickPosition }
       await updateProduct(datasheet.product_id, formData, 'datasheet');
       onClose();
     } catch (error) {
+      // updateProduct already toasts via AppContext on failure (Phase 3);
+      // keep the local console.error for debugging context but drop the
+      // native alert() — it duplicated the toast and blocked the thread.
       console.error('Failed to update datasheet:', error);
-      alert('Failed to update datasheet');
     } finally {
       setIsSaving(false);
     }
