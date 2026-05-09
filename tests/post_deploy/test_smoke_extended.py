@@ -4,7 +4,7 @@ Validates response schemas, infrastructure behavior, security hygiene,
 and endpoint coverage beyond the basic health checks in test_smoke.py.
 
 Requires API_BASE_URL environment variable.
-Run: API_BASE_URL=https://datasheets.advin.io uv run pytest tests/post_deploy/ -v
+Run: API_BASE_URL=https://specodex.com uv run pytest tests/post_deploy/ -v
 """
 
 import concurrent.futures

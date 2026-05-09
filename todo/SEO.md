@@ -32,11 +32,11 @@ Landed in `app/frontend/`:
   unfurls fall back to text. Trivial (1200×630 PNG dropped into
   `public/`); blocked only on a design pass — see Phase 2e for the
   long-term per-product OG generator.
-- Canonical URL is `https://datasheets.advin.io/`. Flip to
-  `https://specodex.com/` when [REBRAND.md](REBRAND.md) Phase 4c
-  (DNS cutover) lands. Affects `index.html` (3 places: canonical,
+- Canonical URL is `https://specodex.com/` (cutover from the prior
+  prod host shipped per REBRAND Stage 4d). `index.html` (canonical,
   og:url, JSON-LD `url`/`@id`/`urlTemplate`), `public/robots.txt`
-  (sitemap line), `public/sitemap.xml` (every `<loc>`).
+  (sitemap line), and `public/sitemap.xml` (every `<loc>`) all
+  point at `specodex.com`.
 
 ## The thesis
 
@@ -61,8 +61,7 @@ on copy, but by being the only result that's actually structured.
 
 ## Current SEO state — baseline audit
 
-What exists at `<https://datasheets.advin.io>` (and at `<https://specodex.com>`
-once DNS cuts over per [REBRAND.md](REBRAND.md)):
+What exists at `<https://specodex.com>` (the canonical prod host post-cutover):
 
 | Item | State | Remaining action |
 |---|---|---|
@@ -143,8 +142,7 @@ Shipped 2026-04-28 at `app/frontend/public/robots.txt`. Vite copies it
 to `dist/`; CloudFront's S3 default behavior serves it from the bucket
 root. No CDK change was needed.
 
-Open: flip the `Sitemap:` line from `datasheets.advin.io` to
-`specodex.com` when REBRAND Phase 4c lands.
+The `Sitemap:` line points at `specodex.com` (post-cutover canonical).
 
 ### 1d. Per-product `<title>`, `<meta>`, JSON-LD
 

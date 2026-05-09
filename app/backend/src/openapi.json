@@ -6,12 +6,12 @@
     "description": "Search and browse industrial product specifications extracted from datasheets. Covers motors, drives, gearheads, and robot arms. Free to use, no authentication required for read operations.",
     "contact": {
       "name": "Specodex",
-      "url": "https://datasheets.advin.io"
+      "url": "https://specodex.com"
     }
   },
   "servers": [
     {
-      "url": "https://datasheets.advin.io",
+      "url": "https://specodex.com",
       "description": "Production"
     }
   ],
