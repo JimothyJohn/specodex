@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 from decimal import Decimal
 from pathlib import Path
+from urllib.parse import urlparse
 
 import pytest
 
@@ -22,6 +23,20 @@ from specodex.pricing.resolver import (
     resolve_candidates,
     source_type_for_domain,
 )
+
+
+def _host_matches(url: str, domain: str) -> bool:
+    """True iff url's hostname is exactly `domain` or a subdomain of it.
+
+    Substring checks like ``"orientalmotor.com" in url`` are flagged by
+    CodeQL (py/incomplete-url-substring-sanitization) because they can be
+    bypassed by URLs like ``https://evil.com/?orientalmotor.com``. Parsing
+    the URL and comparing the hostname structurally is the safe form even
+    in tests, which double as documentation for the resolver contract.
+    """
+    host = (urlparse(url).hostname or "").lower()
+    domain = domain.lower()
+    return host == domain or host.endswith("." + domain)
 
 
 # ── extract: JSON-LD ────────────────────────────────────────────────
@@ -152,7 +167,7 @@ def test_resolver_oem_kicks_in_for_oriental_motor():
     cands = resolve_candidates("Oriental Motor", "BLV510N10F", use_serp=False)
     oems = [c for c in cands if c.source_type == "oem"]
     assert oems, "Oriental Motor should produce an OEM candidate"
-    assert all("orientalmotor.com" in c.url for c in oems)
+    assert all(_host_matches(c.url, "orientalmotor.com") for c in oems)
 
 
 def test_resolver_no_oem_for_unmapped_manufacturer():
@@ -166,7 +181,7 @@ def test_resolver_mitsubishi_oem_store():
     cands = resolve_candidates("Mitsubishi Electric", "HG-KR43", use_serp=False)
     oems = [c for c in cands if c.source_type == "oem"]
     assert oems, "Mitsubishi should produce at least one OEM candidate"
-    assert any("shop1.us.mitsubishielectric.com" in c.url for c in oems)
+    assert any(_host_matches(c.url, "shop1.us.mitsubishielectric.com") for c in oems)
 
 
 def test_resolver_ordering_oem_before_distributor_before_aggregator():

@@ -80,7 +80,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     });
     const uploadUrl = await getSignedUrl(s3, command, { expiresIn: 900 });
 
-    console.log(`[upload] Queued datasheet ${datasheetId} -> s3://${BUCKET}/${s3Key}`);
+    console.log(`[upload] Queued datasheet ${datasheetId} (key=${s3Key})`);
 
     res.status(201).json({
       success: true,
