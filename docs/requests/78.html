@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Specodex PR #78 — design spec for the requirements-first /build page.">
+    <meta name="theme-color" content="#3A2C1C">
+    <title>Specodex — PR #78: /build page spec</title>
+    <link rel="icon" type="image/svg+xml" href="../logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-issue="PR-78">
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="band">
+        <div class="band-inner">
+            <a class="band-brand" href="../index.html">
+                <svg class="band-mark" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <rect width="120" height="120" fill="#E8E2C9"/>
+                    <rect x="14" y="14" width="92" height="92" fill="none" stroke="#1A1A14" stroke-width="3"/>
+                    <rect x="14" y="14" width="92" height="22" fill="#3A2C1C"/>
+                    <rect x="62" y="60" width="40" height="10" fill="#A88A1C"/>
+                    <line x1="14" y1="56" x2="106" y2="56" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="74" x2="106" y2="74" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="92" x2="106" y2="92" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="60" y1="36" x2="60" y2="106" stroke="#1A1A14" stroke-width="2"/>
+                </svg>
+                <span class="wordmark">SPECODEX</span>
+            </a>
+            <nav class="band-nav" aria-label="Section">
+                <a href="../index.html">Catalog</a>
+                <a href="./" class="active">Pull Requests</a>
+                <a href="https://github.com/JimothyJohn/specodex" rel="noreferrer">GitHub</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="hero-tag">▮▮▮ PULL REQUEST #78 ▮▮▮</div>
+            <h1 class="hero-title">docs(build) — /build page spec, requirements-first system assembler</h1>
+            <p class="hero-sub">
+                Adds <code>todo/BUILD.md</code>, a 1,710-line design spec for converting the
+                <code>/actuators</code> page into <code>/build</code> — the second of three
+                planned user-facing pages (<em>Selection</em> → <em>Build</em> → <em>Wizard</em>).
+                Build is the requirements-first system assembler: the user enters engineering
+                inputs (motion class, stroke, move time, dwell, payload mass), and the page
+                narrows the catalogue per slot (actuator → motor → drive → optional gearhead)
+                using a relations API to produce a copy-able BOM. Doc-only; no code, schema, or
+                migrations touched.
+            </p>
+            <dl class="pr-meta">
+                <div><dt>Branch</dt><dd><code>auto/build-spec-20260509</code></dd></div>
+                <div><dt>Opened</dt><dd>2026-05-09</dd></div>
+                <div><dt>Diff</dt><dd>+1710 / −0 (incl. this page)</dd></div>
+                <div><dt>Files</dt><dd>1 changed (plus this self-page)</dd></div>
+                <div><dt>Type</dt><dd>Docs / design spec</dd></div>
+            </dl>
+            <div class="cta-row">
+                <a class="cta cta-primary" href="https://github.com/JimothyJohn/specodex/pull/78" rel="noreferrer">View on GitHub →</a>
+                <a class="cta cta-ghost" href="./">All requests</a>
+            </div>
+        </section>
+
+        <section aria-label="What's in the spec">
+            <div class="divider"><span>▮▮▮ WHAT'S IN THE SPEC ▮▮▮</span></div>
+            <ol class="cell-list">
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">P-1</span><h2 class="cell-title">Part 1 — The three-page model</h2></div>
+                    <p class="cell-body">
+                        Selection / Build / Wizard as altitudes of abstraction. Wizard (future) is
+                        the natural-language front door; Build (this spec) is the requirements-first
+                        system assembler; Selection (existing) is the raw catalogue browser /
+                        expert mode. Bidirectional funnel; <code>BuildRequirements</code> JSON is
+                        the shared currency between Wizard's output and Build's input.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">P-2</span><h2 class="cell-title">Part 2 — Requirement vocabulary</h2></div>
+                    <p class="cell-body">
+                        The load-bearing schema. <code>BuildRequirements</code> = motion class
+                        (linear / rotary), orientation (horizontal / vertical), payload mass,
+                        and a <code>MotionProfile[]</code> of stroke + move_time + dwell_time.
+                        Day 1 ships profiles[1]; the list shape is forward-compat for stacked
+                        moves later. Derivation engine assumes an S-curve 1/3 trapezoidal
+                        profile and computes peak velocity, peak acceleration, peak force,
+                        and duty cycle. URL-serialisable so Wizard can hand off via redirect.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">P-3</span><h2 class="cell-title">Part 3 — Page surface</h2></div>
+                    <p class="cell-body">
+                        Two-pane layout: <code>&lt;RequirementsForm&gt;</code> on the left
+                        (sticky), <code>&lt;CandidatesPane&gt;</code> on the right (per-slot
+                        accordion), <code>&lt;SystemSummary&gt;</code> as a sticky bottom strip
+                        absorbing today's <code>BuildTray</code>. Component prop boundaries
+                        pinned. The configurator drawer extracted from <code>ActuatorPage</code>
+                        surfaces only on matching Actuator candidate rows; stroke segment
+                        pre-populated from form context.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">P-4</span><h2 class="cell-title">Part 4 — Relations API integration</h2></div>
+                    <p class="cell-body">
+                        Four <code>GET /api/v1/relations/*</code> endpoints (actuators,
+                        motors-for-actuator, drives-for-motor, gearheads-for-motor) with
+                        wire shapes pinned. Frontend fan-out diagram. <strong>No client-side
+                        fallback</strong> — three reasons (volume, drift risk, API simplicity).
+                        Adds two items to SCHEMA Phase 3's scope: the new
+                        <code>compatible_actuators()</code> entry point and a
+                        <code>_distribution_position</code> block on candidate rows.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">P-5</span><h2 class="cell-title">Part 5 — Selection's diminished role + the linear-actuator bug</h2></div>
+                    <p class="cell-body">
+                        Three responsibilities move out of Selection (the rotary/linear/z-axis
+                        transmission buttons, the "Add to build" modal button, the
+                        <code>BuildTray</code> bottom strip). Documents the linear-actuator
+                        bug Nick reported (records exist in dev, exposed via categories
+                        endpoint, but absent from some user path) — most likely root cause is
+                        the UX trap with the conflated "Linear" transmission button. Diagnostic
+                        recipe pinned; fix is the strip-down itself.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">P-6</span><h2 class="cell-title">Part 6 — Wizard handoff (forward context)</h2></div>
+                    <p class="cell-body">
+                        Locks the seam, not Wizard's design. Wizard outputs a
+                        <code>BuildRequirements</code> URL; Build promises 4 numbered behaviours
+                        in return (pre-populate, auto-pick drafts, banner, drop the
+                        <code>?wizard=1</code> flag on user edit). Schema must stay
+                        backwards-compatible: new fields always optional, no field renames.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">P-7</span><h2 class="cell-title">Part 7 — Migration & phasing</h2></div>
+                    <p class="cell-body">
+                        Phase 1 = 4 PR sequence (1A relations API → 1B Selection strip-down →
+                        1C Build MVP → 1D /actuators redirect). Phase 2 = vertical + gravity +
+                        friction + Save-to-Project + Build → Selection deep-link. Phase 3 =
+                        Wizard handoff scaffolding. 8-row retirement audit pinned (what files
+                        get deleted vs renamed). Three migration risks named: shared
+                        <code>build</code> slice, BUILD_SLOTS reorder, CDN SPA fallback.
+                    </p>
+                </li>
+            </ol>
+        </section>
+
+        <section aria-label="The reader-test pass">
+            <div class="divider"><span>▮▮▮ THE READER-TEST PASS ▮▮▮</span></div>
+            <p style="max-width: 80ch; color: var(--ink-soft);">
+                Built via the <code>doc-coauthoring</code> skill's three-stage workflow. Stage 3
+                handed the draft to a fresh-Claude reader-test agent that simulated a new
+                contributor seeing the doc cold. Verdict: doc is execution-ready for Phase 1,
+                with four sharpening recommendations and three internal contradictions. All
+                addressed in the third commit (<code>7e0e9e3</code>):
+            </p>
+            <table class="spec-table">
+                <thead><tr><th>Reader-test finding</th><th>Fix in commit <code>7e0e9e3</code></th></tr></thead>
+                <tbody>
+                    <tr><td>Largest gap: component prop boundaries undefined</td><td>New "Component contracts" subsection in Part 3 — <code>RequirementsFormProps</code> / <code>CandidatesPaneProps</code> / <code>SystemSummaryProps</code> + <code>DerivedSpecs</code> interface</td></tr>
+                    <tr><td>"Where do I add a new field?" required reverse-engineering</td><td>New "Adding a new requirement field — propagation checklist" in Part 2: 9 numbered steps from schema to exit criteria</td></tr>
+                    <tr><td>ActuatorPage replacement implicit; never stated head-on</td><td>New "Why ActuatorPage doesn't survive alongside Build" subsection in Part 5: three reasons + redirect rationale</td></tr>
+                    <tr><td>BUILD_SLOTS contradiction (Part 3 said "doesn't change", Part 7 said "prepends")</td><td>Reworded as a reorder (<code>['drive','motor','gearhead']</code> → <code>['actuator','motor','drive','gearhead']</code>) with name-keyed adjacency rules surviving; ChainReviewModal flagged for audit</td></tr>
+                    <tr><td><code>payload_mass</code> "MANDATORY" but "blank = no constraint"</td><td>Reframed as "strongly suggested": form labels required, validator allows null, blank = "no force filter applied" banner</td></tr>
+                    <tr><td>Phase numbering inconsistent (Status had 1/2/3, Part 7 added 4+)</td><td>Status section now lists Phase 4+ with the trigger-driven framing</td></tr>
+                    <tr><td>Line-number citations into <code>ProductList.tsx</code> / <code>ActuatorPage.tsx</code> would drift</td><td>Replaced with grep-able anchors (function names, JSX class markers)</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section aria-label="What this PR doesn't do">
+            <div class="divider"><span>▮▮▮ WHAT THIS PR DOESN'T DO ▮▮▮</span></div>
+            <ol class="cell-list">
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">N-1</span><h2 class="cell-title">No app code</h2></div>
+                    <p class="cell-body">
+                        <code>git diff --stat</code> only touches <code>todo/BUILD.md</code>
+                        and this self-page. No frontend, backend, schema, migrations, CI, or
+                        infrastructure work — that all lands in the Phase 1 PR sequence
+                        documented inside the spec.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">N-2</span><h2 class="cell-title">No SCHEMA.md edits</h2></div>
+                    <p class="cell-body">
+                        Part 4 calls out two additions to <code>todo/SCHEMA.md</code> Phase 3's
+                        scope (the <code>compatible_actuators()</code> entry point and the
+                        <code>_distribution_position</code> block on candidate rows). Those
+                        changes belong in the SCHEMA doc itself; this PR flags them for the
+                        reviewer to apply before Phase 1 PR 1A starts.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">N-3</span><h2 class="cell-title">No board cards</h2></div>
+                    <p class="cell-body">
+                        The four Phase 1 PR cards (1A–1D), the three Phase 2 cards, the two
+                        Phase 3 cards, and the seven Phase 4+ feature cards are not yet on the
+                        Specodex Orchestration board. Add them as the spec's status flips from
+                        "design-only" to "Phase 1 in progress."
+                    </p>
+                </li>
+            </ol>
+        </section>
+
+        <a class="back-link" href="./">← back to requests log</a>
+    </main>
+
+    <footer>
+        <div class="footer-inner">
+            <span>© 2026 Specodex · PR #78</span>
+            <span class="footer-rule" aria-hidden="true"></span>
+            <a class="footer-link" href="https://github.com/JimothyJohn/specodex/pull/78" rel="noreferrer">View on GitHub</a>
+            <a class="footer-link" href="./">All requests</a>
+        </div>
+    </footer>
+</body>
+</html>
