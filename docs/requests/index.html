@@ -54,6 +54,30 @@
             <div class="divider"><span>▮▮▮ RECENT PULL REQUESTS ▮▮▮</span></div>
             <ol class="pr-cards">
                 <li>
+                    <a class="pr-card" href="81.html">
+                        <div class="pr-card-head">
+                            <span class="pr-num">PR #81</span>
+                            <h2 class="pr-title">security — clear seven medium-severity CodeQL alerts</h2>
+                        </div>
+                        <div class="pr-card-meta">
+                            <span>Opened 2026-05-09</span>
+                            <span>+61 / −7 across 6 files (+ self-page)</span>
+                            <span>Branch <code>auto/codeql-medium-fixes-20260509</code></span>
+                        </div>
+                        <p class="pr-card-body">
+                            Follow-up to <a href="80.html">PR #80</a>. Six
+                            <code>js/log-injection</code> hits across the Express
+                            layer (request log, readonly guard, three DynamoDB trace
+                            lines, upload route) sanitized via a new
+                            <code>safeLog()</code> helper that strips CR/LF/Tab and
+                            truncates. CORS default flips from <code>'*'</code> to
+                            an explicit allowlist (localhost dev +
+                            <code>specodex.com</code>). High + medium queues empty
+                            after this lands.
+                        </p>
+                    </a>
+                </li>
+                <li>
                     <a class="pr-card" href="80.html">
                         <div class="pr-card-head">
                             <span class="pr-num">PR #80</span>

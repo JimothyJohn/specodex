@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Specodex PR #81 — clear seven medium-severity CodeQL alerts (log-injection + CORS).">
+    <meta name="theme-color" content="#3A2C1C">
+    <title>Specodex — PR #81: clear seven medium-severity CodeQL alerts</title>
+    <link rel="icon" type="image/svg+xml" href="../logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-issue="PR-81">
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="band">
+        <div class="band-inner">
+            <a class="band-brand" href="../index.html">
+                <svg class="band-mark" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <rect width="120" height="120" fill="#E8E2C9"/>
+                    <rect x="14" y="14" width="92" height="92" fill="none" stroke="#1A1A14" stroke-width="3"/>
+                    <rect x="14" y="14" width="92" height="22" fill="#3A2C1C"/>
+                    <rect x="62" y="60" width="40" height="10" fill="#A88A1C"/>
+                    <line x1="14" y1="56" x2="106" y2="56" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="74" x2="106" y2="74" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="92" x2="106" y2="92" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="60" y1="36" x2="60" y2="106" stroke="#1A1A14" stroke-width="2"/>
+                </svg>
+                <span class="wordmark">SPECODEX</span>
+            </a>
+            <nav class="band-nav" aria-label="Section">
+                <a href="../index.html">Catalog</a>
+                <a href="./" class="active">Pull Requests</a>
+                <a href="https://github.com/JimothyJohn/specodex" rel="noreferrer">GitHub</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="hero-tag">▮▮▮ PULL REQUEST #81 ▮▮▮</div>
+            <h1 class="hero-title">security — clear seven medium-severity CodeQL alerts</h1>
+            <p class="hero-sub">
+                Follow-up to <a href="80.html">PR #80</a>. Closes the remaining seven
+                medium-severity CodeQL alerts: six <code>js/log-injection</code> hits
+                across the Express layer (request log, readonly guard, three DynamoDB
+                trace lines, and the upload route) plus one
+                <code>js/cors-permissive-configuration</code> on the Express CORS default.
+                After this lands the high + medium queues are empty; only the 31
+                unrated quality findings remain (empty-except, unused-var,
+                side-effect-in-assert, etc.).
+            </p>
+            <dl class="pr-meta">
+                <div><dt>Branch</dt><dd><code>auto/codeql-medium-fixes-20260509</code></dd></div>
+                <div><dt>Opened</dt><dd>2026-05-09</dd></div>
+                <div><dt>Diff</dt><dd>+61 / −7 across 6 files (+ this self-page)</dd></div>
+                <div><dt>Files</dt><dd>5 modified, 1 added (<code>app/backend/src/util/log.ts</code>)</dd></div>
+                <div><dt>Type</dt><dd>Security / CodeQL hygiene</dd></div>
+            </dl>
+            <div class="cta-row">
+                <a class="cta cta-primary" href="https://github.com/JimothyJohn/specodex/pull/81" rel="noreferrer">View on GitHub →</a>
+                <a class="cta cta-ghost" href="./">All requests</a>
+            </div>
+        </section>
+
+        <section aria-label="The safeLog helper">
+            <div class="divider"><span>▮▮▮ THE SAFELOG HELPER ▮▮▮</span></div>
+            <ol class="cell-list">
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">H-1</span><h2 class="cell-title">Why log-injection matters</h2></div>
+                    <p class="cell-body">
+                        <code>console.log(<code>${req.path}</code>)</code> with no
+                        sanitization lets a caller send <code>GET /foo%0A%0A[admin]&nbsp;deleted&nbsp;everything</code>
+                        — the embedded <code>\r\n</code> renders as a real newline in
+                        CloudWatch, faking a separate log line. Auditors and incident
+                        response then chase a ghost. The fix is mechanical: strip
+                        control chars before interpolation.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">H-2</span><h2 class="cell-title">What safeLog does</h2></div>
+                    <p class="cell-body">
+                        New file <code>app/backend/src/util/log.ts</code> exports a
+                        single <code>safeLog(value: unknown): string</code> that:
+                        (1) coerces non-string inputs via <code>JSON.stringify</code>,
+                        (2) strips <code>\r</code> / <code>\n</code> / <code>\t</code>,
+                        (3) truncates at 200 chars with an ellipsis,
+                        (4) wraps the result in single quotes so reviewers can see at
+                        a glance which fields came from the request. Numbers and
+                        booleans pass through unquoted.
+                    </p>
+                </li>
+            </ol>
+        </section>
+
+        <section aria-label="The seven sites">
+            <div class="divider"><span>▮▮▮ THE SEVEN SITES ▮▮▮</span></div>
+            <table class="spec-table">
+                <thead><tr><th>Alert</th><th>File:line</th><th>Tainted value</th></tr></thead>
+                <tbody>
+                    <tr><td>#32 <code>js/log-injection</code></td><td><code>index.ts:35</code></td><td><code>req.path</code> in the request-log middleware</td></tr>
+                    <tr><td>#33 <code>js/log-injection</code></td><td><code>middleware/readonly.ts:40</code></td><td><code>req.path</code> in the public-mode block warning</td></tr>
+                    <tr><td>#34 <code>js/log-injection</code></td><td><code>db/dynamodb.ts:134</code></td><td><code>attributeName</code>, <code>attributeValue</code>, <code>pkPrefix</code> in <code>deleteByScan</code></td></tr>
+                    <tr><td>#36 <code>js/log-injection</code></td><td><code>db/dynamodb.ts:226</code></td><td><code>productType</code> in the Query page log</td></tr>
+                    <tr><td>#37 <code>js/log-injection</code></td><td><code>db/dynamodb.ts:258</code></td><td><code>productType</code> in the Query complete log</td></tr>
+                    <tr><td>#35 <code>js/log-injection</code></td><td><code>routes/upload.ts:83</code></td><td><code>s3Key</code> (contains user-supplied <code>filename</code>)</td></tr>
+                    <tr><td>#29 <code>js/cors-permissive-configuration</code></td><td><code>config/index.ts:36</code></td><td><code>'*'</code> fallback when <code>CORS_ORIGIN</code> unset</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section aria-label="CORS fix">
+            <div class="divider"><span>▮▮▮ CORS FIX ▮▮▮</span></div>
+            <ol class="cell-list">
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">C-1</span><h2 class="cell-title">The bug</h2></div>
+                    <p class="cell-body">
+                        <code>origin: process.env.CORS_ORIGIN || '*'</code> with
+                        <code>credentials: true</code>. <code>CORS_ORIGIN</code> is
+                        never set by the deployed infra (verified with a repo-wide
+                        grep: only one reference, the consumer itself). So
+                        production was advertising "any origin allowed" — browsers
+                        ignore <code>'*'</code> when credentials are claimed, but
+                        it's the wrong default.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">C-2</span><h2 class="cell-title">The fix</h2></div>
+                    <p class="cell-body">
+                        Drop <code>'*'</code>. New <code>DEFAULT_CORS_ORIGINS</code>
+                        allowlist: <code>localhost:5173</code> +
+                        <code>localhost:3001</code> + their <code>127.0.0.1</code>
+                        twins (Vite dev + backend self-test) plus the production
+                        host (<code>specodex.com</code> apex and <code>www</code>).
+                        <code>CORS_ORIGIN</code> env override now parses as a
+                        comma-separated allowlist.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">C-3</span><h2 class="cell-title">What's still permissive (and why it's not in scope)</h2></div>
+                    <p class="cell-body">
+                        API Gateway in front of the Express Lambda still uses
+                        <code>allowOrigins: ['*']</code>
+                        (<code>app/infrastructure/lib/api-stack.ts:84</code>).
+                        That's CDK — touching infrastructure under auto-mode is
+                        explicitly out of bounds per the orchestration rules.
+                        Tracked separately; not bundled here.
+                    </p>
+                </li>
+            </ol>
+        </section>
+
+        <section aria-label="How to verify">
+            <div class="divider"><span>▮▮▮ HOW TO VERIFY ▮▮▮</span></div>
+            <ol class="cell-list">
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">V-1</span><h2 class="cell-title">Local pre-push gate</h2></div>
+                    <p class="cell-body">
+                        <code>./Quickstart verify --only backend</code> ran clean before
+                        push: lint passes (22 pre-existing warnings, 0 errors), Jest
+                        454 passed, <code>tsc</code> green. No new lint warnings
+                        introduced — the helper was written to satisfy the existing
+                        style rules.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">V-2</span><h2 class="cell-title">CodeQL re-run</h2></div>
+                    <p class="cell-body">
+                        After merge, the next CodeQL run on <code>master</code>
+                        should mark alerts <strong>#29</strong> and
+                        <strong>#32–#37</strong> as <em>fixed</em>. Confirm with:
+                        <code>gh api repos/JimothyJohn/specodex/code-scanning/alerts -q '[.[] | select(.state=="open" and .rule.security_severity_level=="medium")] | length'</code>
+                        — should return <code>0</code>.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">V-3</span><h2 class="cell-title">Local dev sanity</h2></div>
+                    <p class="cell-body">
+                        Run <code>./Quickstart dev</code>, load the UI at
+                        <code>http://localhost:5173</code>, confirm API requests
+                        succeed (no CORS errors in the browser console). The new
+                        allowlist explicitly includes both Vite dev origins
+                        (<code>localhost:5173</code>, <code>127.0.0.1:5173</code>).
+                    </p>
+                </li>
+            </ol>
+        </section>
+
+        <a class="back-link" href="./">← back to requests log</a>
+    </main>
+
+    <footer>
+        <div class="footer-inner">
+            <span>© 2026 Specodex · PR #81</span>
+            <span class="footer-rule" aria-hidden="true"></span>
+            <a class="footer-link" href="https://github.com/JimothyJohn/specodex/pull/81" rel="noreferrer">View on GitHub</a>
+            <a class="footer-link" href="./">All requests</a>
+        </div>
+    </footer>
+</body>
+</html>

@@ -17,6 +17,22 @@ const stage = process.env.STAGE || 'dev';
 const appMode = (process.env.APP_MODE || 'admin') as 'public' | 'admin';
 const ssmPrefix = process.env.SSM_PREFIX || `/datasheetminer/${stage}`;
 
+// CORS allowlist — explicit, never `'*'`. In production the Express app
+// sits behind CloudFront same-origin (so CORS rarely fires); in local dev
+// the Vite dev server on :5173 hits the backend on :3001 cross-origin.
+// Set CORS_ORIGIN as a comma-separated list to override.
+const DEFAULT_CORS_ORIGINS = [
+  'http://localhost:5173',
+  'http://localhost:3001',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:3001',
+  'https://specodex.com',
+  'https://www.specodex.com',
+];
+const corsOrigins: string[] = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(',').map(s => s.trim()).filter(Boolean)
+  : DEFAULT_CORS_ORIGINS;
+
 export const config = {
   stage,
   appMode,
@@ -33,7 +49,7 @@ export const config = {
     uploadBucket: process.env.UPLOAD_BUCKET || `datasheetminer-uploads-${stage}`,
   },
   cors: {
-    origin: process.env.CORS_ORIGIN || '*',
+    origin: corsOrigins,
     credentials: true,
   },
   stripe: {
