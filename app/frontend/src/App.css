@@ -6330,6 +6330,111 @@ input.transmission-param-input {
   outline: 2px solid var(--accent-primary);
   outline-offset: 2px;
 }
+
+/* ========================================
+   FEEDBACK MODAL — inherits .confirm-dialog overlay/dialog;
+   the additions below style the form contents.
+   ======================================== */
+.feedback-modal {
+  width: min(520px, 100%);
+}
+.feedback-modal-fieldset {
+  border: 1px solid var(--border);
+  padding: 0.7rem 0.9rem 0.85rem;
+  margin: 0 0 0.95rem;
+}
+.feedback-modal-legend {
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  padding: 0 0.4rem;
+}
+.feedback-modal-radio {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  padding: 0.18rem 0;
+  cursor: pointer;
+}
+.feedback-modal-radio input[type="radio"] {
+  /* Keep the native radio for now — STYLE.md only bans <select>,
+     unstyled checkboxes, and OS pickers. Radios outside an input
+     row haven't been re-themed. */
+  accent-color: var(--accent-primary);
+}
+.feedback-modal-message-label {
+  display: block;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin-bottom: 0.35rem;
+}
+.feedback-modal-textarea {
+  width: 100%;
+  font: inherit;
+  font-size: 0.92rem;
+  line-height: 1.45;
+  padding: 0.55rem 0.7rem;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  resize: vertical;
+  min-height: 6.5rem;
+  box-sizing: border-box;
+}
+.feedback-modal-textarea:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 0;
+}
+.feedback-modal-note {
+  margin: 0.85rem 0 1.1rem;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+.feedback-modal-note strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* ========================================
+   FEEDBACK CTA — used by the empty-state card and the header button.
+   ======================================== */
+.feedback-trigger {
+  font: inherit;
+  font-size: 0.85rem;
+  letter-spacing: 0.02em;
+  padding: 0.4rem 0.85rem;
+  background: transparent;
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  cursor: pointer;
+}
+.feedback-trigger:hover {
+  background: var(--surface-hover, rgba(0, 0, 0, 0.04));
+}
+.feedback-trigger:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+.empty-state-feedback {
+  margin-top: 0.9rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+}
+.empty-state-feedback-hint {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  max-width: 38ch;
+  text-align: center;
+}
+
 .auth-form-links {
   display: flex;
   justify-content: space-between;
