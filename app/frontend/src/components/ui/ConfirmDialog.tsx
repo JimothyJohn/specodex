@@ -35,6 +35,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import './ConfirmDialog.css';
 
 export type ConfirmVariant = 'default' | 'danger';
 

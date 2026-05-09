@@ -20,6 +20,7 @@
  */
 
 import { FormEvent, useEffect, useRef, useState } from 'react';
+import './FeedbackModal.css';
 import {
   buildFeedbackMailto,
   FeedbackCategory,
