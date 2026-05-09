@@ -54,6 +54,28 @@
             <div class="divider"><span>▮▮▮ RECENT PULL REQUESTS ▮▮▮</span></div>
             <ol class="pr-cards">
                 <li>
+                    <a class="pr-card" href="80.html">
+                        <div class="pr-card-head">
+                            <span class="pr-num">PR #80</span>
+                            <h2 class="pr-title">security — clear three high-severity CodeQL alerts</h2>
+                        </div>
+                        <div class="pr-card-meta">
+                            <span>Opened 2026-05-09</span>
+                            <span>+18 / −3 across 2 files (+ self-page)</span>
+                            <span>Branch <code>auto/codeql-high-fixes-20260509</code></span>
+                        </div>
+                        <p class="pr-card-body">
+                            Closes the three open high-severity CodeQL alerts:
+                            <code>js/clear-text-logging</code> in the upload route (drop the
+                            env-sourced bucket name from the info log) and two
+                            <code>py/incomplete-url-substring-sanitization</code> in the
+                            pricing-resolver tests (urlparse-based hostname helper instead of
+                            <code>"domain" in url</code>). Two-file diff; mediums and unrated
+                            findings are tracked separately.
+                        </p>
+                    </a>
+                </li>
+                <li>
                     <a class="pr-card" href="78.html">
                         <div class="pr-card-head">
                             <span class="pr-num">PR #78</span>

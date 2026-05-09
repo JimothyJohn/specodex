@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Specodex PR #80 — clear three high-severity CodeQL alerts (clear-text logging + URL substring sanitization).">
+    <meta name="theme-color" content="#3A2C1C">
+    <title>Specodex — PR #80: clear three high-severity CodeQL alerts</title>
+    <link rel="icon" type="image/svg+xml" href="../logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-issue="PR-80">
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="band">
+        <div class="band-inner">
+            <a class="band-brand" href="../index.html">
+                <svg class="band-mark" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <rect width="120" height="120" fill="#E8E2C9"/>
+                    <rect x="14" y="14" width="92" height="92" fill="none" stroke="#1A1A14" stroke-width="3"/>
+                    <rect x="14" y="14" width="92" height="22" fill="#3A2C1C"/>
+                    <rect x="62" y="60" width="40" height="10" fill="#A88A1C"/>
+                    <line x1="14" y1="56" x2="106" y2="56" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="74" x2="106" y2="74" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="92" x2="106" y2="92" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="60" y1="36" x2="60" y2="106" stroke="#1A1A14" stroke-width="2"/>
+                </svg>
+                <span class="wordmark">SPECODEX</span>
+            </a>
+            <nav class="band-nav" aria-label="Section">
+                <a href="../index.html">Catalog</a>
+                <a href="./" class="active">Pull Requests</a>
+                <a href="https://github.com/JimothyJohn/specodex" rel="noreferrer">GitHub</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="hero-tag">▮▮▮ PULL REQUEST #80 ▮▮▮</div>
+            <h1 class="hero-title">security — clear three high-severity CodeQL alerts</h1>
+            <p class="hero-sub">
+                Closes the three open <strong>high-severity</strong> CodeQL alerts on
+                <code>master</code>: one <code>js/clear-text-logging</code> in the upload
+                route, plus two <code>py/incomplete-url-substring-sanitization</code> in the
+                pricing-resolver tests. After this lands, the high-severity queue is empty
+                — the only remaining alerts are mediums (6× <code>js/log-injection</code>,
+                1× <code>js/cors-permissive-configuration</code>) and unrated quality
+                findings, both tracked separately.
+            </p>
+            <dl class="pr-meta">
+                <div><dt>Branch</dt><dd><code>auto/codeql-high-fixes-20260509</code></dd></div>
+                <div><dt>Opened</dt><dd>2026-05-09</dd></div>
+                <div><dt>Diff</dt><dd>+18 / −3 across 2 files (plus this self-page)</dd></div>
+                <div><dt>Files</dt><dd><code>app/backend/src/routes/upload.ts</code>, <code>tests/unit/test_pricing.py</code></dd></div>
+                <div><dt>Type</dt><dd>Security / CodeQL hygiene</dd></div>
+            </dl>
+            <div class="cta-row">
+                <a class="cta cta-primary" href="https://github.com/JimothyJohn/specodex/pull/80" rel="noreferrer">View on GitHub →</a>
+                <a class="cta cta-ghost" href="./">All requests</a>
+            </div>
+        </section>
+
+        <section aria-label="What changed">
+            <div class="divider"><span>▮▮▮ WHAT CHANGED ▮▮▮</span></div>
+            <ol class="cell-list">
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">A-28</span><h2 class="cell-title">js/clear-text-logging — upload.ts:83</h2></div>
+                    <p class="cell-body">
+                        The post-upload info log was interpolating <code>BUCKET</code>, which
+                        is sourced from <code>process.env.UPLOAD_BUCKET</code>. CodeQL flags any
+                        log of env-derived values at <em>high</em> because env can carry
+                        secrets. Fix: drop the bucket name from the log line entirely. The
+                        datasheet ID and S3 key remain — both are non-sensitive and already
+                        live in the success response body.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">A-1, A-2</span><h2 class="cell-title">py/incomplete-url-substring-sanitization — test_pricing.py:155, :169</h2></div>
+                    <p class="cell-body">
+                        Two test assertions used substring matching to confirm the resolver
+                        produced an OEM URL on the right vendor's domain
+                        (<code>"orientalmotor.com" in c.url</code> /
+                        <code>"shop1.us.mitsubishielectric.com" in c.url</code>). CodeQL flags
+                        the pattern because in production code it can be bypassed by a URL
+                        like <code>https://evil.com/?orientalmotor.com</code> — the substring
+                        is present at an arbitrary position. These were tests, not security
+                        checks, but the safe form documents the resolver contract better. Fix:
+                        new <code>_host_matches(url, domain)</code> helper that parses the
+                        URL and accepts only an exact host match or a true subdomain.
+                    </p>
+                </li>
+            </ol>
+        </section>
+
+        <section aria-label="Files touched">
+            <div class="divider"><span>▮▮▮ FILES TOUCHED ▮▮▮</span></div>
+            <table class="spec-table">
+                <thead><tr><th>File</th><th>Δ</th><th>What</th></tr></thead>
+                <tbody>
+                    <tr><td><code>app/backend/src/routes/upload.ts</code></td><td>+1 / −1</td><td>Drop env-sourced bucket name from the queued-log line.</td></tr>
+                    <tr><td><code>tests/unit/test_pricing.py</code></td><td>+17 / −2</td><td>Add <code>_host_matches</code> helper + replace two substring assertions.</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section aria-label="How to verify">
+            <div class="divider"><span>▮▮▮ HOW TO VERIFY ▮▮▮</span></div>
+            <ol class="cell-list">
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">V-1</span><h2 class="cell-title">Local pre-push gate</h2></div>
+                    <p class="cell-body">
+                        <code>./Quickstart verify --only python</code> (1146 passed, 1 skipped)
+                        and <code>./Quickstart verify --only backend</code> (lint clean,
+                        Jest 454 passed, <code>tsc</code> green) both ran clean before push.
+                        Frontend stage is unaffected by this change.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">V-2</span><h2 class="cell-title">CodeQL re-run</h2></div>
+                    <p class="cell-body">
+                        After merge, the next scheduled CodeQL run on <code>master</code>
+                        should mark alerts <strong>#1</strong>, <strong>#2</strong>, and
+                        <strong>#28</strong> as <em>fixed</em>. Confirm with:
+                        <code>gh api repos/JimothyJohn/specodex/code-scanning/alerts -q '[.[] | select(.state=="open" and .rule.security_severity_level=="high")] | length'</code>
+                        — should return <code>0</code>.
+                    </p>
+                </li>
+            </ol>
+        </section>
+
+        <section aria-label="Why it's safe">
+            <div class="divider"><span>▮▮▮ WHY IT'S SAFE ▮▮▮</span></div>
+            <ol class="cell-list">
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">S-1</span><h2 class="cell-title">No behavior change in the upload path</h2></div>
+                    <p class="cell-body">
+                        The bucket name was only emitted in a <code>console.log</code>; no
+                        caller, alarm, or downstream parser depends on it. The success JSON
+                        response is unchanged. CloudWatch retains the per-request datasheet ID
+                        + S3 key, which is what oncall actually correlates by.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">S-2</span><h2 class="cell-title">Test semantics preserved</h2></div>
+                    <p class="cell-body">
+                        The new <code>_host_matches</code> helper accepts the same URLs the
+                        resolver currently produces (<code>www.orientalmotor.com</code>,
+                        <code>shop1.us.mitsubishielectric.com</code>) — verified by
+                        re-running <code>tests/unit/test_pricing.py</code>: 29 passed.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">S-3</span><h2 class="cell-title">Scope is exactly the three alerts</h2></div>
+                    <p class="cell-body">
+                        No driver-by drift, no nearby cleanup, no new deps. Two-file diff,
+                        18 inserts / 3 deletes. The remaining medium-severity log-injection
+                        and CORS findings are intentionally <em>not</em> bundled — they need
+                        their own scoped review.
+                    </p>
+                </li>
+            </ol>
+        </section>
+
+        <a class="back-link" href="./">← back to requests log</a>
+    </main>
+
+    <footer>
+        <div class="footer-inner">
+            <span>© 2026 Specodex · PR #80</span>
+            <span class="footer-rule" aria-hidden="true"></span>
+            <a class="footer-link" href="https://github.com/JimothyJohn/specodex/pull/80" rel="noreferrer">View on GitHub</a>
+            <a class="footer-link" href="./">All requests</a>
+        </div>
+    </footer>
+</body>
+</html>
