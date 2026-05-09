@@ -479,7 +479,6 @@ export default function ColumnHeader({
           <DistributionChart
             products={products}
             attribute={attribute.key}
-            title=""
             attributeType={attribute.type}
             allProducts={allProducts}
           />
