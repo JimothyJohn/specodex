@@ -176,7 +176,10 @@ export class DynamoDBService {
           );
           return true;
         } catch (err) {
-          console.error(`[DynamoDB] Failed to delete item ${item.SK?.S}:`, err);
+          // SK embeds product_name (user-supplied) — strip CR/LF inline
+          // before logging (CodeQL js/log-injection barrier; see util/log.ts).
+          const safeSk = item.SK?.S?.replace(/\r|\n/g, '') ?? '<no-sk>';
+          console.error(`[DynamoDB] Failed to delete item ${safeSk}:`, err);
           return false;
         }
       });
