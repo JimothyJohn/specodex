@@ -28,6 +28,7 @@ import { AppProvider } from './context/AppContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ProjectsProvider } from './context/ProjectsContext';
 import { ConfirmProvider } from './components/ui/ConfirmDialog';
+import { ToastProvider } from './components/ui/Toast';
 import ThemeToggle from './components/ThemeToggle';
 import GitHubLink from './components/GitHubLink';
 import DensityToggle from './components/DensityToggle';
@@ -176,13 +177,15 @@ function App() {
   return (
     <AuthProvider>
       <ProjectsProvider>
-        <AppProvider>
-          <ConfirmProvider>
-            <BrowserRouter>
-              <AppShell />
-            </BrowserRouter>
-          </ConfirmProvider>
-        </AppProvider>
+        <ToastProvider>
+          <AppProvider>
+            <ConfirmProvider>
+              <BrowserRouter>
+                <AppShell />
+              </BrowserRouter>
+            </ConfirmProvider>
+          </AppProvider>
+        </ToastProvider>
       </ProjectsProvider>
     </AuthProvider>
   );
