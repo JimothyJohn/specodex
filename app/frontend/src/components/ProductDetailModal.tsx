@@ -22,9 +22,16 @@ interface ProductDetailModalProps {
   product: Product | null;
   onClose: () => void;
   clickPosition: { x: number; y: number } | null;
+  /**
+   * Optional "Spec wrong?" handler. Receives the product so the parent
+   * can route to a feedback flow with the manufacturer / part number
+   * pre-filled. The detail modal closes itself after invoking — feedback
+   * stacked on top of detail confuses the click-outside dismissal.
+   */
+  onSpecFeedback?: (product: Product) => void;
 }
 
-export default function ProductDetailModal({ product, onClose, clickPosition }: ProductDetailModalProps) {
+export default function ProductDetailModal({ product, onClose, clickPosition, onSpecFeedback }: ProductDetailModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const { unitSystem, build, addToBuild, removeFromBuild } = useApp();
 
@@ -287,6 +294,20 @@ export default function ProductDetailModal({ product, onClose, clickPosition }: 
               product_id: product.product_id,
             }}
           />
+          {onSpecFeedback && (
+            <div className="product-detail-feedback-row">
+              <button
+                type="button"
+                className="product-detail-feedback-link"
+                onClick={() => {
+                  onSpecFeedback(product);
+                  onClose();
+                }}
+              >
+                Spec wrong? Tell us →
+              </button>
+            </div>
+          )}
           {(BUILD_SLOTS as readonly string[]).includes(product.product_type) && (() => {
             const slot = product.product_type as BuildSlot;
             const inSlot = build[slot];

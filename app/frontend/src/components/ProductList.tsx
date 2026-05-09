@@ -76,10 +76,13 @@ export default function ProductList() {
   const [showSortSelector, setShowSortSelector] = useState(false);
   const [columnSelectorCursor, setColumnSelectorCursor] = useState<{ x: number; y: number } | null>(null);
   // Empty-state feedback launcher. Stored alongside its category so the
-  // same modal can be opened from "no products in DB" (missing_product)
-  // or "filtered to zero" (no_match) without splitting into two modals.
+  // same modal can be opened from "no products in DB" (missing_product),
+  // "filtered to zero" (no_match), the always-visible footer banner
+  // (missing_product), or the detail-modal "Spec wrong?" link
+  // (wrong_info, with product context). One state, four entry points.
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [feedbackCategory, setFeedbackCategory] = useState<FeedbackCategory>('no_match');
+  const [feedbackProduct, setFeedbackProduct] = useState<{ manufacturer?: string; part_number?: string } | null>(null);
   // Page size is fixed — narrowing past 25 results is the user's job via
   // sort/filter, not via a "show 500 at once" lever. Removing the picker
   // keeps the toolbar a single tight row.
@@ -1308,6 +1311,26 @@ export default function ProductList() {
                 </button>
               </div>
             )}
+
+            {/* Always-visible footer prompt — catches "I see results but
+                my brand/part isn't here" without competing with the
+                empty-state CTA above. Tier A nudge per CLAUDE.md /
+                feedback proposal. */}
+            <div className="results-footer-feedback">
+              <span className="results-footer-feedback-text">
+                Don't see your manufacturer or part?
+              </span>
+              <button
+                type="button"
+                className="results-footer-feedback-btn"
+                onClick={() => {
+                  setFeedbackCategory('missing_product');
+                  setFeedbackOpen(true);
+                }}
+              >
+                Suggest one →
+              </button>
+            </div>
           </>
         )}
       </main>
@@ -1316,6 +1339,17 @@ export default function ProductList() {
         product={selectedProduct}
         onClose={handleCloseModal}
         clickPosition={clickPosition}
+        onSpecFeedback={(p) => {
+          // Coerce nullable fields to undefined — FeedbackContext.product
+          // is `string | undefined`, the generated types carry `string |
+          // null` on optional fields.
+          setFeedbackProduct({
+            manufacturer: p.manufacturer ?? undefined,
+            part_number: p.part_number ?? undefined,
+          });
+          setFeedbackCategory('wrong_info');
+          setFeedbackOpen(true);
+        }}
       />
 
       {/* Attribute Selector Modal — shows currently-hidden columns so
@@ -1335,9 +1369,14 @@ export default function ProductList() {
 
       <FeedbackModal
         open={feedbackOpen}
-        onClose={() => setFeedbackOpen(false)}
+        onClose={() => {
+          setFeedbackOpen(false);
+          // Clear the per-product anchor so a subsequent open from the
+          // header / empty-state / footer doesn't leak the prior product.
+          setFeedbackProduct(null);
+        }}
         defaultCategory={feedbackCategory}
-        context={{ productType, filters }}
+        context={{ productType, filters, product: feedbackProduct ?? undefined }}
       />
     </div>
   );

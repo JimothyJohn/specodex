@@ -6435,6 +6435,74 @@ input.transmission-param-input {
   text-align: center;
 }
 
+/* Tier A: always-visible footer prompt under the results table.
+   Quiet by design — small, low-contrast, sits below pagination. */
+.results-footer-feedback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  padding: 1.1rem 0.6rem 0.4rem;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  border-top: 1px dashed var(--border);
+  margin-top: 1rem;
+}
+.results-footer-feedback-text {
+  letter-spacing: 0.01em;
+}
+.results-footer-feedback-btn {
+  font: inherit;
+  font-size: 0.82rem;
+  letter-spacing: 0.02em;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  color: var(--text-primary);
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: var(--border);
+  text-underline-offset: 3px;
+}
+.results-footer-feedback-btn:hover {
+  text-decoration-color: var(--accent-primary);
+  color: var(--accent-primary);
+}
+.results-footer-feedback-btn:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+/* Tier A: detail-modal "Spec wrong? Tell us." link. Small, sits at
+   the bottom of the spec table — discoverable, not pushy. */
+.product-detail-feedback-row {
+  margin-top: 0.9rem;
+  padding-top: 0.7rem;
+  border-top: 1px dashed var(--border);
+  text-align: right;
+}
+.product-detail-feedback-link {
+  font: inherit;
+  font-size: 0.82rem;
+  letter-spacing: 0.02em;
+  padding: 0.2rem 0;
+  background: transparent;
+  border: 0;
+  color: var(--text-secondary);
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: var(--border);
+  text-underline-offset: 3px;
+}
+.product-detail-feedback-link:hover {
+  color: var(--accent-primary);
+  text-decoration-color: var(--accent-primary);
+}
+.product-detail-feedback-link:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
 .auth-form-links {
   display: flex;
   justify-content: space-between;
