@@ -180,6 +180,7 @@ export default function ProjectDetailPage() {
       <header className="project-detail-header">
         {editing ? (
           <form
+            noValidate
             className="project-detail-name-edit"
             onSubmit={e => {
               e.preventDefault();

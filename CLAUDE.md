@@ -125,7 +125,7 @@ The filter chips and the results-table columns both derive their attribute list 
 
 ### No native browser/OS chrome — every action stays inside the app
 
-Specodex is meant to feel like a designed app, not a browser tab with our colors painted on it. **Every user action must have an app-native visualization.** When you reach for a built-in browser primitive, stop and use (or build) the app-native equivalent. The migration plan and current inventory live in `todo/STYLE.md`.
+Specodex is meant to feel like a designed app, not a browser tab with our colors painted on it. **Every user action must have an app-native visualization.** When you reach for a built-in browser primitive, stop and use (or build) the app-native equivalent.
 
 **Banned by default** (use the app-native primitive instead):
 
@@ -148,7 +148,7 @@ Specodex is meant to feel like a designed app, not a browser tab with our colors
 | `window.open()` (popup with OS chrome) | In-app modal/route |
 | `<progress>` element (UA chrome) | Custom progress bar |
 
-**The rule.** When adding a new feature, if the obvious implementation reaches for one of the rows above, treat it as a signal that you're about to ship native chrome. Either use the app-native primitive listed, or — if no primitive exists yet — extend `todo/STYLE.md`'s out-of-scope section into a new phase rather than introducing the native fallback.
+**The rule.** When adding a new feature, if the obvious implementation reaches for one of the rows above, treat it as a signal that you're about to ship native chrome. Either use the app-native primitive listed, or — if no primitive exists yet — build one and add a row to the table above before shipping the feature, rather than introducing the native fallback.
 
 **Drift gates.** `./Quickstart verify` greps for the forbidden patterns (`title=`, `window.confirm`, `alert`, `<form>` without `noValidate`, bare `target="_blank"`, raw `overflow: auto`). CI mirrors verify, so a regression PR is red before review. If the lint hits a false positive (e.g. an `<svg><title>`), allowlist the specific case rather than disabling the rule.
 
@@ -221,7 +221,7 @@ After `./Quickstart deploy --stage <stage>` returns, confirm the stack is actual
       --query 'Stacks[0].Outputs[?OutputKey==`CloudFrontUrl`].OutputValue' --output text
 
     # prod
-    https://datasheets.advin.io
+    https://www.specodex.com
 
 **Canonical endpoints** — each of these must 200 with the shape noted:
 
@@ -235,7 +235,7 @@ After `./Quickstart deploy --stage <stage>` returns, confirm the stack is actual
 
 **One-shot smoke:**
 
-    ./Quickstart smoke https://datasheets.advin.io          # prod
+    ./Quickstart smoke https://www.specodex.com          # prod
     ./Quickstart smoke "$(aws cloudformation describe-stacks \
       --stack-name DatasheetMiner-Staging-Frontend \
       --query 'Stacks[0].Outputs[?OutputKey==`CloudFrontUrl`].OutputValue' \
@@ -406,7 +406,7 @@ When adding a deploy permission, attach it to the **role's `CdkDeploy` inline po
 
 ### Apex (2-part) domains and `HOSTED_ZONE_NAME`
 
-`app/infrastructure/lib/config.ts` infers the hosted-zone name from `DOMAIN_NAME` when `HOSTED_ZONE_NAME` is unset. The fallback now detects the 2-part case: 3+ parts strips the leftmost label (`datasheets.advin.io` → `advin.io`), 2 parts uses the domain itself (`specodex.com` → `specodex.com`). Setting `HOSTED_ZONE_NAME` explicitly is no longer required for apex deploys, but still works as an override when the zone name differs from the inferred parent.
+`app/infrastructure/lib/config.ts` infers the hosted-zone name from `DOMAIN_NAME` when `HOSTED_ZONE_NAME` is unset. The fallback handles the 2-part apex case: 3+ parts strips the leftmost label (e.g. `app.example.com` → `example.com`), 2 parts uses the domain itself (e.g. `specodex.com` → `specodex.com` — the parent would be `com`, which `fromLookup` can't resolve). Setting `HOSTED_ZONE_NAME` explicitly is no longer required for apex deploys, but still works as an override when the zone name differs from the inferred parent.
 
 History: prior to the 2026-04-30 fix the fallback always stripped the leftmost label, so an apex `DOMAIN_NAME` produced `"com"` and CDK `fromLookup` failed synth with `Found zones: [] for dns:com`. Bit us during the 2026-04-29 cutover.
 

@@ -3,11 +3,13 @@ import { Product } from '../types/models';
 import { AttributeMetadata } from '../types/filters';
 import { useApp } from '../context/AppContext';
 import { toDisplay, displayUnit } from '../utils/unitConversion';
+import { Tooltip } from './ui/Tooltip';
 
 interface DistributionChartProps {
   products: Product[];
   attribute: string;
-  title: string;
+  /** Heading text rendered above the chart. Omit to hide the heading. */
+  heading?: string;
   attributeType?: AttributeMetadata['type'];
   /** Unfiltered, linearized source. When supplied, histogram bin edges
    *  are computed from these values so the x-axis stays anchored to the
@@ -69,7 +71,7 @@ const formatTick = (n: number): string => {
   return Math.round(n).toLocaleString();
 };
 
-export default function DistributionChart({ products, attribute, title, attributeType, allProducts }: DistributionChartProps) {
+export default function DistributionChart({ products, attribute, heading, attributeType, allProducts }: DistributionChartProps) {
   const { unitSystem } = useApp();
 
   // Anchor values for the histogram bin edges. Defaults to `products`
@@ -265,11 +267,11 @@ export default function DistributionChart({ products, attribute, title, attribut
   // visible even when the filter narrows to zero.
   if (summary.total === 0 && !useHistogram) return null;
 
-  const heading = (
+  const headingNode = heading ? (
     <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: '0.25rem' }}>
-      {title}
+      {heading}
     </div>
-  );
+  ) : null;
 
   if (useHistogram && histogram) {
     const unit = summary.attrUnit ?? '';
@@ -278,8 +280,9 @@ export default function DistributionChart({ products, attribute, title, attribut
     const dispUnit = unit ? displayUnit(unit, unitSystem) : '';
     return (
       <div style={{ marginTop: '0.5rem', paddingTop: '0.4rem', borderTop: '1px solid var(--border-color)' }}>
-        {heading}
+        {headingNode}
         <div
+          aria-label={`${summary.numeric.length} value${summary.numeric.length === 1 ? '' : 's'} across ${HISTOGRAM_BINS} bins`}
           style={{
             display: 'flex',
             alignItems: 'flex-end',
@@ -287,37 +290,40 @@ export default function DistributionChart({ products, attribute, title, attribut
             height: '26px',
             padding: '0 1px',
           }}
-          title={`${summary.numeric.length} value${summary.numeric.length === 1 ? '' : 's'} across ${HISTOGRAM_BINS} bins`}
         >
           {histogram.bins.map((bin, i) => {
             const pct = histogram.peak === 0 ? 0 : (bin.density / histogram.peak) * 100;
             const lo = unit ? toDisplay(bin.lo, unit, unitSystem) : bin.lo;
             const hi = unit ? toDisplay(bin.hi, unit, unitSystem) : bin.hi;
             return (
-              <div
+              <Tooltip
                 key={i}
-                style={{
-                  flex: 1,
-                  height: '100%',
-                  display: 'flex',
-                  alignItems: 'flex-end',
-                }}
-                title={`${formatTick(lo)} – ${formatTick(hi)}${dispUnit ? ' ' + dispUnit : ''} · ${bin.count} record${bin.count === 1 ? '' : 's'}`}
+                content={`${formatTick(lo)} – ${formatTick(hi)}${dispUnit ? ' ' + dispUnit : ''} · ${bin.count} record${bin.count === 1 ? '' : 's'}`}
+                placement="top"
               >
                 <div
                   style={{
-                    width: '100%',
-                    // Floor every non-empty bin at a 2px sliver so users
-                    // can still click/hover bins with a single record —
-                    // a pure proportional bar would render invisibly.
-                    height: bin.count === 0 ? '0%' : `max(2px, ${pct}%)`,
-                    backgroundColor: 'var(--accent-primary)',
-                    opacity: bin.count === 0 ? 0 : 0.35 + 0.65 * (pct / 100),
-                    borderRadius: '1px',
-                    transition: 'height 0.2s ease, opacity 0.2s ease',
+                    flex: 1,
+                    height: '100%',
+                    display: 'flex',
+                    alignItems: 'flex-end',
                   }}
-                />
-              </div>
+                >
+                  <div
+                    style={{
+                      width: '100%',
+                      // Floor every non-empty bin at a 2px sliver so users
+                      // can still click/hover bins with a single record —
+                      // a pure proportional bar would render invisibly.
+                      height: bin.count === 0 ? '0%' : `max(2px, ${pct}%)`,
+                      backgroundColor: 'var(--accent-primary)',
+                      opacity: bin.count === 0 ? 0 : 0.35 + 0.65 * (pct / 100),
+                      borderRadius: '1px',
+                      transition: 'height 0.2s ease, opacity 0.2s ease',
+                    }}
+                  />
+                </div>
+              </Tooltip>
             );
           })}
         </div>
@@ -340,7 +346,7 @@ export default function DistributionChart({ products, attribute, title, attribut
 
   return (
     <div style={{ marginTop: '0.5rem', paddingTop: '0.4rem', borderTop: '1px solid var(--border-color)' }}>
-      {heading}
+      {headingNode}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
         {distribution.items.map((item, index) => {
@@ -389,28 +395,30 @@ export default function DistributionChart({ products, attribute, title, attribut
           const outlined = isOutlineRank(index, item.name);
           const color = getColor(index, item.name);
           return (
-            <span key={item.name} style={{
-              fontSize: '0.72rem',
-              color: 'var(--text-secondary)',
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              maxWidth: '70px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.2rem'
-            }} title={`${item.name}: ${item.count}`}>
+            <Tooltip key={item.name} content={`${item.name}: ${item.count}`} placement="top">
               <span style={{
-                width: '5px',
-                height: '5px',
-                borderRadius: '50%',
-                backgroundColor: outlined ? 'transparent' : color,
-                boxShadow: outlined ? `inset 0 0 0 1px ${color}` : undefined,
-                opacity: getOpacity(index, item.name),
-                flexShrink: 0
-              }} />
-              {item.name}
-            </span>
+                fontSize: '0.72rem',
+                color: 'var(--text-secondary)',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                maxWidth: '70px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.2rem'
+              }}>
+                <span style={{
+                  width: '5px',
+                  height: '5px',
+                  borderRadius: '50%',
+                  backgroundColor: outlined ? 'transparent' : color,
+                  boxShadow: outlined ? `inset 0 0 0 1px ${color}` : undefined,
+                  opacity: getOpacity(index, item.name),
+                  flexShrink: 0
+                }} />
+                {item.name}
+              </span>
+            </Tooltip>
           );
         })}
       </div>

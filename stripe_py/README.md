@@ -74,7 +74,7 @@ Rust deploy. CDK ownership is a deferred Phase 3 §3.2 follow-up.
       --handler billing.handler.lambda_handler \
       --zip-file fileb://function.zip \
       --role <execution-role-arn> \
-      --environment 'Variables={STRIPE_SECRET_KEY=sk_test_...,STRIPE_WEBHOOK_SECRET=whsec_...,STRIPE_PRICE_ID=price_...,USERS_TABLE_NAME=datasheetminer-users,FRONTEND_URL=https://datasheets.advin.io}' \
+      --environment 'Variables={STRIPE_SECRET_KEY=sk_test_...,STRIPE_WEBHOOK_SECRET=whsec_...,STRIPE_PRICE_ID=price_...,USERS_TABLE_NAME=datasheetminer-users,FRONTEND_URL=https://www.specodex.com}' \
       --region us-east-1
 
     aws lambda create-function-url-config \

@@ -93,8 +93,7 @@ chain. Active board: [Specodex Orchestration](https://github.com/users/JimothyJo
 | 6 | [PYTHON_BACKEND](todo/PYTHON_BACKEND.md) | 🚧 Phase 0 codegen ✅ | 🔴 multi-week | Phase 1+: Express → FastAPI parallel-deploy. Gated on PHASE5_RECOVERY. |
 | 7 | [PYTHON_STRIPE](todo/PYTHON_STRIPE.md) | 🚧 layout scaffolded | 🟢 small | Drop the Rust billing Lambda for ~100 lines of Python. |
 | 8 | [API](todo/API.md) | 📐 paid programmatic surface | 🟡 medium | Stripe-metered curl-able API. Gated on Phase 5a SES + 5b WAF (5b ✅). |
-| 9 | [STYLE](todo/STYLE.md) | 📐 7-phase plan | 🟡 medium | Eliminate native browser/OS chrome (36 `title=`, 2 `confirm`, 1 `alert`, 17 unstyled scrollbars). |
-| 10 | GODMODE (active on the [orchestration board](https://github.com/users/JimothyJohn/projects/1); plan doc retired) | 📐 deferred | 🔴 large | One-page admin dashboard. Lands last on stable substrate. |
+| 9 | GODMODE (active on the [orchestration board](https://github.com/users/JimothyJohn/projects/1); plan doc retired) | 📐 deferred | 🔴 large | One-page admin dashboard. Lands last on stable substrate. |
 
 CICD itself is healthy (chain green; full runbook in the `/cicd`
 skill at `.claude/skills/cicd/SKILL.md`) and has dropped off the

@@ -4582,9 +4582,46 @@ hr::after {
   background: color-mix(in srgb, var(--accent-primary) 8%, transparent);
 }
 
+/* Themed checkbox — replaces the native UA checkbox here so the row
+ * matches the rest of the app's chrome. STYLE.md Phase 4. Square,
+ * 1px border, themed accent + check glyph; focus ring uses the same
+ * --accent-primary outline as buttons. */
 .add-to-project-row input[type='checkbox'] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
   flex-shrink: 0;
+  margin: 0;
+  border: 1px solid var(--border);
+  background: var(--bg-primary);
   cursor: pointer;
+  display: inline-grid;
+  place-content: center;
+  position: relative;
+}
+.add-to-project-row input[type='checkbox']:hover {
+  border-color: var(--accent-primary);
+}
+.add-to-project-row input[type='checkbox']:checked {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+}
+.add-to-project-row input[type='checkbox']:checked::after {
+  content: '';
+  width: 4px;
+  height: 8px;
+  border: solid var(--header-text);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg) translate(-1px, -1px);
+}
+.add-to-project-row input[type='checkbox']:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+.add-to-project-row input[type='checkbox']:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 .add-to-project-name {
@@ -6435,6 +6472,85 @@ input.transmission-param-input {
   text-align: center;
 }
 
+/* ── Toast (STYLE.md Phase 3) ──────────────────────────────────────── */
+/* Bottom-right stack of transient notifications. Replaces silent
+ * console.error and the lone alert() in DatasheetEditModal. Variants:
+ * success (accent), error (#b03232 — same destructive red as
+ * confirm-dialog-confirm--danger), info (neutral). */
+.toast-region {
+  position: fixed;
+  z-index: 120;
+  right: 1.25rem;
+  bottom: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.55rem;
+  pointer-events: none;
+  /* Cap horizontal width so long detail lines wrap rather than grow. */
+  max-width: min(420px, calc(100vw - 2.5rem));
+}
+.toast {
+  /* Each item handles its own pointer events; the region stays inert
+   * so it doesn't block underlying UI between toasts. */
+  pointer-events: auto;
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.75rem 0.85rem 0.75rem 1rem;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28);
+  color: var(--text-primary);
+  font-size: 0.92rem;
+  line-height: 1.4;
+  /* Slide-up entry; respects reduced-motion below. */
+  animation: toast-slide-in 160ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .toast { animation: none; }
+}
+@keyframes toast-slide-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+/* Variant indicators sit on the leading edge — a 3px stripe in the
+ * variant color. Cheap, themeable, no extra elements. */
+.toast--success { border-left: 3px solid var(--accent-primary); }
+.toast--error   { border-left: 3px solid #b03232; }
+.toast--info    { border-left: 3px solid var(--text-tertiary); }
+.toast__body {
+  flex: 1;
+  min-width: 0;
+}
+.toast__message {
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  word-break: break-word;
+}
+.toast__detail {
+  margin-top: 0.2rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  word-break: break-word;
+}
+.toast__close {
+  border: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 1.15rem;
+  line-height: 1;
+  padding: 0.1rem 0.35rem;
+  margin: -0.1rem -0.15rem 0 0;
+  flex-shrink: 0;
+}
+.toast__close:hover { color: var(--text-primary); }
+.toast__close:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
 .auth-form-links {
   display: flex;
   justify-content: space-between;

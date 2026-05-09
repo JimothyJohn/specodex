@@ -25,6 +25,28 @@ interface Props {
   onClose: () => void;
 }
 
+// JS-side replacement for UA validation bubbles. STYLE.md Phase 4 takes
+// `noValidate` on every form so the OS-styled "Please fill out this
+// field" tooltip never appears; we mirror what the UA was checking
+// (required + email format + minLength) and surface a themed error in
+// the existing `.auth-modal-error` slot.
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function validateAuthForm(step: Step, email: string, password: string, code: string): string | null {
+  if (!email.trim()) return 'Email is required.';
+  if (!EMAIL_RE.test(email.trim())) return 'Enter a valid email address.';
+  if ((step === 'login' || step === 'register' || step === 'reset')) {
+    if (!password) return 'Password is required.';
+    if ((step === 'register' || step === 'reset') && password.length < 12) {
+      return 'Password must be at least 12 characters.';
+    }
+  }
+  if ((step === 'confirm' || step === 'reset') && !code.trim()) {
+    return step === 'reset' ? 'Reset code is required.' : 'Verification code is required.';
+  }
+  return null;
+}
+
 export default function AuthModal({ open, initialStep = 'login', onClose }: Props) {
   const auth = useAuth();
   const [step, setStep] = useState<Step>(initialStep);
@@ -32,6 +54,9 @@ export default function AuthModal({ open, initialStep = 'login', onClose }: Prop
   const [password, setPassword] = useState('');
   const [code, setCode] = useState('');
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
+  // Client-side validation error. Cleared on step switch + on submit.
+  // Distinct from `auth.error`, which carries server-side errors.
+  const [validationError, setValidationError] = useState<string | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
 
   // useAuth returns a fresh context value on every parent render. If
@@ -70,12 +95,24 @@ export default function AuthModal({ open, initialStep = 'login', onClose }: Prop
   function switchTo(next: Step) {
     auth.clearError();
     setStatusMsg(null);
+    setValidationError(null);
     setStep(next);
+  }
+
+  // Run JS validation up front and short-circuit on failure. Returns
+  // true when ready to submit, false when a validationError was set
+  // (the existing `.auth-modal-error` slot renders it).
+  function preflight(formStep: Step): boolean {
+    const err = validateAuthForm(formStep, email, password, code);
+    setValidationError(err);
+    if (err) auth.clearError();
+    return err === null;
   }
 
   async function onLogin(e: FormEvent) {
     e.preventDefault();
     setStatusMsg(null);
+    if (!preflight('login')) return;
     try {
       await auth.login(email, password);
       onClose();
@@ -87,6 +124,7 @@ export default function AuthModal({ open, initialStep = 'login', onClose }: Prop
   async function onRegister(e: FormEvent) {
     e.preventDefault();
     setStatusMsg(null);
+    if (!preflight('register')) return;
     try {
       await auth.register(email, password);
       setStatusMsg('Check your email for a verification code.');
@@ -99,6 +137,7 @@ export default function AuthModal({ open, initialStep = 'login', onClose }: Prop
   async function onConfirm(e: FormEvent) {
     e.preventDefault();
     setStatusMsg(null);
+    if (!preflight('confirm')) return;
     try {
       await auth.confirmSignup(email, code);
       setStatusMsg('Email verified — you can sign in now.');
@@ -122,6 +161,7 @@ export default function AuthModal({ open, initialStep = 'login', onClose }: Prop
   async function onForgot(e: FormEvent) {
     e.preventDefault();
     setStatusMsg(null);
+    if (!preflight('forgot')) return;
     try {
       await auth.forgotPassword(email);
       setStatusMsg('If an account exists for that email, a reset code is on the way.');
@@ -134,6 +174,7 @@ export default function AuthModal({ open, initialStep = 'login', onClose }: Prop
   async function onReset(e: FormEvent) {
     e.preventDefault();
     setStatusMsg(null);
+    if (!preflight('reset')) return;
     try {
       await auth.resetPassword(email, code, password);
       setStatusMsg('Password reset — you can sign in now.');
@@ -161,11 +202,16 @@ export default function AuthModal({ open, initialStep = 'login', onClose }: Prop
           <button type="button" className="auth-modal-close" onClick={onClose} aria-label="Close">×</button>
         </div>
 
-        {auth.error && <div className="auth-modal-error" role="alert">{auth.error}</div>}
+        {/* Validation errors take precedence — once the server responds
+         *  it sets auth.error, which is more informative than the
+         *  client-side check that already passed. */}
+        {(validationError || auth.error) && (
+          <div className="auth-modal-error" role="alert">{validationError ?? auth.error}</div>
+        )}
         {statusMsg && <div className="auth-modal-status" role="status">{statusMsg}</div>}
 
         {step === 'login' && (
-          <form onSubmit={onLogin} className="auth-form">
+          <form noValidate onSubmit={onLogin} className="auth-form">
             <label>
               Email
               <input
@@ -201,7 +247,7 @@ export default function AuthModal({ open, initialStep = 'login', onClose }: Prop
         )}
 
         {step === 'register' && (
-          <form onSubmit={onRegister} className="auth-form">
+          <form noValidate onSubmit={onRegister} className="auth-form">
             <label>
               Email
               <input
@@ -236,7 +282,7 @@ export default function AuthModal({ open, initialStep = 'login', onClose }: Prop
         )}
 
         {step === 'confirm' && (
-          <form onSubmit={onConfirm} className="auth-form">
+          <form noValidate onSubmit={onConfirm} className="auth-form">
             <label>
               Email
               <input
@@ -273,7 +319,7 @@ export default function AuthModal({ open, initialStep = 'login', onClose }: Prop
         )}
 
         {step === 'forgot' && (
-          <form onSubmit={onForgot} className="auth-form">
+          <form noValidate onSubmit={onForgot} className="auth-form">
             <label>
               Email
               <input
@@ -296,7 +342,7 @@ export default function AuthModal({ open, initialStep = 'login', onClose }: Prop
         )}
 
         {step === 'reset' && (
-          <form onSubmit={onReset} className="auth-form">
+          <form noValidate onSubmit={onReset} className="auth-form">
             <label>
               Email
               <input
