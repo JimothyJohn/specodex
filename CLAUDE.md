@@ -125,7 +125,7 @@ The filter chips and the results-table columns both derive their attribute list 
 
 ### No native browser/OS chrome — every action stays inside the app
 
-Specodex is meant to feel like a designed app, not a browser tab with our colors painted on it. **Every user action must have an app-native visualization.** When you reach for a built-in browser primitive, stop and use (or build) the app-native equivalent. The migration plan and current inventory live in `todo/STYLE.md`.
+Specodex is meant to feel like a designed app, not a browser tab with our colors painted on it. **Every user action must have an app-native visualization.** When you reach for a built-in browser primitive, stop and use (or build) the app-native equivalent.
 
 **Banned by default** (use the app-native primitive instead):
 
@@ -148,7 +148,7 @@ Specodex is meant to feel like a designed app, not a browser tab with our colors
 | `window.open()` (popup with OS chrome) | In-app modal/route |
 | `<progress>` element (UA chrome) | Custom progress bar |
 
-**The rule.** When adding a new feature, if the obvious implementation reaches for one of the rows above, treat it as a signal that you're about to ship native chrome. Either use the app-native primitive listed, or — if no primitive exists yet — extend `todo/STYLE.md`'s out-of-scope section into a new phase rather than introducing the native fallback.
+**The rule.** When adding a new feature, if the obvious implementation reaches for one of the rows above, treat it as a signal that you're about to ship native chrome. Either use the app-native primitive listed, or — if no primitive exists yet — build one and add a row to the table above before shipping the feature, rather than introducing the native fallback.
 
 **Drift gates.** `./Quickstart verify` greps for the forbidden patterns (`title=`, `window.confirm`, `alert`, `<form>` without `noValidate`, bare `target="_blank"`, raw `overflow: auto`). CI mirrors verify, so a regression PR is red before review. If the lint hits a false positive (e.g. an `<svg><title>`), allowlist the specific case rather than disabling the rule.
 

@@ -11,8 +11,10 @@ docs only when you're about to act on that work.
 > end-to-end** (Phase 1 audit + Phase 2 safe-merge + Phase 3 review-
 > applier), data-quality observatory (`./Quickstart godmode`),
 > `stripe_py/` Phase 1.1 layout, mobile-friendly compaction pass,
-> **STYLE Phases 1 (Tooltip), 2 (ConfirmDialog), 5 (themed scrollbars),
-> 6 (ExternalLink)** + CLAUDE.md "no native chrome" rule,
+> **STYLE Phases 1 (Tooltip), 2 (ConfirmDialog), 3 (Toast), 4
+> (noValidate + JS form validation + themed checkbox), 5 (themed
+> scrollbars), 6 (ExternalLink), 7.1 (Quickstart verify drift gate)**
+> + CLAUDE.md "no native chrome" rule (todo/STYLE.md retired),
 > **PYTHON_BACKEND Phase 5** (cli/ migration cleanup via deletion),
 > auth Phases 1–4 + 5b WAF + 5d CSP/HSTS, **DB platform-harden**
 > (IAM split, getCategories N+1 fix, prod deletion protection, Lambda
@@ -265,4 +267,3 @@ If your current task matches any "trigger" entry, the linked doc is queued and w
 | `app/backend/src/` beyond a bug fix, new endpoint, new middleware, "FastAPI", "Mangum", "rewrite Express in Python" | [PYTHON_BACKEND.md](PYTHON_BACKEND.md) |
 | `stripe/` (Rust source), `stripe_py/` (Python port), Stripe webhook handler, `${ssmPrefix}/stripe-lambda-url`, billing Lambda deploy or cutover | [PYTHON_STRIPE.md](PYTHON_STRIPE.md) |
 | Programmatic API access, long-lived API keys, per-key rate limits, `/api/v1/*` from non-SPA callers, paid Stripe surface activation | [API.md](API.md) |
-| New JSX with `title=`, `window.confirm`, `alert(`, `<form>` without `noValidate`, bare `target="_blank"`, `<input type="checkbox">` without `appearance: none`, raw `overflow: auto/scroll` in CSS; any user-triggered `console.error` without a paired toast; reaching for `<select>`/`<input type="file">`/`<dialog>`/`<details>` | [STYLE.md](STYLE.md) |
