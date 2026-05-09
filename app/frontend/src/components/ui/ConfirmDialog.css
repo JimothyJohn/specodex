@@ -1,0 +1,82 @@
+/* ConfirmDialog — themed replacement for window.confirm(). STYLE.md Phase 2.
+ *
+ * Component styles live alongside the component (`./ConfirmDialog.tsx`)
+ * so PRs adding new UI primitives append here, not to App.css's tail.
+ * Mega-file conflict trap avoidance — see CLAUDE.md "Per-component
+ * CSS files" convention. */
+
+.confirm-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 110;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  /* Subtle entry animation; skip on reduced-motion. */
+  animation: confirm-dialog-fade 120ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .confirm-dialog-overlay { animation: none; }
+}
+@keyframes confirm-dialog-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.confirm-dialog {
+  width: min(420px, 100%);
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  padding: 1.4rem 1.4rem 1.15rem;
+  color: var(--text-primary);
+}
+.confirm-dialog-title {
+  margin: 0 0 0.7rem;
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+.confirm-dialog-body {
+  font-size: 0.92rem;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  margin-bottom: 1.2rem;
+}
+.confirm-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+}
+.confirm-dialog-cancel,
+.confirm-dialog-confirm {
+  font: inherit;
+  font-size: 0.9rem;
+  letter-spacing: 0.02em;
+  padding: 0.5rem 1.1rem;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.confirm-dialog-cancel:hover {
+  background: var(--surface-hover, rgba(0, 0, 0, 0.04));
+}
+.confirm-dialog-confirm--default {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: var(--header-text);
+}
+.confirm-dialog-confirm--default:hover { filter: brightness(1.08); }
+.confirm-dialog-confirm--danger {
+  background: #b03232;
+  border-color: #b03232;
+  color: #fff;
+}
+.confirm-dialog-confirm--danger:hover { filter: brightness(1.08); }
+.confirm-dialog-cancel:focus-visible,
+.confirm-dialog-confirm:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}

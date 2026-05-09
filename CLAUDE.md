@@ -154,6 +154,19 @@ Specodex is meant to feel like a designed app, not a browser tab with our colors
 
 **Exceptions worth knowing.** Browser autofill on login forms (`:-webkit-autofill`) is intentionally left alone — password managers depend on it, and theming the yellow background hasn't been worth the complexity. The native context menu is also left in place for non-interactive content (text selection, "Inspect"). If you suppress either, document why.
 
+### Per-component CSS files
+
+When adding a new UI primitive under `app/frontend/src/components/ui/`, ship its CSS in a sibling `.css` file imported from the component, **not** appended to the bottom of `App.css`. The mega-file pattern was the source of recurring merge-conflict pain on every parallel feature PR — see the conflict trail on PRs #74 and #76 (May 2026) for the smoking gun. Existing primitives (`Tooltip`, `ExternalLink`, `ConfirmDialog`, `FeedbackModal`, `Toast`) all follow this pattern; add a row alongside them.
+
+Convention:
+
+- `components/ui/Foo.tsx` does `import './Foo.css';` near the top.
+- `components/ui/Foo.css` holds the selectors that target Foo's own DOM.
+- Cross-component selectors (the typography reset, layout grid, color tokens, theme switches) stay in `App.css` — that's its remaining job.
+- Test `Foo.test.tsx` doesn't need to import the CSS; vitest doesn't render styles.
+
+`App.css` should keep shrinking as more primitives extract. When a PR adds a new selector that's clearly Foo-specific, push it into `Foo.css` even if you didn't author Foo originally — the whole point is keeping App.css's bottom edge from being the universal merge target.
+
 ## Benchmarking
 
 `./Quickstart bench` measures the ingress pipeline against control datasheets with known ground truth.

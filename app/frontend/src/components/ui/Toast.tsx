@@ -33,6 +33,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import './Toast.css';
 import { createPortal } from 'react-dom';
 
 export type ToastVariant = 'success' | 'error' | 'info';
