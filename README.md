@@ -1,21 +1,23 @@
 <div align="center">
-  <img src="docs/logo.svg" alt="Datasheetminer mark" width="128" height="128">
+  <img src="docs/logo.svg" alt="Specodex mark" width="128" height="128">
 
-  # Datasheetminer
+  # Specodex
 
-  **A UI and API that sorts and filters industrial product specs from a database, plus an autonomous agent that scrapes datasheets online. Stupid simple on purpose.**
+  **A product selection frontend that only an engineer could love. Cross-vendor industrial spec data — motors, drives, gearheads, contactors, actuators, robot arms — indexed, filtered, and exportable. No marketing copy on the rows. No "request a quote" gates.**
 
   [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
   [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
   [![Documentation](https://img.shields.io/badge/docs-github%20pages-blue.svg)](https://jimothyjohn.github.io/specodex/)
-  [![Live app](https://img.shields.io/badge/live-datasheets.advin.io-A88A1C.svg)](https://datasheets.advin.io)
+  [![Live app](https://img.shields.io/badge/live-www.specodex.com-A88A1C.svg)](https://www.specodex.com)
 </div>
 
 ---
 
 ## What it does
 
-Datasheetminer reads PDF datasheets and product webpages, extracts structured specifications using Gemini, validates them against strict Pydantic schemas, and stores them in DynamoDB. The full-stack web app — branded **Specodex** — lets you search, filter, and compare products across manufacturers without marketing copy or quote-gates in the way.
+Specodex indexes industrial electromechanical product specs across manufacturers and exposes them through a filterable, comparable UI and a typed API — without the marketing copy or quote-gates that make every vendor's own catalog hostile to specify against.
+
+The data pipeline behind it (internally `datasheetminer/`) reads PDF datasheets and product webpages, extracts structured specifications using Gemini, validates them against strict Pydantic schemas, and stores them in DynamoDB.
 
 The pipeline:
 
@@ -166,6 +168,10 @@ See [tests/COVERAGE.md](tests/COVERAGE.md) for the full coverage breakdown and `
 ## Branding
 
 The frontend is branded **Specodex** — field-manual aesthetic, OD-green and paper, mil-spec stencil. The primary mark and 25 alternative proofs live in [`docs/logos.html`](docs/logos.html); the canonical SVG is [`docs/logo.svg`](docs/logo.svg).
+
+## For manufacturers, partners, takedown requests
+
+See [PUBLIC.md](PUBLIC.md) — covers the project's data-source stance, what is and isn't reproduced from manufacturer datasheets, the takedown contact, the manufacturer opt-in, and the continuity plan if the maintainer is ever unreachable.
 
 ## License
 

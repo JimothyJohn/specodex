@@ -22,21 +22,42 @@ export default function DatasheetsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setStatus(null);
-    setIsSubmitting(true);
 
+    // JS validation replaces UA `required` enforcement (Phase 4 — the
+    // form has noValidate, so the browser no longer checks anything).
+    if (!formData.product_name.trim()) {
+      setStatus({ type: 'error', message: 'Product name is required' });
+      return;
+    }
+    if (!formData.manufacturer.trim()) {
+      setStatus({ type: 'error', message: 'Manufacturer is required' });
+      return;
+    }
+    const finalProductType = formData.product_type === 'new'
+      ? formData.new_product_type.toLowerCase().trim()
+      : formData.product_type;
+    if (!finalProductType) {
+      setStatus({ type: 'error', message: 'Product type is required' });
+      return;
+    }
+    if (!formData.url.trim()) {
+      setStatus({ type: 'error', message: 'Datasheet URL is required' });
+      return;
+    }
+    try {
+      // The URL constructor throws on malformed inputs — same coverage
+      // as the dropped `type="url"` UA validation, with our wording.
+      new URL(formData.url.trim());
+    } catch {
+      setStatus({ type: 'error', message: 'Datasheet URL must be a valid URL' });
+      return;
+    }
+
+    setIsSubmitting(true);
     try {
       const pagesArray = formData.pages
         ? formData.pages.split(',').map(p => parseInt(p.trim())).filter(n => !isNaN(n))
         : [];
-
-      // Determine final product type
-      const finalProductType = formData.product_type === 'new' 
-        ? formData.new_product_type.toLowerCase().trim()
-        : formData.product_type;
-
-      if (!finalProductType) {
-        throw new Error('Product type is required');
-      }
 
       const payload = {
         product_type: finalProductType, // Use selected or new type
@@ -159,7 +180,7 @@ export default function DatasheetsPage() {
               </button>
             </div>
             
-            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <form noValidate onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div className="form-group">
                 <label htmlFor="product_name" style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.9rem', fontWeight: 500 }}>Product Name *</label>
                 <input

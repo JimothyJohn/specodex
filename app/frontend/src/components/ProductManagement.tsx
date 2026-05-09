@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import Dropdown from './Dropdown';
+import { useToast } from './ui/Toast';
 import './ProductManagement.css';
 
 interface DeleteResult {
@@ -8,6 +9,7 @@ interface DeleteResult {
 }
 
 export default function ProductManagement() {
+  const toast = useToast();
   const [activeTab, setActiveTab] = useState<'partNumber' | 'manufacturer' | 'name' | 'deduplicate'>('partNumber');
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -33,7 +35,9 @@ export default function ProductManagement() {
         else setNames(data.data);
       }
     } catch (err) {
+      const detail = err instanceof Error ? err.message : String(err);
       console.error(`Error fetching ${type} options:`, err);
+      toast.error(`Couldn't load ${type} options`, { detail });
     } finally {
       setIsFetchingOptions(false);
     }
@@ -242,7 +246,7 @@ export default function ProductManagement() {
                 <span className="warning">Warning: This action is irreversible.</span>
               </p>
 
-              <form onSubmit={handleDeleteClick} className="delete-form">
+              <form noValidate onSubmit={handleDeleteClick} className="delete-form">
                 <div className="form-group">
                   <label htmlFor="inputValue">{getLabel()}</label>
                   

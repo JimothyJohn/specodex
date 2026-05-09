@@ -48,11 +48,11 @@ export function getConfig(): AppConfig {
   let domain: DomainConfig | undefined;
   if (domainName && certificateArn) {
     // HOSTED_ZONE_NAME is optional. For a 3+-part subdomain we default to
-    // the parent (datasheets.advin.io → advin.io). For a 2-part apex
-    // (specodex.com) the parent would be `com`, which fromLookup can't
-    // resolve — fall back to the domain itself instead. `||` (not `??`)
-    // so that an empty string from an unset GitHub Actions secret also
-    // falls through to the default.
+    // the parent (e.g. `app.example.com` → `example.com`). For a 2-part
+    // apex (`specodex.com`) the parent would be `com`, which fromLookup
+    // can't resolve — fall back to the domain itself instead. `||` (not
+    // `??`) so that an empty string from an unset GitHub Actions secret
+    // also falls through to the default.
     const parts = domainName.split('.');
     const hostedZoneName =
       process.env.HOSTED_ZONE_NAME ||

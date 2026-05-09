@@ -25,7 +25,7 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
-USER_AGENT = "Specodex/1.0 (+https://datasheets.advin.io; contact: nick@advin.io)"
+USER_AGENT = "Specodex/1.0 (+https://www.specodex.com; contact: nick@advin.io)"
 CACHE_TTL_SECONDS = 7 * 24 * 3600
 
 
