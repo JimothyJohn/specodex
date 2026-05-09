@@ -221,7 +221,7 @@ After `./Quickstart deploy --stage <stage>` returns, confirm the stack is actual
       --query 'Stacks[0].Outputs[?OutputKey==`CloudFrontUrl`].OutputValue' --output text
 
     # prod
-    https://specodex.com
+    https://www.specodex.com
 
 **Canonical endpoints** — each of these must 200 with the shape noted:
 
@@ -235,7 +235,7 @@ After `./Quickstart deploy --stage <stage>` returns, confirm the stack is actual
 
 **One-shot smoke:**
 
-    ./Quickstart smoke https://specodex.com          # prod
+    ./Quickstart smoke https://www.specodex.com          # prod
     ./Quickstart smoke "$(aws cloudformation describe-stacks \
       --stack-name DatasheetMiner-Staging-Frontend \
       --query 'Stacks[0].Outputs[?OutputKey==`CloudFrontUrl`].OutputValue' \

@@ -914,7 +914,7 @@ def build_parser() -> argparse.ArgumentParser:
         "wait-health",
         help="Poll <url>/health until 200 or retries exhausted",
     )
-    p.add_argument("url", help="Base URL (e.g. https://specodex.com)")
+    p.add_argument("url", help="Base URL (e.g. https://www.specodex.com)")
     p.add_argument(
         "--retries",
         type=int,

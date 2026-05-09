@@ -143,7 +143,7 @@ export class FrontendStack extends cdk.Stack {
       ],
     });
 
-    // Route53 A record: specodex.com → CloudFront
+    // Route53 A record: www.specodex.com → CloudFront
     //
     // fromLookup resolves the zone by name at synth time and caches the
     // result in cdk.context.json (committed to the repo). No HOSTED_ZONE_ID

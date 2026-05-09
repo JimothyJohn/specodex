@@ -250,7 +250,7 @@ aws lambda create-function \
   --handler billing.handler.lambda_handler \
   --zip-file fileb://function.zip \
   --role <existing-role-arn> \
-  --environment "Variables={STRIPE_SECRET_KEY=sk_test_...,STRIPE_WEBHOOK_SECRET=whsec_...,STRIPE_PRICE_ID=price_...,USERS_TABLE_NAME=datasheetminer-users,FRONTEND_URL=https://specodex.com}"
+  --environment "Variables={STRIPE_SECRET_KEY=sk_test_...,STRIPE_WEBHOOK_SECRET=whsec_...,STRIPE_PRICE_ID=price_...,USERS_TABLE_NAME=datasheetminer-users,FRONTEND_URL=https://www.specodex.com}"
 
 aws lambda create-function-url-config \
   --function-name datasheetminer-payments-py \

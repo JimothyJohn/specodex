@@ -42,7 +42,7 @@ addressed to anyone who *doesn't* already know that is wasted spend.
 > that matter (rated power, continuous torque, fieldbus, IP rating), see
 > every vendor side-by-side, follow the link straight to the original
 > datasheet. No quote-gates, no marketing fluff, no "contact sales".
-> Free at <https://specodex.com>; source on GitHub.
+> Free at <https://www.specodex.com>; source on GitHub.
 
 **Anti-positioning (what we are *not*):**
 
@@ -95,7 +95,7 @@ by expected return per hour spent.
 4. **GitHub repo as a marketing asset.** The README already exists
    (`README.md`), but it's developer-onboarding focused. Add a top-of-
    README screenshot of the catalog UI and a one-line "use the live
-   app at specodex.com — no install needed".
+   app at www.specodex.com — no install needed".
    `awesome-*` lists worth submitting to: `awesome-industrial`, `awesome-
    robotics`, `awesome-mechatronics`, `awesome-engineering-resources`.
    These are slow-burn but each merge ≈ 50-200 referral clicks/month

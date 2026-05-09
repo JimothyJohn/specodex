@@ -32,11 +32,11 @@ Landed in `app/frontend/`:
   unfurls fall back to text. Trivial (1200×630 PNG dropped into
   `public/`); blocked only on a design pass — see Phase 2e for the
   long-term per-product OG generator.
-- Canonical URL is `https://specodex.com/` (cutover from the prior
+- Canonical URL is `https://www.specodex.com/` (cutover from the prior
   prod host shipped per REBRAND Stage 4d). `index.html` (canonical,
   og:url, JSON-LD `url`/`@id`/`urlTemplate`), `public/robots.txt`
   (sitemap line), and `public/sitemap.xml` (every `<loc>`) all
-  point at `specodex.com`.
+  point at `www.specodex.com`.
 
 ## The thesis
 
@@ -61,7 +61,7 @@ on copy, but by being the only result that's actually structured.
 
 ## Current SEO state — baseline audit
 
-What exists at `<https://specodex.com>` (the canonical prod host post-cutover):
+What exists at `<https://www.specodex.com>` (the canonical prod host post-cutover):
 
 | Item | State | Remaining action |
 |---|---|---|
@@ -74,7 +74,7 @@ What exists at `<https://specodex.com>` (the canonical prod host post-cutover):
 | Open Graph / Twitter cards (per-product) | ❌ missing | Per-product OG tags + per-product OG image (Phase 1d, 2e). |
 | Schema.org structured data (`WebSite` + `Organization`) | ✅ shipped 2026-04-28 | — |
 | Schema.org structured data (`Product` per page) | ❌ missing | Inject `Product` JSON-LD per product page (Phase 1d). |
-| Canonical URL (homepage) | ✅ shipped 2026-04-28 | Flip to `specodex.com` post-cutover. |
+| Canonical URL (homepage) | ✅ shipped 2026-04-28; canonical is `www.specodex.com` post-cutover | — |
 | Canonical URLs (per-product) | ❌ missing | Set canonical to the `/products/{type}/{slug}` route (Phase 1e). |
 | Crawlability of SPA routes | ❌ poor — Vite SPA renders client-side | **The big one.** Prerender or SSR all product pages (Phase 1a). |
 | Internal linking | ❌ none — no link graph between products | Comparison links, "similar products", category indexes (Phase 2). |
@@ -142,7 +142,7 @@ Shipped 2026-04-28 at `app/frontend/public/robots.txt`. Vite copies it
 to `dist/`; CloudFront's S3 default behavior serves it from the bucket
 root. No CDK change was needed.
 
-The `Sitemap:` line points at `specodex.com` (post-cutover canonical).
+The `Sitemap:` line points at `www.specodex.com` (post-cutover canonical).
 
 ### 1d. Per-product `<title>`, `<meta>`, JSON-LD
 
@@ -188,7 +188,7 @@ matching `schema.org/Product`:
     { "@type": "PropertyValue", "name": "Rated Power", "value": "2", "unitCode": "KWT" },
     { "@type": "PropertyValue", "name": "Input Voltage", "value": "200", "unitCode": "VLT" }
   ],
-  "url": "https://specodex.com/products/drive/mitsubishi-mr-j5-200a4"
+  "url": "https://www.specodex.com/products/drive/mitsubishi-mr-j5-200a4"
 }
 ```
 
@@ -279,7 +279,7 @@ Jekyll-driven. Three foundational posts (also listed in
 
 Cross-link from the blog into the catalog (every product mention is a
 link to its Specodex page) and from the catalog footer into the blog.
-The link graph between `docs/blog/` and `app.specodex.com/products/...`
+The link graph between `docs/blog/` and `www.specodex.com/products/...`
 is the second-biggest SEO lever after prerendering.
 
 ### 2e. OG image generator
@@ -373,8 +373,8 @@ tool better" is a yellow flag.
 
 Ship before any of the above is complete:
 
-- **Google Search Console** verified on `specodex.com` (DNS TXT or HTML
-  meta tag, do both for redundancy).
+- **Google Search Console** verified on `www.specodex.com` (DNS TXT or
+  HTML meta tag, do both for redundancy).
 - **Bing Webmaster Tools** likewise.
 - **GA4 or Plausible** for traffic. Plausible if we want to advertise
   "we don't track you" as a positioning element; GA4 if we want the
