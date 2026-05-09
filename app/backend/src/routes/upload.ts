@@ -81,7 +81,9 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     });
     const uploadUrl = await getSignedUrl(s3, command, { expiresIn: 900 });
 
-    console.log(`[upload] Queued datasheet ${datasheetId} (key=${safeLog(s3Key)})`);
+    // s3Key embeds the user-supplied filename — strip CR/LF inline before
+    // logging (CodeQL js/log-injection barrier; see util/log.ts).
+    console.log(`[upload] Queued datasheet ${datasheetId} (key=${safeLog(s3Key.replace(/\r|\n/g, ''))})`);
 
     res.status(201).json({
       success: true,

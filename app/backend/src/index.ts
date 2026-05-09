@@ -33,7 +33,9 @@ app.use(express.urlencoded({ extended: true }));
 
 // Request logging middleware
 app.use((req: Request, _res: Response, next: NextFunction) => {
-  console.log(`[${config.appMode}] ${req.method} ${safeLog(req.path)}`);
+  // CR/LF strip inline (req.path is user-controlled). The .replace is the
+  // CodeQL js/log-injection barrier; safeLog only formats/truncates.
+  console.log(`[${config.appMode}] ${req.method} ${safeLog(req.path.replace(/\r|\n/g, ''))}`);
   next();
 });
 
