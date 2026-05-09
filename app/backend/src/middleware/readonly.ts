@@ -38,7 +38,8 @@ export function readonlyGuard(req: Request, res: Response, next: NextFunction): 
     return;
   }
 
-  console.warn(`[readonly] Blocked ${req.method} ${safeLog(req.path)} — public mode is read-only`);
+  // CR/LF strip inline (req.path is user-controlled) — see util/log.ts.
+  console.warn(`[readonly] Blocked ${req.method} ${safeLog(req.path.replace(/\r|\n/g, ''))} — public mode is read-only`);
   res.status(403).json({
     success: false,
     error: 'This endpoint is read-only in public mode',

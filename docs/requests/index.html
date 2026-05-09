@@ -54,6 +54,33 @@
             <div class="divider"><span>▮▮▮ RECENT PULL REQUESTS ▮▮▮</span></div>
             <ol class="pr-cards">
                 <li>
+                    <a class="pr-card" href="83.html">
+                        <div class="pr-card-head">
+                            <span class="pr-num">PR #83</span>
+                            <h2 class="pr-title">security — inline CR/LF strip at log call sites for js/log-injection</h2>
+                        </div>
+                        <div class="pr-card-meta">
+                            <span>Opened 2026-05-09</span>
+                            <span>+38 / −18 across 5 files (+ self-page)</span>
+                            <span>Branch <code>auto/codeql-loginjection-inline-20260509</code></span>
+                        </div>
+                        <p class="pr-card-body">
+                            Sequel to <a href="81.html">PR #81</a>. The
+                            same six <code>js/log-injection</code> sites
+                            #81 wrapped with <code>safeLog()</code> got
+                            re-flagged in the next CodeQL run as alerts
+                            #60–#65 — the analyzer doesn't recognize
+                            the helper as a sanitizer. Move the
+                            <code>.replace(/\r|\n/g, '')</code> inline at
+                            every call site so CodeQL sees the barrier
+                            on the data-flow path; <code>safeLog()</code>
+                            reverts to a thin truncate-and-quote
+                            formatter, with a docstring explaining why
+                            the split must stay split.
+                        </p>
+                    </a>
+                </li>
+                <li>
                     <a class="pr-card" href="82.html">
                         <div class="pr-card-head">
                             <span class="pr-num">PR #82</span>

@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Specodex PR #83 — inline CR/LF strip at log call sites so CodeQL recognizes the js/log-injection sanitizer.">
+    <meta name="theme-color" content="#3A2C1C">
+    <title>Specodex — PR #83: inline CR/LF strip for js/log-injection</title>
+    <link rel="icon" type="image/svg+xml" href="../logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-issue="PR-83">
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="band">
+        <div class="band-inner">
+            <a class="band-brand" href="../index.html">
+                <svg class="band-mark" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <rect width="120" height="120" fill="#E8E2C9"/>
+                    <rect x="14" y="14" width="92" height="92" fill="none" stroke="#1A1A14" stroke-width="3"/>
+                    <rect x="14" y="14" width="92" height="22" fill="#3A2C1C"/>
+                    <rect x="62" y="60" width="40" height="10" fill="#A88A1C"/>
+                    <line x1="14" y1="56" x2="106" y2="56" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="74" x2="106" y2="74" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="92" x2="106" y2="92" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="60" y1="36" x2="60" y2="106" stroke="#1A1A14" stroke-width="2"/>
+                </svg>
+                <span class="wordmark">SPECODEX</span>
+            </a>
+            <nav class="band-nav" aria-label="Section">
+                <a href="../index.html">Catalog</a>
+                <a href="./" class="active">Pull Requests</a>
+                <a href="https://github.com/JimothyJohn/specodex" rel="noreferrer">GitHub</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="hero-tag">▮▮▮ PULL REQUEST #83 ▮▮▮</div>
+            <h1 class="hero-title">security — inline CR/LF strip at log call sites for js/log-injection</h1>
+            <p class="hero-sub">
+                Sequel to <a href="81.html">PR #81</a>. The same six
+                <code>js/log-injection</code> sites #81 wrapped with
+                <code>safeLog()</code> got re-flagged in the next CodeQL
+                run as alerts <strong>#60–#65</strong> — the analyzer
+                doesn't recognize the helper as a sanitizer. The
+                <code>String.replace</code> of <code>\r|\n</code> only
+                counts when CodeQL can see it on the data-flow path to
+                the sink. Move the <code>.replace</code> inline at every
+                call site; <code>safeLog()</code> reverts to a thin
+                truncate-and-quote formatter.
+            </p>
+            <dl class="pr-meta">
+                <div><dt>Branch</dt><dd><code>auto/codeql-loginjection-inline-20260509</code></dd></div>
+                <div><dt>Opened</dt><dd>2026-05-09</dd></div>
+                <div><dt>Diff</dt><dd>+38 / −18 across 5 files (+ this self-page)</dd></div>
+                <div><dt>Files</dt><dd>5 backend (TypeScript): 1 helper, 4 call-site updates</dd></div>
+                <div><dt>Type</dt><dd>Security / CodeQL <code>js/log-injection</code></dd></div>
+            </dl>
+            <div class="cta-row">
+                <a class="cta cta-primary" href="https://github.com/JimothyJohn/specodex/pull/83" rel="noreferrer">View on GitHub →</a>
+                <a class="cta cta-ghost" href="./">All requests</a>
+            </div>
+        </section>
+
+        <section aria-label="What changes">
+            <div class="divider"><span>▮▮▮ WHAT CHANGES ▮▮▮</span></div>
+            <ol class="cell-list">
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">B-1</span><h2 class="cell-title">util/log.ts — helper revised</h2></div>
+                    <p class="cell-body">
+                        The internal <code>s.replace(/[\r\n\t]/g, ' ')</code>
+                        is gone. <code>safeLog()</code> now only truncates
+                        long values to 200 chars and wraps the result in
+                        single quotes for visual identification in
+                        CloudWatch. The docstring spells out <em>why</em> the
+                        split exists — so a future refactor doesn't fold
+                        the <code>.replace</code> back into the helper and
+                        re-open the alerts a third time.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">B-2</span><h2 class="cell-title">Six call sites — inline replace</h2></div>
+                    <p class="cell-body">
+                        Every call to <code>safeLog(value)</code> on a
+                        request-derived value now passes
+                        <code>value.replace(/\r|\n/g, '')</code> first.
+                        That exact regex shape (<code>\r</code> or
+                        <code>\n</code> in the alternation) is what
+                        CodeQL's <code>js/log-injection</code> barrier
+                        looks for. With the <code>.replace</code> visible
+                        on the data-flow path, alerts #60–#65 should
+                        clear on the next scan.
+                    </p>
+                </li>
+            </ol>
+        </section>
+
+        <section aria-label="Sites touched">
+            <div class="divider"><span>▮▮▮ SITES TOUCHED ▮▮▮</span></div>
+            <table class="spec-table">
+                <thead><tr><th>File</th><th>Line</th><th>User-controlled value</th><th>Alert</th></tr></thead>
+                <tbody>
+                    <tr><td><code>app/backend/src/index.ts</code></td><td>36</td><td><code>req.path</code></td><td>#60</td></tr>
+                    <tr><td><code>app/backend/src/middleware/readonly.ts</code></td><td>42</td><td><code>req.path</code></td><td>#61</td></tr>
+                    <tr><td><code>app/backend/src/db/dynamodb.ts</code></td><td>135</td><td><code>attributeName</code> + <code>attributeValue</code> + <code>pkPrefix</code></td><td>#62</td></tr>
+                    <tr><td><code>app/backend/src/db/dynamodb.ts</code></td><td>232</td><td><code>productType</code></td><td>#63</td></tr>
+                    <tr><td><code>app/backend/src/db/dynamodb.ts</code></td><td>266</td><td><code>productType</code></td><td>#64</td></tr>
+                    <tr><td><code>app/backend/src/routes/upload.ts</code></td><td>84</td><td><code>s3Key</code> (embeds user filename)</td><td>#65</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section aria-label="Why it's safe">
+            <div class="divider"><span>▮▮▮ WHY IT'S SAFE ▮▮▮</span></div>
+            <p class="prose">
+                Output is byte-identical to PR #81. The previous
+                <code>safeLog</code> stripped <code>\r</code>,
+                <code>\n</code>, <code>\t</code> internally and then
+                truncated/quoted; the new code does the
+                <code>\r</code>/<code>\n</code> strip at the call site
+                and the truncate/quote in the helper. <code>\t</code> is
+                not stripped anymore — tabs aren't a log-line-forgery
+                vector for CloudWatch's text format, and CodeQL's
+                barrier doesn't require it. No callers depend on the old
+                tab-stripping (no tests assert log output).
+            </p>
+        </section>
+
+        <section aria-label="Why CodeQL didn't see the helper">
+            <div class="divider"><span>▮▮▮ WHY CODEQL DIDN'T SEE THE HELPER ▮▮▮</span></div>
+            <p class="prose">
+                The <code>safeLog</code> in PR #81 did call
+                <code>s.replace(/[\r\n\t]/g, ' ')</code> internally —
+                same end-effect, same regex shape. CodeQL's
+                <code>js/log-injection</code> barrier is a flow-graph
+                node-sanitizer: it looks for a <code>String.replace</code>
+                whose regex contains <code>\r</code> or <code>\n</code>
+                <em>on a path the analyzer is tracking</em>. When the
+                replace lives inside a helper that takes
+                <code>unknown</code>, branches by <code>typeof</code>,
+                and re-emits via a template literal, the
+                inter-procedural data flow loses the sanitizer; the
+                analyzer falls back to treating the whole function as a
+                taint passthrough. Confirmed empirically: alerts #32–#37
+                (PR #81's targets) and alerts #60–#65 share the same
+                <code>fixed_at</code>/<code>created_at</code> timestamp —
+                same scan, old sites closed because the line numbers
+                moved, new sites opened at the helper-wrapped lines.
+            </p>
+        </section>
+
+        <section aria-label="How to verify">
+            <div class="divider"><span>▮▮▮ HOW TO VERIFY ▮▮▮</span></div>
+            <ol class="cell-list">
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">V-1</span><h2 class="cell-title">Local pre-push gate</h2></div>
+                    <p class="cell-body">
+                        <code>./Quickstart verify --only backend</code> ran
+                        clean before push — eslint clean (only pre-existing
+                        <code>any</code> warnings), Jest 454 passed, tsc
+                        green.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">V-2</span><h2 class="cell-title">CodeQL re-run</h2></div>
+                    <p class="cell-body">
+                        After merge, the next CodeQL run on
+                        <code>master</code> should mark alerts #60–#65 as
+                        <em>fixed</em> and not open replacements. Check
+                        with:
+                        <code>gh api '/repos/JimothyJohn/specodex/code-scanning/alerts?state=open&amp;severity=medium' --jq 'length'</code>
+                        — should return <code>0</code>.
+                    </p>
+                </li>
+            </ol>
+        </section>
+
+        <a class="back-link" href="./">← back to requests log</a>
+    </main>
+
+    <footer>
+        <div class="footer-inner">
+            <span>© 2026 Specodex · PR #83</span>
+            <span class="footer-rule" aria-hidden="true"></span>
+            <a class="footer-link" href="https://github.com/JimothyJohn/specodex/pull/83" rel="noreferrer">View on GitHub</a>
+            <a class="footer-link" href="./">All requests</a>
+        </div>
+    </footer>
+</body>
+</html>

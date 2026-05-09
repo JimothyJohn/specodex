@@ -132,7 +132,12 @@ export class DynamoDBService {
     pkPrefix?: string
   ): Promise<{ deleted: number; failed: number }> {
     try {
-      console.log(`[DynamoDB] Scanning for items where ${safeLog(attributeName)} = ${safeLog(attributeValue)}${pkPrefix ? ` (PK starts with ${safeLog(pkPrefix)})` : ''}`);
+      // CR/LF strip inline on each user-controlled value (CodeQL
+      // js/log-injection barrier; see util/log.ts).
+      const safeAttr = attributeName.replace(/\r|\n/g, '');
+      const safeVal = attributeValue.replace(/\r|\n/g, '');
+      const safePrefix = pkPrefix?.replace(/\r|\n/g, '');
+      console.log(`[DynamoDB] Scanning for items where ${safeLog(safeAttr)} = ${safeLog(safeVal)}${safePrefix ? ` (PK starts with ${safeLog(safePrefix)})` : ''}`);
       
       const scanResult = await this.client.send(
         new ScanCommand({
@@ -224,7 +229,9 @@ export class DynamoDBService {
       let pageCount = 0;
       do {
         pageCount++;
-        console.log(`[DynamoDB] Query page ${pageCount} for ${safeLog(productType)} (current total: ${allItems.length})`);
+        // CR/LF strip inline (productType is from query string) — see util/log.ts.
+        const safeType = productType.replace(/\r|\n/g, '');
+        console.log(`[DynamoDB] Query page ${pageCount} for ${safeLog(safeType)} (current total: ${allItems.length})`);
 
         const result: QueryCommandOutput = await this.client.send(
           new QueryCommand({
@@ -256,7 +263,9 @@ export class DynamoDBService {
 
       } while (lastEvaluatedKey);
 
-      console.log(`[DynamoDB] Query complete for ${safeLog(productType)}: ${allItems.length} total items from ${pageCount} pages`);
+      // CR/LF strip inline (productType is from query string) — see util/log.ts.
+      const safeType = productType.replace(/\r|\n/g, '');
+      console.log(`[DynamoDB] Query complete for ${safeLog(safeType)}: ${allItems.length} total items from ${pageCount} pages`);
 
       return allItems;
     } catch (error) {
