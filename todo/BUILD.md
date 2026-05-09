@@ -50,12 +50,18 @@ Soft predecessors (already shipped):
   `motor_mount_pattern`, `compatible_motor_mounts`,
   `input_motor_mount`, `output_motor_mount`).
 
-Phasing (filled in by Part 7):
+Phasing (full PR breakdown in Part 7):
 
 - **Phase 1** — foundational refactor + Linear-Motion / horizontal
-  Build with relations API consumption.
-- **Phase 2** — vertical orientation + gravity vector.
-- **Phase 3** — Wizard handoff scaffolding.
+  Build with relations API consumption (4 PRs).
+- **Phase 2** — vertical orientation + gravity vector + friction
+  estimate + Save-to-Project + Build → Selection deep-link (3 PRs).
+- **Phase 3** — Wizard handoff scaffolding (2 PRs).
+- **Phase 4+** — out of MVP arc (rotary path, multi-axis,
+  environmental fields, fieldbus, centre-of-gravity, MSRP totals,
+  multi-segment motion profiles). Each item triggered by an explicit
+  user request or downstream readiness; see Part 7 for the trigger
+  table.
 
 ---
 
@@ -165,18 +171,12 @@ language thinking lives.
 
 ### Why Build is the essence
 
-Per Nick's framing — "this is the essence of this application." The
-Specodex differentiator isn't that it has a filterable catalogue
-(every distributor's website has one); it's that the catalogue
-is **wired to compatibility relations** so the user can describe
-a motion application and get a viable system back. Selection is
-the substrate (the data); Build is the value (the system
-assembly); Wizard is the accessibility layer (the way in for
-non-experts). Build is the layer that turns industrial datasheet
-search into "I can order a motion system from this."
-
-The rest of this doc treats Build as the noun and Wizard /
-Selection as the supporting cast.
+Per Nick's framing — "this is the essence of this application."
+Every distributor has a filterable catalogue; Specodex's
+differentiator is that the catalogue is **wired to compatibility
+relations**, so describing a motion application returns a viable
+system. The rest of this doc treats Build as the noun; Wizard and
+Selection are the supporting cast.
 
 ---
 
@@ -222,7 +222,8 @@ export interface BuildRequirements {
   motion_class: MotionClass | null;       // null = user hasn't picked yet
   /** Linear-only. null when motion_class !== "linear". */
   orientation: LinearOrientation | null;
-  /** MANDATORY for linear. 0 is accepted with a warning. */
+  /** Strongly suggested for linear (not enforced). Form labels it
+   *  required; validator allows null. 0 emits the warning below. */
   payload_mass: ValueUnit | null;         // canonical unit: kg
   motion_profiles: MotionProfile[];       // Day 1: length 1 enforced
   /** Display-only; persisted in localStorage. Default "metric". */
@@ -243,7 +244,7 @@ canonical numbers.
 |---|---|---|---|
 | `motion_class` | yes | `null` | Day 1 only `"linear"` is interactive; selecting `"rotary"` shows a placeholder ("rotary requirements not yet wired — pick a motor + gearhead via Selection"). |
 | `orientation` | yes (when linear) | `null` | Drives whether gravity enters the force calculation. Side-mount deferred until centre-of-gravity work lands. |
-| `payload_mass` | **mandatory** | `null` | Required to surface any candidates. Accepts 0 with the warning copy below; doesn't accept blank. |
+| `payload_mass` | **strongly suggested** | `null` | Form labels it required (asterisk, copy below); the validator does NOT block submission on blank. Blank = "no force filter applied" banner; 0 = the warning copy below. The strong-suggestion framing pushes users to enter a real value without trapping the ones who genuinely don't know. |
 | `motion_profiles[0].stroke` | yes | `null` | The distance the carriage must travel. If you have a range, enter the maximum. |
 | `motion_profiles[0].move_time` | yes | `null` | Total time for one move (start → end). |
 | `motion_profiles[0].dwell_time` | yes | `null` | Idle time between this move and the next. Drives duty-cycle derivation. |
@@ -427,6 +428,55 @@ trigger arrives:
 | `centre_of_gravity: { x, y, z }` | when bearing-moment checks land | New `LinearOrientation` value `"side_mount"` becomes meaningful at this point. |
 | `friction_coefficient: number` | when horizontal-motor sizing drifts low | Currently `0` for horizontal; surface as advanced field. |
 
+### Adding a new requirement field — propagation checklist
+
+When a new field lands (per Part 2's forward-compat hooks table —
+`repeatability`, `temperature_range`, etc.), the following touch
+list keeps the schema, form, URL, derivation, API, and copy in
+sync. Walk the list top-to-bottom; CI catches the codegen step,
+the rest is on the implementer.
+
+1. **Schema.** Add the field to `BuildRequirements` in
+   `app/frontend/src/types/buildRequirements.ts`. Always optional
+   (per Part 6's "new fields are always optional" rule).
+2. **URL serialiser.** Add the field's encoding to
+   `app/frontend/src/utils/buildURLState.ts` — both the
+   `serialiseBuildRequirementsToURL` direction and the
+   `parseURLToBuildRequirements` inverse. Pick a short param key
+   (2–3 chars, matching the existing pattern: `pm` / `st` / `mt`).
+3. **Form control.** Add the input to `<RequirementsForm>` with
+   the appropriate primitive (number input, range slider, enum
+   dropdown). Bind to `requirements[<field>]` and call
+   `onRequirementsChange`.
+4. **Derivation.** If the new field affects derived numbers
+   (peak_force, peak_velocity, duty_cycle), update
+   `app/frontend/src/utils/buildDerivation.ts`. If not, skip.
+5. **Relations API param.** Add the corresponding optional query
+   param to the relations endpoint(s) in `app/backend/src/routes/relations.ts`
+   (and `specodex/relations.py` once PYTHON_BACKEND lands).
+6. **Wire the param to the API call.** In `<BuildPage>`'s
+   relations call site, pass the new query param when the field
+   is non-null. The relations API treats absent params as "no
+   constraint applied" (same rule as the schema's optional-by-
+   default).
+7. **Tooltip + warning copy.** Add a row to Part 2's "Field-level
+   copy" table. Implement the tooltip via `<Tooltip>` and the
+   warning (if any) inline beneath the form control.
+8. **Unit tests.** Add fixtures to `RequirementsForm.test.tsx`
+   covering the new control's render + callback. Add a relations
+   API test verifying the new param is honoured.
+9. **Phase exit criteria update.** If the field unblocks a Phase
+   2+ feature (e.g. `temperature_range` enables an environmental
+   filter), update Part 7's phase exit criteria to reference it.
+
+The codegen pipeline (`./Quickstart gen-types`) catches drift
+between the Pydantic and TypeScript shapes when SCHEMA work
+sits behind the field — but Build's `BuildRequirements` is
+frontend-only today (per Part 2's "No Pydantic mirror"), so the
+drift gate doesn't apply yet. When Save-to-Project mirrors the
+shape server-side, this checklist gains a step 2.5: "Update the
+Pydantic mirror in `specodex/models/build_requirements.py`."
+
 ### Field-level copy
 
 The spec pins tooltips and warning copy verbatim so they don't drift
@@ -551,11 +601,18 @@ on each upstream pick to constrain the next slot's candidate set:
    peak — same `snapGearUp()` heuristic the existing Selection page
    uses for `productType === 'motor'` linear-mode.
 
-The dependency chain matches `compat.ts`'s existing `BUILD_SLOTS`
-ordering (`drive` → `motor` → `gearhead`) but reads in the user's
-direction (load → motor → drive). The internal order in
-`compat.ts` doesn't change; Build just iterates the slots in
-load-first order for UI purposes.
+Phase 1 **reorders** `compat.ts`'s `BUILD_SLOTS` constant from
+`['drive', 'motor', 'gearhead']` to
+`['actuator', 'motor', 'drive', 'gearhead']` — both prepending
+`'actuator'` AND moving `'motor'` before `'drive'` to match the
+user-facing fill order. Adjacency rules in `compat.ts` are
+name-keyed, not index-keyed, so the existing `drive↔motor` and
+`motor↔gearhead` rules keep working unchanged. Phase 1 adds one
+new rule: `actuator↔motor` (validates `motor.motor_mount_pattern
+∈ actuator.compatible_motor_mounts`). The array reorder DOES
+affect `ChainReviewModal.tsx`'s `adjacentFilledPairs` helper,
+which iterates the array and yields adjacent pairs — see Part 7's
+migration risks.
 
 ### The "extremely clear available products" surface
 
@@ -593,8 +650,9 @@ Click flow:
    on rows whose `(manufacturer, series)` resolves to a registered
    template.
 2. Click → opens `<ConfiguratorDrawer>` (extracted from
-   `ActuatorPage.tsx` lines 398–556) inline beneath the candidate
-   row. The drawer renders the vendor's segments (lead, mount,
+   `ActuatorPage.tsx`'s `<ConfiguratorPanel>` function and the
+   `<MotorSuggestions>` / `<DerivedSpecsRow>` / `<SegmentControl>`
+   helpers it composes) inline beneath the candidate row. The drawer renders the vendor's segments (lead, mount,
    accessory bundle) with the user's `requirements.stroke`
    pre-populated into the stroke segment.
 3. User adjusts vendor-specific segments → synthesised part number
@@ -608,9 +666,10 @@ specific and the drawer is the right surface for them.
 
 ### BuildTray absorption — what changes in `App.tsx`
 
-Today: `<BuildTray />` is rendered unconditionally at the app
-shell level (line 173 in `App.tsx`), sticky at the bottom of every
-non-`/welcome` page. Users add products to it from the
+Today: `<BuildTray />` is rendered unconditionally inside
+`<AppShell>` in `App.tsx` (the `{!isLanding && <BuildTray />}`
+expression after the `</ErrorBoundary>` closing tag), sticky at
+the bottom of every non-`/welcome` page. Users add products to it from the
 `<ProductDetailModal>`'s "Add to build" button.
 
 After Build:
@@ -631,6 +690,89 @@ After Build:
   (validates `motor_mount_pattern ∈ actuator.compatible_motor_mounts`).
   Today's `drive ↔ motor` and `motor ↔ gearhead` rules are
   unchanged.
+
+### Component contracts
+
+The three top-level components have well-defined prop boundaries
+so each can be unit-tested in isolation. `<BuildPage>` is the
+state-owner; the children are pure-ish renderers with callbacks.
+
+```ts
+// app/frontend/src/components/build/RequirementsForm.tsx
+interface RequirementsFormProps {
+  requirements: BuildRequirements;
+  onRequirementsChange: (next: BuildRequirements) => void;
+  /** Derived block from buildDerivation.ts. RequirementsForm
+   *  renders it but doesn't compute it — that's BuildPage's job. */
+  derived: DerivedSpecs | null;
+}
+
+interface DerivedSpecs {
+  peak_velocity_mm_s: number;
+  peak_acceleration_mm_s2: number;
+  peak_force_n: number;
+  duty_cycle: number;        // 0..1
+}
+
+// app/frontend/src/components/build/CandidatesPane.tsx
+interface CandidatesPaneProps {
+  /** Each slot's candidate list, fetched by BuildPage from the
+   *  relations API. null = locked (upstream slot not picked).
+   *  [] = no candidates match. */
+  actuatorCandidates: ActuatorCandidate[] | null;
+  motorCandidates: MotorCandidate[] | null;
+  driveCandidates: DriveCandidate[] | null;
+  gearheadCandidates: GearheadCandidate[] | null;
+  /** The current picks. null = slot empty. */
+  picks: Partial<Record<BuildSlot, Product>>;
+  /** Which slot is currently loading (shows the row skeleton). */
+  loadingSlot: BuildSlot | null;
+  /** Per-slot error from the relations API (null = no error). */
+  errors: Partial<Record<BuildSlot, string>>;
+  /** Standardisation / off-cluster suggestions surfaced by the
+   *  relations API's _distribution_position blocks. */
+  warnings: Partial<Record<BuildSlot, string>>;
+  /** Wizard-draft markers — slots whose pick was auto-selected
+   *  from the ?wizard=1 handoff and not yet confirmed. */
+  draftSlots: Set<BuildSlot>;
+  onPick: (slot: BuildSlot, product: Product) => void;
+  onUnpick: (slot: BuildSlot) => void;
+  /** Click-to-relax handler: writes a suggested value back into
+   *  the requirements form via BuildPage. */
+  onRelaxRequirement: (field: keyof BuildRequirements, value: ValueUnit) => void;
+}
+
+// app/frontend/src/components/build/SystemSummary.tsx
+interface SystemSummaryProps {
+  picks: Partial<Record<BuildSlot, Product>>;
+  /** Junction status from compat.check() per adjacent pair.
+   *  Same shape BuildTray uses today. */
+  junctions: JunctionInfo[];
+  isComplete: boolean;
+  onCopyBOM: () => void;
+  /** Disabled in Phase 1 (placeholder); enabled in Phase 2. */
+  onSaveToProject?: () => void;
+  /** Disabled in Phase 1 (placeholder); enabled in Phase 3. */
+  onOpenInWizard?: () => void;
+}
+```
+
+`<BuildPage>` owns:
+- `BuildRequirements` state (hydrated from URL → localStorage →
+  defaults).
+- The relations API call orchestration (per Part 4's fan-out
+  pattern).
+- The `picks` map (writes to `AppContext`'s `build` slice for
+  cross-component access).
+- The Wizard-draft state (`Set<BuildSlot>` of unconfirmed picks).
+- The URL-state synchroniser (writes `BuildRequirements` back to
+  the URL on form changes via `history.replaceState`).
+
+The three children are renderer-with-callbacks. Their unit tests
+mock the props and verify rendering + callback firing; integration
+tests live at the `<BuildPage>` level and exercise the full
+form-change → API-call → render-update loop with mocked
+`apiClient`.
 
 ### Wizard-derived initial state
 
@@ -970,7 +1112,9 @@ ships against the same data.
 Three pieces move to Build (or get deleted):
 
 1. **The `rotary | linear | z-axis` transmission-type buttons**
-   (`ProductList.tsx` lines 957–1009). Today they appear only when
+   (`ProductList.tsx`'s `<div className="page-toolbar-transmission">`
+   block and the surrounding `transmission-type-row` /
+   `transmission-param` JSX). Today they appear only when
    `productType === 'motor'` and re-skin the motor specs into
    linear-application units (RPM → mm/s, Nm → N). After Build:
    - The buttons themselves are **removed** from Selection.
@@ -995,11 +1139,41 @@ Three pieces move to Build (or get deleted):
    real estate back.
 
 The `compat-filter-banner` and the compatibility-narrowed result
-set on Selection (lines 1032–1047) **also go away** — they only
+set on Selection (the `compatFilterActive` and `compatNarrowed`
+JSX blocks rendered when `compatAnchors.length > 0`) **also go
+away** — they only
 make sense when there are anchor picks in the global build slice,
 and the global build slice is now Build-page-local. Selection
 returns to "show every record matching your filter chips,
 period."
+
+### Why ActuatorPage doesn't survive alongside Build
+
+Tempting to keep `/actuators` as-is and add `/build` as a separate
+route. Reject this. Three reasons:
+
+1. **Two surfaces for the same scope split the user's attention.**
+   ActuatorPage is "Linear Motion landing"; Build's Phase 1 scope
+   IS Linear Motion. A user landing on Welcome would have to choose
+   between them with no honest way to explain the difference. The
+   ActuatorPage configurator is genuinely useful, so it migrates
+   into Build's Actuator slot drawer (per Part 3); nothing is lost,
+   and the choice is removed.
+2. **ActuatorPage's record-table-first framing fights the
+   requirements-first flow.** Today ActuatorPage opens with a
+   subtype tab + records table; the configurator and motor
+   suggestions are below. Build inverts this: requirements first,
+   candidates second. Keeping ActuatorPage alive would invite
+   users to skip Build's narrowing and browse a 46-row table —
+   exactly the surface Selection already provides.
+3. **The `/actuators` URL keeps its semantic value as a deep link.**
+   Phase 1 PR 1D rewrites `/actuators` to redirect to
+   `/build?ml=linear&or=horizontal`, so external links into the
+   actuator surface still resolve sensibly — they just land on
+   Build with the linear/horizontal scope pre-picked.
+
+The ActuatorPage code's value is preserved (the configurator
+extraction); only the standalone-page framing dies.
 
 ### Re-routing
 
@@ -1265,23 +1439,12 @@ generator → CI catches drift.
 
 ### Why lock this seam in Build Phase 1, not later
 
-Two reasons:
-
-1. **Schema decisions ripple.** If Build Phase 1 ships with
-   `move_time` as a number-of-seconds and Wizard Phase 1 wants
-   `move_duration` as an ISO-8601 duration string, the seam is
-   broken before Wizard ever ships. Defining the schema once,
-   in Part 2, with Wizard as a known consumer, prevents that.
-2. **URL stability is a feature.** Build URLs are bookmarkable
-   and shareable from day one. If they're shareable, they're
-   public contract. Treating them as public from Phase 1 keeps
-   the implementation honest about field naming, encoding,
-   validation — all of which are exactly what Wizard's
-   handoff needs anyway. The two requirements collapse into one
-   spec.
-
-Build Phase 1 ships with no Wizard, but the door is wired,
-hinged, and locked. Wizard's spec opens it.
+Schema decisions ripple, and Build URLs are public contract from
+day one (bookmarkable, shareable). Defining the URL shape with
+Wizard as a known future consumer means Build's Phase 1 schema
+discipline doubles as Wizard's handoff spec — one design, two
+requirements. Build Phase 1 ships with no Wizard, but the door
+is wired, hinged, and locked.
 
 ---
 
@@ -1402,11 +1565,11 @@ and 1D as listed; this table is the audit summary.
 | `app/frontend/src/components/ActuatorPage.css` | DELETED | Same reason. |
 | `app/frontend/src/components/ActuatorPage.test.tsx` | DELETED | Same reason. |
 | `app/frontend/src/components/BuildTray.tsx` | DELETED | Absorbed into `<SystemSummary />` inside `<BuildPage />`; no longer follows the user across pages. |
-| Transmission-type buttons in `<ProductList>` (lines 957–1009) | DELETED | Replaced by `BuildRequirements.motion_class` + `orientation`. |
+| Transmission-type buttons in `<ProductList>` (`page-toolbar-transmission` block) | DELETED | Replaced by `BuildRequirements.motion_class` + `orientation`. |
 | `linearTravel` / `loadMass` inputs in `<ProductList>`'s toolbar | DELETED | Equivalent inputs in Build's requirements form. |
 | `defaultStateForType`'s `appType / linearTravel / loadMass` fields | DELETED | Selection no longer has app-type state. |
 | "Add to build" button in `<ProductDetailModal>` (non-Build context) | RENAMED + SCOPED | Becomes "Pick for [slot]" and only appears on Build page. |
-| `compat-filter-banner` in `<ProductList>` (lines 1032–1059) | DELETED | Selection no longer reflects build state. |
+| `compat-filter-banner` in `<ProductList>` (the `compatFilterActive` JSX blocks) | DELETED | Selection no longer reflects build state. |
 
 ### Migration risks worth naming
 
@@ -1419,13 +1582,19 @@ and 1D as listed; this table is the audit summary.
   scope or whether `build` should formally page-local. Phase 1
   leaves it global; if a Phase 2+ feature wants it, that's the
   trigger to revisit.
-- **`compat.ts`'s `BUILD_SLOTS` ordering.** Today: `['drive',
-  'motor', 'gearhead']`. Phase 1 prepends `'actuator'` →
-  `['actuator', 'drive', 'motor', 'gearhead']`. The numeric
-  ordering matters for the `BuildSlot` index lookup in
-  `ChainReviewModal.tsx` (the `adjacentFilledPairs` helper).
-  Audit `ChainReviewModal` for any hardcoded slot indices when
-  PR 1C lands.
+- **`compat.ts`'s `BUILD_SLOTS` reorder.** Today: `['drive',
+  'motor', 'gearhead']`. Phase 1 reorders to
+  `['actuator', 'motor', 'drive', 'gearhead']` (prepends
+  `'actuator'` AND moves `'motor'` ahead of `'drive'` to match
+  user-facing fill order). Existing name-keyed adjacency rules
+  (`drive↔motor`, `motor↔gearhead`) keep working unchanged; PR 1C
+  adds the new `actuator↔motor` rule. **The reorder DOES affect
+  `ChainReviewModal.tsx`'s `adjacentFilledPairs` helper** — its
+  output yields different junctions than before (today: drive→motor,
+  motor→gearhead; after: actuator→motor, motor→drive, drive→gearhead).
+  Audit ChainReviewModal for any hardcoded slot pairs or index
+  assumptions when PR 1C lands. Update its junction labels to match
+  the new array order.
 - **The `apiClient.search()` envelope.** Relations endpoints
   reuse the same `{success: true, data: [...]}` shape. If a
   future relations endpoint needs pagination or streaming
