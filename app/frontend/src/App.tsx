@@ -22,12 +22,13 @@
  * @module App
  */
 
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { BrowserRouter, Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom';
 import { AppProvider } from './context/AppContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ProjectsProvider } from './context/ProjectsContext';
 import { ConfirmProvider } from './components/ui/ConfirmDialog';
+import FeedbackModal from './components/ui/FeedbackModal';
 import { ToastProvider } from './components/ui/Toast';
 import ThemeToggle from './components/ThemeToggle';
 import GitHubLink from './components/GitHubLink';
@@ -95,6 +96,7 @@ export function AppShell() {
   // on token contents.
   const { user, isAdmin: showAdminNav } = useAuth();
   const showSignedInNav = !!user;
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
 
   return (
     <>
@@ -130,12 +132,21 @@ export function AppShell() {
             </div>
             <div className="header-options">
               <span className="header-options-label" aria-hidden="true">OPTIONS</span>
+              <button
+                type="button"
+                className="feedback-trigger"
+                onClick={() => setFeedbackOpen(true)}
+                aria-label="Send feedback"
+              >
+                Feedback
+              </button>
               <DensityToggle />
               <ThemeToggle />
               <AccountMenu />
             </div>
           </header>
         )}
+        <FeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
 
         {/* ===== ROUTES WITH SUSPENSE + ERROR BOUNDARY ===== */}
         <ErrorBoundary>
