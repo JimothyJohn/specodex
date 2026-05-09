@@ -4582,9 +4582,46 @@ hr::after {
   background: color-mix(in srgb, var(--accent-primary) 8%, transparent);
 }
 
+/* Themed checkbox — replaces the native UA checkbox here so the row
+ * matches the rest of the app's chrome. STYLE.md Phase 4. Square,
+ * 1px border, themed accent + check glyph; focus ring uses the same
+ * --accent-primary outline as buttons. */
 .add-to-project-row input[type='checkbox'] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
   flex-shrink: 0;
+  margin: 0;
+  border: 1px solid var(--border);
+  background: var(--bg-primary);
   cursor: pointer;
+  display: inline-grid;
+  place-content: center;
+  position: relative;
+}
+.add-to-project-row input[type='checkbox']:hover {
+  border-color: var(--accent-primary);
+}
+.add-to-project-row input[type='checkbox']:checked {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+}
+.add-to-project-row input[type='checkbox']:checked::after {
+  content: '';
+  width: 4px;
+  height: 8px;
+  border: solid var(--header-text);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg) translate(-1px, -1px);
+}
+.add-to-project-row input[type='checkbox']:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+.add-to-project-row input[type='checkbox']:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 .add-to-project-name {
