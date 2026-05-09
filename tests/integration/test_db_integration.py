@@ -120,7 +120,8 @@ class TestMotorCRUD:
         assert updated.rated_speed == ValueUnit(value=6000, unit="rpm")
 
         # Delete
-        assert client.delete(motor.product_id, Motor) is True
+        deleted = client.delete(motor.product_id, Motor)
+        assert deleted is True
 
         gone = client.read(motor.product_id, Motor)
         assert gone is None
@@ -149,7 +150,8 @@ class TestDriveCRUD:
         assert set(updated.fieldbus) == {"EtherCAT", "PROFINET"}
 
         # Delete
-        assert client.delete(drive.product_id, Drive) is True
+        deleted = client.delete(drive.product_id, Drive)
+        assert deleted is True
         assert client.read(drive.product_id, Drive) is None
 
 

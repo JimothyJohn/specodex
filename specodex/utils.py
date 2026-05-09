@@ -389,6 +389,8 @@ def get_document(
             try:
                 ssl_ctx.set_ciphers("DEFAULT:@SECLEVEL=1")
             except ssl.SSLError:
+                # Builds without legacy ciphers (LibreSSL, BoringSSL) reject
+                # the cipher string — keep the default context and continue.
                 pass
 
             with urlopen(req, timeout=25.0, context=ssl_ctx) as response:

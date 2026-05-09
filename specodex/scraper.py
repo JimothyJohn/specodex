@@ -239,10 +239,13 @@ def main() -> None:
     args: argparse.Namespace = parser.parse_args()
     client: DynamoDBClient = DynamoDBClient()
 
-    # Manually handle API key validation
+    # Manually handle API key validation. parser.error() exits the
+    # process, but flow analyzers can't see that — pre-bind to keep the
+    # type as plain `str` for the long downstream usage.
     api_key: Optional[str] = args.x_api_key or os.environ.get("GEMINI_API_KEY")
+    validated_api_key: str = ""
     try:
-        validated_api_key: str = validate_api_key(api_key)
+        validated_api_key = validate_api_key(api_key)
     except argparse.ArgumentTypeError as e:
         parser.error(str(e))
 

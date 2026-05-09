@@ -366,7 +366,7 @@ export default function FilterChip({
     if (n <= 1) return;
     const currentIdx = rangeInfo.sortedValues.indexOf(localSliderValue);
     const idx = currentIdx === -1 ? 0 : currentIdx;
-    let next = idx;
+    let next: number;
     switch (e.key) {
       case 'ArrowRight':
       case 'ArrowUp':

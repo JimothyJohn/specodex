@@ -52,8 +52,10 @@ class TestBlacklist:
     def test_remove(self, tmp_path: Path) -> None:
         bl = Blacklist(path=tmp_path / "bl.json")
         bl.add("ACME")
-        assert bl.remove("ACME") is True
-        assert bl.remove("ACME") is False
+        first = bl.remove("ACME")
+        second = bl.remove("ACME")
+        assert first is True
+        assert second is False
         assert not bl.contains("ACME")
 
     def test_save_round_trip(self, tmp_path: Path) -> None:
@@ -100,7 +102,8 @@ class TestBlacklist:
     def test_remove_is_case_insensitive(self, tmp_path: Path) -> None:
         bl = Blacklist(path=tmp_path / "bl.json")
         bl.add("ACME")
-        assert bl.remove("acme") is True
+        removed = bl.remove("acme")
+        assert removed is True
         assert len(bl) == 0
 
     def test_load_dedupes_existing_duplicates(self, tmp_path: Path) -> None:

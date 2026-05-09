@@ -296,7 +296,7 @@ export default function ColumnHeader({
     const currentIdx =
       filterValue != null ? rangeInfo.sortedValues.indexOf(filterValue) : -1;
     const idx = currentIdx === -1 ? 0 : currentIdx;
-    let next = idx;
+    let next: number;
     switch (e.key) {
       case 'ArrowRight':
       case 'ArrowUp':

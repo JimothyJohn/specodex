@@ -297,11 +297,11 @@ def apply_where(product: Any, field: str, op: str, value: str) -> bool:
 
     # Numeric comparison
     num_product = extract_numeric(product_val)
+    num_filter: float | None = None
     try:
         num_filter = float(value)
         is_numeric = True
     except ValueError:
-        num_filter = None
         is_numeric = False
 
     if num_product is not None and is_numeric:

@@ -838,13 +838,13 @@ function hasKey<K extends string>(obj: object, key: K): obj is Record<K, unknown
 }
 
 function isValueUnitShape(v: unknown): v is { value: unknown; unit: unknown } {
-  return typeof v === 'object' && v !== null && hasKey(v, 'value') && hasKey(v, 'unit');
+  return v !== null && typeof v === 'object' && hasKey(v, 'value') && hasKey(v, 'unit');
 }
 
 function isMinMaxUnitShape(v: unknown): v is { min: unknown; max: unknown; unit: unknown } {
   return (
-    typeof v === 'object' &&
     v !== null &&
+    typeof v === 'object' &&
     hasKey(v, 'min') &&
     hasKey(v, 'max') &&
     hasKey(v, 'unit')

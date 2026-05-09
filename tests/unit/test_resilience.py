@@ -64,7 +64,8 @@ class TestDynamoDBConnectivityFailures:
 
     def test_delete_returns_false_on_client_error(self, db, mock_table):
         mock_table.delete_item.side_effect = make_client_error()
-        assert db.delete("test-id", Motor) is False
+        result = db.delete("test-id", Motor)
+        assert result is False
 
     def test_list_returns_empty_on_client_error(self, db, mock_table):
         mock_table.query.side_effect = make_client_error()
@@ -231,7 +232,8 @@ class TestErrorSpecificity:
         mock_table.delete_item.side_effect = make_client_error(
             "ConditionalCheckFailedException"
         )
-        assert db.delete("test-id", Motor) is False
+        result = db.delete("test-id", Motor)
+        assert result is False
 
 
 # =================== LLM Retry Exhaustion ===================

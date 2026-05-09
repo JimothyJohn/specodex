@@ -15,7 +15,6 @@ wrong-family units to ``None`` so the quality filter can drop the row.
 
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass
 from decimal import Decimal
 from typing import Annotated, Any, List, Literal, Optional
@@ -23,8 +22,6 @@ from typing import Annotated, Any, List, Literal, Optional
 from pydantic import BaseModel, BeforeValidator, model_validator
 
 from specodex.units import normalize_unit_value
-
-_logger = logging.getLogger(__name__)
 
 
 ProductType = Literal[

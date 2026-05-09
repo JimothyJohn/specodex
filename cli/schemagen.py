@@ -63,7 +63,7 @@ def _detect_mime(path: Path) -> str:
         return "application/pdf"
     if suffix in _IMAGE_MIME_BY_EXT:
         return _IMAGE_MIME_BY_EXT[suffix]
-    sys.exit(
+    raise SystemExit(
         f"ERROR: unsupported file type {suffix!r} for {path.name}. "
         f"Supported: .pdf, {', '.join(sorted(_IMAGE_MIME_BY_EXT))}."
     )
@@ -203,8 +203,8 @@ def _run_verification(
     # Re-import to pick up the newly-added SCHEMA_CHOICES entry.
     import importlib
 
-    import specodex.config as cfg
-    import specodex.models as models_pkg
+    from specodex import config as cfg
+    from specodex import models as models_pkg
 
     importlib.reload(models_pkg)  # best-effort; submodules already imported
     importlib.reload(cfg)

@@ -227,6 +227,7 @@ def health_check(url: str, retries: int = 30) -> bool:
                 if resp.status == 200:
                     return True
         except (URLError, OSError):
+            # Server may not be up yet — retry until exhausted.
             pass
         time.sleep(1)
     return False
@@ -275,77 +276,79 @@ def cmd_dev(args: argparse.Namespace) -> None:
     port = os.environ.get("PORT", "3001")
     info(f"Starting backend (port {port}) and frontend (port 3000)")
 
-    backend_log = open(LOG_DIR / "backend.log", "w")
-    frontend_log = open(LOG_DIR / "frontend.log", "w")
+    # `with` guarantees close on every exit path (signal-handler sys.exit
+    # raises SystemExit, which propagates through the with-block as a
+    # normal exception and runs __exit__).
+    with (
+        open(LOG_DIR / "backend.log", "w") as backend_log,
+        open(LOG_DIR / "frontend.log", "w") as frontend_log,
+    ):
+        # Local dev always runs in admin mode (full write access)
+        admin_env = {**os.environ, "APP_MODE": "admin"}
 
-    # Local dev always runs in admin mode (full write access)
-    admin_env = {**os.environ, "APP_MODE": "admin"}
+        backend = subprocess.Popen(
+            ["npm", "run", "dev"],
+            cwd=APP / "backend",
+            stdout=backend_log,
+            stderr=subprocess.STDOUT,
+            env=admin_env,
+        )
+        frontend = subprocess.Popen(
+            ["npm", "run", "dev"],
+            cwd=APP / "frontend",
+            stdout=frontend_log,
+            stderr=subprocess.STDOUT,
+        )
 
-    backend = subprocess.Popen(
-        ["npm", "run", "dev"],
-        cwd=APP / "backend",
-        stdout=backend_log,
-        stderr=subprocess.STDOUT,
-        env=admin_env,
-    )
-    frontend = subprocess.Popen(
-        ["npm", "run", "dev"],
-        cwd=APP / "frontend",
-        stdout=frontend_log,
-        stderr=subprocess.STDOUT,
-    )
+        procs = [backend, frontend]
 
-    procs = [backend, frontend]
-
-    def shutdown(signum: int = 0, frame: object = None) -> None:
-        info("Shutting down...")
-        for p in procs:
-            try:
-                p.terminate()
-                p.wait(timeout=5)
-            except (ProcessLookupError, subprocess.TimeoutExpired):
-                p.kill()
-        backend_log.close()
-        frontend_log.close()
-        sys.exit(0)
-
-    signal.signal(signal.SIGINT, shutdown)
-    signal.signal(signal.SIGTERM, shutdown)
-
-    url = f"http://localhost:{port}"
-    if not health_check(url):
-        warn(f"Backend may not be ready — check {LOG_DIR}/backend.log")
-
-    host = _local_ip()
-    print()
-    info("Specodex is running")
-    print(f"  Frontend:  http://{host}:3000")
-    print(f"  Backend:   http://{host}:{port}")
-    print("  Mode:      admin (full access)")
-    print(f"  Stage:     {os.environ.get('STAGE', 'dev')}")
-    print(f"  Table:     {os.environ.get('DYNAMODB_TABLE_NAME', 'products-dev')}")
-    print(f"  Logs:      {LOG_DIR}/")
-    print()
-    print("  Press Ctrl+C to stop")
-    print()
-
-    # Wait for either process to exit
-    try:
-        while True:
+        def shutdown(signum: int = 0, frame: object = None) -> None:
+            info("Shutting down...")
             for p in procs:
-                ret = p.poll()
-                if ret is not None:
-                    # Treat SIGTERM (143/-15) and SIGINT (130/-2) as clean
-                    # shutdowns — these fire whenever the user hits Ctrl-C
-                    # or another process terminates ours, not real failures.
-                    if ret in (0, 130, 143, -signal.SIGINT, -signal.SIGTERM):
-                        info(f"Process exited cleanly (code {ret})")
-                    else:
-                        warn(f"Process exited with code {ret}")
-                    shutdown()
-            time.sleep(1)
-    except KeyboardInterrupt:
-        shutdown()
+                try:
+                    p.terminate()
+                    p.wait(timeout=5)
+                except (ProcessLookupError, subprocess.TimeoutExpired):
+                    p.kill()
+            sys.exit(0)
+
+        signal.signal(signal.SIGINT, shutdown)
+        signal.signal(signal.SIGTERM, shutdown)
+
+        url = f"http://localhost:{port}"
+        if not health_check(url):
+            warn(f"Backend may not be ready — check {LOG_DIR}/backend.log")
+
+        host = _local_ip()
+        print()
+        info("Specodex is running")
+        print(f"  Frontend:  http://{host}:3000")
+        print(f"  Backend:   http://{host}:{port}")
+        print("  Mode:      admin (full access)")
+        print(f"  Stage:     {os.environ.get('STAGE', 'dev')}")
+        print(f"  Table:     {os.environ.get('DYNAMODB_TABLE_NAME', 'products-dev')}")
+        print(f"  Logs:      {LOG_DIR}/")
+        print()
+        print("  Press Ctrl+C to stop")
+        print()
+
+        # Wait for either process to exit
+        try:
+            while True:
+                for p in procs:
+                    ret = p.poll()
+                    if ret is not None:
+                        # Treat SIGTERM (143/-15) and SIGINT (130/-2) as clean
+                        # shutdowns — these fire whenever the user hits Ctrl-C
+                        # or another process terminates ours, not real failures.
+                        if ret in (0, 130, 143, -signal.SIGINT, -signal.SIGTERM):
+                            info(f"Process exited cleanly (code {ret})")
+                        else:
+                            warn(f"Process exited with code {ret}")
+                        shutdown()
+                time.sleep(1)
+        except KeyboardInterrupt:
+            shutdown()
 
 
 def cmd_test(args: argparse.Namespace) -> None:
