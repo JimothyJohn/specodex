@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Specodex PR #58 — MODELGEN OQ1: drop @computed_field for PK/SK; keep as @property.">
+    <meta name="theme-color" content="#3A2C1C">
+    <title>Specodex — PR #58: drop @computed_field for PK/SK</title>
+    <link rel="icon" type="image/svg+xml" href="../logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-issue="PR-58">
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="band">
+        <div class="band-inner">
+            <a class="band-brand" href="../index.html">
+                <svg class="band-mark" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <rect width="120" height="120" fill="#E8E2C9"/>
+                    <rect x="14" y="14" width="92" height="92" fill="none" stroke="#1A1A14" stroke-width="3"/>
+                    <rect x="14" y="14" width="92" height="22" fill="#3A2C1C"/>
+                    <rect x="62" y="60" width="40" height="10" fill="#A88A1C"/>
+                    <line x1="14" y1="56" x2="106" y2="56" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="74" x2="106" y2="74" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="92" x2="106" y2="92" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="60" y1="36" x2="60" y2="106" stroke="#1A1A14" stroke-width="2"/>
+                </svg>
+                <span class="wordmark">SPECODEX</span>
+            </a>
+            <nav class="band-nav" aria-label="Section">
+                <a href="../index.html">Catalog</a>
+                <a href="./" class="active">Pull Requests</a>
+                <a href="https://github.com/JimothyJohn/specodex" rel="noreferrer">GitHub</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="hero-tag">▮▮▮ PULL REQUEST #58 ▮▮▮</div>
+            <h1 class="hero-title">MODELGEN OQ1 — drop @computed_field for PK/SK</h1>
+            <p class="hero-sub">
+                Resolves MODELGEN.md Open Question 1 — "<code>@computed_field</code> for PK/SK breaks
+                <code>Manufacturer</code> construction in generated TS." Per Nick's call: drop the
+                decorator and compute PK/SK on read in the API. One bounded slice that closes a
+                documented question without touching consumer code.
+            </p>
+            <dl class="pr-meta">
+                <div><dt>Branch</dt><dd><code>auto/modelgen-drop-computed-field-pk-sk-20260507</code></dd></div>
+                <div><dt>Merged</dt><dd>2026-05-07</dd></div>
+                <div><dt>Diff</dt><dd>+103 / −47</dd></div>
+                <div><dt>Files</dt><dd>6 changed</dd></div>
+                <div><dt>Closes</dt><dd>MODELGEN.md OQ1 + mismatch 4</dd></div>
+            </dl>
+            <div class="cta-row">
+                <a class="cta cta-primary" href="https://github.com/JimothyJohn/specodex/pull/58" rel="noreferrer">View on GitHub →</a>
+                <a class="cta cta-ghost" href="./">All requests</a>
+            </div>
+        </section>
+
+        <section aria-label="What changes">
+            <div class="divider"><span>▮▮▮ WHAT CHANGES ▮▮▮</span></div>
+            <ol class="cell-list">
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">CH-1</span><h2 class="cell-title">Decorator → @property</h2></div>
+                    <p class="cell-body">
+                        On <code>specodex/models/manufacturer.py</code>, <code>product.py</code>, and
+                        <code>datasheet.py</code>: <code>@computed_field</code> on <code>PK</code> /
+                        <code>SK</code> becomes plain <code>@property</code>. Pydantic now skips them
+                        in <code>model_dump()</code> and the JSON schema, but Python attribute access
+                        (<code>model.PK</code>) is unchanged.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">CH-2</span><h2 class="cell-title">generated.ts shrinks 18 lines</h2></div>
+                    <p class="cell-body">
+                        <code>Manufacturer</code>, <code>ProductBase</code>, and <code>Datasheet</code>
+                        no longer carry the spurious required <code>PK</code>/<code>SK</code> fields.
+                        Closes mismatch 4 in the Phase 0a-ii 5-mismatch list.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">CH-3</span><h2 class="cell-title">Doc updated</h2></div>
+                    <p class="cell-body">
+                        <code>todo/MODELGEN.md</code>: OQ1 marked ✅ resolved; mismatch 4 in the Phase
+                        0a-ii section struck through with the resolution reference.
+                    </p>
+                </li>
+            </ol>
+        </section>
+
+        <section aria-label="Why it's safe">
+            <div class="divider"><span>▮▮▮ WHY IT'S SAFE ▮▮▮</span></div>
+            <p style="margin-bottom: 1rem; max-width: 80ch; color: var(--ink-soft);">
+                The persistence layer was already prepared:
+            </p>
+            <ol class="cell-list">
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">P-1</span><h2 class="cell-title">_serialize_item</h2></div>
+                    <p class="cell-body">
+                        <code>specodex/db/dynamo.py:_serialize_item</code> assigns
+                        <code>data["PK"] = model.PK</code> <em>explicitly after</em>
+                        <code>model_dump()</code> (and same for SK). Whether PK/SK come from the dump
+                        or not is irrelevant — the writer reads them via attribute access.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">P-2</span><h2 class="cell-title">Skip-fields</h2></div>
+                    <p class="cell-body">
+                        <code>specodex/web_scraper.py:102</code>, <code>specodex/merge.py:25</code>,
+                        and <code>specodex/admin/operations.py:83</code> all explicitly <em>skip</em>
+                        PK/SK when iterating dump output via the
+                        <code>_SKIP_FIELDS = frozenset({"product_id", "PK", "SK"})</code> guard.
+                    </p>
+                </li>
+            </ol>
+        </section>
+
+        <section aria-label="Top files touched">
+            <div class="divider"><span>▮▮▮ TOP FILES TOUCHED ▮▮▮</span></div>
+            <table class="spec-table">
+                <thead><tr><th>Path</th><th class="num">+</th><th class="num">−</th></tr></thead>
+                <tbody>
+                    <tr><td><code>scripts/gen_types.py</code></td><td class="num">39</td><td class="num">1</td></tr>
+                    <tr><td><code>todo/MODELGEN.md</code></td><td class="num">29</td><td class="num">19</td></tr>
+                    <tr><td><code>specodex/models/datasheet.py</code></td><td class="num">9</td><td class="num">3</td></tr>
+                    <tr><td><code>specodex/models/manufacturer.py</code></td><td class="num">9</td><td class="num">3</td></tr>
+                    <tr><td><code>specodex/models/product.py</code></td><td class="num">9</td><td class="num">3</td></tr>
+                    <tr><td><code>app/frontend/src/types/generated.ts</code></td><td class="num">8</td><td class="num">18</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <a class="back-link" href="./">← back to requests log</a>
+    </main>
+
+    <footer>
+        <div class="footer-inner">
+            <span>© 2026 Specodex · PR #58</span>
+            <span class="footer-rule" aria-hidden="true"></span>
+            <a class="footer-link" href="https://github.com/JimothyJohn/specodex/pull/58" rel="noreferrer">View on GitHub</a>
+            <a class="footer-link" href="./">All requests</a>
+        </div>
+    </footer>
+</body>
+</html>

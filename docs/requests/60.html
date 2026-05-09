@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Specodex PR #60 — MODELGEN Phase 0a-ii: frontend models.ts becomes a re-export shim from generated.ts.">
+    <meta name="theme-color" content="#3A2C1C">
+    <title>Specodex — PR #60: models.ts re-export shim</title>
+    <link rel="icon" type="image/svg+xml" href="../logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-issue="PR-60">
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="band">
+        <div class="band-inner">
+            <a class="band-brand" href="../index.html">
+                <svg class="band-mark" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <rect width="120" height="120" fill="#E8E2C9"/>
+                    <rect x="14" y="14" width="92" height="92" fill="none" stroke="#1A1A14" stroke-width="3"/>
+                    <rect x="14" y="14" width="92" height="22" fill="#3A2C1C"/>
+                    <rect x="62" y="60" width="40" height="10" fill="#A88A1C"/>
+                    <line x1="14" y1="56" x2="106" y2="56" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="74" x2="106" y2="74" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="92" x2="106" y2="92" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="60" y1="36" x2="60" y2="106" stroke="#1A1A14" stroke-width="2"/>
+                </svg>
+                <span class="wordmark">SPECODEX</span>
+            </a>
+            <nav class="band-nav" aria-label="Section">
+                <a href="../index.html">Catalog</a>
+                <a href="./" class="active">Pull Requests</a>
+                <a href="https://github.com/JimothyJohn/specodex" rel="noreferrer">GitHub</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="hero-tag">▮▮▮ PULL REQUEST #60 ▮▮▮</div>
+            <h1 class="hero-title">MODELGEN Phase 0a-ii — frontend models.ts becomes a re-export shim</h1>
+            <p class="hero-sub">
+                Closes the third-from-last hand-edit in CLAUDE.md's "Adding a new product type" runbook.
+                Only <code>app/backend/src/types/models.ts</code> is left, and that retires with Express
+                deletion in PYTHON_BACKEND.md Phase 3. <code>models.ts</code> shrinks from ~230 lines of
+                hand-typed interfaces to ~100 lines (mostly re-exports from <code>generated.ts</code>
+                plus three frontend-only view types).
+            </p>
+            <dl class="pr-meta">
+                <div><dt>Branch</dt><dd><code>auto/modelgen-phase0a-ii-rewire-20260507</code></dd></div>
+                <div><dt>Merged</dt><dd>2026-05-07</dd></div>
+                <div><dt>Diff</dt><dd>+279 / −322</dd></div>
+                <div><dt>Files</dt><dd>16 changed</dd></div>
+                <div><dt>Closes</dt><dd>MODELGEN.md Phase 0a-ii</dd></div>
+            </dl>
+            <div class="cta-row">
+                <a class="cta cta-primary" href="https://github.com/JimothyJohn/specodex/pull/60" rel="noreferrer">View on GitHub →</a>
+                <a class="cta cta-ghost" href="./">All requests</a>
+            </div>
+        </section>
+
+        <section aria-label="The Persisted transform">
+            <div class="divider"><span>▮▮▮ THE PERSISTED&lt;T&gt; TRANSFORM ▮▮▮</span></div>
+            <p style="margin-bottom: 0.8rem; max-width: 80ch; color: var(--ink-soft);">
+                The generated TS has <code>product_id?: string</code> (optional, mirroring the Pydantic
+                <code>Field(default=None)</code>). The API-facing union needs both <code>product_id</code>
+                and <code>product_type</code> required. The transform distributes over the union and
+                preserves discriminated narrowing:
+            </p>
+            <div class="code-frame">
+                <pre><span class="kw">type</span> <span class="cmd">Persisted</span>&lt;T&gt; = T <span class="kw">extends</span> { product_type?: <span class="kw">infer</span> U }
+    ? <span class="kw">Omit</span>&lt;T, <span class="str">'product_id'</span> | <span class="str">'product_type'</span>&gt; &amp; {
+            <span class="arg">product_id</span>: <span class="kw">string</span>;
+            <span class="arg">product_type</span>: <span class="kw">NonNullable</span>&lt;U&gt;;
+        }
+    : <span class="kw">never</span>;
+
+<span class="kw">export type</span> <span class="cmd">Product</span> = Persisted&lt;GeneratedProduct&gt; | DatasheetEntry;</pre>
+            </div>
+        </section>
+
+        <section aria-label="The four mismatches">
+            <div class="divider"><span>▮▮▮ THE FOUR MISMATCHES — RESOLVED ▮▮▮</span></div>
+            <ol class="cell-list">
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">M-1</span><h2 class="cell-title">product_id optional vs required</h2></div>
+                    <p class="cell-body">
+                        Generated has <code>?: string</code> (Pydantic optional). Hand-typed had it
+                        required. <code>Persisted&lt;T&gt;</code> tightens it for the API-facing union
+                        without changing the generated source.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">M-2</span><h2 class="cell-title">product_name required vs optional</h2></div>
+                    <p class="cell-body">
+                        The hand-typed <code>?:</code> was always wrong — Pydantic
+                        <code>Field(...)</code> is required. Inherited from generated; test fixtures
+                        updated to include <code>product_name</code>.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">M-3</span><h2 class="cell-title">?: T | null vs ?: T</h2></div>
+                    <p class="cell-body">
+                        Consumers already handled truthy-narrowing in most places. Two helper files
+                        (<code>compat.ts</code>) accept <code>Maybe&lt;T&gt; = T | null | undefined</code>
+                        so callers don't have to widen.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">M-4</span><h2 class="cell-title">PK/SK in generated TS</h2></div>
+                    <p class="cell-body">
+                        Resolved earlier in PR #58 — <code>@computed_field</code> dropped on
+                        <code>Manufacturer</code>/<code>ProductBase</code>/<code>Datasheet</code>;
+                        Pydantic now skips them in <code>model_dump()</code> and the JSON schema.
+                    </p>
+                </li>
+            </ol>
+        </section>
+
+        <section aria-label="Top files touched">
+            <div class="divider"><span>▮▮▮ TOP FILES TOUCHED ▮▮▮</span></div>
+            <table class="spec-table">
+                <thead><tr><th>Path</th><th class="num">+</th><th class="num">−</th></tr></thead>
+                <tbody>
+                    <tr><td><code>CLAUDE.md</code></td><td class="num">13</td><td class="num">16</td></tr>
+                    <tr><td><code>app/frontend/src/types/filters.test.ts</code></td><td class="num">12</td><td class="num">24</td></tr>
+                    <tr><td><code>app/frontend/src/types/generated.ts</code></td><td class="num">8</td><td class="num">18</td></tr>
+                    <tr><td><code>app/frontend/src/components/ProductDetailModal.tsx</code></td><td class="num">7</td><td class="num">4</td></tr>
+                    <tr><td><code>app/frontend/src/components/BuildTray.test.tsx</code></td><td class="num">0</td><td class="num">2</td></tr>
+                    <tr><td><code>app/frontend/src/components/ChainReviewModal.test.tsx</code></td><td class="num">0</td><td class="num">2</td></tr>
+                    <tr><td><code>app/frontend/src/context/AppContext.test.tsx</code></td><td class="num">0</td><td class="num">2</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <a class="back-link" href="./">← back to requests log</a>
+    </main>
+
+    <footer>
+        <div class="footer-inner">
+            <span>© 2026 Specodex · PR #60</span>
+            <span class="footer-rule" aria-hidden="true"></span>
+            <a class="footer-link" href="https://github.com/JimothyJohn/specodex/pull/60" rel="noreferrer">View on GitHub</a>
+            <a class="footer-link" href="./">All requests</a>
+        </div>
+    </footer>
+</body>
+</html>

@@ -125,6 +125,21 @@
             font-weight: 500;
         }
 
+        .band-link {
+            color: var(--paper);
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            padding-bottom: 1px;
+            transition: border-color 0.12s linear, color 0.12s linear;
+        }
+
+        .band-link:hover,
+        .band-link:focus-visible {
+            border-bottom-color: var(--stencil);
+            color: var(--stencil);
+            outline: none;
+        }
+
         /* ===== Main shell ===== */
         main {
             max-width: 1100px;
@@ -466,7 +481,7 @@
                 <span class="wordmark">SPECODEX</span>
             </span>
             <span class="band-meta">
-                <span>SPEC · ODEX</span>
+                <a class="band-link" href="requests/">PULL REQUESTS</a>
                 <span class="rule" aria-hidden="true"></span>
                 <span class="band-stamp">ISSUE 1 — 2026</span>
             </span>

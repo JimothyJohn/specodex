@@ -258,6 +258,42 @@ After `./Quickstart deploy --stage <stage>` returns, confirm the stack is actual
     tests/                  Python tests (unit/, integration/, staging/, post_deploy/, benchmark/)
     outputs/                Extraction outputs and benchmark results
 
+## Per-PR documentation pages
+
+**Every pull request ships a static HTML doc** under
+`docs/requests/<pr-number>.html` that explains EXACTLY what the PR
+does, in the same manila / engineering-paper field-manual style as
+`docs/index.html`. The doc is part of the PR, not a follow-up:
+
+1. **One page per PR**, named by PR number (e.g. `docs/requests/65.html`).
+2. **Style is mandatory.** Same palette (`--paper #E8E2C9`, `--od
+   #3A2C1C`, `--stencil #A88A1C`), same fonts (`Oswald` headlines,
+   `IBM Plex Mono` body), same square-bordered cells, no rounded
+   corners or shadows. Copy the head/band/footer scaffolding from
+   `docs/index.html`. Use `body[data-issue]` for the rotated stamp
+   watermark — set it to `PR-<n>`.
+3. **Required sections:** PR number/title/branch/merge date in the
+   band; one-line "what it does" hero; "What changes" cell-list;
+   files-touched table; a "Why it's safe" or "How to verify" block
+   when applicable; back-link to `docs/requests/`.
+4. **The index updates too.** `docs/requests/index.html` lists every
+   PR with a card linking to its page. Newest first. Add a row when
+   the PR's HTML doc lands.
+5. **Don't fabricate.** Pull title/body/files from
+   `gh pr view <n> --json title,body,headRefName,mergedAt,files` —
+   never paraphrase a PR you haven't read.
+
+The link from `docs/index.html` to `docs/requests/` lives in the
+top band as "PULL REQUESTS". Don't bury it.
+
+**Why we do this.** The PR descriptions are private to GitHub and
+agglomerate into noise; the per-PR HTML doc is a public, indexable,
+human-readable record of what changed and why — the same artifact a
+new contributor (or future you) would want when asking "what did
+PR #59 do?" without opening a code-review tool.
+
+---
+
 ## Backlog & orchestration board
 
 Work is queued on the **Specodex Orchestration** GitHub Project (v2),

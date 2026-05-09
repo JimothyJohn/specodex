@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Specodex — pull requests log. A page-per-PR record of what shipped and why, in the field-manual style.">
+    <meta name="theme-color" content="#3A2C1C">
+    <title>Specodex — Pull Requests Log</title>
+    <link rel="icon" type="image/svg+xml" href="../logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-issue="REQUESTS LOG">
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="band">
+        <div class="band-inner">
+            <a class="band-brand" href="../index.html">
+                <svg class="band-mark" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <rect width="120" height="120" fill="#E8E2C9"/>
+                    <rect x="14" y="14" width="92" height="92" fill="none" stroke="#1A1A14" stroke-width="3"/>
+                    <rect x="14" y="14" width="92" height="22" fill="#3A2C1C"/>
+                    <rect x="62" y="60" width="40" height="10" fill="#A88A1C"/>
+                    <line x1="14" y1="56" x2="106" y2="56" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="74" x2="106" y2="74" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="92" x2="106" y2="92" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="60" y1="36" x2="60" y2="106" stroke="#1A1A14" stroke-width="2"/>
+                </svg>
+                <span class="wordmark">SPECODEX</span>
+            </a>
+            <nav class="band-nav" aria-label="Section">
+                <a href="../index.html">Catalog</a>
+                <a href="./" class="active">Pull Requests</a>
+                <a href="https://github.com/JimothyJohn/specodex" rel="noreferrer">GitHub</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="hero-tag">▮▮▮ REQUESTS LOG ▮▮▮</div>
+            <h1 class="hero-title">Every change, in plain English.</h1>
+            <p class="hero-sub">
+                One page per pull request. What shipped, what changed, what to verify — pulled from
+                <code>gh pr view</code> and pinned to the field-manual style. Newest first. The PR
+                description on GitHub is private to the review surface; this is the public, indexable
+                record of how the catalog got built.
+            </p>
+        </section>
+
+        <section aria-label="Recent pull requests">
+            <div class="divider"><span>▮▮▮ RECENT PULL REQUESTS ▮▮▮</span></div>
+            <ol class="pr-cards">
+                <li>
+                    <a class="pr-card" href="65.html">
+                        <div class="pr-card-head">
+                            <span class="pr-num">PR #65</span>
+                            <h2 class="pr-title">auth Phase 5 tail — SES, refresh-token revocation, audit logging, WAF alarms</h2>
+                        </div>
+                        <div class="pr-card-meta">
+                            <span>Merged 2026-05-08</span>
+                            <span>+1138 / −24 across 17 files</span>
+                            <span>Branch <code>feat-auth-phase5-tail</code></span>
+                        </div>
+                        <p class="pr-card-body">
+                            Recovers four stranded auth-hardening phases (~1.1k lines) from a stale stacked-PR
+                            base and lands them on master. Closes <code>todo/PHASE5_RECOVERY.md</code>.
+                        </p>
+                    </a>
+                </li>
+                <li>
+                    <a class="pr-card" href="64.html">
+                        <div class="pr-card-head">
+                            <span class="pr-num">PR #64</span>
+                            <h2 class="pr-title">docs(readme) — refresh backlog snapshot post-merge</h2>
+                        </div>
+                        <div class="pr-card-meta">
+                            <span>Merged 2026-05-08</span>
+                            <span>+41 / −72 across 1 file</span>
+                            <span>Branch <code>auto/maintenance-readme-refresh-20260507</code></span>
+                        </div>
+                        <p class="pr-card-body">
+                            Pure doc PR. Brings <code>todo/README.md</code> into line with reality after a
+                            heavy day of shipping — phantom items removed, mermaid + Gantt simplified.
+                        </p>
+                    </a>
+                </li>
+                <li>
+                    <a class="pr-card" href="63.html">
+                        <div class="pr-card-head">
+                            <span class="pr-num">PR #63</span>
+                            <h2 class="pr-title">STYLE Phase 2 — ConfirmDialog primitive replaces window.confirm</h2>
+                        </div>
+                        <div class="pr-card-meta">
+                            <span>Merged 2026-05-08</span>
+                            <span>+531 / −46 across 11 files</span>
+                            <span>Branch <code>auto/style-phase2-confirm-dialog-20260507</code></span>
+                        </div>
+                        <p class="pr-card-body">
+                            New <code>ConfirmProvider</code> + <code>useConfirm()</code> hook — async, themed,
+                            keyboard-friendly, test-resolvable. Migrates three delete-confirm sites.
+                        </p>
+                    </a>
+                </li>
+                <li>
+                    <a class="pr-card" href="62.html">
+                        <div class="pr-card-head">
+                            <span class="pr-num">PR #62</span>
+                            <h2 class="pr-title">STYLE Phase 1 long-tail — title= → Tooltip across 12 files</h2>
+                        </div>
+                        <div class="pr-card-meta">
+                            <span>Merged 2026-05-08</span>
+                            <span>+207 / −160 across 12 files</span>
+                            <span>Branch <code>auto/style-tooltip-remaining-sites-20260507</code></span>
+                        </div>
+                        <p class="pr-card-body">
+                            Every native-chrome <code>title=</code> attribute on a user-actionable control
+                            now uses the themed Tooltip primitive. Closes the long tail of STYLE Phase 1.
+                        </p>
+                    </a>
+                </li>
+                <li>
+                    <a class="pr-card" href="61.html">
+                        <div class="pr-card-head">
+                            <span class="pr-num">PR #61</span>
+                            <h2 class="pr-title">Platform hardening — Node 22, PITR, IAM split, getCategories N+1, deletion protection</h2>
+                        </div>
+                        <div class="pr-card-meta">
+                            <span>Merged 2026-05-08</span>
+                            <span>+114 / −50 across 4 files</span>
+                            <span>Branch <code>auto/db-platform-harden-20260507</code></span>
+                        </div>
+                        <p class="pr-card-body">
+                            Five DB-layer hardening items shipped together because they share a single CDK +
+                            backend redeploy cycle. Lambda runtime bump, PITR everywhere, read/write Lambda
+                            split, N+1 fix on getCategories.
+                        </p>
+                    </a>
+                </li>
+                <li>
+                    <a class="pr-card" href="60.html">
+                        <div class="pr-card-head">
+                            <span class="pr-num">PR #60</span>
+                            <h2 class="pr-title">MODELGEN Phase 0a-ii — frontend models.ts becomes a re-export shim</h2>
+                        </div>
+                        <div class="pr-card-meta">
+                            <span>Merged 2026-05-07</span>
+                            <span>+279 / −322 across 16 files</span>
+                            <span>Branch <code>auto/modelgen-phase0a-ii-rewire-20260507</code></span>
+                        </div>
+                        <p class="pr-card-body">
+                            <code>models.ts</code> drops from ~230 hand-typed lines to ~100 lines of re-exports
+                            from <code>generated.ts</code>. New <code>Persisted&lt;T&gt;</code> transform tightens
+                            <code>product_id</code>/<code>product_type</code> on the API-facing union.
+                        </p>
+                    </a>
+                </li>
+                <li>
+                    <a class="pr-card" href="59.html">
+                        <div class="pr-card-head">
+                            <span class="pr-num">PR #59</span>
+                            <h2 class="pr-title">DB cleanup — gearhead torque rename + electric_cylinder field drops</h2>
+                        </div>
+                        <div class="pr-card-meta">
+                            <span>Merged 2026-05-07</span>
+                            <span>+515 / −42 across 13 files</span>
+                            <span>Branch <code>auto/db-cleanup-20260507-v1</code></span>
+                        </div>
+                        <p class="pr-card-body">
+                            Real bug fix driven by <code>cli/audit_fields.py</code> on 6,578 dev rows: the
+                            Gearhead model couldn't read its own torque data. Plus drops two semantically-wrong
+                            <code>ElectricCylinder</code> fields and ships the audit CLI itself.
+                        </p>
+                    </a>
+                </li>
+                <li>
+                    <a class="pr-card" href="58.html">
+                        <div class="pr-card-head">
+                            <span class="pr-num">PR #58</span>
+                            <h2 class="pr-title">MODELGEN OQ1 — drop @computed_field for PK/SK</h2>
+                        </div>
+                        <div class="pr-card-meta">
+                            <span>Merged 2026-05-07</span>
+                            <span>+103 / −47 across 6 files</span>
+                            <span>Branch <code>auto/modelgen-drop-computed-field-pk-sk-20260507</code></span>
+                        </div>
+                        <p class="pr-card-body">
+                            Resolves the "PK/SK in generated TS breaks Manufacturer construction" mismatch.
+                            <code>@computed_field</code> → plain <code>@property</code> — Pydantic skips them
+                            in dump and JSON schema, attribute access unchanged.
+                        </p>
+                    </a>
+                </li>
+                <li>
+                    <a class="pr-card" href="57.html">
+                        <div class="pr-card-head">
+                            <span class="pr-num">PR #57</span>
+                            <h2 class="pr-title">MODELGEN OQ2 — emit Product union postscript in generated.ts</h2>
+                        </div>
+                        <div class="pr-card-meta">
+                            <span>Merged 2026-05-07</span>
+                            <span>+60 / −9 across 3 files</span>
+                            <span>Branch <code>auto/modelgen-product-union-postscript-20260507</code></span>
+                        </div>
+                        <p class="pr-card-body">
+                            <code>scripts/gen_types.py</code> now appends a <code>Product</code> union and a
+                            <code>PRODUCT_TYPES</code> const to the generated TS — purely additive, unblocks
+                            the Phase 0a-ii consumer rewire.
+                        </p>
+                    </a>
+                </li>
+                <li>
+                    <a class="pr-card" href="56.html">
+                        <div class="pr-card-head">
+                            <span class="pr-num">PR #56</span>
+                            <h2 class="pr-title">docs(python-backend) — mark Phase 5 ✅ shipped</h2>
+                        </div>
+                        <div class="pr-card-meta">
+                            <span>Merged 2026-05-07</span>
+                            <span>+11 / −5 across 2 files</span>
+                            <span>Branch <code>auto/python-backend-phase5-mark-shipped-20260507</code></span>
+                        </div>
+                        <p class="pr-card-body">
+                            Pure doc-only update. Phase 5's intent (get one-time migration scripts out of
+                            <code>cli/</code>) was already accomplished in commit <code>c322393</code>; this
+                            PR sweeps the phantom item off the backlog.
+                        </p>
+                    </a>
+                </li>
+            </ol>
+        </section>
+
+        <section aria-label="How to read these">
+            <div class="divider"><span>▮▮▮ HOW TO READ THESE ▮▮▮</span></div>
+            <ol class="cell-list">
+                <li class="cell">
+                    <div class="cell-head">
+                        <span class="cell-code">RL-01</span>
+                        <h2 class="cell-title">One page per PR</h2>
+                    </div>
+                    <p class="cell-body">
+                        Every Specodex PR ships with a static HTML page named by its number. Newest at the
+                        top of the log; the page itself stays put once written.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head">
+                        <span class="cell-code">RL-02</span>
+                        <h2 class="cell-title">Source is GitHub</h2>
+                    </div>
+                    <p class="cell-body">
+                        Title, body, branch, merge-date, files come from <code>gh pr view &lt;n&gt;</code>.
+                        The page is a render, not a paraphrase — the GitHub PR is still the authoritative
+                        record for review threads.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head">
+                        <span class="cell-code">RL-03</span>
+                        <h2 class="cell-title">Same field-manual style</h2>
+                    </div>
+                    <p class="cell-body">
+                        Manila paper, OD-green band, IBM Plex Mono body. Every page in the log shares
+                        the palette and grid as the catalog landing page — same shop, different tab.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head">
+                        <span class="cell-code">RL-04</span>
+                        <h2 class="cell-title">Link from the band</h2>
+                    </div>
+                    <p class="cell-body">
+                        The "Pull Requests" tab in the top band of every page (catalog included) brings
+                        you back here. Don't bury this — it's the public face of how the project moves.
+                    </p>
+                </li>
+            </ol>
+        </section>
+
+        <a class="back-link" href="../index.html">← back to catalog</a>
+    </main>
+
+    <footer>
+        <div class="footer-inner">
+            <span>© 2026 Specodex</span>
+            <span class="footer-rule" aria-hidden="true"></span>
+            <a class="footer-link" href="https://github.com/JimothyJohn/specodex" rel="noreferrer">github.com/JimothyJohn/specodex</a>
+            <a class="footer-link" href="../index.html">Catalog</a>
+        </div>
+    </footer>
+</body>
+</html>

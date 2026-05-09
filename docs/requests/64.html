@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Specodex PR #64 — backlog snapshot refresh after a heavy day of merging.">
+    <meta name="theme-color" content="#3A2C1C">
+    <title>Specodex — PR #64: README backlog refresh</title>
+    <link rel="icon" type="image/svg+xml" href="../logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-issue="PR-64">
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="band">
+        <div class="band-inner">
+            <a class="band-brand" href="../index.html">
+                <svg class="band-mark" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <rect width="120" height="120" fill="#E8E2C9"/>
+                    <rect x="14" y="14" width="92" height="92" fill="none" stroke="#1A1A14" stroke-width="3"/>
+                    <rect x="14" y="14" width="92" height="22" fill="#3A2C1C"/>
+                    <rect x="62" y="60" width="40" height="10" fill="#A88A1C"/>
+                    <line x1="14" y1="56" x2="106" y2="56" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="74" x2="106" y2="74" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="92" x2="106" y2="92" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="60" y1="36" x2="60" y2="106" stroke="#1A1A14" stroke-width="2"/>
+                </svg>
+                <span class="wordmark">SPECODEX</span>
+            </a>
+            <nav class="band-nav" aria-label="Section">
+                <a href="../index.html">Catalog</a>
+                <a href="./" class="active">Pull Requests</a>
+                <a href="https://github.com/JimothyJohn/specodex" rel="noreferrer">GitHub</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="hero-tag">▮▮▮ PULL REQUEST #64 ▮▮▮</div>
+            <h1 class="hero-title">docs(readme) — backlog snapshot post-merge cleanup</h1>
+            <p class="hero-sub">
+                Pure docs PR. Brings <code>todo/README.md</code> in line with reality after a heavy day
+                of shipping. Net: lots of phantom items removed from the backlog and the dependency
+                graph simplified.
+            </p>
+            <dl class="pr-meta">
+                <div><dt>Branch</dt><dd><code>auto/maintenance-readme-refresh-20260507</code></dd></div>
+                <div><dt>Merged</dt><dd>2026-05-08</dd></div>
+                <div><dt>Diff</dt><dd>+41 / −72</dd></div>
+                <div><dt>Files</dt><dd>1 changed</dd></div>
+                <div><dt>Type</dt><dd>Doc-only</dd></div>
+            </dl>
+            <div class="cta-row">
+                <a class="cta cta-primary" href="https://github.com/JimothyJohn/specodex/pull/64" rel="noreferrer">View on GitHub →</a>
+                <a class="cta cta-ghost" href="./">All requests</a>
+            </div>
+        </section>
+
+        <section aria-label="What changes">
+            <div class="divider"><span>▮▮▮ WHAT CHANGES ▮▮▮</span></div>
+            <ol class="cell-list">
+                <li class="cell">
+                    <div class="cell-head">
+                        <span class="cell-code">CH-01</span>
+                        <h2 class="cell-title">Recently shipped expanded</h2>
+                    </div>
+                    <p class="cell-body">
+                        Today's merges added: MODELGEN end-to-end (Phases 0 + 0a-i + 0a-ii + 0b + 0c —
+                        <code>models.ts</code> is a re-export shim), DEDUPE end-to-end (Phases 1+2+3),
+                        STYLE Phases 1, 2, 5, 6, PYTHON_BACKEND Phase 5, DB platform-harden, DB_CLEANUP.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head">
+                        <span class="cell-code">CH-02</span>
+                        <h2 class="cell-title">Active docs trimmed</h2>
+                    </div>
+                    <p class="cell-body">
+                        MODELGEN and DEDUPE moved to "recently retired" (queued for the next cleanup
+                        pass — they were deleted on 2026-05-08 along with PHASE5_RECOVERY).
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head">
+                        <span class="cell-code">CH-03</span>
+                        <h2 class="cell-title">Dependency graph + Gantt simplified</h2>
+                    </div>
+                    <p class="cell-body">
+                        Mermaid graph and Gantt drop the now-shipped MODELGEN, DEDUPE, and STYLE
+                        Phases 1/2/5/6 nodes. Hard-blockers / soft-sequencing / parallel-slot lists
+                        updated to drop shipped items.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head">
+                        <span class="cell-code">CH-04</span>
+                        <h2 class="cell-title">Next slice surfaced</h2>
+                    </div>
+                    <p class="cell-body">
+                        STYLE Phase 3 (Toast) is now the obvious truly-independent next slice — closes
+                        the ~25 silent failure paths in <code>AppContext</code> and the
+                        <code>DatasheetEditModal</code> alert that Phase 2 explicitly deferred.
+                    </p>
+                </li>
+            </ol>
+        </section>
+
+        <section aria-label="Top files touched">
+            <div class="divider"><span>▮▮▮ FILES TOUCHED ▮▮▮</span></div>
+            <table class="spec-table">
+                <thead><tr><th>Path</th><th class="num">+</th><th class="num">−</th></tr></thead>
+                <tbody>
+                    <tr><td><code>todo/README.md</code></td><td class="num">41</td><td class="num">72</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section aria-label="Verification">
+            <div class="divider"><span>▮▮▮ HOW IT WAS VERIFIED ▮▮▮</span></div>
+            <ol class="cell-list">
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">V-1</span><h2 class="cell-title">No code touched</h2></div>
+                    <p class="cell-body">
+                        Pure documentation. <code>git diff --stat</code> is one line — only
+                        <code>todo/README.md</code>.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">V-2</span><h2 class="cell-title">Phantom-node sweep</h2></div>
+                    <p class="cell-body">
+                        <code>grep -n "PB5" todo/README.md</code> returns nothing — no stale references
+                        to the now-shipped <code>PYTHON_BACKEND Phase 5</code> node.
+                    </p>
+                </li>
+            </ol>
+        </section>
+
+        <a class="back-link" href="./">← back to requests log</a>
+    </main>
+
+    <footer>
+        <div class="footer-inner">
+            <span>© 2026 Specodex · PR #64</span>
+            <span class="footer-rule" aria-hidden="true"></span>
+            <a class="footer-link" href="https://github.com/JimothyJohn/specodex/pull/64" rel="noreferrer">View on GitHub</a>
+            <a class="footer-link" href="./">All requests</a>
+        </div>
+    </footer>
+</body>
+</html>
