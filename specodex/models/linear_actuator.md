@@ -122,6 +122,68 @@ rationale as `ElectricCylinder.rated_voltage`.
 - **Cable carrier / bend radius**: relevant for high-cycle stages, not
   modelled.
 
+## Fit-check pass — Lintech / Toyo (2026-05-08)
+
+Closes the gap noted in the original Reference sources block: Parker
+was Akamai-blocked then and remains blocked now (403 with desktop UA,
+both URLs the user provided). Lintech and Toyo were never sourced on
+the original schemagen pass; this fit-check ingests three of their
+catalogs (Lintech 200, Lintech 150, Toyo Y-series) through
+`page_finder` + the existing `linear_actuator` schema and reports
+field coverage.
+
+**Outcome:** schema fits cleanly. **Zero "extras"** — Gemini did not
+emit any fields outside the registered schema. No new fields needed
+in `linear_actuator.py` from this pass.
+
+| Source | Variants extracted | Fields populated / 45 | Notes |
+|---|---:|---:|---|
+| Lintech 200 (catalog 2020-09) | 28 | 14 | Page-finder picked 13/28 spec pages. Part numbers like `200607-WC0` cleanly mapped to `series='200 Series', stroke=7in`. |
+| Lintech 150 (catalog 2020-09) | 1 | 15 | Single-page summary; Gemini conflated variants. Per-variant extraction would need finer page-band targeting. |
+| Toyo Y-series | 5 | 18 | Best coverage of the three. Japanese catalogs are the most schema-friendly: speed, force, repeatability, lead pitch, screw diameter all populate. |
+
+**Coverage by field** (% of fixtures with ≥1 populated value):
+
+- **100%**: `manufacturer`, `series`, `type`, `motor_type`, `part_number`, `product_name`, `product_family`, `datasheet_url`
+- **67%**: `actuation_mechanism`, `screw_diameter`, `encoder_feedback_support`, `cleanroom_class`, `stroke`
+- **33%**: `lead_screw_pitch`, `max_linear_speed`, `max_push_force`, `max_work_load`, `positioning_repeatability`, `rated_power`, `weight`, `operating_temp`
+- **0% across all three fixtures**: `backlash`, `dynamic_load_rating`, `static_load_rating`, `holding_force`, `static_allowable_moment_*` (pitching/yawing/rolling), `ip_rating`, `rotor_inertia`, `max_acceleration`, `operating_humidity_range`, `rated_voltage`, `rated_current`, `peak_current`
+
+The 0% list is **vendor mix-driven, not schema-broken**. Lintech and
+Toyo publish their catalogs around two profiles:
+
+1. **Motorless mechanical units** (Lintech) — no `rated_voltage` /
+   `rated_current` / `peak_current` because the customer brings the
+   motor. `motor_type='motorless'` carries this correctly.
+2. **Compact integrated drive units** (Toyo) — publish electrical
+   specs but not bearing-load ratings or pitching/yawing moments
+   (those are deeper engineering tables, often on dimensional sheets
+   `page_finder` doesn't classify as "spec pages").
+
+Adding Tolomatic / Rexroth-style heavy-industrial catalogs (which is
+what the existing schemagen sources covered) tends to populate the
+0% block; Lintech/Toyo represent the lighter end of the same product
+type. Keep both in the catalog mix; don't drop the 0% fields.
+
+**Parker still blocked.** Both URLs the user provided returned 403
+through Akamai (also tried with desktop UA + Referer header). Same
+fingerprint as the original schemagen pass. Treat as deferred until
+either (a) Parker exposes the catalogs through a non-Akamai surface,
+or (b) somebody rehosts the PDFs. The hand-authored Parker HD
+configurator template ships in
+`app/frontend/src/types/configuratorTemplates.ts` based on the public
+ordering page; it has no DB-backed validation.
+
+**Real-world part-number formats** observed in this pass (used to
+rewrite the configurator templates):
+
+- Lintech 200: `200<frame><travel>-WC<accessory>` (e.g. `200607-WC0`,
+  not the `200-L-072-08-N23` shape the original hand-authored
+  template guessed). Catalog ordering page is the source of truth.
+- Toyo Y-series: `<series>-<subtype>` (e.g. `Y43-L2`).
+- Tolomatic TRS: `TRS<frame>-BNM<lead>` (e.g. `TRS165-BNM10`) —
+  this is the format that actually populates dev DB.
+
 ## Fields
 
 See `linear_actuator.py`. Current set:

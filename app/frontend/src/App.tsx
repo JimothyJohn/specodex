@@ -45,6 +45,10 @@ import ProductList from './components/ProductList';
 // land directly on the catalog at "/"; the marketing surface is opt-in.
 const Welcome = lazy(() => import('./components/Welcome'));
 
+// Actuator MVP — Linear Motion supercategory landing. Demonstrates the
+// supercategory layer + part-number configurator. See todo/CATAGORIES.md.
+const ActuatorPage = lazy(() => import('./components/ActuatorPage'));
+
 // Admin views are code-split into their own chunks (lazy import →
 // separate JS file fetched only when an admin navigates). They ship
 // with every build now — gating is at runtime via the Cognito 'admin'
@@ -111,21 +115,20 @@ export function AppShell() {
                 </NavLink>
               </h1>
               <GitHubLink />
-              {(showSignedInNav || showAdminNav) && (
-                <nav className="nav-inline">
-                  <NavLink to="/" end className={({ isActive }) => `nav-btn ${isActive ? 'active' : ''}`}>Selection</NavLink>
-                  {showSignedInNav && (
-                    <NavLink to="/projects" className={({ isActive }) => `nav-btn ${isActive ? 'active' : ''}`}>Projects</NavLink>
-                  )}
-                  {showAdminNav && (
-                    <>
-                      <NavLink to="/datasheets" className={({ isActive }) => `nav-btn ${isActive ? 'active' : ''}`}>Datasheets</NavLink>
-                      <NavLink to="/management" className={({ isActive }) => `nav-btn ${isActive ? 'active' : ''}`}>Management</NavLink>
-                      <NavLink to="/admin" className={({ isActive }) => `nav-btn ${isActive ? 'active' : ''}`}>Admin</NavLink>
-                    </>
-                  )}
-                </nav>
-              )}
+              <nav className="nav-inline">
+                <NavLink to="/" end className={({ isActive }) => `nav-btn ${isActive ? 'active' : ''}`}>Selection</NavLink>
+                <NavLink to="/actuators" className={({ isActive }) => `nav-btn ${isActive ? 'active' : ''}`}>Actuators</NavLink>
+                {showSignedInNav && (
+                  <NavLink to="/projects" className={({ isActive }) => `nav-btn ${isActive ? 'active' : ''}`}>Projects</NavLink>
+                )}
+                {showAdminNav && (
+                  <>
+                    <NavLink to="/datasheets" className={({ isActive }) => `nav-btn ${isActive ? 'active' : ''}`}>Datasheets</NavLink>
+                    <NavLink to="/management" className={({ isActive }) => `nav-btn ${isActive ? 'active' : ''}`}>Management</NavLink>
+                    <NavLink to="/admin" className={({ isActive }) => `nav-btn ${isActive ? 'active' : ''}`}>Admin</NavLink>
+                  </>
+                )}
+              </nav>
             </div>
             <div className="header-options">
               <span className="header-options-label" aria-hidden="true">OPTIONS</span>
@@ -145,6 +148,9 @@ export function AppShell() {
 
               {/* Specodex landing (Stage 1 rebrand) */}
               <Route path="/welcome" element={<Welcome />} />
+
+              {/* Actuator MVP — Linear Motion supercategory. */}
+              <Route path="/actuators" element={<ActuatorPage />} />
 
               {/* Admin routes — registered for everyone, but hidden
                   from nav unless the user is in the Cognito 'admin'

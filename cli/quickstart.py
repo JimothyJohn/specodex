@@ -30,6 +30,11 @@ Usage:
                                   and group rows by pattern (auto-rescue vs
                                   manual). Read-only.
                                   (try: ./Quickstart units-triage --help)
+    ./Quickstart growth preflight Pre-flight gate before high-traffic posts
+                                  (Show HN, r/PLC, awesome-* PRs). Composes
+                                  smoke + bench + board P0 check + git state
+                                  into one go/no-go. See todo/GROWTH_CLI.md.
+                                  (try: ./Quickstart growth preflight --help)
     ./Quickstart godmode          Data-quality observatory — coverage, oddities,
                                   distributions, outliers, drift, etc.
                                   Writes outputs/godmode/<ts>.html for review.
@@ -931,6 +936,16 @@ def main() -> None:
             cwd=ROOT,
         )
         return
+
+    if len(sys.argv) >= 2 and sys.argv[1] == "growth":
+        # `growth preflight` exits 1 to signal HOLD (a feature, not a failure),
+        # so don't wrap in run() — that would print an ERROR banner over the
+        # legitimate HOLD/READY summary the subcommand already rendered.
+        rc = subprocess.call(
+            ["uv", "run", "python", "-m", "cli.growth", *sys.argv[2:]],
+            cwd=ROOT,
+        )
+        sys.exit(rc)
 
     if len(sys.argv) >= 2 and sys.argv[1] == "godmode":
         run(

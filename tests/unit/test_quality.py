@@ -78,6 +78,7 @@ class TestScoreProduct:
             rotor_inertia="0.5;kg·cm²",
             shaft_diameter="14;mm",
             frame_size="60",
+            motor_mount_pattern="NEMA 23",
             part_number="MTR-001",
             release_year=2024,
             weight="2.5;kg",
@@ -138,6 +139,7 @@ class TestFilterProducts:
             rated_power="750;W",
             rated_current="3;A",
             peak_current="6;A",
+            motor_mount_pattern="NEMA 23",
             part_number="MTR-003",
         )
         passed, rejected = filter_products([motor])
@@ -161,6 +163,7 @@ class TestFilterProducts:
             rated_power="750;W",
             rated_current="3;A",
             peak_current="6;A",
+            motor_mount_pattern="NEMA 23",
             part_number="MTR-004",
         )
         bad = Motor(product_name="Bad", product_type="motor", manufacturer=MFG)

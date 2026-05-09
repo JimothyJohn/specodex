@@ -38,6 +38,42 @@ ProductType = Literal[
 ]
 
 
+# Canonical motor-mount frame designators. Used as the bridge field
+# between motors, gearheads, and actuators so the device-relations
+# layer (`specodex/relations.py`, planned per todo/SCHEMA.md Part 3)
+# can express "this actuator accepts these motor frames" without
+# string-comparison hacks. The list is starter; extend as new vendor
+# catalogs surface frames not enumerated here. Always include the
+# space — "NEMA 23", not "NEMA23" — so the existing `Motor.frame_size`
+# strings can be coerced via a normaliser.
+MotorMountPattern = Literal[
+    "NEMA 8",
+    "NEMA 11",
+    "NEMA 14",
+    "NEMA 17",
+    "NEMA 23",
+    "NEMA 34",
+    "NEMA 42",
+    "IEC 56",
+    "IEC 63",
+    "IEC 71",
+    "IEC 80",
+    "IEC 90",
+    "IEC 100",
+    "IEC 112",
+    "IEC 132",
+    "MAX 8",
+    "MAX 13",
+    "MAX 16",
+    "MAX 20",
+    "MAX 25",
+    "MAX 30",
+    "MAX 35",
+    "MAX 40",
+    "custom",
+]
+
+
 class Datasheet(BaseModel):
     """Represents information about a product datasheet."""
 
