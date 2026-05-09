@@ -125,6 +125,11 @@ def _check_bench() -> StageResult:
             if n:
                 detail = f"offline run completed ({n} fixture{'s' if n != 1 else ''})"
         except (json.JSONDecodeError, OSError):
+            # latest.json is a best-effort detail enricher. If it's
+            # missing or malformed the bench stage already passed
+            # (returncode==0 above), so fall back to the generic
+            # "offline run completed" message — don't fail preflight
+            # over a stale or absent metrics file.
             pass
     return StageResult("bench", True, False, detail)
 
