@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Specodex PR #66 — per-PR HTML doc convention + requests log + churn plan.">
+    <meta name="theme-color" content="#3A2C1C">
+    <title>Specodex — PR #66: per-PR HTML doc convention</title>
+    <link rel="icon" type="image/svg+xml" href="../logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-issue="PR-66">
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="band">
+        <div class="band-inner">
+            <a class="band-brand" href="../index.html">
+                <svg class="band-mark" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <rect width="120" height="120" fill="#E8E2C9"/>
+                    <rect x="14" y="14" width="92" height="92" fill="none" stroke="#1A1A14" stroke-width="3"/>
+                    <rect x="14" y="14" width="92" height="22" fill="#3A2C1C"/>
+                    <rect x="62" y="60" width="40" height="10" fill="#A88A1C"/>
+                    <line x1="14" y1="56" x2="106" y2="56" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="74" x2="106" y2="74" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="92" x2="106" y2="92" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="60" y1="36" x2="60" y2="106" stroke="#1A1A14" stroke-width="2"/>
+                </svg>
+                <span class="wordmark">SPECODEX</span>
+            </a>
+            <nav class="band-nav" aria-label="Section">
+                <a href="../index.html">Catalog</a>
+                <a href="./" class="active">Pull Requests</a>
+                <a href="https://github.com/JimothyJohn/specodex" rel="noreferrer">GitHub</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="hero-tag">▮▮▮ PULL REQUEST #66 ▮▮▮</div>
+            <h1 class="hero-title">docs — per-PR HTML doc convention + requests log + churn plan</h1>
+            <p class="hero-sub">
+                The meta-PR. Establishes the rule that every Specodex PR ships a static HTML page at
+                <code>docs/requests/&lt;pr-number&gt;.html</code> in the manila / engineering-paper
+                field-manual style, builds the <code>docs/requests/</code> directory + a hub page +
+                ten backfilled past PRs (#56–#65) as the seed corpus, and codifies a 20-row "churn
+                plan" in <code>todo/README.md</code> for the remaining backlog. This page itself is
+                the first one written under the new convention.
+            </p>
+            <dl class="pr-meta">
+                <div><dt>Branch</dt><dd><code>auto/per-pr-html-docs-convention-20260509</code></dd></div>
+                <div><dt>Opened</dt><dd>2026-05-09</dd></div>
+                <div><dt>Diff</dt><dd>+2593 / −629 (incl. this page)</dd></div>
+                <div><dt>Files</dt><dd>19 changed</dd></div>
+                <div><dt>Type</dt><dd>Docs / convention</dd></div>
+            </dl>
+            <div class="cta-row">
+                <a class="cta cta-primary" href="https://github.com/JimothyJohn/specodex/pull/66" rel="noreferrer">View on GitHub →</a>
+                <a class="cta cta-ghost" href="./">All requests</a>
+            </div>
+        </section>
+
+        <section aria-label="What's new">
+            <div class="divider"><span>▮▮▮ WHAT'S NEW ▮▮▮</span></div>
+            <ol class="cell-list">
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">DIR</span><h2 class="cell-title">docs/requests/</h2></div>
+                    <p class="cell-body">
+                        New top-level section of the docs site. <code>index.html</code> is the
+                        hub (newest-first list of PRs); <code>style.css</code> is the shared
+                        stylesheet; <code>56.html</code>–<code>65.html</code> are the backfilled
+                        pages for the past ten merged PRs.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">RULE</span><h2 class="cell-title">CLAUDE.md "Per-PR documentation pages"</h2></div>
+                    <p class="cell-body">
+                        New section just above the orchestration-board block. Required scaffolding:
+                        copy palette + band + footer from <code>docs/index.html</code>; set
+                        <code>body[data-issue]="PR-&lt;n&gt;"</code> for the rotated stamp watermark.
+                        Required sections: PR meta strip, "what changes" cell-list, files-touched
+                        table. <strong>Don't fabricate</strong> — pull source from
+                        <code>gh pr view &lt;n&gt;</code>.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">PLAN</span><h2 class="cell-title">todo/README.md churn plan</h2></div>
+                    <p class="cell-body">
+                        New <em>"The churn plan — PRs in order"</em> section. Twenty rows, each
+                        a reviewable PR. Status legend: 🟡 ready · ⚪ queued · 🔴 needs sign-off ·
+                        ⏸ deferred. Top of queue: actuator MVP commit (CATAGORIES + SCHEMA Phase 0+1).
+                        CATAGORIES, SCHEMA, CONFIGURATION are now in the active-docs list.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">NAV</span><h2 class="cell-title">docs/index.html "PULL REQUESTS" link</h2></div>
+                    <p class="cell-body">
+                        New <code>.band-link</code> in the OD-green band of the catalog landing
+                        page — public entry point to the requests log. Stencil hover state matches
+                        existing CTA tokens; no inline JS, no inline styles.
+                    </p>
+                </li>
+            </ol>
+        </section>
+
+        <section aria-label="Three deletions">
+            <div class="divider"><span>▮▮▮ THREE DELETIONS ▮▮▮</span></div>
+            <table class="spec-table">
+                <thead><tr><th>Doc</th><th>Why deleted</th><th>Recovery</th></tr></thead>
+                <tbody>
+                    <tr><td><code>todo/MODELGEN.md</code></td><td>Phases 0 + 0a-i + 0a-ii + 0b + 0c all on master</td><td><code>git log --diff-filter=D --follow -- todo/MODELGEN.md</code></td></tr>
+                    <tr><td><code>todo/DEDUPE.md</code></td><td>Phases 1+2+3 all on master</td><td><code>git log --diff-filter=D --follow -- todo/DEDUPE.md</code></td></tr>
+                    <tr><td><code>todo/PHASE5_RECOVERY.md</code></td><td>5a/5c/5e/5f landed via PR #65</td><td><code>git log --diff-filter=D --follow -- todo/PHASE5_RECOVERY.md</code></td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section aria-label="The chicken and egg">
+            <div class="divider"><span>▮▮▮ THE CHICKEN AND EGG ▮▮▮</span></div>
+            <p style="max-width: 80ch; color: var(--ink-soft);">
+                A convention that says "every PR ships its own HTML doc" can't satisfy itself for
+                the PR that establishes it — the PR number doesn't exist until the PR opens. The
+                resolution: open the PR with the seed corpus only, capture the assigned number
+                (#66), then add this very page as a follow-up commit on the same branch <em>before
+                merge</em>. The corpus stays complete; the rule applies from day one.
+            </p>
+        </section>
+
+        <section aria-label="What this PR doesn't do">
+            <div class="divider"><span>▮▮▮ WHAT THIS PR DOESN'T DO ▮▮▮</span></div>
+            <ol class="cell-list">
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">N-1</span><h2 class="cell-title">No app code</h2></div>
+                    <p class="cell-body">
+                        <code>git diff --stat</code> only touches <code>docs/</code>,
+                        <code>CLAUDE.md</code>, and <code>todo/</code>. No frontend, no backend,
+                        no infra, no CI workflows.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">N-2</span><h2 class="cell-title">No actuator MVP</h2></div>
+                    <p class="cell-body">
+                        The uncommitted CATAGORIES Phase 0+1 + SCHEMA Phase 1 work on the working
+                        tree (<code>feat-actuators-mvp-20260508</code>) is deliberately
+                        <em>not</em> in this PR. It's the next one in the churn plan.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">N-3</span><h2 class="cell-title">No retro-edits to past PRs</h2></div>
+                    <p class="cell-body">
+                        The 10 backfilled pages render historical PRs as they were merged. They
+                        don't rewrite history or amend prior commit messages — the GitHub PR
+                        descriptions stay authoritative for review threads.
+                    </p>
+                </li>
+            </ol>
+        </section>
+
+        <a class="back-link" href="./">← back to requests log</a>
+    </main>
+
+    <footer>
+        <div class="footer-inner">
+            <span>© 2026 Specodex · PR #66</span>
+            <span class="footer-rule" aria-hidden="true"></span>
+            <a class="footer-link" href="https://github.com/JimothyJohn/specodex/pull/66" rel="noreferrer">View on GitHub</a>
+            <a class="footer-link" href="./">All requests</a>
+        </div>
+    </footer>
+</body>
+</html>
