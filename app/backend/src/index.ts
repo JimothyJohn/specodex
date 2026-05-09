@@ -19,6 +19,7 @@ import docsRouter from './routes/docs';
 import adminRouter from './routes/admin';
 import authRouter from './routes/auth';
 import projectsRouter from './routes/projects';
+import { safeLog } from './util/log';
 
 const app: Application = express();
 
@@ -32,7 +33,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Request logging middleware
 app.use((req: Request, _res: Response, next: NextFunction) => {
-  console.log(`[${config.appMode}] ${req.method} ${req.path}`);
+  console.log(`[${config.appMode}] ${req.method} ${safeLog(req.path)}`);
   next();
 });
 

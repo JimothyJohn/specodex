@@ -18,6 +18,7 @@ import {
 import { marshall, unmarshall } from '@aws-sdk/util-dynamodb';
 import { Product, ProductType, Datasheet, Motor, Drive, Manufacturer } from '../types/models';
 import { VALID_PRODUCT_TYPES, formatDisplayName } from '../config/productTypes';
+import { safeLog } from '../util/log';
 
 export interface DynamoDBConfig {
   tableName: string;
@@ -131,7 +132,7 @@ export class DynamoDBService {
     pkPrefix?: string
   ): Promise<{ deleted: number; failed: number }> {
     try {
-      console.log(`[DynamoDB] Scanning for items where ${attributeName} = ${attributeValue}${pkPrefix ? ` (PK starts with ${pkPrefix})` : ''}`);
+      console.log(`[DynamoDB] Scanning for items where ${safeLog(attributeName)} = ${safeLog(attributeValue)}${pkPrefix ? ` (PK starts with ${safeLog(pkPrefix)})` : ''}`);
       
       const scanResult = await this.client.send(
         new ScanCommand({
@@ -223,7 +224,7 @@ export class DynamoDBService {
       let pageCount = 0;
       do {
         pageCount++;
-        console.log(`[DynamoDB] Query page ${pageCount} for ${productType} (current total: ${allItems.length})`);
+        console.log(`[DynamoDB] Query page ${pageCount} for ${safeLog(productType)} (current total: ${allItems.length})`);
 
         const result: QueryCommandOutput = await this.client.send(
           new QueryCommand({
@@ -255,7 +256,7 @@ export class DynamoDBService {
 
       } while (lastEvaluatedKey);
 
-      console.log(`[DynamoDB] Query complete for ${productType}: ${allItems.length} total items from ${pageCount} pages`);
+      console.log(`[DynamoDB] Query complete for ${safeLog(productType)}: ${allItems.length} total items from ${pageCount} pages`);
 
       return allItems;
     } catch (error) {
