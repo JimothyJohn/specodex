@@ -453,6 +453,9 @@ def cmd_verify(args: argparse.Namespace) -> None:
         run(["npm", "run", "build"], cwd=APP / "backend")
 
     if "frontend" in stages:
+        info("Frontend: style drift gates")
+        _style_drift_check()
+
         info("Frontend: lint")
         run(["npm", "run", "lint"], cwd=APP / "frontend")
 
@@ -463,6 +466,73 @@ def cmd_verify(args: argparse.Namespace) -> None:
         run(["npm", "run", "build"], cwd=APP / "frontend")
 
     info("All verify stages passed")
+
+
+def _style_drift_check() -> None:
+    """Fail if shipped STYLE.md phases regress.
+
+    Each banned pattern was replaced by an app-native primitive in a
+    shipped phase; the gate keeps new code from re-introducing native
+    chrome. Phases 3 (toast) and 4 (form noValidate) are not yet shipped,
+    so their gates aren't enforced yet.
+
+    Banned today:
+      - `title=` JSX attribute   (Phase 1, use <Tooltip>)
+      - `target="_blank"` outside <ExternalLink> (Phase 6)
+
+    Patterns are matched against .ts/.tsx/.js/.jsx under
+    app/frontend/src/. Test files and the primitive's own implementation
+    are allowlisted.
+    """
+    src = APP / "frontend" / "src"
+    extensions = (
+        "--include=*.tsx",
+        "--include=*.ts",
+        "--include=*.jsx",
+        "--include=*.js",
+    )
+
+    def _grep(pattern: str) -> list[str]:
+        result = subprocess.run(
+            ["grep", "-RnE", *extensions, pattern, str(src)],
+            capture_output=True,
+            text=True,
+        )
+        # grep exits 1 on no matches, 0 on matches, 2 on error.
+        if result.returncode not in (0, 1):
+            fail(f"grep failed: {result.stderr.strip()}")
+        return [line for line in result.stdout.splitlines() if line]
+
+    issues: list[tuple[str, list[str]]] = []
+
+    # Phase 1: title= JSX attribute. The <title> SVG element is naturally
+    # excluded since the pattern requires `=` after `title`.
+    title_hits = _grep(r'title=["{]')
+    if title_hits:
+        issues.append(("title= attributes (Phase 1 — use <Tooltip>)", title_hits))
+
+    # Phase 6: target="_blank" outside <ExternalLink>. Allowlist the
+    # primitive itself and its test file.
+    blank_hits = [
+        line
+        for line in _grep(r'target="_blank"')
+        if "/ui/ExternalLink.tsx" not in line
+        and "/ui/ExternalLink.test.tsx" not in line
+    ]
+    if blank_hits:
+        issues.append(('target="_blank" outside <ExternalLink> (Phase 6)', blank_hits))
+
+    if issues:
+        log.error("")
+        log.error(_c("0;31", "STYLE drift gate failed:"))
+        for label, hits in issues:
+            log.error(_c("0;31", f"  {label}"))
+            for hit in hits:
+                log.error(f"    {hit}")
+        log.error("")
+        fail(
+            "Native UI chrome re-introduced — see todo/STYLE.md for the app-native primitive to use instead."
+        )
 
 
 def cmd_staging(args: argparse.Namespace) -> None:
