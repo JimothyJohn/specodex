@@ -1,7 +1,7 @@
 # Board review — Specodex / Datasheetminer
 
 > A simulated five-person tech-board reaction to specodex.com /
-> datasheets.advin.io, written for a solo founder bootstrapping the
+> specodex.com, written for a solo founder bootstrapping the
 > company out of his own pocket. Five voices with different industry
 > backgrounds, treating themselves as potential customers or partners
 > seeing the product for the first time. Honest, specific, no

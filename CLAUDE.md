@@ -221,7 +221,7 @@ After `./Quickstart deploy --stage <stage>` returns, confirm the stack is actual
       --query 'Stacks[0].Outputs[?OutputKey==`CloudFrontUrl`].OutputValue' --output text
 
     # prod
-    https://datasheets.advin.io
+    https://www.specodex.com
 
 **Canonical endpoints** — each of these must 200 with the shape noted:
 
@@ -235,7 +235,7 @@ After `./Quickstart deploy --stage <stage>` returns, confirm the stack is actual
 
 **One-shot smoke:**
 
-    ./Quickstart smoke https://datasheets.advin.io          # prod
+    ./Quickstart smoke https://www.specodex.com          # prod
     ./Quickstart smoke "$(aws cloudformation describe-stacks \
       --stack-name DatasheetMiner-Staging-Frontend \
       --query 'Stacks[0].Outputs[?OutputKey==`CloudFrontUrl`].OutputValue' \
@@ -406,7 +406,7 @@ When adding a deploy permission, attach it to the **role's `CdkDeploy` inline po
 
 ### Apex (2-part) domains and `HOSTED_ZONE_NAME`
 
-`app/infrastructure/lib/config.ts` infers the hosted-zone name from `DOMAIN_NAME` when `HOSTED_ZONE_NAME` is unset. The fallback now detects the 2-part case: 3+ parts strips the leftmost label (`datasheets.advin.io` → `advin.io`), 2 parts uses the domain itself (`specodex.com` → `specodex.com`). Setting `HOSTED_ZONE_NAME` explicitly is no longer required for apex deploys, but still works as an override when the zone name differs from the inferred parent.
+`app/infrastructure/lib/config.ts` infers the hosted-zone name from `DOMAIN_NAME` when `HOSTED_ZONE_NAME` is unset. The fallback handles the 2-part apex case: 3+ parts strips the leftmost label (e.g. `app.example.com` → `example.com`), 2 parts uses the domain itself (e.g. `specodex.com` → `specodex.com` — the parent would be `com`, which `fromLookup` can't resolve). Setting `HOSTED_ZONE_NAME` explicitly is no longer required for apex deploys, but still works as an override when the zone name differs from the inferred parent.
 
 History: prior to the 2026-04-30 fix the fallback always stripped the leftmost label, so an apex `DOMAIN_NAME` produced `"com"` and CDK `fromLookup` failed synth with `Found zones: [] for dns:com`. Bit us during the 2026-04-29 cutover.
 
