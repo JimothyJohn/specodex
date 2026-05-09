@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Specodex PR #76 — tier A feedback nudges: results-list footer + detail-modal link.">
+    <meta name="theme-color" content="#3A2C1C">
+    <title>Specodex — PR #76: tier A feedback nudges</title>
+    <link rel="icon" type="image/svg+xml" href="../logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-issue="PR-76">
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="band">
+        <div class="band-inner">
+            <a class="band-brand" href="../index.html">
+                <svg class="band-mark" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <rect width="120" height="120" fill="#E8E2C9"/>
+                    <rect x="14" y="14" width="92" height="92" fill="none" stroke="#1A1A14" stroke-width="3"/>
+                    <rect x="14" y="14" width="92" height="22" fill="#3A2C1C"/>
+                    <rect x="62" y="60" width="40" height="10" fill="#A88A1C"/>
+                    <line x1="14" y1="56" x2="106" y2="56" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="74" x2="106" y2="74" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="92" x2="106" y2="92" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="60" y1="36" x2="60" y2="106" stroke="#1A1A14" stroke-width="2"/>
+                </svg>
+                <span class="wordmark">SPECODEX</span>
+            </a>
+            <nav class="band-nav" aria-label="Section">
+                <a href="../index.html">Catalog</a>
+                <a href="./" class="active">Pull Requests</a>
+                <a href="https://github.com/JimothyJohn/specodex" rel="noreferrer">GitHub</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="hero-tag">▮▮▮ PULL REQUEST #76 ▮▮▮</div>
+            <h1 class="hero-title">feat(feedback) — tier A nudges: results-list footer + detail-modal link</h1>
+            <p class="hero-sub">
+                Tier A from the nudge proposal in <a href="74.html">#74</a>. Two
+                always-visible, low-friction surfaces stacked on the
+                <code>&lt;FeedbackModal&gt;</code> from the parent PR — no signal tracking,
+                no telemetry, no triggers. Each opens the existing modal pre-populated with
+                the right category and context. Stacked PR (base
+                <code>feat/feedback-modal-v2</code>); re-target to <code>master</code>
+                after #74 merges.
+            </p>
+            <dl class="pr-meta">
+                <div><dt>Branch</dt><dd><code>feat/feedback-tier-a</code></dd></div>
+                <div><dt>Base</dt><dd><code>feat/feedback-modal-v2</code> (stacked on PR #74)</dd></div>
+                <div><dt>Opened</dt><dd>2026-05-09</dd></div>
+                <div><dt>Diff</dt><dd>+222 / −5 across 4 files</dd></div>
+                <div><dt>Tests</dt><dd>3 new (ProductDetailModal feedback link)</dd></div>
+            </dl>
+            <div class="cta-row">
+                <a class="cta cta-primary" href="https://github.com/JimothyJohn/specodex/pull/76" rel="noreferrer">View on GitHub →</a>
+                <a class="cta cta-ghost" href="./">All requests</a>
+            </div>
+        </section>
+
+        <section aria-label="The two surfaces">
+            <div class="divider"><span>▮▮▮ THE TWO SURFACES ▮▮▮</span></div>
+            <ol class="cell-list">
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">A-1</span><h2 class="cell-title">Results-list footer banner</h2></div>
+                    <p class="cell-body">
+                        Below the pagination on every result list:
+                        <em>"Don't see your manufacturer or part? Suggest one →"</em>.
+                        Quiet by design — small, low-contrast, dashed top border.
+                        Opens <code>&lt;FeedbackModal&gt;</code> with
+                        <code>defaultCategory='missing_product'</code> and threads
+                        the active <code>productType</code> + filter set into the mail
+                        body. Catches "I see results but my brand isn't here", which
+                        the empty-state CTA from #74 never sees.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">A-2</span><h2 class="cell-title">Detail-modal "Spec wrong?" link</h2></div>
+                    <p class="cell-body">
+                        Right-aligned at the bottom of the spec table inside
+                        <code>ProductDetailModal</code>. Opens
+                        <code>&lt;FeedbackModal&gt;</code> with
+                        <code>defaultCategory='wrong_info'</code> and attaches
+                        <code>{ manufacturer, part_number }</code> as
+                        <code>context.product</code> so the email body reads
+                        <em>"Product: Mitsubishi / HG-KR43"</em>. Closes the detail
+                        modal first to side-step the click-outside conflict.
+                    </p>
+                </li>
+            </ol>
+        </section>
+
+        <section aria-label="Why callback-then-close">
+            <div class="divider"><span>▮▮▮ WHY CALLBACK-THEN-CLOSE ▮▮▮</span></div>
+            <p style="max-width: 80ch; color: var(--ink-soft);">
+                The detail modal closes on any click outside its <code>modalRef</code>.
+                The <code>&lt;FeedbackModal&gt;</code> overlay is mounted at the
+                <code>ProductList</code> tree level (sibling of
+                <code>ProductDetailModal</code>, not nested), so clicks inside the
+                feedback overlay would trigger the detail modal's outside-click handler
+                mid-feedback. Two reasonable fixes:
+            </p>
+            <ol style="max-width: 80ch; color: var(--ink-soft);">
+                <li>Tag the feedback overlay with <code>data-portaled-popover</code>
+                    so the detail modal's click-outside handler ignores clicks inside
+                    it (same trick <code>AddToProjectMenu</code> uses).</li>
+                <li>Close the detail modal first; the parent captures the product
+                    reference in state before close, then opens feedback.</li>
+            </ol>
+            <p style="max-width: 80ch; color: var(--ink-soft);">
+                Picked option 2. One extra line, no edits to the modal in the parent
+                PR, and the UX is arguably clearer — the user is moving from
+                <em>"viewing a product"</em> to <em>"writing about a product"</em>,
+                so a clean modal swap matches the mental shift.
+            </p>
+        </section>
+
+        <section aria-label="Files touched">
+            <div class="divider"><span>▮▮▮ FILES TOUCHED ▮▮▮</span></div>
+            <table class="spec-table">
+                <thead><tr><th>Path</th><th>Change</th></tr></thead>
+                <tbody>
+                    <tr><td><code>app/frontend/src/components/ProductList.tsx</code></td><td>Footer banner + <code>feedbackProduct</code> state + <code>onSpecFeedback</code> wiring + clear product on modal close</td></tr>
+                    <tr><td><code>app/frontend/src/components/ProductDetailModal.tsx</code></td><td>New optional <code>onSpecFeedback?(product)</code> prop; renders the link only when provided. Calls callback then <code>onClose()</code></td></tr>
+                    <tr><td><code>app/frontend/src/components/ProductDetailModal.test.tsx</code></td><td>NEW — 3 tests (link visibility, click contract, ordering of feedback-then-close)</td></tr>
+                    <tr><td><code>app/frontend/src/App.css</code></td><td><code>.results-footer-feedback</code>, <code>.product-detail-feedback-row</code> styles</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section aria-label="Frequency caps">
+            <div class="divider"><span>▮▮▮ FREQUENCY CAPS ▮▮▮</span></div>
+            <p style="max-width: 80ch; color: var(--ink-soft);">
+                Both surfaces are <strong>always visible</strong> — no per-session caps,
+                no localStorage flags, no dismissal state. They're quiet enough that
+                pestering isn't a risk: the footer is a small dashed-border line at the
+                bottom of the table, and the detail-modal link is a single underlined
+                text button at the end of the spec list. The frequency-cap machinery
+                from the original proposal (Tier C+ nudges) is deliberately out of scope
+                here — it lands when louder surfaces (toast / pulse) ship.
+            </p>
+        </section>
+
+        <section aria-label="What this PR doesn't do">
+            <div class="divider"><span>▮▮▮ WHAT THIS PR DOESN'T DO ▮▮▮</span></div>
+            <ol class="cell-list">
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">N-1</span><h2 class="cell-title">No backend</h2></div>
+                    <p class="cell-body">
+                        Same as #74 — submission is still <code>mailto:nick@advin.io</code>.
+                        Tier A doesn't change the submission path; it adds two more
+                        triggers for the same flow.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">N-2</span><h2 class="cell-title">No signal tracking</h2></div>
+                    <p class="cell-body">
+                        No <code>useNudge()</code> hook, no per-session counters, no
+                        localStorage-backed dismissal. Both surfaces are unconditional.
+                        Signal-driven nudges (filter-to-zero amplifier, build-tray
+                        whisper) are Tier B and live in their own follow-up PR.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">N-3</span><h2 class="cell-title">No louder nudges</h2></div>
+                    <p class="cell-body">
+                        Tier C (header pulse, toast on rage-filter) and Tier D
+                        (detail-modal thumbs) are deliberately deferred. Ship the
+                        gentlest surfaces first; only graduate to louder ones if
+                        these underperform.
+                    </p>
+                </li>
+            </ol>
+        </section>
+
+        <a class="back-link" href="./">← back to requests log</a>
+    </main>
+
+    <footer>
+        <div class="footer-inner">
+            <span>© 2026 Specodex · PR #76</span>
+            <span class="footer-rule" aria-hidden="true"></span>
+            <a class="footer-link" href="https://github.com/JimothyJohn/specodex/pull/76" rel="noreferrer">View on GitHub</a>
+            <a class="footer-link" href="./">All requests</a>
+        </div>
+    </footer>
+</body>
+</html>
