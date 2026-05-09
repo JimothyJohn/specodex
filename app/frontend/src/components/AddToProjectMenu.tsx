@@ -237,7 +237,7 @@ export default function AddToProjectMenu({ productRef }: AddToProjectMenuProps) 
               </ul>
             )}
 
-            <form onSubmit={handleCreate} className="add-to-project-create">
+            <form noValidate onSubmit={handleCreate} className="add-to-project-create">
               <input
                 type="text"
                 className="add-to-project-input"

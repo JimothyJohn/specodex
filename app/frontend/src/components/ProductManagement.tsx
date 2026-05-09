@@ -246,7 +246,7 @@ export default function ProductManagement() {
                 <span className="warning">Warning: This action is irreversible.</span>
               </p>
 
-              <form onSubmit={handleDeleteClick} className="delete-form">
+              <form noValidate onSubmit={handleDeleteClick} className="delete-form">
                 <div className="form-group">
                   <label htmlFor="inputValue">{getLabel()}</label>
                   

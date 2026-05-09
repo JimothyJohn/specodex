@@ -13,6 +13,9 @@ export default function DatasheetEditModal({ datasheet, onClose, clickPosition }
   const modalRef = useRef<HTMLDivElement>(null);
   const [formData, setFormData] = useState<Partial<DatasheetEntry>>({});
   const [isSaving, setIsSaving] = useState(false);
+  // Phase 4: noValidate forms surface validation errors via a themed
+  // inline message instead of the OS-styled UA bubble.
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   useEffect(() => {
     if (datasheet) {
@@ -56,6 +59,23 @@ export default function DatasheetEditModal({ datasheet, onClose, clickPosition }
     e.preventDefault();
     if (!datasheet || !datasheet.product_id) return;
 
+    // JS validation replaces UA `required` enforcement (Phase 4).
+    if (!formData.product_name?.trim()) {
+      setValidationError('Product name is required.');
+      return;
+    }
+    if (!formData.url?.trim()) {
+      setValidationError('Datasheet URL is required.');
+      return;
+    }
+    try {
+      new URL(formData.url.trim());
+    } catch {
+      setValidationError('Datasheet URL must be a valid URL.');
+      return;
+    }
+    setValidationError(null);
+
     setIsSaving(true);
     try {
       await updateProduct(datasheet.product_id, formData, 'datasheet');
@@ -90,7 +110,12 @@ export default function DatasheetEditModal({ datasheet, onClose, clickPosition }
         </div>
 
         <div className="product-detail-content">
-          <form onSubmit={handleSubmit} className="edit-form">
+          <form noValidate onSubmit={handleSubmit} className="edit-form">
+            {validationError && (
+              <div role="alert" style={{ padding: '0.6rem 0.8rem', marginBottom: '1rem', background: '#b03232', color: '#fff', fontSize: '0.85rem' }}>
+                {validationError}
+              </div>
+            )}
             <div className="form-group" style={{ marginBottom: '1.5rem' }}>
               <label htmlFor="product_name" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Product Name</label>
               <input
