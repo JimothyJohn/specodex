@@ -2602,43 +2602,101 @@ button.secondary:hover {
   overflow-x: auto;
 }
 
-/* Row density toggle — compact is the historical layout; comfy bumps
- * vertical padding for scanability on long catalogs. Controlled by a
- * button in the results header; preference persists in localStorage. */
-.product-grid.density-comfy .spec-header-item,
-.product-grid.density-comfy .product-card-info,
-.product-grid.density-comfy .product-grid-header-item,
-.product-grid.density-comfy .product-grid-header-part {
-  padding-top: 0.8rem;
-  padding-bottom: 0.8rem;
-  line-height: 1.35;
+/* Row density.
+ *
+ * Cozy is the new default — the historical compact layout: ~0.78rem
+ * header, ~0.85rem cells, 0.25rem padding, 10 columns max, 25 rows per
+ * page. Compact (May-2026 rename) is significantly denser: smaller
+ * fonts, tighter padding, 16 columns max, infinite scroll past 50.
+ * The toggle lives in the top-right header; preference persists in
+ * localStorage under `productListRowDensity.v2`.
+ *
+ * Cozy reads as the base styles — no `.density-cozy` selectors needed.
+ * The rules below tighten the compact layout from those defaults.
+ */
+.product-grid.density-compact .spec-header-item,
+.product-grid.density-compact .product-card-info,
+.product-grid.density-compact .product-grid-header-item,
+.product-grid.density-compact .product-grid-header-part {
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
+  line-height: 1.15;
 }
 
-/* Comfy mode bumps body and header text alongside the wider columns
- * (defaults set in ProductList.tsx). Header label keeps the same
- * uppercase tracking; only the size grows. */
-.product-grid.density-comfy .spec-header-value,
-.product-grid.density-comfy .product-info-part {
-  font-size: 1.15rem;
+/* Compact body cells: tabular-nums so numeric columns align cleanly
+ * down the table — the Bloomberg/DigiKey scan affordance. */
+.product-grid.density-compact .spec-header-value,
+.product-grid.density-compact .product-info-part {
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
 }
 
-.product-grid.density-comfy .product-grid-header-item {
-  font-size: 1rem;
+.product-grid.density-compact .product-grid-header-item {
+  font-size: 0.65rem;
+  padding: 0.15rem 0.25rem;
 }
 
-.product-grid.density-comfy .product-grid-header-label {
-  font-size: 1.05rem;
+.product-grid.density-compact .product-grid-header-label {
+  font-size: 0.68rem;
+  letter-spacing: 0.05em;
 }
 
-.product-grid.density-comfy .product-grid-header-unit {
-  font-size: 0.9rem;
+.product-grid.density-compact .product-grid-header-unit {
+  font-size: 0.6rem;
+}
+
+/* Density-aware app-shell surfaces.
+ *
+ * Compact tightens the top header band, the filter sidebar, and the
+ * product detail modal so the whole app reads at one density level
+ * rather than the table alone scaling while everything floats loose
+ * around it. Cozy leaves these untouched (= base styles).
+ */
+.app.density-compact .header {
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
+}
+
+.app.density-compact .filter-sidebar {
+  font-size: 0.85rem;
+}
+
+.app.density-compact .filter-bar {
+  padding-top: 0.3rem;
+  padding-bottom: 0.3rem;
+}
+
+.app.density-compact .product-detail-modal-content,
+.app.density-compact .product-detail-modal-body {
+  font-size: 0.85rem;
 }
 
 /* Density toggle button — inherits the 44×44 .theme-toggle box. Glyph
- * swaps between 3 thin lines (compact) and 2 rectangles (comfy). */
+ * swaps between 3 thin lines (cozy) and 5 thin lines (compact); the
+ * icon depicts the CURRENT state. */
 .density-toggle-icon {
   display: block;
   color: currentColor;
+}
+
+/* Infinite-scroll sentinel (compact mode). Sits below the last row;
+ * once it enters the viewport, the IntersectionObserver bumps the
+ * revealed-row count by another itemsPerPage. The status text doubles
+ * as an "end of results" marker once everything is loaded. */
+.infinite-scroll-sentinel {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1rem;
+  min-height: 2.5rem;
+  color: var(--text-tertiary);
+  font-family: var(--font-headline);
+}
+
+.infinite-scroll-status {
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
 /* Product list - compact table layout */
@@ -7273,24 +7331,12 @@ input.transmission-param-input {
   .product-card-info { padding: 0.2rem 0.45rem; }
   .product-info-part { font-size: 0.85rem; }
 
-  /* Comfy density on a phone is wasteful — every density-comfy override
-   * (font 1.15rem, padding 0.8rem) gets clamped back to compact sizing
-   * so the toggle's effect is barely perceptible on mobile. The control
-   * is left in place for users who flip it; we just stop letting it
-   * blow up the row height past what the viewport can spare. */
-  .product-grid.density-comfy .spec-header-item,
-  .product-grid.density-comfy .product-card-info,
-  .product-grid.density-comfy .product-grid-header-item,
-  .product-grid.density-comfy .product-grid-header-part {
-    padding-top: 0.25rem; padding-bottom: 0.25rem;
-  }
-  .product-grid.density-comfy .spec-header-value,
-  .product-grid.density-comfy .product-info-part { font-size: 0.85rem; }
-  .product-grid.density-comfy .product-grid-header-item { font-size: 0.7rem; }
-  .product-grid.density-comfy .product-grid-header-label { font-size: 0.75rem; }
-  .product-grid.density-comfy .product-grid-header-unit { font-size: 0.65rem; }
-
-  /* The earlier mobile block forced column-header cells to 88px tall to
+  /* Pre-rename this block clamped comfy-density rows back to compact
+   * sizing on mobile (comfy on a phone wasted the viewport). The new
+   * cozy default is already at that clamped sizing and compact is
+   * denser still — no per-mode overrides needed here.
+   *
+   * The earlier mobile block forced column-header cells to 88px tall to
    * fit the histogram + slider stack. With the smaller fonts above, 60px
    * is enough — the slider + label still clear. */
   .product-grid-header-item.column-header { min-height: 60px; }
