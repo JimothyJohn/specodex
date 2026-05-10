@@ -239,6 +239,41 @@ class TestErrorSpecificity:
 # =================== LLM Retry Exhaustion ===================
 
 
+@pytest.fixture(autouse=True)
+def _no_retry_waits():
+    """Force ``generate_content``'s tenacity retries to be instantaneous.
+
+    Why this exists. The @retry decorator on
+    ``specodex.llm.generate_content`` uses
+    ``wait_exponential(min=4, max=60)`` for production resilience.
+    Multiplied by 5 attempts, that's 20-300 seconds of real waiting
+    per failing call. Several tests in this file deliberately trip
+    the retry path — without overriding the wait, the suite either
+    ran for 40+ seconds or flaked under CI deadlines (the
+    ``test_generate_content_retries_on_failure`` test had a comment
+    claiming to patch this but never actually did).
+
+    Why module-scope autouse, not per-test. Two tests in this module
+    exercise the retry path; a third (``test_invalid_content_type_raises``)
+    inadvertently does too because tenacity retries every exception
+    by default. Putting the override here scopes the patch to this
+    file — other tests that use ``generate_content`` for legitimate
+    backoff timing aren't affected — and guarantees the
+    cache-pollution / wait-override always run together.
+    """
+    from specodex.llm import _client_for, generate_content
+    from tenacity import wait_none
+
+    _client_for.cache_clear()
+    original_wait = generate_content.retry.wait
+    generate_content.retry.wait = wait_none()
+    try:
+        yield
+    finally:
+        generate_content.retry.wait = original_wait
+        _client_for.cache_clear()
+
+
 class TestLLMResilience:
     """Test LLM failure modes without making real API calls."""
 
@@ -254,8 +289,6 @@ class TestLLMResilience:
         mock_model.generate_content.side_effect = RuntimeError("API quota exceeded")
         mock_client.models = mock_model
 
-        # With 5 retries and min wait of 4s, this would take too long
-        # so we patch the retry decorator's wait to be instant
         with pytest.raises((RuntimeError, RetryError)):
             generate_content(
                 b"%PDF-fake",
