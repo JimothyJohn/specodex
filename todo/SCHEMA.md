@@ -31,26 +31,31 @@ device-relations layer on top.** Renaming `fieldbus` to a consistent
 shape AFTER the relations layer is built is much more painful than
 doing it now.
 
-## Status
+## Status (post-2026-05-10 sprint)
 
 - **Phase 0** (this doc) and **Phase 1** (additive cross-product field
   hygiene — `MotorMountPattern` literal, `motor_mount_pattern` on Motor
   / ElectricCylinder, `compatible_motor_mounts` on LinearActuator,
-  `input_motor_mount` + `output_motor_mount` on Gearhead) **applied
-  2026-05-08** on `feat-actuators-mvp-20260508` alongside the actuator
-  MVP. `./Quickstart gen-types` regenerated `generated.ts` and
-  `generated_constants.ts`; `./Quickstart verify` is green for Python
-  (1125 tests), backend, and frontend.
+  `input_motor_mount` + `output_motor_mount` on Gearhead) — ✅ **shipped
+  via PR #87** (2026-05-09).
 - **Phase 1.1** (BREAKING type-harmonisation: `motor_type`, `fieldbus`,
-  `encoder_feedback_support` shape unification) — designed below, NOT
-  yet applied. Needs a one-shot data migration plus user sign-off
-  because the existing dev DB has rows that would fail re-validation.
-- **Phase 2** (backfill `motor_mount_pattern` from `frame_size`) — Late
-  Night candidate; depends on Phase 1 (✓).
-- **Phase 3** (relations API + `RelationsPanel` on `/actuators`) —
-  focused PR; depends on Phase 1 (✓) and the actuator MVP merge.
-- **Phase 4** (`kg → kgf → N` coercion for Force fields) — small
-  follow-up; surfaced by the Lintech fit-check (Part 1 below).
+  `encoder_feedback_support` shape unification) — 🔴 designed below,
+  **needs sign-off**. One-shot data migration on dev DB plus the
+  user-facing decision (do we break existing rows or build a parallel
+  schema?). Until then, the structured `EncoderFeedback` model from
+  DOUBLE_TAP (PR #91) provides the typed comparison path without
+  requiring a full re-validation of legacy rows.
+- **Phase 2** (backfill `motor_mount_pattern` from `frame_size`) — ✅
+  **CLI shipped via PR #117** (`./Quickstart admin -- backfill-motor-mounts`,
+  `--dry-run` default). Execution against dev DB + promotion is the
+  remaining operator action.
+- **Phase 3** (relations API + `RelationsPanel` on `/actuators`) — ✅
+  **shipped end-to-end via PRs #89/#90/#92** (Phase 3a relations.py +
+  Phase 3b /api/v1/relations endpoints + Phase 3c RelationsPanel
+  skeleton).
+- **Phase 4** (`kg → kgf → N` coercion for Force fields) — ✅ **shipped
+  via PR #106**. Per-family `pre_rewrite` table on `UnitFamily`; logged
+  at WARNING with the family name so operators can grep when auditing.
 
 ---
 

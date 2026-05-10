@@ -1,8 +1,36 @@
 # HARDENING — adversarial-by-default testing posture
 
 **Audit date:** 2026-05-09
-**Status:** 14 findings open. Phase 1 = immediate wins (~1.5h total). Phase 2 = real attacker surface (multi-day). Phases 3–4 = adversarial coverage + hygiene.
-**Companion:** `~/.claude/CLAUDE.md` "Testing — adversarial by default" section. Match every card here back to a rule there.
+**Status (post-2026-05-10 sprint):** 10 of 14 findings shipped; 4 remain.
+
+| Phase | Status | Shipping PRs |
+|---|---|---|
+| 1.1 Activate `_test_security.py` | ✅ shipped | #95 |
+| 1.2 `uv sync --locked` CI sweep | ⚪ open | needs human PR (touches `.github/workflows/`) |
+| 1.3 Regression tests for log-injection #82/#83/#84 | ✅ shipped | #97 |
+| 2.1 SSRF defense for URL-fetching paths | ✅ shipped | #98 |
+| 2.2 Backend integration tests against real DAL (L) | ⚪ open | next-sprint queue |
+| 2.3 IDOR + cross-tenant auth tests | ✅ shipped | #100 |
+| 2.4 Stripe webhook signature + replay tests | ✅ shipped | #101 |
+| 3.1 Hypothesis property tests for parsers (3 targets) | ✅ shipped | #111, #112, #113 — plus #116, #118, #120, #122, #123 extensions |
+| 3.2 Atheris fuzz target for PDF intake | ⚪ open | heavier dep (LLVM/clang); st.binary in #113 covers the basic shape |
+| 3.3 Schema forward/backward compat tests | ✅ shipped | #107 |
+| 3.4 Concurrent-write stress test | ✅ shipped | #110 |
+| 4.1 Dev-deps for adversarial testing (mutmut + pytest-randomly + freezegun) | ✅ shipped | #103 |
+| 4.2 Lockfile-drift gate post-install | ⚪ open | needs human PR (touches `.github/workflows/`) |
+| 4.3 Log secret-leak assertion tests | ✅ shipped | #102 |
+
+**Three real bugs caught by the Phase 3.1 work** (each docstring vs.
+implementation disagreement, surfaced by Hypothesis): `_coerce_ip_rating`
+(#112), `_coerce_protocol_list` (#116), `Gearhead.coerce_string_fields`
+(#118).
+
+**Companion:** `~/.claude/CLAUDE.md` "Property testing — adversarial by
+default" section (added in PR #124) documents the established pattern
+for new property tests and lists 4 untested adversarial surfaces as the
+next-sprint queue: `cli/processor.py`, `specodex/integration/compat.py`,
+`specodex/spec_rules.py`, `specodex/quality.py`.
+
 **Trigger:** any new endpoint, parser, deserializer, IAM policy, log statement, or external integration.
 
 ## First hour — three immediate wins (ship tonight)
