@@ -62,15 +62,30 @@ function buildUrl(
   relation: RelationKind,
   sourceProduct: SourceProduct,
 ): string {
-  const params = new URLSearchParams({ id: sourceProduct.product_id });
-  if (relation === 'motors-for-actuator') {
-    // Backend Zod schema requires `type` for the actuator branch since
-    // the DynamoDB SK includes the type in its prefix. Default to the
-    // source product's type — caller passes a LinearActuator or
-    // ElectricCylinder; we forward whichever it is.
-    params.set('type', sourceProduct.product_type);
+  // Backend URL shape is product-first / role-typed (PR #90):
+  //   /relations/<answer-type>?<input|output>=<id>[&<role>_type=<type>]
+  // The `RelationKind` prop names stay descriptive for callers; this
+  // function translates them to the role-typed URL the API expects.
+  const params = new URLSearchParams();
+  let path: string;
+  switch (relation) {
+    case 'motors-for-actuator':
+      // Two valid downstream mates (linear_actuator, electric_cylinder)
+      // so output_type is required — forward the source product's type.
+      path = 'motors';
+      params.set('output', sourceProduct.product_id);
+      params.set('output_type', sourceProduct.product_type);
+      break;
+    case 'drives-for-motor':
+      path = 'drives';
+      params.set('output', sourceProduct.product_id);
+      break;
+    case 'gearheads-for-motor':
+      path = 'gearheads';
+      params.set('input', sourceProduct.product_id);
+      break;
   }
-  return `${apiBase}/api/v1/relations/${relation}?${params.toString()}`;
+  return `${apiBase}/api/v1/relations/${path}?${params.toString()}`;
 }
 
 function relationHeading(relation: RelationKind): string {
