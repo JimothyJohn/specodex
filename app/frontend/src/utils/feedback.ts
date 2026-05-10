@@ -39,6 +39,23 @@ export interface FeedbackContext {
   filters?: FilterCriterion[];
   /** Optional anchor product reference (manufacturer / part_number). */
   product?: { manufacturer?: string; part_number?: string };
+  /**
+   * Per-spec complaint — set when the user clicked the `?` button next
+   * to a single field in the product detail modal. Carries the rendered
+   * label/value/unit so triage (and the eventual auto-verifier pipeline)
+   * doesn't have to reverse-engineer which spec the complaint is about.
+   */
+  field?: {
+    /** snake_case key on the product, e.g. `rated_torque`. */
+    name?: string;
+    /** Display label as the user saw it, e.g. `Rated Torque`. */
+    label: string;
+    /** Rendered value — already unit-converted to the user's display
+     *  setting. Empty string is allowed if the spec was blank. */
+    value: string;
+    /** Display unit, if the spec carries one. */
+    unit?: string;
+  };
   /** App build identifier — `import.meta.env.VITE_APP_VERSION` if set. */
   appVersion?: string;
 }
@@ -96,6 +113,13 @@ function buildBody(input: BuildFeedbackMailtoInput): string {
       const p = ctx.product;
       const refBits = [p.manufacturer, p.part_number].filter(Boolean).join(' / ');
       if (refBits) lines.push(`Product: ${refBits}`);
+    }
+    if (ctx.field) {
+      const f = ctx.field;
+      const valueBit = f.value.length > 0 ? f.value : '(empty)';
+      const unitBit = f.unit ? ` ${f.unit}` : '';
+      lines.push(`Field: ${f.label}${f.name && f.name !== f.label ? ` (${f.name})` : ''}`);
+      lines.push(`Reported value: ${valueBit}${unitBit}`);
     }
     if (ctx.filters && ctx.filters.length > 0) {
       const formatted = ctx.filters

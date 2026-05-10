@@ -1,0 +1,55 @@
+/* ProductDetailModal — component-owned CSS per CLAUDE.md
+ * "Per-component CSS files" convention. Most of the modal's selectors
+ * still live in App.css (spec-table / spec-row / spec-label / …). New
+ * selectors land here so App.css stops being the universal merge target.
+ */
+
+/* Per-spec complaint trigger ("?" next to each row).
+ * Reports inaccurate values to the FeedbackModal, which composes a
+ * mailto: with field-level context — the future verifier pipeline
+ * picks it up from there. */
+.spec-complaint-cell {
+  /* width: 1% collapses the cell to its content in CSS tables; the
+   * other columns redistribute the leftover. Keeps the button hugging
+   * the right edge without re-balancing the existing spec-{label,value,
+   * unit} percentage widths. */
+  width: 1%;
+  padding: 0.18rem 0.45rem 0.18rem 0;
+  vertical-align: middle;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.spec-complaint-btn {
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+  width: 1.05rem;
+  height: 1.05rem;
+  padding: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-tertiary);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  /* Subtle by default; the row's :hover lifts it visually so users
+   * notice it only when scanning a particular spec. */
+  opacity: 0.55;
+  transition: opacity 0.15s, color 0.15s, border-color 0.15s, background 0.15s;
+}
+.spec-row:hover .spec-complaint-btn,
+.spec-subrow:hover .spec-complaint-btn {
+  opacity: 1;
+}
+.spec-complaint-btn:hover,
+.spec-complaint-btn:focus-visible {
+  opacity: 1;
+  color: var(--accent-primary);
+  border-color: var(--accent-primary);
+  background: var(--bg-secondary);
+}
+.spec-complaint-btn:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 1px;
+}

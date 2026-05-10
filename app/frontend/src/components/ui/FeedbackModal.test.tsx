@@ -117,6 +117,25 @@ describe('FeedbackModal', () => {
     expect(screen.getByTestId('open').textContent).toBe('no');
   });
 
+  it('includes per-spec field context in the mailto body', () => {
+    render(
+      <Harness
+        defaultCategory="wrong_info"
+        context={{
+          productType: 'motor',
+          product: { manufacturer: 'Acme', part_number: 'X-1' },
+          field: { name: 'rated_torque', label: 'Rated Torque', value: '5', unit: 'N·m' },
+        }}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('trigger'));
+    fireEvent.click(screen.getByText('Compose email'));
+    const decoded = decodeURIComponent(lastHref);
+    expect(decoded).toContain('Field: Rated Torque (rated_torque)');
+    expect(decoded).toContain('Reported value: 5 N·m');
+    expect(decoded).toContain('Product: Acme / X-1');
+  });
+
   it('resets message between opens', () => {
     render(<Harness />);
     fireEvent.click(screen.getByTestId('trigger'));

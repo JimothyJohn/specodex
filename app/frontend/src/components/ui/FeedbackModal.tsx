@@ -35,8 +35,11 @@ interface Props {
   defaultCategory?: FeedbackCategory;
   /** Captured app context auto-appended to the mail body. */
   context?: FeedbackContext;
-  /** Optional override for the heading copy. */
-  title?: string;
+  /** Optional override for the heading copy. Named `heading` rather
+   *  than `title` so the STYLE.md drift gate's blanket `title=` ban
+   *  doesn't false-positive on this prop (the gate can't distinguish
+   *  a custom component prop from the native HTML `title` attribute). */
+  heading?: string;
 }
 
 const CATEGORY_ORDER: FeedbackCategory[] = [
@@ -51,7 +54,7 @@ export default function FeedbackModal({
   onClose,
   defaultCategory = 'general',
   context,
-  title = 'Send feedback',
+  heading = 'Send feedback',
 }: Props) {
   const [category, setCategory] = useState<FeedbackCategory>(defaultCategory);
   const [message, setMessage] = useState('');
@@ -131,7 +134,7 @@ export default function FeedbackModal({
         // banned, JS handles validation inline.
       >
         <h2 id="feedback-modal-title" className="confirm-dialog-title">
-          {title}
+          {heading}
         </h2>
         <form onSubmit={onSubmit} noValidate>
           <fieldset className="feedback-modal-fieldset">
