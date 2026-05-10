@@ -20,7 +20,7 @@ import docsRouter from './routes/docs';
 import adminRouter from './routes/admin';
 import authRouter from './routes/auth';
 import projectsRouter from './routes/projects';
-import { safeLog } from './util/log';
+import { requestLogger } from './middleware/requestLogger';
 
 const app: Application = express();
 
@@ -32,13 +32,9 @@ app.use(cors(config.cors));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// Request logging middleware
-app.use((req: Request, _res: Response, next: NextFunction) => {
-  // CR/LF strip inline (req.path is user-controlled). The .replace is the
-  // CodeQL js/log-injection barrier; safeLog only formats/truncates.
-  console.log(`[${config.appMode}] ${req.method} ${safeLog(req.path.replace(/\r|\n/g, ''))}`);
-  next();
-});
+// Request logging — extracted to middleware/requestLogger.ts so the
+// CR/LF barrier (CodeQL js/log-injection) is unit-testable.
+app.use(requestLogger);
 
 // Readonly guard — blocks writes in public mode
 if (config.appMode === 'public') {
