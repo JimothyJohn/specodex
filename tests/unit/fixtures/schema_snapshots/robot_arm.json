@@ -1,0 +1,46 @@
+{
+  "cleanroom_class": "ISO Class 5",
+  "controller": null,
+  "datasheet_url": null,
+  "degrees_of_freedom": 6,
+  "dimensions": null,
+  "force_torque_sensor": null,
+  "ip_rating": 54,
+  "joints": null,
+  "lead_time": null,
+  "manufacturer": "Universal Robots",
+  "materials": [
+    "Aluminium",
+    "Plastic",
+    "Steel"
+  ],
+  "max_tcp_speed": null,
+  "mounting_position": "Any Orientation",
+  "msrp": null,
+  "msrp_fetched_at": null,
+  "msrp_source_url": null,
+  "noise_level": null,
+  "operating_temp": {
+    "max": 50.0,
+    "min": 0.0,
+    "unit": "\u00b0C"
+  },
+  "pages": null,
+  "part_number": null,
+  "payload": null,
+  "pose_repeatability": null,
+  "product_family": "e-Series",
+  "product_id": "34c0430f-2355-5022-bb24-4cfbc5d44d53",
+  "product_name": "snapshot-robot_arm-2026-05-10",
+  "product_type": "robot_arm",
+  "reach": null,
+  "release_year": null,
+  "safety_certifications": [
+    "EN ISO 13849-1, PLd Category 3",
+    "EN ISO 10218-1"
+  ],
+  "teach_pendant": null,
+  "tool_io": null,
+  "warranty": null,
+  "weight": null
+}

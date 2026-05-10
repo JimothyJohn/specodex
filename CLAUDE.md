@@ -95,6 +95,7 @@ now a thin re-export shim from `generated.ts`.
 2. `specodex/models/common.py` — add `"<type>"` to the `ProductType` literal.
 3. `./Quickstart gen-types` — regenerates `app/frontend/src/types/generated.ts` and the backend `generated_constants.ts` twin. The new type auto-flows into `VALID_PRODUCT_TYPES` (backend), the search Zod enum, the frontend `Product` union, and the frontend `ProductType` literal — no hand-edits needed.
 4. `app/backend/src/types/models.ts` — still hand-typed, **for now**. Add a `<Type>` interface + include it in the `Product` and `ProductType` unions. Goes away with the Express deletion in `todo/PYTHON_BACKEND.md` Phase 3 (see `todo/MODELGEN.md` "Don't migrate `app/backend/src/types/models.ts`" — wasted work to migrate before deletion).
+5. **Refresh the schema-compat snapshot.** `tests/unit/test_schema_compat.py` keeps a frozen JSON fixture per `ProductType` under `tests/unit/fixtures/schema_snapshots/`. After steps 1–2 land, regenerate with `uv run python -c 'from tests.unit.test_schema_compat import refresh_snapshots; refresh_snapshots()'` and commit the new file — without this the `TestSnapshotsExist` drift gate fails on the first run. Refresh is also required when intentionally renaming/dropping a model field (the test exists to surface that exact decision).
 
 > **Heads up:** Phase 0b retired the old steps 3 (`VALID_PRODUCT_TYPES`)
 > and the search Zod enum; Phase 0a-ii retired the frontend `models.ts`
