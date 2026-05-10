@@ -66,17 +66,27 @@ def _load_expected(filename: str) -> list[dict[str, Any]]:
         return json.load(f)
 
 
-def _load_cached_response(slug: str) -> dict[str, Any] | None:
-    path = CACHE_DIR / f"{slug}.json"
+def _cache_path(slug: str, mode: str = "single") -> Path:
+    """Cache file for an extraction mode. ``mode='single'`` (default)
+    keeps the legacy ``<slug>.json`` path; ``mode='double_tap'`` adds
+    a ``.double_tap`` suffix so the A/B harness can keep both."""
+    suffix = "" if mode == "single" else f".{mode}"
+    return CACHE_DIR / f"{slug}{suffix}.json"
+
+
+def _load_cached_response(slug: str, mode: str = "single") -> dict[str, Any] | None:
+    path = _cache_path(slug, mode)
     if not path.exists():
         return None
     with open(path) as f:
         return json.load(f)
 
 
-def _save_cached_response(slug: str, data: dict[str, Any]) -> None:
+def _save_cached_response(
+    slug: str, data: dict[str, Any], mode: str = "single"
+) -> None:
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    path = CACHE_DIR / f"{slug}.json"
+    path = _cache_path(slug, mode)
     with open(path, "w") as f:
         json.dump(data, f, indent=2, default=str)
 
@@ -138,8 +148,15 @@ def _run_extraction(
     pdf_bytes: bytes,
     fixture: dict[str, Any],
     pages: list[int] | None,
+    *,
+    double_tap: bool = False,
 ) -> dict[str, Any]:
-    """Run Gemini extraction and return metrics + raw response data."""
+    """Run Gemini extraction and return metrics + raw response data.
+
+    When ``double_tap=True``, routes through the verifier-loop runner
+    so token counts include both passes. Otherwise the legacy single-
+    pass call.
+    """
     from specodex.config import MODEL, SCHEMA_CHOICES
     from specodex.llm import generate_content
     from specodex.utils import parse_gemini_response, validate_api_key
@@ -158,12 +175,37 @@ def _run_extraction(
         sent_bytes = pdf_bytes
 
     t0 = time.perf_counter()
-    response = generate_content(sent_bytes, api_key, product_type, context, "pdf")
-    elapsed_ms = (time.perf_counter() - t0) * 1000
 
-    usage = getattr(response, "usage_metadata", None)
-    input_tokens = getattr(usage, "prompt_token_count", 0) if usage else 0
-    output_tokens = getattr(usage, "candidates_token_count", 0) if usage else 0
+    extra_telemetry: dict[str, Any] = {}
+    raw_text = ""
+    if double_tap:
+        from specodex.double_tap.runner import (
+            extract_with_recovery,
+            extract_with_recovery_telemetry,
+        )
+
+        tokens: dict = {"input": 0, "output": 0}
+        result = extract_with_recovery(
+            sent_bytes, api_key, product_type, context, "pdf", tokens=tokens
+        )
+        elapsed_ms = (time.perf_counter() - t0) * 1000
+        input_tokens = tokens["input"]
+        output_tokens = tokens["output"]
+        extracted = [m.model_dump(mode="json") for m in result.products]
+        extra_telemetry = extract_with_recovery_telemetry(result)
+    else:
+        response = generate_content(sent_bytes, api_key, product_type, context, "pdf")
+        elapsed_ms = (time.perf_counter() - t0) * 1000
+
+        usage = getattr(response, "usage_metadata", None)
+        input_tokens = getattr(usage, "prompt_token_count", 0) if usage else 0
+        output_tokens = getattr(usage, "candidates_token_count", 0) if usage else 0
+        raw_text = response.text if hasattr(response, "text") else ""
+
+        parsed = parse_gemini_response(
+            response, SCHEMA_CHOICES[product_type], product_type, context
+        )
+        extracted = [m.model_dump(mode="json") for m in parsed]
 
     prices = TOKEN_PRICES.get(MODEL, {"input": 0.0, "output": 0.0})
     cost_usd = (
@@ -171,14 +213,7 @@ def _run_extraction(
         + output_tokens * prices["output"] / 1_000_000
     )
 
-    raw_text = response.text if hasattr(response, "text") else ""
-
-    parsed = parse_gemini_response(
-        response, SCHEMA_CHOICES[product_type], product_type, context
-    )
-    extracted = [m.model_dump(mode="json") for m in parsed]
-
-    return {
+    out = {
         "model": MODEL,
         "extraction_ms": round(elapsed_ms, 1),
         "input_tokens": input_tokens,
@@ -189,6 +224,8 @@ def _run_extraction(
         "extracted": extracted,
         "raw_response": raw_text,
     }
+    out.update(extra_telemetry)
+    return out
 
 
 def _normalize_value(v: Any) -> Any:
@@ -403,6 +440,7 @@ def run(
     filter_slug: str | None = None,
     update_cache: bool = False,
     quality_only: bool = False,
+    double_tap: bool = False,
 ) -> list[dict[str, Any]]:
     """Run benchmarks and return results list.
 
@@ -410,9 +448,14 @@ def run(
     extraction output against expected. Lets the run work in environments
     where source PDFs aren't available (e.g. fresh remote checkouts), at
     the cost of skipping page-finder and live-extraction signal.
+
+    double_tap=True routes live extraction through the verifier-loop
+    runner and reads/writes the ``<slug>.double_tap.json`` cache file
+    so the A/B harness can compare both modes.
     """
     if quality_only and live:
         raise ValueError("--quality-only and --live are mutually exclusive")
+    cache_mode = "double_tap" if double_tap else "single"
 
     fixtures = _load_fixtures(filter_slug)
     results: list[dict[str, Any]] = []
@@ -456,23 +499,31 @@ def run(
         extraction: dict[str, Any] = {}
         if live:
             try:
-                extraction = _run_extraction(pdf_bytes, fixture, spec_pages or None)
+                extraction = _run_extraction(
+                    pdf_bytes,
+                    fixture,
+                    spec_pages or None,
+                    double_tap=double_tap,
+                )
                 if update_cache:
-                    _save_cached_response(
-                        slug,
-                        {
-                            "extracted": extraction["extracted"],
-                            "raw_response": extraction.get("raw_response", ""),
-                            "input_tokens": extraction["input_tokens"],
-                            "output_tokens": extraction["output_tokens"],
-                            "model": extraction["model"],
-                        },
-                    )
+                    cache_payload = {
+                        "extracted": extraction["extracted"],
+                        "raw_response": extraction.get("raw_response", ""),
+                        "input_tokens": extraction["input_tokens"],
+                        "output_tokens": extraction["output_tokens"],
+                        "model": extraction["model"],
+                    }
+                    # Carry the double_tap_* telemetry into the cache so
+                    # offline --ab runs can re-derive probe / recovery info.
+                    for k, v in extraction.items():
+                        if k.startswith("double_tap_"):
+                            cache_payload[k] = v
+                    _save_cached_response(slug, cache_payload, mode=cache_mode)
             except Exception as e:
                 log.error(f"Extraction failed for {slug}: {e}")
                 extraction = {"error": str(e)}
         else:
-            cached = _load_cached_response(slug)
+            cached = _load_cached_response(slug, mode=cache_mode)
             if cached:
                 extraction = {
                     "from_cache": True,
@@ -482,6 +533,9 @@ def run(
                     "output_tokens": cached.get("output_tokens", 0),
                     "model": cached.get("model", "unknown"),
                 }
+                for k, v in cached.items():
+                    if k.startswith("double_tap_"):
+                        extraction[k] = v
 
         result["extraction"] = extraction
 
@@ -598,6 +652,26 @@ def main(argv: list[str] | None = None) -> None:
         help="Skip page-finding; diff cached extraction against expected only "
         "(no source PDFs needed; mutually exclusive with --live)",
     )
+    parser.add_argument(
+        "--double-tap",
+        action="store_true",
+        help=(
+            "Route live extraction through the verifier-loop runner. "
+            "Reads/writes the <slug>.double_tap.json cache so the A/B "
+            "harness can compare both modes."
+        ),
+    )
+    parser.add_argument(
+        "--ab",
+        action="store_true",
+        help=(
+            "Run BOTH single-pass and double-tap modes and emit a per-"
+            "fixture comparison table. Uses cached responses when "
+            "available; pair with --live to populate the cache. The "
+            "table prints to stderr and the comparison list is written "
+            "to outputs/benchmarks/ab/<timestamp>.json."
+        ),
+    )
 
     args = parser.parse_args(argv)
 
@@ -607,11 +681,73 @@ def main(argv: list[str] | None = None) -> None:
         stream=sys.stderr,
     )
 
+    if args.ab:
+        # A/B mode: run BOTH single-pass and double-tap, emit comparison.
+        from cli.bench_ab import compare_results, format_ab_table
+
+        single_results = run(
+            live=args.live,
+            filter_slug=args.filter_slug,
+            update_cache=args.update_cache,
+            quality_only=args.quality_only,
+            double_tap=False,
+        )
+        double_results = run(
+            live=args.live,
+            filter_slug=args.filter_slug,
+            update_cache=args.update_cache,
+            quality_only=args.quality_only,
+            double_tap=True,
+        )
+
+        # Pair fixtures by slug; missing-pair entries get logged and skipped.
+        single_by_slug = {r["slug"]: r for r in single_results}
+        double_by_slug = {r["slug"]: r for r in double_results}
+        common = sorted(set(single_by_slug) & set(double_by_slug))
+        comparisons = [
+            compare_results(single_by_slug[s], double_by_slug[s]) for s in common
+        ]
+
+        print(format_ab_table(comparisons), file=sys.stderr)
+
+        OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+        ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        ab_dir = OUTPUT_DIR / "ab"
+        ab_dir.mkdir(parents=True, exist_ok=True)
+        ab_path = args.output or ab_dir / f"{ts}.json"
+        ab_payload = {
+            "timestamp": ts,
+            "comparisons": [
+                {
+                    "slug": c.slug,
+                    "single_recall": c.single_recall,
+                    "double_recall": c.double_recall,
+                    "single_precision": c.single_precision,
+                    "double_precision": c.double_precision,
+                    "single_tokens": c.single_tokens,
+                    "double_tokens": c.double_tokens,
+                    "delta_recall_pp": c.delta_recall_pp,
+                    "delta_precision_pp": c.delta_precision_pp,
+                    "delta_tokens_pct": c.delta_tokens_pct,
+                    "delta_cost_usd": c.delta_cost_usd,
+                    "probes_fired": c.probes_fired,
+                    "fields_recovered": c.fields_recovered,
+                    "fields_corrected": c.fields_corrected,
+                    "worth_it": c.worth_it,
+                }
+                for c in comparisons
+            ],
+        }
+        ab_path.write_text(json.dumps(ab_payload, indent=2, default=str))
+        log.info(f"A/B comparison written to {ab_path}")
+        return
+
     results = run(
         live=args.live,
         filter_slug=args.filter_slug,
         update_cache=args.update_cache,
         quality_only=args.quality_only,
+        double_tap=args.double_tap,
     )
 
     _print_table(results)
@@ -625,6 +761,7 @@ def main(argv: list[str] | None = None) -> None:
     report = {
         "timestamp": ts,
         "live": args.live,
+        "double_tap": args.double_tap,
         "fixtures": results,
     }
     output_path.write_text(json.dumps(report, indent=2, default=str))

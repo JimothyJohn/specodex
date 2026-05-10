@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Specodex PR #90 — DOUBLE_TAP: structured EncoderFeedback model + verifier-loop second-pass extraction with bench A/B harness.">
+    <meta name="theme-color" content="#3A2C1C">
+    <title>Specodex — PR #90: DOUBLE_TAP encoder schema + verifier loop</title>
+    <link rel="icon" type="image/svg+xml" href="../logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-issue="PR-90">
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="band">
+        <div class="band-inner">
+            <a class="band-brand" href="../index.html">
+                <svg class="band-mark" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <rect width="120" height="120" fill="#E8E2C9"/>
+                    <rect x="14" y="14" width="92" height="92" fill="none" stroke="#1A1A14" stroke-width="3"/>
+                    <rect x="14" y="14" width="92" height="22" fill="#3A2C1C"/>
+                    <rect x="62" y="60" width="40" height="10" fill="#A88A1C"/>
+                    <line x1="14" y1="56" x2="106" y2="56" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="74" x2="106" y2="74" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="92" x2="106" y2="92" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="60" y1="36" x2="60" y2="106" stroke="#1A1A14" stroke-width="2"/>
+                </svg>
+                <span class="wordmark">SPECODEX</span>
+            </a>
+            <nav class="band-nav" aria-label="Section">
+                <a href="../index.html">Catalog</a>
+                <a href="./" class="active">Pull Requests</a>
+                <a href="https://github.com/JimothyJohn/specodex" rel="noreferrer">GitHub</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="hero-tag">▮▮▮ PULL REQUEST #90 ▮▮▮</div>
+            <h1 class="hero-title">DOUBLE_TAP — structured encoder schema + verifier-loop extraction</h1>
+            <p class="hero-sub">
+                The <code>encoder_feedback_support</code> field on
+                Motor / Drive / ElectricCylinder / LinearActuator was a
+                <code>str</code> / <code>List[str]</code> soup —
+                vendors say "EnDat 2.2", "BiSS-C 26-bit", "Smart
+                Absolute", and the LLM emits whatever string it sees.
+                Cross-product matching (drive ↔ motor compatibility)
+                degenerates to string comparison and false-fails on
+                casing or version drift. This PR closes the taxonomy
+                (13 device types × 22 wire protocols, mirroring
+                Heidenhain's published catalog axis) and adds a
+                verifier-loop runner that re-prompts Gemini with the
+                first-pass output + per-field hunting captions when
+                anything looks ambiguous or missing — the
+                <em>double-tap</em>.
+            </p>
+            <dl class="pr-meta">
+                <div><dt>Branch</dt><dd><code>feat/encoder-feedback-double-tap-20260509</code></dd></div>
+                <div><dt>Opened</dt><dd>2026-05-09 (DRAFT)</dd></div>
+                <div><dt>Diff</dt><dd>+~2,400 / −~20 across 18 files (incl. tests + plan + taxonomy + this self-page)</dd></div>
+                <div><dt>Plan</dt><dd><code>todo/DOUBLE_TAP.md</code> + <code>todo/DOUBLE_TAP_encoder_taxonomy.md</code></dd></div>
+                <div><dt>Type</dt><dd>Schema redesign + new pipeline phase + bench harness</dd></div>
+                <div><dt>Bench gate</dt><dd>Pending — needs <code>./Quickstart bench --ab --live</code> on the encoder-heavy fixtures before un-drafting</dd></div>
+            </dl>
+            <div class="cta-row">
+                <a class="cta cta-primary" href="https://github.com/JimothyJohn/specodex/pull/90" rel="noreferrer">View on GitHub →</a>
+                <a class="cta cta-ghost" href="./">All requests</a>
+            </div>
+        </section>
+
+        <section aria-label="Why">
+            <div class="divider"><span>▮▮▮ WHY ▮▮▮</span></div>
+            <p class="prose">
+                Two failures stapled together because they share a
+                root cause. <strong>(1) The schema is too loose.</strong>
+                The compatibility layer
+                (<code>integration/compat.py:_compare_feedback</code>)
+                does string membership against vendor-flavored
+                free-text — <code>"EnDat 2.2"</code> doesn't equal
+                <code>"endat 2.2"</code> doesn't equal
+                <code>"EnDat-2.2"</code>. We mask the problem by
+                <code>_soften</code>-ing every fail to partial, which
+                hides bugs. <strong>(2) One-shot extraction has no
+                recovery.</strong> When Gemini punts on a field — omits
+                it, picks a wrong unit, or fills fuzzy text where
+                structured belongs — we either trip the quality gate
+                at <code>min_quality=0.25</code> or, worse, the row
+                sails through with ambiguous strings and we blame the
+                vendor for an incomplete catalog the catalog
+                actually publishes.
+            </p>
+        </section>
+
+        <section aria-label="What changes">
+            <div class="divider"><span>▮▮▮ WHAT CHANGES ▮▮▮</span></div>
+            <ol class="cell-list">
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">A-1</span><h2 class="cell-title">EncoderFeedback model + closed taxonomy</h2></div>
+                    <p class="cell-body">
+                        New <code>specodex/models/encoder.py</code>
+                        defines <code>EncoderDevice</code> (13 values:
+                        <code>incremental_optical</code>,
+                        <code>absolute_optical_multiturn</code>,
+                        <code>resolver</code>, <code>none</code>,
+                        <code>unknown</code>, …) and
+                        <code>EncoderProtocol</code> (22 values:
+                        <code>biss_c</code>, <code>endat_2_2</code>,
+                        <code>hiperface_dsl</code>,
+                        <code>mitsubishi_j5</code>,
+                        <code>yaskawa_sigma</code>,
+                        <code>drive_cliq</code>,
+                        <code>oct_beckhoff</code>, …). Both axes carry
+                        an <code>"unknown"</code> sentinel + a
+                        <code>raw</code> passthrough field so the
+                        verifier has something to grab when the LLM
+                        punts. Disambiguation rules from the taxonomy
+                        doc are encoded in the field docstrings (which
+                        Gemini sees in <code>response_schema</code>):
+                        bare "EnDat" → <code>endat_2_2</code>; "Hiperface"
+                        without "DSL" → classic <code>hiperface</code>;
+                        "N-bit absolute" with no vendor →
+                        <code>bits_per_turn=N</code> +
+                        <code>protocol=null</code> (do NOT guess).
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">A-2</span><h2 class="cell-title">Back-compat: legacy free-text rows still validate</h2></div>
+                    <p class="cell-body">
+                        <code>EncoderFeedback._coerce_legacy_freetext</code>
+                        is a <code>model_validator(mode="before")</code>
+                        that runs string inputs through synonym tables
+                        — <code>"EnDat 2.2 multi-turn 26-bit"</code>
+                        becomes <code>{protocol: endat_2_2, device:
+                        absolute_optical, mode: absolute, multiturn:
+                        true, bits_per_turn: 26, raw: ...}</code>. Drive's
+                        protocol list gets the same treatment via a
+                        <code>BeforeValidator</code> on the field. Old
+                        DB rows survive the upgrade without a
+                        migration; rows whose text the synonym tables
+                        can't fully resolve get <code>device="unknown"</code>
+                        + <code>raw=&lt;input&gt;</code> so the verifier
+                        flags them.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">B-1</span><h2 class="cell-title">Compat layer goes typed</h2></div>
+                    <p class="cell-body">
+                        <code>_compare_feedback</code> now extracts the
+                        motor's <code>EncoderFeedback.protocol</code>
+                        and checks membership in the drive's
+                        <code>List[EncoderProtocol]</code>, with a
+                        <code>SUBSUMES</code> widening matrix (EnDat
+                        2.2 accepts 2.1 per Heidenhain docs;
+                        Hiperface ≠ Hiperface DSL — distinct cable
+                        architectures, do not collapse). The motor
+                        side with no protocol set returns
+                        <code>partial</code> rather than fabricating a
+                        match.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">C-1</span><h2 class="cell-title">Verifier — first-pass quality probe</h2></div>
+                    <p class="cell-body">
+                        New <code>specodex/double_tap/verifier.py</code>
+                        inspects each parsed product and emits a
+                        <code>Probe</code> describing what to re-extract.
+                        v1 fires on (a) encoder ambiguity (device or
+                        protocol resolved to <code>unknown</code>) and
+                        (b) common-field missing (per-product-type
+                        small list of "almost always populated" fields:
+                        motor: <code>rated_voltage</code>,
+                        <code>rated_torque</code>, <code>rotor_inertia</code>,
+                        …). Each <code>FieldProbe</code> carries the
+                        catalog captions to hunt for — for
+                        <code>rotor_inertia</code>: "Rotor inertia",
+                        "GD²/4", "J", "kg·m²", "kg·cm²".
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">C-2</span><h2 class="cell-title">Runner — primed second pass + conservative merge</h2></div>
+                    <p class="cell-body">
+                        <code>specodex/double_tap/runner.py</code>:
+                        first-pass extract → verify → if any probe
+                        fires, build ONE second-pass prompt covering
+                        every probed variant (so cost is one extra LLM
+                        call regardless of variant count, not N) → re-
+                        extract → merge. The merge takes second-pass
+                        values <em>only</em> for probed fields; first-
+                        pass values for everything else. A future
+                        contributor "improving" the merge to prefer
+                        second-pass everywhere would let a hallucinating
+                        second pass regress good first-pass data — the
+                        bench's regression-direction column catches
+                        that.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">D-1</span><h2 class="cell-title">Scraper integration — env-gated, off by default</h2></div>
+                    <p class="cell-body">
+                        <code>SPECODEX_DOUBLE_TAP=1</code> flips the
+                        bundled-PDF and HTML extraction paths in
+                        <code>process_datasheet</code> to use the
+                        runner instead of <code>call_llm_and_parse</code>.
+                        Per-page extraction stays single-shot for cost.
+                        Telemetry (<code>double_tap_fired</code>,
+                        <code>double_tap_probes_fired</code>,
+                        <code>double_tap_fields_recovered</code>,
+                        <code>double_tap_fields_corrected</code>,
+                        <code>double_tap_unresolved</code>) writes to
+                        the ingest log so godmode can show daily
+                        probe-fire and recovery yield.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">E-1</span><h2 class="cell-title">Bench A/B harness</h2></div>
+                    <p class="cell-body">
+                        <code>./Quickstart bench --ab</code> runs each
+                        fixture in BOTH modes and emits a comparison
+                        table: Δ recall, Δ precision, Δ tokens, Δ cost,
+                        and a "worth it?" verdict. Threshold encoded as
+                        <code>WORTH_IT_THRESHOLD_PP_PER_100PCT_TOKENS
+                        = 5.0</code> — a fixture is worth the second
+                        pass when (Δ recall + Δ precision) per +100%
+                        tokens ≥ 5pp. The cache layout grows a
+                        <code>&lt;slug&gt;.double_tap.json</code> twin
+                        so live runs populate both modes once and
+                        offline <code>--ab</code> runs are free.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">F-1</span><h2 class="cell-title">Frontend: typed encoder + auto-derived UI</h2></div>
+                    <p class="cell-body">
+                        <code>./Quickstart gen-types</code>
+                        regenerates <code>generated.ts</code>; the
+                        <code>EncoderFeedback</code> interface lands
+                        with full enum literals so the existing
+                        records-derived attribute logic
+                        (<code>filters.ts:deriveAttributesFromRecords</code>)
+                        auto-renders structured fields. Client-side
+                        <code>compat.ts:compareDriveMotorFeedback</code>
+                        updated to compare <code>motor.encoder_feedback_support
+                        ?.protocol</code> against the drive's
+                        protocol list (was passing the structured
+                        object to a <code>Maybe&lt;string&gt;</code>
+                        helper — caught by tsc).
+                    </p>
+                </li>
+            </ol>
+        </section>
+
+        <section aria-label="Files touched">
+            <div class="divider"><span>▮▮▮ FILES TOUCHED ▮▮▮</span></div>
+            <table class="spec-table">
+                <thead><tr><th>File</th><th>Lines</th><th>Note</th></tr></thead>
+                <tbody>
+                    <tr><td><code>specodex/models/encoder.py</code></td><td>+~480</td><td>NEW — closed taxonomy, parser, subsumption</td></tr>
+                    <tr><td><code>specodex/models/{motor,drive,electric_cylinder,linear_actuator}.py</code></td><td>+~25 / −5</td><td>swap field types to EncoderFeedback / EncoderProtocol</td></tr>
+                    <tr><td><code>specodex/integration/{ports,compat}.py</code></td><td>+~50 / −10</td><td>structural feedback comparator</td></tr>
+                    <tr><td><code>specodex/double_tap/__init__.py</code></td><td>+~25</td><td>NEW — package surface</td></tr>
+                    <tr><td><code>specodex/double_tap/{verifier,prompt,runner,captions}.py</code></td><td>+~700</td><td>NEW — verifier loop core</td></tr>
+                    <tr><td><code>specodex/llm.py</code> + <code>specodex/extract.py</code></td><td>+~15</td><td>plumb <code>prompt_prefix</code> kwarg</td></tr>
+                    <tr><td><code>specodex/scraper.py</code></td><td>+~50 / −10</td><td>env-gated <code>_extract_with_optional_double_tap</code> wrapper, ingest-log telemetry</td></tr>
+                    <tr><td><code>cli/bench.py</code> + <code>cli/bench_ab.py</code></td><td>+~250</td><td><code>--double-tap</code> + <code>--ab</code> flags, comparison harness</td></tr>
+                    <tr><td><code>app/frontend/src/utils/compat.ts</code></td><td>+~5 / −1</td><td>read <code>motor.encoder_feedback_support?.protocol</code></td></tr>
+                    <tr><td><code>app/frontend/src/types/generated.ts</code></td><td>+~130</td><td>codegen output (EncoderFeedback / EncoderProtocol)</td></tr>
+                    <tr><td><code>tests/unit/{test_encoder,test_double_tap,test_bench_ab}.py</code></td><td>+~530</td><td>NEW — 53 cases (parser, subsumption, verifier, runner with mocked LLM, A/B math)</td></tr>
+                    <tr><td><code>todo/DOUBLE_TAP.md</code> + <code>todo/DOUBLE_TAP_encoder_taxonomy.md</code></td><td>+~570</td><td>NEW — plan + research appendix with source citations</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section aria-label="How to verify">
+            <div class="divider"><span>▮▮▮ HOW TO VERIFY ▮▮▮</span></div>
+            <ol class="cell-list">
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">V-1</span><h2 class="cell-title">Pre-push gate</h2></div>
+                    <p class="cell-body">
+                        <code>./Quickstart verify</code> green: 1,202
+                        pytest cases (53 new), 454 jest cases, 479
+                        vitest cases, all type checks. Codegen drift
+                        check inside <code>verify</code> confirms the
+                        committed <code>generated.ts</code> matches
+                        what <code>gen-types</code> produces.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">V-2</span><h2 class="cell-title">Bench A/B (live, behind operator gate)</h2></div>
+                    <p class="cell-body">
+                        <code>./Quickstart bench --ab --live --update-cache</code>
+                        on the existing fixture set populates both
+                        single-pass and double-tap caches and emits the
+                        comparison table. The PR un-drafts when at
+                        least 2 fixtures show <code>worth_it=True</code>
+                        (Δ recall + Δ precision ≥ 5pp per +100% tokens)
+                        — anything below that and the runner stays
+                        env-gated indefinitely. Fixture additions for
+                        encoder-specific stress (Mitsubishi MR-J5,
+                        Yaskawa Sigma-7) follow in a separate PR once
+                        baseline numbers are in.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">V-3</span><h2 class="cell-title">Compat regression spot-check</h2></div>
+                    <p class="cell-body">
+                        <code>uv run pytest tests/unit/test_integration.py -v</code>
+                        — all 20 cases pass. The "EnDat 2.2 motor on
+                        drive supporting [EnDat 2.2, Resolver]" test
+                        confirms the typed compat path returns
+                        <code>ok</code>. The "motor with EnDat 2.2 on
+                        drive supporting only [Resolver]" test confirms
+                        it returns <code>fail</code> (was sometimes
+                        false-passing under the old string-membership
+                        check).
+                    </p>
+                </li>
+            </ol>
+        </section>
+
+        <section aria-label="Known follow-ups">
+            <div class="divider"><span>▮▮▮ FOLLOW-UPS ▮▮▮</span></div>
+            <ol class="cell-list">
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">N-1</span><h2 class="cell-title">Delete <code>_soften</code> when API layer ready</h2></div>
+                    <p class="cell-body">
+                        <code>compat.py:_soften</code> exists because
+                        the old string-membership check would
+                        false-fail on casing/version drift; softening
+                        every fail to partial hid the bug. The typed
+                        check makes softening unnecessary — but the
+                        API layer still calls <code>_soften</code> by
+                        default. Separate PR rips it out once a couple
+                        weeks of production data show no surprise
+                        fails.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">N-2</span><h2 class="cell-title">Wrong-unit-dropped verifier rule</h2></div>
+                    <p class="cell-body">
+                        Rule 3 from the plan
+                        (<code>common.py</code>'s
+                        <code>BeforeValidator</code> silently nulling
+                        wrong-unit-family inputs) is stubbed. Needs the
+                        parser to surface the pre-coercion raw payload
+                        alongside the validated model. One-day add once
+                        the runner has bench numbers.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">N-3</span><h2 class="cell-title">Generalize beyond encoders</h2></div>
+                    <p class="cell-body">
+                        <code>Drive.fieldbus</code>,
+                        <code>Motor.frame_size</code>,
+                        <code>Gearhead.ratio</code>,
+                        <code>IpRating</code> — same vendor-string-soup
+                        problem, all benefit from the verifier
+                        framework once it's proven. Each is a one-day
+                        add after the bench shows positive ROI on
+                        encoder.
+                    </p>
+                </li>
+            </ol>
+        </section>
+
+        <a class="back-link" href="./">← back to requests log</a>
+    </main>
+
+    <footer>
+        <div class="footer-inner">
+            <span>© 2026 Specodex · PR #90</span>
+            <span class="footer-rule" aria-hidden="true"></span>
+            <a class="footer-link" href="https://github.com/JimothyJohn/specodex/pull/90" rel="noreferrer">View on GitHub</a>
+            <a class="footer-link" href="./">All requests</a>
+        </div>
+    </footer>
+</body>
+</html>

@@ -54,6 +54,36 @@
             <div class="divider"><span>▮▮▮ RECENT PULL REQUESTS ▮▮▮</span></div>
             <ol class="pr-cards">
                 <li>
+                    <a class="pr-card" href="90.html">
+                        <div class="pr-card-head">
+                            <span class="pr-num">PR #90 (DRAFT)</span>
+                            <h2 class="pr-title">DOUBLE_TAP — structured EncoderFeedback + verifier-loop second pass + bench A/B</h2>
+                        </div>
+                        <div class="pr-card-meta">
+                            <span>Opened 2026-05-09</span>
+                            <span>+~2,400 / −~20 across 18 files (+ self-page)</span>
+                            <span>Branch <code>feat/encoder-feedback-double-tap-20260509</code></span>
+                        </div>
+                        <p class="pr-card-body">
+                            Replaces <code>encoder_feedback_support: Optional[str | List[str]]</code>
+                            with a closed taxonomy (13 device types ×
+                            22 wire protocols, mirroring Heidenhain's
+                            published catalog axis) and adds a
+                            verifier-loop runner that re-prompts Gemini
+                            with the first-pass output + per-field
+                            hunting captions when fields look
+                            ambiguous or missing. Env-gated behind
+                            <code>SPECODEX_DOUBLE_TAP=1</code> until
+                            <code>./Quickstart bench --ab</code>
+                            confirms ≥5pp recall lift per +100% tokens
+                            on at least two fixtures. Plan in
+                            <code>todo/DOUBLE_TAP.md</code>; taxonomy
+                            research with source citations in
+                            <code>todo/DOUBLE_TAP_encoder_taxonomy.md</code>.
+                        </p>
+                    </a>
+                </li>
+                <li>
                     <a class="pr-card" href="84.html">
                         <div class="pr-card-head">
                             <span class="pr-num">PR #84</span>

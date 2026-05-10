@@ -127,8 +127,13 @@ function compareDriveMotorPower(drive: Drive, motor: Motor): StrictCompatResult 
 }
 
 function compareDriveMotorFeedback(drive: Drive, motor: Motor): StrictCompatResult {
+  // Post-DOUBLE_TAP: motor.encoder_feedback_support is now a structured
+  // EncoderFeedback (or null), and drive.encoder_feedback_support is
+  // List[EncoderProtocol]. The wire-protocol identity is what has to
+  // line up; the device behind the wire is the motor's problem.
+  const motorProtocol = motor.encoder_feedback_support?.protocol ?? null;
   const checks: StrictCheckResult[] = [
-    checkMembership(motor.encoder_feedback_support, drive.encoder_feedback_support, 'encoder_type'),
+    checkMembership(motorProtocol, drive.encoder_feedback_support, 'encoder_type'),
   ];
   return { from_port: 'Drive.feedback', to_port: 'Motor.feedback', status: rollUp(checks), checks };
 }

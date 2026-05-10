@@ -42,14 +42,27 @@ def call_llm_and_parse(
     context: dict,
     content_type: str,
     tokens: Optional[dict] = None,
+    prompt_prefix: Optional[str] = None,
 ) -> List[Any]:
     """Call Gemini and parse the response into Pydantic models.
 
     If ``tokens`` is a dict with 'input'/'output' keys, the per-call
     token counts are added to it in-place so the caller can roll up
     multi-call (per-page) extractions.
+
+    ``prompt_prefix`` is forwarded to ``generate_content`` — the
+    double-tap runner uses it to inject the priming block (first-pass
+    output + fields the verifier flagged) before the standard
+    extraction prompt.
     """
-    response = generate_content(doc_data, api_key, product_type, context, content_type)
+    response = generate_content(
+        doc_data,
+        api_key,
+        product_type,
+        context,
+        content_type,
+        prompt_prefix=prompt_prefix,
+    )
     if tokens is not None:
         inp, out = _token_counts(response)
         tokens["input"] = tokens.get("input", 0) + inp
