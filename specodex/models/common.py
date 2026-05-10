@@ -15,13 +15,16 @@ wrong-family units to ``None`` so the quality filter can drop the row.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import logging
+from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Annotated, Any, List, Literal, Optional
 
 from pydantic import BaseModel, BeforeValidator, model_validator
 
 from specodex.units import normalize_unit_value
+
+logger: logging.Logger = logging.getLogger(__name__)
 
 
 ProductType = Literal[
@@ -88,14 +91,33 @@ class Datasheet(BaseModel):
 
 @dataclass(frozen=True)
 class UnitFamily:
-    """A physical-quantity family: canonical unit + accepted aliases."""
+    """A physical-quantity family: canonical unit + accepted aliases.
+
+    ``pre_rewrite`` maps catalog-flavoured aliases that don't appear in
+    ``accepted`` to a member of ``accepted`` BEFORE the family check
+    runs. Used for catalog conventions where an industrial vendor uses
+    a unit symbol that's technically wrong but unambiguous in context —
+    e.g. Lintech publishing load capacity as ``703 kg`` when they mean
+    kilogram-force, not mass. Rewrites only apply to fields typed with
+    this family, so a Mass-typed field still treats ``kg`` as canonical
+    mass.
+    """
 
     name: str
     canonical: str
     accepted: frozenset[str]
+    pre_rewrite: dict[str, str] = field(default_factory=dict)
 
     def contains(self, unit: str) -> bool:
         return unit == self.canonical or unit in self.accepted
+
+    def rewrite(self, unit: str) -> str:
+        """Apply per-family pre-rewrite to a unit string.
+
+        Returns the rewritten form if ``unit`` matches a key in
+        ``pre_rewrite``, otherwise ``unit`` unchanged.
+        """
+        return self.pre_rewrite.get(unit, unit)
 
 
 @dataclass(frozen=True)
@@ -454,6 +476,7 @@ FORCE = UnitFamily(
     "force",
     "N",
     frozenset({"N", "mN", "kN", "lbf", "kgf"}),
+    pre_rewrite={"kg": "kgf"},
 )
 LENGTH = UnitFamily(
     "length",
@@ -514,6 +537,38 @@ INDUCTANCE = UnitFamily(
 )
 
 
+def _rewrite_unit(family: UnitFamily, unit: str) -> str:
+    """Apply ``family.rewrite`` and emit a one-shot warning if anything changed.
+
+    Logged at WARNING because the rewrite is a catalog-convention
+    coercion (e.g. ``kg → kgf`` for Force), not a routine alias
+    normalisation — operators should be able to grep for it when
+    auditing extraction behaviour.
+    """
+    rewritten = family.rewrite(unit)
+    if rewritten != unit:
+        logger.warning(
+            "%s field: rewriting unit %r to %r (catalog convention)",
+            family.name,
+            unit,
+            rewritten,
+        )
+    return rewritten
+
+
+def _rewrite_dict_unit(family: UnitFamily, v: Any) -> Any:
+    """Return ``v`` with its ``unit`` field rewritten if applicable.
+
+    For dicts only; ValueUnit / MinMaxUnit instances re-run their model
+    validators, so we rewrite their unit by reconstructing instead.
+    """
+    if family.pre_rewrite and isinstance(v, dict) and isinstance(v.get("unit"), str):
+        rewritten = _rewrite_unit(family, v["unit"])
+        if rewritten != v["unit"]:
+            return {**v, "unit": rewritten}
+    return v
+
+
 def _typed_value_unit(family: UnitFamily):
     """Build a ValueUnit Annotated narrowed to one quantity family.
 
@@ -528,14 +583,21 @@ def _typed_value_unit(family: UnitFamily):
         if v is None:
             return None
         if isinstance(v, ValueUnit):
+            rewritten = _rewrite_unit(family, v.unit) if family.pre_rewrite else v.unit
+            if rewritten != v.unit:
+                v = ValueUnit(value=v.value, unit=rewritten)
             return v if family.contains(v.unit) else None
         if isinstance(v, MinMaxUnit):
+            rewritten = _rewrite_unit(family, v.unit) if family.pre_rewrite else v.unit
+            if rewritten != v.unit:
+                v = MinMaxUnit(min=v.min, max=v.max, unit=rewritten)
             if not family.contains(v.unit):
                 return None
             scalar = v.min if v.min is not None else v.max
             if scalar is None:
                 return None
             return ValueUnit(value=scalar, unit=v.unit)
+        v = _rewrite_dict_unit(family, v)
         try:
             instance = ValueUnit.model_validate(v)
         except (ValueError, TypeError):
@@ -556,11 +618,18 @@ def _typed_min_max_unit(family: UnitFamily):
         if v is None:
             return None
         if isinstance(v, MinMaxUnit):
+            rewritten = _rewrite_unit(family, v.unit) if family.pre_rewrite else v.unit
+            if rewritten != v.unit:
+                v = MinMaxUnit(min=v.min, max=v.max, unit=rewritten)
             return v if family.contains(v.unit) else None
         if isinstance(v, ValueUnit):
+            rewritten = _rewrite_unit(family, v.unit) if family.pre_rewrite else v.unit
+            if rewritten != v.unit:
+                v = ValueUnit(value=v.value, unit=rewritten)
             if not family.contains(v.unit):
                 return None
             return MinMaxUnit(min=v.value, max=None, unit=v.unit)
+        v = _rewrite_dict_unit(family, v)
         try:
             instance = MinMaxUnit.model_validate(v)
         except (ValueError, TypeError):
