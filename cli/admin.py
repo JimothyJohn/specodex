@@ -298,6 +298,24 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument("-o", "--output", default=None, help="Write findings to JSONL file")
 
+    # backfill-motor-mounts (SCHEMA Phase 2)
+    p = sub.add_parser(
+        "backfill-motor-mounts",
+        help="Derive motor_mount_pattern from frame_size on existing motor rows",
+    )
+    p.add_argument(
+        "--stage",
+        required=True,
+        choices=STAGES,
+        help="Which stage to walk. dev only by convention — promote separately.",
+    )
+    p.add_argument(
+        "--apply",
+        action="store_true",
+        help="Actually update DynamoDB (default: dry run; prints summary only)",
+    )
+    p.add_argument("--json", action="store_true", help="Emit JSON instead of a summary")
+
     return parser
 
 
@@ -311,6 +329,32 @@ def cmd_audit_units(args: argparse.Namespace) -> int:
     return audit_units.audit(table, region, args.output)
 
 
+def cmd_backfill_motor_mounts(args: argparse.Namespace) -> int:
+    from specodex.admin.motor_mount_backfill import backfill_motor_mounts
+
+    client = make_client(args.stage)
+    result = backfill_motor_mounts(client, apply=args.apply)
+
+    if args.json:
+        print(json.dumps(result.to_dict(), indent=2))
+    else:
+        print(f"motor_mount_pattern backfill — stage={args.stage} apply={args.apply}")
+        print(f"  considered:      {result.considered}")
+        print(f"  already_set:     {result.already_set}")
+        print(f"  no frame_size:   {result.no_frame_size}")
+        print(f"  unmatched frame: {result.unmatched_frame}")
+        print(f"  matched:         {result.matched}")
+        if args.apply:
+            print(f"  written:         {result.written}")
+        if result.samples:
+            print("\n  sample mappings:")
+            for s in result.samples:
+                print(f"    {s['frame_size']!r:>16} → {s['motor_mount_pattern']!r}")
+        if not args.apply and result.matched > 0:
+            print("\n(dry run — re-run with --apply to write)")
+    return 0
+
+
 def main(argv: Optional[list[str]] = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -322,6 +366,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         "demote": cmd_demote,
         "purge": cmd_purge,
         "audit-units": cmd_audit_units,
+        "backfill-motor-mounts": cmd_backfill_motor_mounts,
     }
     return dispatch[args.command](args)
 
