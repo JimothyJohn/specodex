@@ -4,6 +4,9 @@ import pytest
 
 from specodex.models.common import (
     Current,
+    Force,
+    ForceRange,
+    Mass,
     MinMaxUnit,
     Voltage,
     ValueUnit,
@@ -167,6 +170,113 @@ class TestTypedAliases:
 
         m = M(v={"min": 0, "max": 50, "unit": "°C"})
         assert m.v is None
+
+
+class TestForceKgCoercion:
+    """Force fields rewrite ``kg`` to ``kgf`` (catalog convention).
+
+    Lintech and similar industrial vendors publish load capacities as
+    ``703 kg`` when they mean kilogram-force, not mass. The Force
+    family's ``pre_rewrite`` table coerces this BEFORE the family
+    check so the existing ``kgf → N`` (×9.80665) normaliser handles
+    the conversion in one pass. The rewrite is family-scoped — Mass
+    fields still treat ``kg`` as canonical.
+    """
+
+    def test_force_dict_kg_coerces_to_N(self):
+        class M(BaseModel):
+            v: Force = None
+
+        m = M(v={"value": 703, "unit": "kg"})
+        assert m.v is not None
+        assert m.v.unit == "N"
+        # 703 kgf × 9.80665 = 6,892.0... N
+        assert m.v.value == pytest.approx(6892.07, rel=1e-3)
+
+    def test_force_dict_kgf_still_works(self):
+        class M(BaseModel):
+            v: Force = None
+
+        m = M(v={"value": 100, "unit": "kgf"})
+        assert m.v is not None
+        assert m.v.unit == "N"
+        assert m.v.value == pytest.approx(980.665, rel=1e-3)
+
+    def test_force_dict_N_still_canonical(self):
+        class M(BaseModel):
+            v: Force = None
+
+        m = M(v={"value": 500, "unit": "N"})
+        assert m.v is not None
+        assert m.v.unit == "N"
+        assert m.v.value == 500.0
+
+    def test_mass_field_kg_still_canonical(self):
+        class M(BaseModel):
+            v: Mass = None
+
+        m = M(v={"value": 5, "unit": "kg"})
+        assert m.v is not None
+        assert m.v.unit == "kg"
+        assert m.v.value == 5.0
+
+    def test_voltage_field_rejects_kg(self):
+        class M(BaseModel):
+            v: Voltage = None
+
+        m = M(v={"value": 100, "unit": "kg"})
+        assert m.v is None
+
+    def test_force_value_unit_instance_kg_rewrites(self):
+        class M(BaseModel):
+            v: Force = None
+
+        vu = ValueUnit(value=50, unit="kg")
+        m = M(v=vu)
+        assert m.v is not None
+        assert m.v.unit == "N"
+        assert m.v.value == pytest.approx(490.33, rel=1e-3)
+
+    def test_force_min_max_kg_coerces_via_kgf(self):
+        class M(BaseModel):
+            v: Force = None
+
+        m = M(v={"min": 100, "max": 500, "unit": "kg"})
+        assert m.v is not None
+        assert m.v.unit == "N"
+        # collapses to scalar = min after passing the family check
+        assert m.v.value == pytest.approx(980.665, rel=1e-3)
+
+    def test_force_range_kg_coerces_via_kgf(self):
+        class M(BaseModel):
+            v: ForceRange = None
+
+        m = M(v={"min": 100, "max": 500, "unit": "kg"})
+        assert m.v is not None
+        assert m.v.unit == "N"
+        assert m.v.min == pytest.approx(980.665, rel=1e-3)
+        assert m.v.max == pytest.approx(4903.32, rel=1e-3)
+
+    def test_force_kg_emits_warning(self, caplog):
+        class M(BaseModel):
+            v: Force = None
+
+        with caplog.at_level("WARNING", logger="specodex.models.common"):
+            M(v={"value": 703, "unit": "kg"})
+        assert any(
+            "force field" in rec.message.lower()
+            and "'kg'" in rec.message
+            and "'kgf'" in rec.message
+            for rec in caplog.records
+        )
+
+    def test_force_kgf_emits_no_rewrite_warning(self, caplog):
+        class M(BaseModel):
+            v: Force = None
+
+        with caplog.at_level("WARNING", logger="specodex.models.common"):
+            M(v={"value": 100, "unit": "kgf"})
+        assert not any("rewriting unit" in rec.message for rec in caplog.records)
 
 
 class TestStrCoercer:
