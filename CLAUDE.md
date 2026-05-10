@@ -219,9 +219,9 @@ Results write to `outputs/benchmarks/<timestamp>.json` and `outputs/benchmarks/l
 
 - **[FIXED 2026-04-16]** Page finder keywords were motor-centric. `SPEC_KEYWORDS` in `specodex/page_finder.py` now has 18 groups covering electronics, mechanics, mechatronics (switching devices, linear actuation, rotary/gearing, robotics, sensors, environmental, certifications). Mitsubishi contactor catalog: 4/410 → 77/410 spec pages after the broadening.
 - **Nidec: 1/14 spec pages found** — added `cogging torque`/`thermal resistance` keywords didn't move the needle; this PDF may use non-English phrasings page_finder can't match. Revisit when someone cares about frameless coverage specifically.
-- **`ambient_temp` validation bug**: Gemini emits `{"unit": "V"}` (dict) where Drive model expects MinMaxUnit string. Drops rows silently.
+- **[FIXED via structured ValueUnit/MinMaxUnit migration]** `ambient_temp` validation bug: the field is now typed `Temperature = _typed_value_unit(TEMPERATURE)` on Contactor (and was retired from Drive); the per-family BeforeValidator drops wrong-family inputs to `None` instead of raising, so a `{"unit": "V"}` dict no longer kills the row. The structured-types regression suite (`tests/unit/test_models_common.py::TestTypedAliases`) pins this behaviour.
 - **Omron: 80% precision / 42% recall**: 13 variants extracted but missing over half the fields on matched ground-truth record.
-- **`scraper.py:batch_create(parsed_models)` bug**: the DB write passes `parsed_models` (raw) instead of `valid_models` (quality-filtered). Low-quality products get written anyway. The "Successfully pushed 99 items to DynamoDB, -75 items failed" log line is the tell — negative failure count means the filter was bypassed.
+- **[FIXED]** `scraper.py:batch_create(parsed_models)` bug: the DB write at `specodex/scraper.py:959` now passes `passed_models` (the quality-filtered list), not `parsed_models`. The "negative failure count" log signature no longer surfaces; the filter is the source of truth.
 
 ## Property testing — adversarial by default
 
