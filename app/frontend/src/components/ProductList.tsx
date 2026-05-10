@@ -158,11 +158,13 @@ export default function ProductList() {
   // Floor widths (px) for the part-number column. Compact tightens
   // further than cozy on the assumption that part numbers will truncate
   // gracefully (they're scannable abbreviations, not prose).
-  const defaultPartWidth = rowDensity === 'compact' ? 130 : 160;
+  const defaultPartWidth = rowDensity === 'compact' ? 140 : 160;
   // Spec column floor. Cozy keeps the slider+operator+value row legible
-  // (~120px). Compact strips the slider in PR 2 so the floor drops to
-  // ~90px — value+operator+unit fits comfortably.
-  const defaultColWidth = rowDensity === 'compact' ? 90 : 120;
+  // (~120px). Compact has no slider but the column-name label wraps
+  // to two lines instead of truncating, so 110px is the floor that
+  // lets most spec names render without "..." while still fitting
+  // ~14-16 columns on a 1080p viewport.
+  const defaultColWidth = rowDensity === 'compact' ? 110 : 120;
   const { columnWidths, setColumnWidths, startResize } = useColumnResize({ part_number: defaultPartWidth });
 
   // Keys that should never render as their own column. `part_number` is

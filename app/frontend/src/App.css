@@ -6774,17 +6774,41 @@ input.transmission-param-input {
   vertical-align: top;
 }
 
-/* Row 1 (label + sort + close) — smaller than cozy's 22px row. */
+/* Row 1 (label + sort + close). The label wraps to up to 2 lines
+ * instead of truncating with "…" — column names like "Continuous
+ * Stall Torque" or "Operating Temperature" don't fit on one line at
+ * compact's column width, and ellipsis is the affordance the user
+ * specifically asked to get rid of. Close X aligns to top so it
+ * sits next to the first line of the label rather than centering on
+ * a possibly-two-line block. */
 .compact-column-header .column-header-top {
-  margin: 0 0 0.1rem;
+  margin: 0 0 0.15rem;
   gap: 0.2rem;
+  align-items: flex-start;
 }
 
 .compact-column-header .column-header-sort {
-  height: 18px;
-  font-size: 0.7rem;
+  flex: 1 1 0;
+  min-width: 0;
+  height: auto;
+  min-height: 18px;
+  max-height: 34px;
+  padding: 1px 0.2rem 0;
+  align-items: flex-start;
+  text-align: left;
+}
+
+.compact-column-header .column-header-sort .column-header-label-text {
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: clip;
+  line-height: 1.15;
+  font-size: 0.72rem;
   font-weight: 700;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.02em;
 }
 
 .compact-column-header .column-header-top .column-remove-btn {
@@ -6792,6 +6816,7 @@ input.transmission-param-input {
   width: 16px !important;
   height: 16px !important;
   font-size: 11px !important;
+  margin-top: 1px;
 }
 
 .compact-column-header .column-header-top .column-remove-btn svg {
