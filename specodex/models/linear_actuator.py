@@ -11,6 +11,7 @@ from specodex.models.common import (
     IpRating,
     Length,
     Mass,
+    MotorMountPattern,
     Power,
     TemperatureRange,
     Torque,
@@ -116,6 +117,18 @@ class LinearActuator(ProductBase):
     # than a single one.
     encoder_feedback_support: Optional[List[EncoderFeedback]] = Field(
         None, description="Types of encoder feedback supported."
+    )
+    # Motor mounts this actuator accepts. A Lintech 200 takes both NEMA
+    # 23 and NEMA 34; a Tolomatic BCS15 is NEMA 23 only. Bridges to
+    # Motor.motor_mount_pattern via the device-relations layer
+    # (SCHEMA.md Part 3) so "show me motors that fit this actuator"
+    # is a typed query, not string comparison.
+    compatible_motor_mounts: Optional[List[MotorMountPattern]] = Field(
+        None,
+        description=(
+            "Motor frames this actuator can accept (e.g. ['NEMA 23', 'NEMA 34']). "
+            "Drives compatible-motor queries on the /actuators page."
+        ),
     )
     rated_voltage: VoltageRange = Field(
         None, description="Rated input voltage (e.g., in V)"

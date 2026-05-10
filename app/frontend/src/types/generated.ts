@@ -598,6 +598,37 @@ export interface ElectricCylinder {
    */
   motor_type?: string | null;
   /**
+   * Motor frame designator the cylinder mounts to (e.g. 'NEMA 23').
+   */
+  motor_mount_pattern?:
+    | (
+        | "NEMA 8"
+        | "NEMA 11"
+        | "NEMA 14"
+        | "NEMA 17"
+        | "NEMA 23"
+        | "NEMA 34"
+        | "NEMA 42"
+        | "IEC 56"
+        | "IEC 63"
+        | "IEC 71"
+        | "IEC 80"
+        | "IEC 90"
+        | "IEC 100"
+        | "IEC 112"
+        | "IEC 132"
+        | "MAX 8"
+        | "MAX 13"
+        | "MAX 16"
+        | "MAX 20"
+        | "MAX 25"
+        | "MAX 30"
+        | "MAX 35"
+        | "MAX 40"
+        | "custom"
+      )
+    | null;
+  /**
    * Lead screw pitch (e.g., in mm/rev)
    */
   lead_screw_pitch?: ValueUnit | null;
@@ -871,6 +902,68 @@ export interface Gearhead {
    */
   output_shaft_diameter?: ValueUnit | null;
   /**
+   * Motor frames this gearhead accepts on its input flange (e.g. ['NEMA 23', 'NEMA 34']).
+   */
+  input_motor_mount?:
+    | (
+        | "NEMA 8"
+        | "NEMA 11"
+        | "NEMA 14"
+        | "NEMA 17"
+        | "NEMA 23"
+        | "NEMA 34"
+        | "NEMA 42"
+        | "IEC 56"
+        | "IEC 63"
+        | "IEC 71"
+        | "IEC 80"
+        | "IEC 90"
+        | "IEC 100"
+        | "IEC 112"
+        | "IEC 132"
+        | "MAX 8"
+        | "MAX 13"
+        | "MAX 16"
+        | "MAX 20"
+        | "MAX 25"
+        | "MAX 30"
+        | "MAX 35"
+        | "MAX 40"
+        | "custom"
+      )[]
+    | null;
+  /**
+   * Output flange pattern (matches downstream device's input mount).
+   */
+  output_motor_mount?:
+    | (
+        | "NEMA 8"
+        | "NEMA 11"
+        | "NEMA 14"
+        | "NEMA 17"
+        | "NEMA 23"
+        | "NEMA 34"
+        | "NEMA 42"
+        | "IEC 56"
+        | "IEC 63"
+        | "IEC 71"
+        | "IEC 80"
+        | "IEC 90"
+        | "IEC 100"
+        | "IEC 112"
+        | "IEC 132"
+        | "MAX 8"
+        | "MAX 13"
+        | "MAX 16"
+        | "MAX 20"
+        | "MAX 25"
+        | "MAX 30"
+        | "MAX 35"
+        | "MAX 40"
+        | "custom"
+      )
+    | null;
+  /**
    * Maximum radial load (F2m) (e.g., in N)
    */
   max_radial_load?: ValueUnit | null;
@@ -1050,6 +1143,37 @@ export interface LinearActuator {
    */
   encoder_feedback_support?: EncoderFeedback[] | null;
   /**
+   * Motor frames this actuator can accept (e.g. ['NEMA 23', 'NEMA 34']). Drives compatible-motor queries on the /actuators page.
+   */
+  compatible_motor_mounts?:
+    | (
+        | "NEMA 8"
+        | "NEMA 11"
+        | "NEMA 14"
+        | "NEMA 17"
+        | "NEMA 23"
+        | "NEMA 34"
+        | "NEMA 42"
+        | "IEC 56"
+        | "IEC 63"
+        | "IEC 71"
+        | "IEC 80"
+        | "IEC 90"
+        | "IEC 100"
+        | "IEC 112"
+        | "IEC 132"
+        | "MAX 8"
+        | "MAX 13"
+        | "MAX 16"
+        | "MAX 20"
+        | "MAX 25"
+        | "MAX 30"
+        | "MAX 35"
+        | "MAX 40"
+        | "custom"
+      )[]
+    | null;
+  /**
    * Rated input voltage (e.g., in V)
    */
   rated_voltage?: MinMaxUnit | null;
@@ -1180,6 +1304,34 @@ export interface Motor {
   radial_load_force_rating?: MinMaxUnit | null;
   shaft_diameter?: ValueUnit | null;
   frame_size?: string | null;
+  motor_mount_pattern?:
+    | (
+        | "NEMA 8"
+        | "NEMA 11"
+        | "NEMA 14"
+        | "NEMA 17"
+        | "NEMA 23"
+        | "NEMA 34"
+        | "NEMA 42"
+        | "IEC 56"
+        | "IEC 63"
+        | "IEC 71"
+        | "IEC 80"
+        | "IEC 90"
+        | "IEC 100"
+        | "IEC 112"
+        | "IEC 132"
+        | "MAX 8"
+        | "MAX 13"
+        | "MAX 16"
+        | "MAX 20"
+        | "MAX 25"
+        | "MAX 30"
+        | "MAX 35"
+        | "MAX 40"
+        | "custom"
+      )
+    | null;
 }
 /**
  * A base model for products with common attributes, designed for DynamoDB.
