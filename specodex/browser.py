@@ -183,7 +183,15 @@ def fetch_page(url: str) -> PageContent:
 
     Raises:
         RuntimeError: If the page cannot be loaded.
+        UnsafeURLError: If the URL targets an internal/metadata host
+            (RFC1918, link-local, loopback, etc.) or uses a non-HTTPS
+            scheme. See :mod:`specodex.url_safety`.
     """
+    # SSRF defense — URL is user-controlled.
+    from specodex.url_safety import validate_url
+
+    validate_url(url)
+
     logger.info("Fetching page with Playwright: %s", url)
 
     with sync_playwright() as pw:
