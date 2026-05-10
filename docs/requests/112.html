@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Specodex PR #112 — HARDENING Phase 3.1 target 2 property tests for common.py BeforeValidators (caught real _coerce_ip_rating bug).">
+    <meta name="theme-color" content="#3A2C1C">
+    <title>Specodex — PR #112: HARDENING 3.1 BeforeValidators (caught _coerce_ip_rating bug)</title>
+    <link rel="icon" type="image/svg+xml" href="../logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-issue="PR-112">
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="band">
+        <div class="band-inner">
+            <a class="band-brand" href="../index.html">
+                <svg class="band-mark" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <rect width="120" height="120" fill="#E8E2C9"/>
+                    <rect x="14" y="14" width="92" height="92" fill="none" stroke="#1A1A14" stroke-width="3"/>
+                    <rect x="14" y="14" width="92" height="22" fill="#3A2C1C"/>
+                    <rect x="62" y="60" width="40" height="10" fill="#A88A1C"/>
+                    <line x1="14" y1="56" x2="106" y2="56" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="74" x2="106" y2="74" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="92" x2="106" y2="92" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="60" y1="36" x2="60" y2="106" stroke="#1A1A14" stroke-width="2"/>
+                </svg>
+                <span class="wordmark">SPECODEX</span>
+            </a>
+            <nav class="band-nav" aria-label="Section">
+                <a href="../index.html">Catalog</a>
+                <a href="./" class="active">Pull Requests</a>
+                <a href="https://github.com/JimothyJohn/specodex" rel="noreferrer">GitHub</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="hero-tag">▮▮▮ PULL REQUEST #112 ▮▮▮</div>
+            <h1 class="hero-title">HARDENING Phase 3.1 target 2 — common.py BeforeValidator property tests <em>(caught a real bug)</em></h1>
+            <p class="hero-sub">
+                Property tests for the BeforeValidators in
+                <code>specodex/models/common.py</code>. Hypothesis ran
+                200-300 examples per coercer over recursive adversarial
+                inputs and <strong>found a real bug</strong> in
+                <code>_coerce_ip_rating</code> that this PR fixes — list
+                / tuple / float inputs were returning the input unchanged
+                instead of <code>None</code>, contradicting the
+                docstring's "Anything else becomes None" contract. Bool
+                inputs (True/False) were sneaking through
+                <code>isinstance(v, int)</code> and becoming IP ratings
+                of 1/0.
+            </p>
+            <dl class="pr-meta">
+                <div><dt>Branch</dt><dd><code>auto/hardening-3-1-property-validators-20260510</code></dd></div>
+                <div><dt>Opened</dt><dd>2026-05-10 (DRAFT)</dd></div>
+                <div><dt>Diff</dt><dd>+393 / −2 across 3 files</dd></div>
+                <div><dt>Plan</dt><dd><code>todo/HARDENING.md</code> Phase 3.1 (target 2 of 3)</dd></div>
+                <div><dt>Type</dt><dd>Test + bug fix — adversarial-by-default in action</dd></div>
+            </dl>
+            <div class="cta-row">
+                <a class="cta cta-primary" href="https://github.com/JimothyJohn/specodex/pull/112" rel="noreferrer">View on GitHub →</a>
+                <a class="cta cta-ghost" href="./">All requests</a>
+            </div>
+        </section>
+
+        <section aria-label="The bug Hypothesis caught">
+            <div class="divider"><span>▮▮▮ THE BUG ▮▮▮</span></div>
+            <p class="prose">
+                <code>_coerce_ip_rating</code>'s docstring promised
+                "Anything else becomes None" — the function-end
+                <code>return v</code> violated that for lists, tuples,
+                floats. Worse: <code>isinstance(v, int)</code> is
+                <code>True</code> for booleans in Python (since
+                <code>bool ⊂ int</code>), so <code>True</code> /
+                <code>False</code> were emerging as IP ratings of 1 / 0.
+                Real IP ratings are two digits; bools are garbage.
+            </p>
+            <p class="prose">
+                Fix: explicit <code>isinstance(v, bool) → None</code>
+                guard before the int check, and replace the trailing
+                <code>return v</code> with <code>return None</code>.
+                Per CLAUDE.md "Bug fix → regression test FIRST" — the
+                property test fails before the fix and stays after the
+                fix forever. Plus 5 explicit regression cases under
+                <code>TestCoerceIpRating</code> for list, tuple, float,
+                True, False so the specific shapes hypothesis surfaced
+                are pinned even if strategies drift.
+            </p>
+        </section>
+
+        <section aria-label="What changes">
+            <div class="divider"><span>▮▮▮ WHAT CHANGES ▮▮▮</span></div>
+            <ol class="cell-list">
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">A-1</span><h2 class="cell-title">12 property tests at 200-300 examples each</h2></div>
+                    <p class="cell-body">
+                        Targets: <code>_strip_value_qualifiers</code>,
+                        <code>_coerce_str_to_value_unit_dict</code>,
+                        <code>_coerce_dict_to_value_unit_dict</code> (both
+                        ValueUnit-ish and arbitrary dicts),
+                        <code>_coerce_str_to_min_max_unit_dict</code>,
+                        <code>_coerce_dict_to_min_max_unit_dict</code>
+                        (both shapes), <code>_coerce_ip_rating</code>,
+                        family-typed Voltage / Force / Mass / ForceRange
+                        BeforeValidators. Each verifies (1) never raises,
+                        (2) result shape is well-formed, (3) family-typed
+                        aliases never leak wrong-family.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">A-2</span><h2 class="cell-title"><code>_coerce_ip_rating</code> two-line fix</h2></div>
+                    <p class="cell-body">
+                        Add <code>isinstance(v, bool)</code> guard before
+                        the int passthrough; change trailing
+                        <code>return v</code> → <code>return None</code>.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">A-3</span><h2 class="cell-title">5 explicit regression cases</h2></div>
+                    <p class="cell-body">
+                        list, tuple, float, True, False — each pinned to
+                        return None. Stays in the suite even if the
+                        hypothesis strategy generations drift.
+                    </p>
+                </li>
+            </ol>
+        </section>
+
+        <section aria-label="Files touched">
+            <div class="divider"><span>▮▮▮ FILES TOUCHED ▮▮▮</span></div>
+            <table class="spec-table">
+                <thead><tr><th>File</th><th>Lines</th><th>Note</th></tr></thead>
+                <tbody>
+                    <tr><td><code>tests/unit/test_common_validators_property.py</code></td><td>+~290</td><td>NEW — 12 property tests across 7 coercer surfaces</td></tr>
+                    <tr><td><code>specodex/models/common.py</code></td><td>+5 / −2</td><td>The bug fix: bool guard + None fall-through</td></tr>
+                    <tr><td><code>tests/unit/test_models_common.py</code></td><td>+~25</td><td>5 explicit regression cases under TestCoerceIpRating</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section aria-label="How to verify">
+            <div class="divider"><span>▮▮▮ HOW TO VERIFY ▮▮▮</span></div>
+            <ol class="cell-list">
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">V-1</span><h2 class="cell-title">Pre-push gate</h2></div>
+                    <p class="cell-body">
+                        <code>./Quickstart verify --only python</code>:
+                        1303 passed (was 1295 + 8 new). Property test
+                        fails before the fix; passes after.
+                    </p>
+                </li>
+            </ol>
+        </section>
+
+        <a class="back-link" href="./">← back to requests log</a>
+    </main>
+
+    <footer>
+        <div class="footer-inner">
+            <span>© 2026 Specodex · PR #112</span>
+            <span class="footer-rule" aria-hidden="true"></span>
+            <a class="footer-link" href="https://github.com/JimothyJohn/specodex/pull/112" rel="noreferrer">View on GitHub</a>
+            <a class="footer-link" href="./">All requests</a>
+        </div>
+    </footer>
+</body>
+</html>
