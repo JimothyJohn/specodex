@@ -214,8 +214,29 @@ def install_python_deps() -> None:
 
 
 def install_node_deps() -> None:
+    """Install Node deps strictly from the lockfile.
+
+    `npm ci` (not `npm install`) so the dep tree is reproducible and the
+    hoister can't drift across Node majors. `npm install` was the recurring
+    cause of the tsx / esbuild postinstall mismatch (`Expected "0.27.7" but
+    got "0.25.11"`) — every `./Quickstart dev` was silently re-resolving
+    transitive ranges and rehoisting platform binaries to a layout the
+    postinstall then rejected. See PR #96 for the full diagnosis.
+
+    If the user genuinely changed `app/package.json`, `npm ci` fails fast
+    with a clear lockfile-mismatch error; the user runs `npm install` once
+    to update the lockfile and commits both files together.
+
+    `npm ci` always wipes node_modules and reinstalls — ~5s on a warm
+    macOS / npm cache. We don't try to skip when the install is already
+    current; the simplest robust check (byte-comparing the committed
+    lockfile against npm's internal `node_modules/.package-lock.json`)
+    is wrong because npm strips the workspace root entry and adds
+    per-package `ideallyInert` markers. A correct skip would need to
+    canonicalise both files; not worth 5s of dev-start latency.
+    """
     info("Installing Node.js dependencies")
-    run(["npm", "install", "--silent"], cwd=APP)
+    run(["npm", "ci", "--silent", "--no-audit", "--no-fund"], cwd=APP)
 
 
 def health_check(url: str, retries: int = 30) -> bool:
@@ -406,7 +427,7 @@ def cmd_verify(args: argparse.Namespace) -> None:
         check_node_version()
         require_cmd("npm")
         if not (APP / "node_modules").exists():
-            fail("app/node_modules missing — run `(cd app && npm install)` first.")
+            fail("app/node_modules missing — run `(cd app && npm ci)` first.")
 
     if "python" in stages:
         info("Python: ruff check")
