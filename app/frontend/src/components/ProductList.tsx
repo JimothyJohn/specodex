@@ -960,9 +960,19 @@ export default function ProductList() {
           </div>
         </div>
 
-        {/* Linear / Z-axis controls for motors — moved out of the sidebar. */}
+        {/* Linear / Z-axis controls for motors — moved out of the sidebar.
+         * The label above the buttons ("Motor application:") is intentional:
+         * without it, "Linear" reads as a *product type* rather than a
+         * motor-application mode. That conflation hides linear_actuator
+         * records from anyone who picks Motors and clicks Linear expecting
+         * to find actuators. The hint below the buttons (when Linear or
+         * Z-axis is active) deep-links to the Linear Actuators type so the
+         * user can switch in one click. Both are interim measures until
+         * Build Phase 1 PR-1 strips this control entirely; see
+         * todo/BUILD.md Part 5 for the full plan. */}
         {productType === 'motor' && (
           <div className="page-toolbar-transmission">
+            <div className="transmission-type-label">Motor application:</div>
             <div className="transmission-type-row">
               {(['rotary', 'linear', 'z-axis'] as const).map(t => (
                 <button
@@ -978,6 +988,19 @@ export default function ProductList() {
                 </button>
               ))}
             </div>
+            {(appType === 'linear' || appType === 'z-axis')
+              && categories.some(c => c.type === 'linear_actuator') && (
+              <div className="transmission-type-hint">
+                Looking for linear actuator products?{' '}
+                <button
+                  type="button"
+                  className="transmission-type-hint-link"
+                  onClick={() => handleProductTypeChange('linear_actuator')}
+                >
+                  Switch to Linear Actuators →
+                </button>
+              </div>
+            )}
             {(appType === 'linear' || appType === 'z-axis') && (
               <div className="transmission-param">
                 <label className="transmission-param-label">Linear Travel / Rev</label>
