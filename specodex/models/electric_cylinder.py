@@ -14,6 +14,7 @@ from specodex.models.common import (
     ValueUnit,
     VoltageRange,
 )
+from specodex.models.encoder import EncoderFeedback
 from specodex.models.product import ProductBase
 
 
@@ -82,8 +83,10 @@ class ElectricCylinder(ProductBase):
     )
 
     # --- Feedback & control ---
-    encoder_feedback_support: Optional[str] = Field(
-        None, description="Encoder or position feedback type"
+    # Cylinders bundle motor + screw + feedback into one part — single
+    # EncoderFeedback (not a list) like Motor.
+    encoder_feedback_support: Optional[EncoderFeedback] = Field(
+        None, description="Encoder or position feedback type (structured)"
     )
     fieldbus: Optional[str] = Field(
         None, description="Communication interface (e.g., 'CANopen', 'RS-232')"

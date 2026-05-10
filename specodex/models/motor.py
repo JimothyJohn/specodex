@@ -22,6 +22,7 @@ from specodex.models.common import (
     ValueUnit,
     VoltageRange,
 )
+from specodex.models.encoder import EncoderFeedback
 from specodex.models.product import ProductBase
 
 
@@ -47,7 +48,11 @@ class Motor(ProductBase):
     rated_torque: Torque = None
     peak_torque: Torque = None
     rated_power: Power = None
-    encoder_feedback_support: Optional[str] = None
+    # Motors provide one encoder. The structured EncoderFeedback model
+    # replaces the legacy free-text `Optional[str]` payload — the
+    # back-compat shim in `EncoderFeedback._coerce_legacy_freetext`
+    # parses old DB rows so deserialisation doesn't crash.
+    encoder_feedback_support: Optional[EncoderFeedback] = None
     poles: Optional[int] = None
     rated_current: Current = None
     peak_current: Current = None

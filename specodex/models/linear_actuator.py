@@ -17,6 +17,7 @@ from specodex.models.common import (
     ValueUnit,
     VoltageRange,
 )
+from specodex.models.encoder import EncoderFeedback
 from specodex.models.product import ProductBase
 
 
@@ -109,7 +110,11 @@ class LinearActuator(ProductBase):
             "motor (customer pairs their own servo)."
         ),
     )
-    encoder_feedback_support: Optional[List[str]] = Field(
+    # Linear actuators commonly accept several feedback options (the
+    # Lintech 200 takes both incremental and absolute feedback variants),
+    # so this stays a list of structured EncoderFeedback values rather
+    # than a single one.
+    encoder_feedback_support: Optional[List[EncoderFeedback]] = Field(
         None, description="Types of encoder feedback supported."
     )
     rated_voltage: VoltageRange = Field(

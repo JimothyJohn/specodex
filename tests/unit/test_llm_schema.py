@@ -104,13 +104,15 @@ class TestLiteralMapping:
 
 @pytest.mark.unit
 class TestListScalars:
-    def test_list_of_str(self) -> None:
-        # Drive.encoder_feedback_support = Optional[List[str]]
+    def test_list_of_encoder_protocol_enum(self) -> None:
+        # Drive.encoder_feedback_support = Optional[List[EncoderProtocol]]
+        # — was Optional[List[str]] before the DOUBLE_TAP rework.
         props = to_gemini_schema(Drive)["items"]["properties"]
         efs = props["encoder_feedback_support"]
         assert efs["type"] == "ARRAY"
         assert efs["items"]["type"] == "STRING"
-        assert "enum" not in efs["items"]
+        assert "endat_2_2" in efs["items"]["enum"]
+        assert "biss_c" in efs["items"]["enum"]
 
     def test_list_of_int(self) -> None:
         # Drive.input_voltage_phases = Optional[List[int]]

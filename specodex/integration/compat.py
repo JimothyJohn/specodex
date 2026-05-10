@@ -28,6 +28,7 @@ from specodex.integration.ports import (
     MechanicalShaftPort,
 )
 from specodex.models.common import MinMaxUnit, ValueUnit
+from specodex.models.encoder import EncoderFeedback, feedback_subsumes
 from specodex.models.product import ProductBase
 
 
@@ -232,12 +233,55 @@ def _compare_mechanical_shaft(
 
 
 def _compare_feedback(source: FeedbackPort, sink: FeedbackPort) -> List[CheckResult]:
-    # Motor (provides a single encoder) and drive (supports a list) can
-    # sit on either side of the directional match; pick whichever has
-    # `provides` populated as the motor side.
+    """Motor (provides one EncoderFeedback) ↔ drive (supports list of protocols).
+
+    Resolution order:
+        1. Identify which side has ``provides`` populated — that's the
+           motor side. Drive carries the protocol list in ``supports``.
+        2. If the motor side's encoder has a ``protocol``, check it
+           against the drive's supported list (with the SUBSUMES
+           widening: EnDat 2.2 in supports accepts EnDat 2.1 motor).
+        3. Without a protocol on the motor side, we can't safely conclude
+           compatibility — return ``partial`` rather than fabricate.
+    """
     motor_side = source if source.provides is not None else sink
     drive_side = sink if motor_side is source else source
-    return [_check_membership(motor_side.provides, drive_side.supports, "encoder_type")]
+
+    provided: EncoderFeedback | None = motor_side.provides
+    supported = drive_side.supports
+
+    if provided is None or not supported:
+        return [CheckResult("encoder_type", "partial", "one side missing")]
+
+    if provided.protocol is None:
+        # We have a structured device but no wire protocol — can't
+        # verify the drive accepts it. Surface as partial with the
+        # raw text if present so the UI can hint what's missing.
+        hint = provided.raw or provided.device
+        return [
+            CheckResult(
+                "encoder_type",
+                "partial",
+                f"motor encoder has no protocol set (raw={hint!r})",
+            )
+        ]
+
+    for accepted in supported:
+        if feedback_subsumes(accepted, provided):
+            return [
+                CheckResult(
+                    "encoder_type",
+                    "ok",
+                    f"motor protocol {provided.protocol} ∈ drive support",
+                )
+            ]
+    return [
+        CheckResult(
+            "encoder_type",
+            "fail",
+            f"motor protocol {provided.protocol} not in drive support {sorted(supported)}",
+        )
+    ]
 
 
 def _compare_fieldbus(source: FieldbusPort, sink: FieldbusPort) -> List[CheckResult]:
