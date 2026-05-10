@@ -223,6 +223,47 @@ Results write to `outputs/benchmarks/<timestamp>.json` and `outputs/benchmarks/l
 - **Omron: 80% precision / 42% recall**: 13 variants extracted but missing over half the fields on matched ground-truth record.
 - **`scraper.py:batch_create(parsed_models)` bug**: the DB write passes `parsed_models` (raw) instead of `valid_models` (quality-filtered). Low-quality products get written anyway. The "Successfully pushed 99 items to DynamoDB, -75 items failed" log line is the tell — negative failure count means the filter was bypassed.
 
+## Property testing — adversarial by default
+
+The `hypothesis` library is in `[dependency-groups].dev` (`pyproject.toml`). Every parser, coercer, and validator that eats LLM-emitted or user-controlled bytes should have a `tests/unit/test_<surface>_property.py` companion to the example-based test file. The sprint of 2026-05-10 added property coverage across the coercion layer and caught three real bugs the example-based tests had missed:
+
+1. `_coerce_ip_rating` returned `list`/`tuple`/`float` inputs unchanged instead of `None` (docstring contract violated); bool inputs `True`/`False` slipped through `isinstance(v, int)` and became IP ratings 1/0 — fixed in PR #112.
+2. `_coerce_protocol_list` left empty strings in the protocol list, killing the whole `Drive` row via Pydantic's `Literal[EncoderProtocol]` validator — fixed in PR #116.
+3. `Gearhead.coerce_string_fields` leaked Python dict-repr (`"{'value': 0, 'unit': 'mm'}"`, `"{}"`) for falsy values because of an `if v` check that didn't distinguish 0 / empty string / empty dict from None — fixed in PR #118.
+
+Each one was a bug where the docstring said one thing and the code did another. The property test pinned the documented contract, and the code revealed itself.
+
+### Convention
+
+- **File name.** `tests/unit/test_<module>_property.py` — sibling to `test_<module>.py`. Sit them next to each other; the example-based test pins the happy path, the property test pins the contract.
+- **Strategy structure.** Build one or two `st.composite` / `st.one_of` strategies for "adversarial input to this surface": include None, bool, int, NaN/inf floats, empty strings, unicode-laced strings, recursive dicts/lists, and a sampled list of real-world attack vectors when the function is security-relevant (see `test_url_safety_property.py` for the URL-attack list).
+- **Contract template.** Every property test asserts at least: (1) the function never raises an exception type outside its documented set, and (2) the return value has the documented shape. For functions that mutate or return Pydantic instances, also assert the instance fields are well-formed (e.g. `device in EncoderDevice` enum values).
+- **Example count.** Default to `max_examples=200` for routine surfaces, `300` for security-relevant ones (`validate_url`, the BeforeValidators). `HealthCheck.too_slow` is fine to suppress when the surface is slow per-call (e.g. PyMuPDF `fitz.open`).
+- **Logging.** Add an autouse fixture to silence the per-row validation-error logging when running 200+ examples — without it, a single property run produces 200 stack traces in the output (see `test_parse_gemini_property.py` for the `_silence_validation_logs` fixture).
+- **Slow-path patches.** For tests that exercise tenacity retries or `lru_cache`-backed paths, override the slow-path attribute (`generate_content.retry.wait = wait_none()`) and clear the cache (`_client_for.cache_clear()`) in a module autouse fixture — see `test_resilience.py::_no_retry_waits`. The 2s vs 22s bimodal CI timing that bit us in May 2026 was exactly this missing override.
+- **Bug fix → regression test FIRST.** When hypothesis catches a real bug, add an explicit example-based regression case to the sibling `test_<module>.py` file (e.g. `TestCoerceProtocolListEdgeCases`) **in addition to** the property test. The property test catches the contract violation; the explicit case pins the specific shape so it can't regress even if the hypothesis strategy drifts. Both stay forever.
+- **False positives.** When a property test fails on an input that's actually a legitimate edge case (e.g. user-supplied `'{'` as a frame_size value triggering a "starts with `{`" assertion designed to catch dict-repr leaks), tighten the assertion to match the bug's exact signature (`startswith("{'")` or `startswith('{"')`) — don't widen the input filter, which would hide future bug shapes.
+
+### What to test (current coverage map, 2026-05-10)
+
+| Surface | Property test | Sibling example test |
+|---|---|---|
+| `parse_gemini_response` (LLM JSON parser) | `test_parse_gemini_property.py` | inline in `test_utils.py` |
+| `common.py` BeforeValidators | `test_common_validators_property.py` | `test_models_common.py` |
+| `find_spec_pages_by_text` (PDF intake) | `test_page_finder_property.py` | `test_page_finder*.py` |
+| `coerce_protocol_string`, `_coerce_protocol_list`, `EncoderFeedback._coerce_legacy_freetext` | `test_encoder_coercers_property.py` | `test_encoder.py` |
+| `Gearhead.coerce_string_fields` | `test_gearhead_coerce_property.py` | (via `test_models_common.py`) |
+| `validate_url` (SSRF defense) | `test_url_safety_property.py` | `test_url_safety.py` |
+| `merge_per_page_products` | `test_merge_property.py` | (no example test) |
+| `double_tap.verifier` (`_encoder_is_ambiguous`, `verify`) | `test_double_tap_verifier_property.py` | `test_double_tap.py` |
+
+Untested adversarial surfaces (ordered by attack value):
+
+- `cli/processor.py` upload-queue dispatch (S3 key parsing, manifest validation).
+- `specodex/integration/compat.py` field-compatibility checks (`_scalar`, `_range`, `_check_voltage_fits`).
+- `specodex/spec_rules.py:validate_product` magnitude rules.
+- `specodex/quality.py:score_product` quality scoring (well-defended but uncovered).
+
 ## Post-deploy verification
 
 After `./Quickstart deploy --stage <stage>` returns, confirm the stack is actually live before closing the loop. `./Quickstart smoke <URL>` runs the full `tests/post_deploy/` suite; the ad-hoc checks below are what to reach for when a single endpoint is misbehaving.
