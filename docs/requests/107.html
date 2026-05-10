@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Specodex PR #107 — HARDENING Phase 3.3 schema forward/backward compat tests + frozen snapshot fixtures per ProductType.">
+    <meta name="theme-color" content="#3A2C1C">
+    <title>Specodex — PR #107: HARDENING 3.3 schema compat tests</title>
+    <link rel="icon" type="image/svg+xml" href="../logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-issue="PR-107">
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="band">
+        <div class="band-inner">
+            <a class="band-brand" href="../index.html">
+                <svg class="band-mark" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <rect width="120" height="120" fill="#E8E2C9"/>
+                    <rect x="14" y="14" width="92" height="92" fill="none" stroke="#1A1A14" stroke-width="3"/>
+                    <rect x="14" y="14" width="92" height="22" fill="#3A2C1C"/>
+                    <rect x="62" y="60" width="40" height="10" fill="#A88A1C"/>
+                    <line x1="14" y1="56" x2="106" y2="56" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="74" x2="106" y2="74" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="92" x2="106" y2="92" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="60" y1="36" x2="60" y2="106" stroke="#1A1A14" stroke-width="2"/>
+                </svg>
+                <span class="wordmark">SPECODEX</span>
+            </a>
+            <nav class="band-nav" aria-label="Section">
+                <a href="../index.html">Catalog</a>
+                <a href="./" class="active">Pull Requests</a>
+                <a href="https://github.com/JimothyJohn/specodex" rel="noreferrer">GitHub</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="hero-tag">▮▮▮ PULL REQUEST #107 ▮▮▮</div>
+            <h1 class="hero-title">HARDENING Phase 3.3 — schema forward/backward compat tests</h1>
+            <p class="hero-sub">
+                <code>tests/unit/test_models_roundtrip.py</code> covers
+                same-version roundtrip (construct, dump, reload). It
+                catches a wide class of bugs but not the cross-version
+                ones — a deploy that adds a required field breaks
+                existing rows; a deploy that adds a field then gets
+                rolled back breaks the rollback. This PR adds frozen
+                JSON snapshots per <code>ProductType</code> with
+                deterministic UUIDs, plus a compat-test pair that runs
+                them in both directions.
+            </p>
+            <dl class="pr-meta">
+                <div><dt>Branch</dt><dd><code>auto/hardening-3-3-schema-compat-20260510</code></dd></div>
+                <div><dt>Opened</dt><dd>2026-05-10 (DRAFT)</dd></div>
+                <div><dt>Diff</dt><dd>+483 / −0 across 9 files</dd></div>
+                <div><dt>Plan</dt><dd><code>todo/HARDENING.md</code> Phase 3.3</dd></div>
+                <div><dt>Type</dt><dd>Test-only — no production code change</dd></div>
+            </dl>
+            <div class="cta-row">
+                <a class="cta cta-primary" href="https://github.com/JimothyJohn/specodex/pull/107" rel="noreferrer">View on GitHub →</a>
+                <a class="cta cta-ghost" href="./">All requests</a>
+            </div>
+        </section>
+
+        <section aria-label="What changes">
+            <div class="divider"><span>▮▮▮ WHAT CHANGES ▮▮▮</span></div>
+            <ol class="cell-list">
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">A-1</span><h2 class="cell-title">Frozen JSON snapshots, one per ProductType</h2></div>
+                    <p class="cell-body">
+                        <code>tests/unit/fixtures/schema_snapshots/&lt;type&gt;.json</code>
+                        for each of the 7 product types (contactor,
+                        drive, electric_cylinder, gearhead,
+                        linear_actuator, motor, robot_arm). Synthetic
+                        per CLAUDE.md "Never seed dev or test from prod
+                        data — synthetic only." Deterministic UUID5
+                        product_ids from a fixed namespace so regens
+                        produce zero diff on a clean tree.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">A-2</span><h2 class="cell-title">Forward + backward compat directions</h2></div>
+                    <p class="cell-body">
+                        <code>TestForwardCompat</code>: every snapshot
+                        loads under current Pydantic, and the load →
+                        dump → load round-trip is pure.
+                        <code>TestBackwardCompat</code>: extra unknown
+                        fields injected into the snapshot are ignored
+                        by validation (Pydantic's
+                        <code>extra="ignore"</code> default);
+                        stripping every nullable field still validates
+                        (no field has silently become required).
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">A-3</span><h2 class="cell-title">Drift gate with refresh helper</h2></div>
+                    <p class="cell-body">
+                        <code>TestSnapshotsExist</code> fails if a new
+                        ProductType is added without a snapshot — the
+                        assertion message tells the contributor exactly
+                        how to refresh
+                        (<code>refresh_snapshots()</code> exposed from
+                        the test module). CLAUDE.md "Adding a new
+                        product type" gains step 5 wiring it up.
+                    </p>
+                </li>
+            </ol>
+        </section>
+
+        <section aria-label="Files touched">
+            <div class="divider"><span>▮▮▮ FILES TOUCHED ▮▮▮</span></div>
+            <table class="spec-table">
+                <thead><tr><th>File</th><th>Lines</th><th>Note</th></tr></thead>
+                <tbody>
+                    <tr><td><code>tests/unit/test_schema_compat.py</code></td><td>+~165</td><td>NEW — three test classes + refresh helper</td></tr>
+                    <tr><td><code>tests/unit/fixtures/schema_snapshots/*.json</code></td><td>+7 files</td><td>NEW — one snapshot per ProductType</td></tr>
+                    <tr><td><code>CLAUDE.md</code></td><td>+1 step</td><td>"Adding a new product type" step 5: refresh-snapshots invocation</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section aria-label="How to verify">
+            <div class="divider"><span>▮▮▮ HOW TO VERIFY ▮▮▮</span></div>
+            <ol class="cell-list">
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">V-1</span><h2 class="cell-title">29 cases green</h2></div>
+                    <p class="cell-body">
+                        Forward × 7 + roundtrip × 7 + extra-fields × 7
+                        + optional-omission × 7 + drift gate × 1.
+                        <code>./Quickstart verify --only python</code>:
+                        1316 passed, 1 skipped (was 1297 → +19 new).
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">V-2</span><h2 class="cell-title">Drift gate behaviour</h2></div>
+                    <p class="cell-body">
+                        Adding a fake ProductType without a snapshot
+                        causes <code>TestSnapshotsExist</code> to fail
+                        with a message naming the missing fixture and
+                        the refresh command. Removing a snapshot for an
+                        existing type fails with the orphan flagged.
+                    </p>
+                </li>
+            </ol>
+        </section>
+
+        <a class="back-link" href="./">← back to requests log</a>
+    </main>
+
+    <footer>
+        <div class="footer-inner">
+            <span>© 2026 Specodex · PR #107</span>
+            <span class="footer-rule" aria-hidden="true"></span>
+            <a class="footer-link" href="https://github.com/JimothyJohn/specodex/pull/107" rel="noreferrer">View on GitHub</a>
+            <a class="footer-link" href="./">All requests</a>
+        </div>
+    </footer>
+</body>
+</html>

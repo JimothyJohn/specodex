@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Specodex PR #106 — SCHEMA Phase 4 kg/kgf → N coercion on Force fields. Closes the Lintech load-rating coverage gap.">
+    <meta name="theme-color" content="#3A2C1C">
+    <title>Specodex — PR #106: SCHEMA Phase 4 Force coercion</title>
+    <link rel="icon" type="image/svg+xml" href="../logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-issue="PR-106">
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="band">
+        <div class="band-inner">
+            <a class="band-brand" href="../index.html">
+                <svg class="band-mark" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <rect width="120" height="120" fill="#E8E2C9"/>
+                    <rect x="14" y="14" width="92" height="92" fill="none" stroke="#1A1A14" stroke-width="3"/>
+                    <rect x="14" y="14" width="92" height="22" fill="#3A2C1C"/>
+                    <rect x="62" y="60" width="40" height="10" fill="#A88A1C"/>
+                    <line x1="14" y1="56" x2="106" y2="56" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="74" x2="106" y2="74" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="92" x2="106" y2="92" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="60" y1="36" x2="60" y2="106" stroke="#1A1A14" stroke-width="2"/>
+                </svg>
+                <span class="wordmark">SPECODEX</span>
+            </a>
+            <nav class="band-nav" aria-label="Section">
+                <a href="../index.html">Catalog</a>
+                <a href="./" class="active">Pull Requests</a>
+                <a href="https://github.com/JimothyJohn/specodex" rel="noreferrer">GitHub</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="hero-tag">▮▮▮ PULL REQUEST #106 ▮▮▮</div>
+            <h1 class="hero-title">SCHEMA Phase 4 — <code>kg → kgf → N</code> Force coercion</h1>
+            <p class="hero-sub">
+                Lintech (and other industrial vendors) publishes load
+                capacities like <code>{value: 703, unit: 'kg'}</code>
+                meaning <em>kilogram-force</em>, not mass. The Force
+                family already handles <code>kgf → N</code> at ×9.80665
+                — what was missing was the catalog-convention rewrite
+                for bare <code>kg</code>. This PR adds a per-family
+                <code>pre_rewrite</code> table on <code>UnitFamily</code>,
+                wires <code>kg → kgf</code> for FORCE only, and logs at
+                WARNING so the coercion is auditable.
+            </p>
+            <dl class="pr-meta">
+                <div><dt>Branch</dt><dd><code>auto/schema-phase4-force-coercion-20260510</code></dd></div>
+                <div><dt>Opened</dt><dd>2026-05-10 (DRAFT)</dd></div>
+                <div><dt>Diff</dt><dd>+181 / −2 across 2 files</dd></div>
+                <div><dt>Plan</dt><dd><code>todo/SCHEMA.md</code> Part 1 + Phase 4</dd></div>
+                <div><dt>Type</dt><dd>Schema correctness — additive (no migration)</dd></div>
+            </dl>
+            <div class="cta-row">
+                <a class="cta cta-primary" href="https://github.com/JimothyJohn/specodex/pull/106" rel="noreferrer">View on GitHub →</a>
+                <a class="cta cta-ghost" href="./">All requests</a>
+            </div>
+        </section>
+
+        <section aria-label="What changes">
+            <div class="divider"><span>▮▮▮ WHAT CHANGES ▮▮▮</span></div>
+            <ol class="cell-list">
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">A-1</span><h2 class="cell-title">UnitFamily gains a <code>pre_rewrite</code> map</h2></div>
+                    <p class="cell-body">
+                        New optional <code>dict[str, str]</code> field on
+                        the frozen dataclass, plus a <code>rewrite()</code>
+                        method that returns the rewritten unit (or the
+                        input unchanged). Family-scoped — Mass-typed
+                        fields still treat <code>kg</code> as canonical
+                        mass. Wrong-family <code>kg</code> on a Voltage
+                        field still drops to <code>None</code> as before.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">A-2</span><h2 class="cell-title">FORCE family declares <code>{"kg": "kgf"}</code></h2></div>
+                    <p class="cell-body">
+                        Both <code>_typed_value_unit</code> and
+                        <code>_typed_min_max_unit</code> apply the
+                        rewrite to incoming dict / ValueUnit / MinMaxUnit
+                        inputs <em>before</em> the family check, so the
+                        existing kgf→N (×9.80665) normaliser handles the
+                        conversion in one pass.
+                        <code>logger.warning("force field: rewriting unit
+                        'kg' to 'kgf' (catalog convention)")</code> fires
+                        once per coercion so operators can grep for
+                        catalog-convention coercions when auditing
+                        extraction quality.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">A-3</span><h2 class="cell-title">9 new test cases under <code>TestForceKgCoercion</code></h2></div>
+                    <p class="cell-body">
+                        Covers: dict input, ValueUnit instance input,
+                        MinMaxUnit + scalar collapse, ForceRange (range-
+                        typed), Mass-field-still-canonical, Voltage-
+                        field-still-rejects-kg, WARNING-log emitted on
+                        rewrite, no-warning on plain kgf.
+                    </p>
+                </li>
+            </ol>
+        </section>
+
+        <section aria-label="Files touched">
+            <div class="divider"><span>▮▮▮ FILES TOUCHED ▮▮▮</span></div>
+            <table class="spec-table">
+                <thead><tr><th>File</th><th>Lines</th><th>Note</th></tr></thead>
+                <tbody>
+                    <tr><td><code>specodex/models/common.py</code></td><td>+~70 / −1</td><td>UnitFamily.pre_rewrite + _rewrite_unit/_rewrite_dict_unit helpers + module logger</td></tr>
+                    <tr><td><code>tests/unit/test_models_common.py</code></td><td>+~110</td><td>9 cases under TestForceKgCoercion</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section aria-label="How to verify">
+            <div class="divider"><span>▮▮▮ HOW TO VERIFY ▮▮▮</span></div>
+            <ol class="cell-list">
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">V-1</span><h2 class="cell-title">Pre-push gate</h2></div>
+                    <p class="cell-body">
+                        <code>./Quickstart verify --only python</code>
+                        green: 1297 passed, 1 skipped. The full suite
+                        runs in 2.08s.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">V-2</span><h2 class="cell-title">No type-codegen drift</h2></div>
+                    <p class="cell-body">
+                        <code>./Quickstart gen-types</code> produces no
+                        diff — UnitFamily isn't a Pydantic BaseModel and
+                        doesn't appear in the generated TypeScript.
+                    </p>
+                </li>
+            </ol>
+        </section>
+
+        <a class="back-link" href="./">← back to requests log</a>
+    </main>
+
+    <footer>
+        <div class="footer-inner">
+            <span>© 2026 Specodex · PR #106</span>
+            <span class="footer-rule" aria-hidden="true"></span>
+            <a class="footer-link" href="https://github.com/JimothyJohn/specodex/pull/106" rel="noreferrer">View on GitHub</a>
+            <a class="footer-link" href="./">All requests</a>
+        </div>
+    </footer>
+</body>
+</html>
