@@ -54,6 +54,161 @@
             <div class="divider"><span>▮▮▮ RECENT PULL REQUESTS ▮▮▮</span></div>
             <ol class="pr-cards">
                 <li>
+                    <a class="pr-card" href="111.html">
+                        <div class="pr-card-head">
+                            <span class="pr-num">PR #111 (DRAFT)</span>
+                            <h2 class="pr-title">HARDENING Phase 3.1 — property tests for <code>parse_gemini_response</code></h2>
+                        </div>
+                        <div class="pr-card-meta">
+                            <span>Opened 2026-05-10</span>
+                            <span>+237 / −0 in <code>tests/unit/test_parse_gemini_property.py</code></span>
+                            <span>Branch <code>auto/hardening-3-1-property-parse-gemini-20260510</code></span>
+                        </div>
+                        <p class="pr-card-body">
+                            Three Hypothesis property tests at 200 / 200
+                            / 100 examples covering malformed, unicode-
+                            laced, fence-wrapped, and truncated JSON.
+                            Documents the parser's contract (returns
+                            <code>List[Motor]</code> or raises
+                            <code>ValueError</code> — never any other
+                            exception, never half-validated objects).
+                            First of three Phase 3.1 targets;
+                            <code>find_spec_pages_by_text</code> and the
+                            common.py BeforeValidators land as follow-ups.
+                        </p>
+                    </a>
+                </li>
+                <li>
+                    <a class="pr-card" href="110.html">
+                        <div class="pr-card-head">
+                            <span class="pr-num">PR #110 (DRAFT)</span>
+                            <h2 class="pr-title">HARDENING Phase 3.4 — concurrent-write stress test</h2>
+                        </div>
+                        <div class="pr-card-meta">
+                            <span>Opened 2026-05-10</span>
+                            <span>+216 / −0 in <code>tests/integration/test_concurrent_writes.py</code></span>
+                            <span>Branch <code>auto/hardening-3-4-concurrent-write-stress-20260510</code></span>
+                        </div>
+                        <p class="pr-card-body">
+                            20 parallel <code>batch_create</code> writers
+                            with overlapping <code>product_id</code>s.
+                            Three assertions on the result: no exceptions,
+                            no torn writes per ID (each writer signs
+                            every text field on its rows; the read-back
+                            verifies all fields encode the SAME writer_id),
+                            no rows lost or duplicated. Sub-millisecond
+                            timing jitter per writer (seeded for
+                            determinism) interleaves writes across
+                            threads — without it the OS scheduler can
+                            serialise the writes by accident and miss
+                            the race.
+                        </p>
+                    </a>
+                </li>
+                <li>
+                    <a class="pr-card" href="108.html">
+                        <div class="pr-card-head">
+                            <span class="pr-num">PR #108 (DRAFT)</span>
+                            <h2 class="pr-title">security — remove dead <code>_CANONICAL_DEVICES</code> global (CodeQL #66)</h2>
+                        </div>
+                        <div class="pr-card-meta">
+                            <span>Opened 2026-05-10</span>
+                            <span>+3 / −2 in <code>specodex/models/encoder.py</code></span>
+                            <span>Branch <code>auto/codeql-unused-canonical-devices-20260510</code></span>
+                        </div>
+                        <p class="pr-card-body">
+                            Sprint security-review cleanup pass. The only
+                            open CodeQL alert was a low-severity
+                            <code>py/unused-global-variable</code> on
+                            <code>encoder.py:93</code> — a frozenset added
+                            alongside <code>_CANONICAL_PROTOCOLS</code> for
+                            symmetry that never got wired. YAGNI deletion;
+                            the device-side coercion is inline in
+                            <code>_coerce_legacy_freetext</code> and doesn't
+                            need a canonical-passthrough check the way
+                            <code>coerce_protocol_string</code> does.
+                        </p>
+                    </a>
+                </li>
+                <li>
+                    <a class="pr-card" href="107.html">
+                        <div class="pr-card-head">
+                            <span class="pr-num">PR #107 (DRAFT)</span>
+                            <h2 class="pr-title">HARDENING Phase 3.3 — schema forward/backward compat tests</h2>
+                        </div>
+                        <div class="pr-card-meta">
+                            <span>Opened 2026-05-10</span>
+                            <span>+483 / −0 across 9 files</span>
+                            <span>Branch <code>auto/hardening-3-3-schema-compat-20260510</code></span>
+                        </div>
+                        <p class="pr-card-body">
+                            Adds frozen JSON snapshots per
+                            <code>ProductType</code> with deterministic
+                            UUIDs (<code>tests/unit/fixtures/schema_snapshots/</code>)
+                            and a compat-test pair that runs them in both
+                            directions: forward (old data → new code) +
+                            backward (new data → old code via
+                            extra-fields-ignored + nullable-omission tests),
+                            plus a drift gate that fails when a new product
+                            type lands without a snapshot. CLAUDE.md
+                            "Adding a new product type" gains step 5 wiring
+                            up the <code>refresh_snapshots()</code> helper.
+                            Per <code>todo/HARDENING.md</code> Phase 3.3.
+                        </p>
+                    </a>
+                </li>
+                <li>
+                    <a class="pr-card" href="106.html">
+                        <div class="pr-card-head">
+                            <span class="pr-num">PR #106 (DRAFT)</span>
+                            <h2 class="pr-title">SCHEMA Phase 4 — <code>kg → kgf → N</code> Force coercion</h2>
+                        </div>
+                        <div class="pr-card-meta">
+                            <span>Opened 2026-05-10</span>
+                            <span>+181 / −2 across 2 files</span>
+                            <span>Branch <code>auto/schema-phase4-force-coercion-20260510</code></span>
+                        </div>
+                        <p class="pr-card-body">
+                            Lintech publishes load capacity as
+                            <code>{value: 703, unit: 'kg'}</code> meaning
+                            <em>kilogram-force</em>, not mass. Adds a
+                            per-family <code>pre_rewrite</code> table on
+                            <code>UnitFamily</code>, wires
+                            <code>kg → kgf</code> for FORCE only (so Mass
+                            fields still treat <code>kg</code> as canonical),
+                            and logs at WARNING so the catalog-convention
+                            coercion is auditable. Routes through the
+                            existing <code>kgf → N</code> (×9.80665)
+                            normaliser in one pass.
+                        </p>
+                    </a>
+                </li>
+                <li>
+                    <a class="pr-card" href="105.html">
+                        <div class="pr-card-head">
+                            <span class="pr-num">PR #105 (DRAFT)</span>
+                            <h2 class="pr-title">docs(backlog) — reconcile <code>todo/README.md</code> with shipped state through PR #103</h2>
+                        </div>
+                        <div class="pr-card-meta">
+                            <span>Opened 2026-05-10</span>
+                            <span>+98 / −43 in <code>todo/README.md</code></span>
+                            <span>Branch <code>auto/docs-readme-reconcile-20260510</code></span>
+                        </div>
+                        <p class="pr-card-body">
+                            Sprint preamble. The backlog index had drifted
+                            across the 2026-05-09 / 10 cohort — 14+ phases
+                            shipped without being marked, four new docs
+                            landed without trigger rows. Updates the
+                            "Recently shipped" callout, slots in
+                            <code>BOARD_FEEDBACK</code> / <code>BUILD</code>
+                            / <code>DOUBLE_TAP</code> + appendix, marks
+                            churn-plan rows 1, 3, 9, 10, 11 shipped, and
+                            promotes SCHEMA Phase 4 to "ready to PR" as
+                            the new top of queue.
+                        </p>
+                    </a>
+                </li>
+                <li>
                     <a class="pr-card" href="90.html">
                         <div class="pr-card-head">
                             <span class="pr-num">PR #91 (DRAFT)</span>
