@@ -43,13 +43,13 @@ export const isBuild = (v: unknown): v is Build => {
   );
 };
 
-export type RowDensity = 'compact' | 'comfy';
+export type RowDensity = 'cozy' | 'compact';
 
 export const isUnitSystem = (v: string): v is UnitSystem =>
   v === 'metric' || v === 'imperial';
 
 export const isRowDensity = (v: string): v is RowDensity =>
-  v === 'compact' || v === 'comfy';
+  v === 'cozy' || v === 'compact';
 
 export const isBoolean = (v: unknown): v is boolean => typeof v === 'boolean';
 
@@ -118,10 +118,13 @@ interface AppContextType extends AppState {
   compatibleOnly: boolean;
   setCompatibleOnly: (v: boolean) => void;
 
-  // Results-table row density. Lives at app level so the header toggle and
-  // the table both read/write the same value. Persisted in localStorage
-  // under 'productListRowDensity' (key preserved from when this lived in
-  // ProductList so existing user prefs carry over).
+  // Row density. Lives at app level so the header toggle, the table, and
+  // every density-aware surface (sidebar, modal, top nav) read the same
+  // value. Persisted in localStorage under 'productListRowDensity.v2' —
+  // the .v2 suffix is from the May-2026 rename when the modes flipped
+  // from compact/comfy to cozy/compact. Old key is intentionally orphaned
+  // so users land on the new default rather than the inverted-meaning
+  // string they had before.
   rowDensity: RowDensity;
   setRowDensity: (d: RowDensity) => void;
 }
@@ -196,14 +199,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [compatibleOnly]);
   const setCompatibleOnly = useCallback((v: boolean) => setCompatibleOnlyState(v), []);
 
-  // Results-table row density.
+  // Row density. Key is .v2 so the May-2026 rename (compact|comfy →
+  // cozy|compact, with the new `compact` being significantly denser
+  // than the old one) doesn't silently shove old-compact users into
+  // a much denser layout — they reset to the new default `cozy`.
   const [rowDensity, setRowDensityState] = useState<RowDensity>(() =>
-    safeLoadString('productListRowDensity', isRowDensity, 'compact'),
+    safeLoadString('productListRowDensity.v2', isRowDensity, 'cozy'),
   );
   useEffect(() => {
     if (typeof window === 'undefined') return;
     try {
-      window.localStorage.setItem('productListRowDensity', rowDensity);
+      window.localStorage.setItem('productListRowDensity.v2', rowDensity);
     } catch {
       // best-effort
     }

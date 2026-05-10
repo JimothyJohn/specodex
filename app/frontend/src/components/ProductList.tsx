@@ -2,7 +2,7 @@
  * Product list component with advanced filtering and sorting
  */
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useApp, isUnitSystem } from '../context/AppContext';
 import { UnitSystem } from '../utils/unitConversion';
 import { ProductType, Product } from '../types/models';
@@ -80,11 +80,17 @@ export default function ProductList() {
   // or "filtered to zero" (no_match) without splitting into two modals.
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [feedbackCategory, setFeedbackCategory] = useState<FeedbackCategory>('no_match');
-  // Page size is fixed — narrowing past 25 results is the user's job via
-  // sort/filter, not via a "show 500 at once" lever. Removing the picker
-  // keeps the toolbar a single tight row.
-  const itemsPerPage = 25;
+  // Page size is density-driven. Cozy paginates 25/page (calm scan);
+  // compact uses infinite scroll with a 50-row initial window that
+  // grows as the user nears the bottom. The "ask the user via a picker"
+  // option was rejected in scoping — density already encodes the
+  // viewing intent.
+  const itemsPerPage = rowDensity === 'compact' ? 50 : 25;
   const [currentPage, setCurrentPage] = useState<number>(1);
+  // Infinite-scroll window for compact. Counts rows revealed past the
+  // initial 50; reset whenever the data set or density changes. Cozy
+  // ignores this state entirely.
+  const [compactRevealed, setCompactRevealed] = useState<number>(0);
   // Column visibility model — two sets, because default visibility
   // depends on the attribute's *kind*:
   //
@@ -139,24 +145,24 @@ export default function ProductList() {
     });
   };
 
-  // Hard cap on simultaneously visible spec columns. Compact rows fit ten
-  // before the table feels crowded; comfy is six so the row breathes
-  // without horizontal scrolling. Extras spill into the restore dropdown
-  // and stay individually restorable.
-  const MAX_VISIBLE_COLUMNS = rowDensity === 'compact' ? 10 : 6;
+  // Hard cap on simultaneously visible spec columns. Cozy keeps the
+  // historical 10-column comfort zone; compact pushes to 16 for the
+  // spreadsheet-style scan. Extras spill into the restore dropdown and
+  // stay individually restorable.
+  const MAX_VISIBLE_COLUMNS = rowDensity === 'compact' ? 16 : 10;
   const [addColumnBtnRef, setAddColumnBtnRef] = useState<HTMLButtonElement | null>(null);
   const [appType, setAppType] = useState<'rotary' | 'linear' | 'z-axis'>('rotary');
   const [linearTravel, setLinearTravel] = useState<number>(0); // mm/rev
   const [loadMass, setLoadMass] = useState<number>(0); // kg (for Z-axis gravity calc)
 
-// Floor widths (px) for the part-number column. Sized for typical
-// 12-16 char part numbers without over-reserving width; the auto-fit
-// helper widens further whenever the loaded data warrants it.
-  const defaultPartWidth = rowDensity === 'compact' ? 160 : 200;
-  // Spec column floor — enough for the slider + the operator/value/unit
-  // pill row to render legibly; auto-fit widens when data warrants.
-  // Was 180/200, dropped to keep the table compact.
-  const defaultColWidth = rowDensity === 'compact' ? 120 : 140;
+  // Floor widths (px) for the part-number column. Compact tightens
+  // further than cozy on the assumption that part numbers will truncate
+  // gracefully (they're scannable abbreviations, not prose).
+  const defaultPartWidth = rowDensity === 'compact' ? 130 : 160;
+  // Spec column floor. Cozy keeps the slider+operator+value row legible
+  // (~120px). Compact strips the slider in PR 2 so the floor drops to
+  // ~90px — value+operator+unit fits comfortably.
+  const defaultColWidth = rowDensity === 'compact' ? 90 : 120;
   const { columnWidths, setColumnWidths, startResize } = useColumnResize({ part_number: defaultPartWidth });
 
   // Keys that should never render as their own column. `part_number` is
@@ -521,19 +527,52 @@ export default function ProductList() {
   // same as before.
   const displayProducts = sortedProducts;
 
-  // Paginate products
+  // Pagination is density-driven. Cozy slices a fixed window per page
+  // (`currentPage`); compact reveals the first 50 then grows by 50 as
+  // the user scrolls (`compactRevealed`).
+  const isInfiniteMode = rowDensity === 'compact';
+  const compactWindowSize = itemsPerPage + compactRevealed;
   const paginatedProducts = useMemo(() => {
+    if (isInfiniteMode) {
+      return displayProducts.slice(0, compactWindowSize);
+    }
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
     return displayProducts.slice(startIndex, endIndex);
-  }, [displayProducts, currentPage, itemsPerPage]);
+  }, [displayProducts, currentPage, itemsPerPage, isInfiniteMode, compactWindowSize]);
 
   const totalPages = Math.ceil(displayProducts.length / itemsPerPage);
+  const hasMoreCompact = isInfiniteMode && compactWindowSize < displayProducts.length;
 
-  // Reset to page 1 when filters, sorts, or items per page change
+  // Reset to page 1 / window 0 when the data shape changes underneath us.
+  // `rowDensity` is in the dep list because flipping modes mid-scroll
+  // must reset both axes — otherwise a user on page 5 of cozy flipping
+  // to compact sees the compact slice starting at index 100.
   useEffect(() => {
     setCurrentPage(1);
-  }, [filters, sorts, itemsPerPage]);
+    setCompactRevealed(0);
+  }, [filters, sorts, itemsPerPage, rowDensity]);
+
+  // IntersectionObserver-driven reveal for compact mode. The sentinel
+  // sits below the last row; once it enters the viewport, we bump the
+  // revealed count by another `itemsPerPage`. Capped at the data length
+  // so the observer doesn't run forever past the end of the list.
+  const loadMoreSentinelRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!isInfiniteMode || !hasMoreCompact) return;
+    const node = loadMoreSentinelRef.current;
+    if (!node) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some(e => e.isIntersecting)) {
+          setCompactRevealed(prev => prev + itemsPerPage);
+        }
+      },
+      { rootMargin: '200px' },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [isInfiniteMode, hasMoreCompact, itemsPerPage, paginatedProducts.length]);
 
   // When the linear-mode flips (or travel changes the unit scale), the
   // stored filter values for torque/speed are no longer comparable to
@@ -882,8 +921,9 @@ export default function ProductList() {
   // Restore a column. Two paths:
   // - Unit-bearing column was user-hidden → remove from userHiddenKeys.
   // - Non-unit column (hidden by default) → add to userRestoredKeys.
-  // With the cap locked (6 comfy / 10 compact), a restore that lands past
-  // the cap won't appear until the user hides one of the visible columns.
+  // With the cap locked (10 cozy / 16 compact), a restore that lands
+  // past the cap won't appear until the user hides one of the visible
+  // columns.
   const handleAddColumn = (attribute: ReturnType<typeof getAttributesForType>[0]) => {
     setUserHiddenKeys(userHiddenKeys.filter(k => k !== attribute.key));
     if (!attribute.nested && !userRestoredKeys.includes(attribute.key)) {
@@ -916,7 +956,12 @@ export default function ProductList() {
               className="page-toolbar-type-select"
             />
             <span className="results-count">
-              {displayProducts.length === 0 ? '0' : `${(currentPage - 1) * itemsPerPage + 1}-${Math.min(currentPage * itemsPerPage, displayProducts.length)}`} of {displayProducts.length}
+              {displayProducts.length === 0
+                ? '0'
+                : isInfiniteMode
+                  ? `1-${paginatedProducts.length}`
+                  : `${(currentPage - 1) * itemsPerPage + 1}-${Math.min(currentPage * itemsPerPage, displayProducts.length)}`
+              } of {displayProducts.length}
             </span>
           </div>
           <div className="page-toolbar-right">
@@ -1309,8 +1354,11 @@ export default function ProductList() {
             </div>
             </div>
 
-            {/* Pagination navigation */}
-            {totalPages > 1 && (
+            {/* Pagination / infinite-scroll affordance. Cozy uses
+                discrete paging; compact streams via an IntersectionObserver
+                sentinel that triggers a window expansion as the user
+                nears the bottom. */}
+            {!isInfiniteMode && totalPages > 1 && (
               <div className="pagination-nav">
                 <button
                   className="pagination-btn"
@@ -1329,6 +1377,23 @@ export default function ProductList() {
                 >
                   Next →
                 </button>
+              </div>
+            )}
+            {isInfiniteMode && (
+              <div
+                ref={loadMoreSentinelRef}
+                className="infinite-scroll-sentinel"
+                aria-hidden="true"
+              >
+                {hasMoreCompact ? (
+                  <span className="infinite-scroll-status">
+                    Loading more… ({paginatedProducts.length} of {displayProducts.length})
+                  </span>
+                ) : displayProducts.length > 0 ? (
+                  <span className="infinite-scroll-status">
+                    End of {displayProducts.length} results
+                  </span>
+                ) : null}
               </div>
             )}
           </>

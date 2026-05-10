@@ -49,7 +49,7 @@ export function safeSave(key: string, value: unknown): void {
 
 /**
  * Load a raw string with a validator (no JSON.parse). Useful for enum-like
- * keys stored as plain strings ('compact' | 'comfy', 'asc' | 'desc').
+ * keys stored as plain strings ('cozy' | 'compact', 'asc' | 'desc').
  */
 export function safeLoadString<T extends string>(
   key: string,

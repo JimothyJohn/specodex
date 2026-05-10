@@ -57,7 +57,7 @@ describe('AppContext defaults', () => {
   it('hydrates with documented defaults when localStorage is empty', () => {
     const { result } = renderHook(() => useApp(), { wrapper });
     expect(result.current.unitSystem).toBe('metric');
-    expect(result.current.rowDensity).toBe('compact');
+    expect(result.current.rowDensity).toBe('cozy');
     expect(result.current.compatibleOnly).toBe(true);
     expect(result.current.build).toEqual({});
   });
@@ -85,17 +85,29 @@ describe('setUnitSystem (L7)', () => {
 });
 
 describe('setRowDensity (L8)', () => {
-  it('updates context and persists raw string to localStorage', () => {
+  it('updates context and persists raw string to the v2 key', () => {
     const { result } = renderHook(() => useApp(), { wrapper });
-    act(() => result.current.setRowDensity('comfy'));
-    expect(result.current.rowDensity).toBe('comfy');
-    expect(window.localStorage.getItem('productListRowDensity')).toBe('comfy');
+    act(() => result.current.setRowDensity('compact'));
+    expect(result.current.rowDensity).toBe('compact');
+    expect(window.localStorage.getItem('productListRowDensity.v2')).toBe('compact');
   });
 
-  it('round-trips comfy across a re-mount', () => {
+  it('round-trips compact across a re-mount', () => {
+    window.localStorage.setItem('productListRowDensity.v2', 'compact');
+    const { result } = renderHook(() => useApp(), { wrapper });
+    expect(result.current.rowDensity).toBe('compact');
+  });
+
+  it('ignores the old v1 key so renamed-mode users land on the new default', () => {
+    // Pre-rename users had `productListRowDensity` set to either 'compact'
+    // or 'comfy'. Reading those literally would either land them on a
+    // very different layout (old 'compact' → new ultra-dense compact)
+    // or fail validation ('comfy' is no longer a RowDensity). The .v2
+    // key bump is the migration: old key stays dormant, everyone lands
+    // on cozy.
     window.localStorage.setItem('productListRowDensity', 'comfy');
     const { result } = renderHook(() => useApp(), { wrapper });
-    expect(result.current.rowDensity).toBe('comfy');
+    expect(result.current.rowDensity).toBe('cozy');
   });
 });
 

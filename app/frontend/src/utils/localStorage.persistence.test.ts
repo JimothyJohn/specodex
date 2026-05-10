@@ -55,22 +55,32 @@ describe('persisted key: unitSystem (string enum)', () => {
   });
 });
 
-describe('persisted key: productListRowDensity (string enum)', () => {
-  const KEY = 'productListRowDensity';
-  const DEFAULT = 'compact' as const;
+describe('persisted key: productListRowDensity.v2 (string enum)', () => {
+  // The .v2 suffix is the migration from the pre-May-2026 mode set
+  // (compact|comfy). The new modes are cozy|compact, with the new
+  // `compact` significantly denser than the old one. See AppContext
+  // for the full rationale.
+  const KEY = 'productListRowDensity.v2';
+  const DEFAULT = 'cozy' as const;
 
   it('returns default when key is absent', () => {
-    expect(safeLoadString(KEY, isRowDensity, DEFAULT)).toBe('compact');
+    expect(safeLoadString(KEY, isRowDensity, DEFAULT)).toBe('cozy');
   });
 
   it('returns default when stored string is off-schema', () => {
     window.localStorage.setItem(KEY, 'medium');
-    expect(safeLoadString(KEY, isRowDensity, DEFAULT)).toBe('compact');
+    expect(safeLoadString(KEY, isRowDensity, DEFAULT)).toBe('cozy');
   });
 
-  it('round-trips comfy', () => {
+  it('rejects pre-v2 "comfy" as off-schema', () => {
+    // Catches anyone tempted to re-allow the old token via the validator.
     window.localStorage.setItem(KEY, 'comfy');
-    expect(safeLoadString(KEY, isRowDensity, DEFAULT)).toBe('comfy');
+    expect(safeLoadString(KEY, isRowDensity, DEFAULT)).toBe('cozy');
+  });
+
+  it('round-trips compact', () => {
+    window.localStorage.setItem(KEY, 'compact');
+    expect(safeLoadString(KEY, isRowDensity, DEFAULT)).toBe('compact');
   });
 });
 

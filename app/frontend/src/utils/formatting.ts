@@ -213,8 +213,9 @@ export const formatValue = (
 export interface AutoWidthInputs {
   rows: Array<Record<string, unknown>>;
   columns: Array<{ key: string; displayName: string }>;
-  /** 'compact' | 'comfy' — drives px-per-char and padding. */
-  density: 'compact' | 'comfy';
+  /** 'cozy' | 'compact' — drives px-per-char and padding. Compact is
+   *  significantly denser than cozy (smaller font, tighter padding). */
+  density: 'cozy' | 'compact';
   unitSystem: UnitSystem;
   /** Per-column floor. Use for `part_number`, which we want extra-wide
    *  even if its values happen to fit in fewer chars on a thin dataset. */
@@ -238,10 +239,11 @@ export const computeAutoColumnWidths = (
     percentile = 0.9,
   } = inputs;
 
-  // Mono font ≈ 0.6em per glyph. 0.85rem cells in compact, ~1rem in comfy.
-  const charPx = density === 'comfy' ? 9.0 : 7.5;
-  const cellPaddingPx = density === 'comfy' ? 28 : 22;
-  const minPx = 60;
+  // Mono-ish glyph ≈ 0.6em. Cozy is the historical compact (~0.85rem
+  // cells); the new compact tightens font + padding for spreadsheet feel.
+  const charPx = density === 'compact' ? 6.0 : 7.5;
+  const cellPaddingPx = density === 'compact' ? 14 : 22;
+  const minPx = density === 'compact' ? 40 : 60;
 
   const widths: Record<string, number> = {};
   for (const col of columns) {

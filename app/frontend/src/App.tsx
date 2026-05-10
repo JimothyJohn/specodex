@@ -24,7 +24,7 @@
 
 import { lazy, Suspense, useState } from 'react';
 import { BrowserRouter, Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom';
-import { AppProvider } from './context/AppContext';
+import { AppProvider, useApp } from './context/AppContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ProjectsProvider } from './context/ProjectsContext';
 import { ConfirmProvider } from './components/ui/ConfirmDialog';
@@ -96,6 +96,7 @@ export function AppShell() {
   // deployed environment now serves both admin and public UI based
   // on token contents.
   const { user, isAdmin: showAdminNav } = useAuth();
+  const { rowDensity } = useApp();
   const showSignedInNav = !!user;
   const [feedbackOpen, setFeedbackOpen] = useState(false);
 
@@ -105,7 +106,7 @@ export function AppShell() {
       {/* Shows banner when offline (mobile & desktop) */}
       <NetworkStatus />
 
-      <div className="app">
+      <div className={`app density-${rowDensity}`}>
         {!isLanding && (
           <header className="header">
             <div className="header-left">

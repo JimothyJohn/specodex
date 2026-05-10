@@ -99,23 +99,23 @@ describe('safeSave', () => {
 });
 
 describe('safeLoadString', () => {
-  const isDensity = (v: string): v is 'compact' | 'comfy' =>
-    v === 'compact' || v === 'comfy';
+  const isDensity = (v: string): v is 'cozy' | 'compact' =>
+    v === 'cozy' || v === 'compact';
 
   beforeEach(clearStorage);
 
   it('returns stored string when validator accepts', () => {
-    window.localStorage.setItem('density', 'comfy');
-    expect(safeLoadString('density', isDensity, 'compact')).toBe('comfy');
+    window.localStorage.setItem('density', 'compact');
+    expect(safeLoadString('density', isDensity, 'cozy')).toBe('compact');
   });
 
   it('returns fallback when stored string is off-schema', () => {
     window.localStorage.setItem('density', 'medium');
-    expect(safeLoadString('density', isDensity, 'compact')).toBe('compact');
+    expect(safeLoadString('density', isDensity, 'cozy')).toBe('cozy');
   });
 
   it('returns fallback when key missing', () => {
-    expect(safeLoadString('missing', isDensity, 'compact')).toBe('compact');
+    expect(safeLoadString('missing', isDensity, 'cozy')).toBe('cozy');
   });
 
   it('returns fallback when getItem throws', () => {
@@ -124,7 +124,7 @@ describe('safeLoadString', () => {
       .mockImplementation(() => {
         throw new Error('access denied');
       });
-    expect(safeLoadString('density', isDensity, 'compact')).toBe('compact');
+    expect(safeLoadString('density', isDensity, 'cozy')).toBe('cozy');
     spy.mockRestore();
   });
 });
