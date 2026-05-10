@@ -6638,12 +6638,14 @@ input.transmission-param-input {
 }
 
 /* Each row in the header has a fixed height so all columns align. The
- * histogram now sits flush against the slider — the slider row's top
+ * histogram sits flush against the slider — the slider row's top
  * margin is 0 so there's no gap between distribution bars and the
  * track. Visual relationship between the two is the whole point of
- * having a histogram in the first place. */
+ * having a histogram in the first place. Cozy mode (the default)
+ * uses an 18px histogram band; compact mode strips the histogram
+ * entirely (see `.compact-column-header` below). */
 .column-header-histogram {
-  height: 26px;
+  height: 18px;
   margin: 0;
   padding: 0;
   cursor: default;
@@ -6711,13 +6713,14 @@ input.transmission-param-input {
  * directly under the slider so the relationship "thumb position ↔
  * threshold value" is unmistakable. Bigger than the operator/unit
  * pills below it because the number is the thing the user actually
- * needs to read. */
+ * needs to read. Cozy mode is the place to read this — compact mode
+ * inlines the value into the single-row header instead. */
 .column-header-value-row {
   display: flex;
   align-items: stretch;
-  margin-top: 0.3rem;
-  height: 30px;
-  font-size: 0.95rem;
+  margin-top: 0.2rem;
+  height: 24px;
+  font-size: 0.85rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   font-family: var(--font-mono, monospace);
@@ -6740,9 +6743,9 @@ input.transmission-param-input {
   align-items: stretch;
   justify-content: space-between;
   gap: 0.4rem;
-  margin-top: 0.2rem;
-  height: 22px;
-  font-size: 0.85rem;
+  margin-top: 0.1rem;
+  height: 18px;
+  font-size: 0.75rem;
   text-transform: none;
   letter-spacing: 0;
   font-weight: 600;
@@ -6750,6 +6753,99 @@ input.transmission-param-input {
   font-variant-numeric: tabular-nums;
   font-family: var(--font-mono, monospace);
   min-width: 0;
+}
+
+/* Compact column header — single-row layout that strips the histogram,
+ * slider, and the dedicated value/operator/unit rows from the cozy
+ * stack. Renders only the affordances the user can act on (sort label,
+ * operator / mode toggle, value or substring input, unit, close).
+ * Activated via the `compact-column-header` class on the column div,
+ * emitted only by the compact JSX branch in ColumnHeader.tsx.
+ *
+ * For categorical (string/number/array) columns the popover trigger
+ * and DistributionChart are also stripped — the inline substring
+ * input + ⊕/⊖ mode toggle replaces both. */
+.product-grid-header-item.compact-column-header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.15rem 0.25rem;
+  min-height: 0;
+}
+
+.compact-column-header .compact-column-sort {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 20px;
+  padding: 0 0.15rem;
+  font-size: 0.7rem;
+}
+
+.compact-column-header .compact-readout-operator,
+.compact-column-header .compact-readout-unit,
+.compact-column-header .compact-readout-value,
+.compact-column-header .compact-readout-value-input {
+  flex: 0 0 auto;
+  height: 20px;
+  padding: 0 0.25rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border-radius: 2px;
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-mono, monospace);
+}
+
+.compact-column-header .compact-readout-value,
+.compact-column-header .compact-readout-value-input {
+  min-width: 36px;
+  text-align: center;
+}
+
+.compact-column-header .compact-readout-operator[disabled] {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.compact-column-header .compact-substring-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 20px;
+  padding: 0 0.3rem;
+  font-size: 0.72rem;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 2px;
+  color: inherit;
+  font-family: inherit;
+}
+
+.compact-column-header .compact-substring-input::placeholder {
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+
+.compact-column-header .compact-substring-input:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: -2px;
+}
+
+.compact-column-header .compact-column-remove-btn {
+  flex: 0 0 16px;
+  width: 16px !important;
+  height: 16px !important;
+  position: static !important;
+  font-size: 12px !important;
+  border-radius: 2px !important;
+  padding: 0;
+  margin-left: 0.1rem;
+  top: auto;
+  right: auto;
+}
+
+.compact-column-header .compact-column-remove-btn svg {
+  width: 8px;
+  height: 8px;
 }
 
 .column-header-bottom .readout-operator,

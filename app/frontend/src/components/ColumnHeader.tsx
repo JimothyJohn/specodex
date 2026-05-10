@@ -39,6 +39,7 @@ import {
   toCanonical,
   toDisplay,
 } from '../utils/unitConversion';
+import { useApp } from '../context/AppContext';
 import DistributionChart from './DistributionChart';
 import MultiSelectFilterPopover from './MultiSelectFilterPopover';
 import Tooltip from './ui/Tooltip';
@@ -123,6 +124,8 @@ export default function ColumnHeader({
   onRemove,
   onResizeStart,
 }: ColumnHeaderProps) {
+  const { rowDensity } = useApp();
+  const isCompact = rowDensity === 'compact';
   const sliderTrackRef = useRef<HTMLDivElement>(null);
   const sliderInputRef = useRef<HTMLInputElement>(null);
   const multiTriggerRef = useRef<HTMLButtonElement>(null);
@@ -421,6 +424,201 @@ export default function ColumnHeader({
       : null;
   const dispUnit = rangeInfo?.unit ? displayUnit(rangeInfo.unit, unitSystem) : '';
   const intLikeUnit = rangeInfo ? isIntegerUnit(rangeInfo.unit) : false;
+
+  // Compact-only: substring text filter for categorical columns. The
+  // existing applyFilters logic already does case-insensitive substring
+  // match when filter.value is a string (filters.ts:matchesFilter),
+  // so we just wire an <input> straight through filter.value. Empty
+  // string clears the filter rather than persisting a no-op that
+  // would also confuse the cozy multi-select popover.
+  const setSubstring = (raw: string) => {
+    const next = raw;
+    if (next.trim() === '') {
+      if (filter) onFilterChange(null);
+      return;
+    }
+    if (filter) {
+      onFilterChange({ ...filter, value: next });
+    } else {
+      onFilterChange({
+        attribute: attribute.key,
+        displayName: label,
+        mode: 'include',
+        value: next,
+      });
+    }
+  };
+
+  const flipCategoricalMode = () => {
+    if (!filter) return;
+    onFilterChange({
+      ...filter,
+      mode: filter.mode === 'exclude' ? 'include' : 'exclude',
+    });
+  };
+
+  // Compact path: single-row layout with no histogram and no slider.
+  // Strips the column header down to the affordances the user can
+  // act on (sort label, operator/mode, value/text, unit, close) so
+  // the table gets the vertical pixels back. The cozy path below
+  // keeps the full histogram + slider stack.
+  if (isCompact) {
+    return (
+      <div className={headerClasses + ' compact-column-header'} style={{ width }}>
+        <Tooltip content="Click to sort • click again to reverse, again to clear">
+          <button
+            type="button"
+            className="column-header-sort compact-column-sort"
+            onClick={onSort}
+          >
+            <span className="column-header-label-text">{label}</span>
+            <span className="sort-indicator">
+              {sortConfig?.direction === 'asc' && '↑'}
+              {sortConfig?.direction === 'desc' && '↓'}
+              {sortConfig && totalSorts > 1 && (
+                <span className="sort-order">{sortIndex + 1}</span>
+              )}
+            </span>
+          </button>
+        </Tooltip>
+
+        {isSliderEligible && rangeInfo && (
+          <>
+            <Tooltip content={`Operator ${operator} — click to flip (>= ↔ <)`}>
+              <button
+                type="button"
+                className="readout-operator compact-readout-operator"
+                onClick={cycleOperator}
+                aria-label={`Filter operator ${operator}`}
+              >
+                {operator === '>=' ? '≥' : operator === '<=' ? '≤' : operator}
+              </button>
+            </Tooltip>
+            {editingValue ? (
+              <input
+                ref={sliderInputRef}
+                type="number"
+                className="readout-value-input compact-readout-value-input"
+                value={valueDraft}
+                step="any"
+                onChange={(e) => setValueDraft(e.target.value)}
+                onBlur={commitOverride}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    commitOverride();
+                  } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    cancelOverride();
+                  }
+                }}
+                aria-label="Override threshold value"
+              />
+            ) : (
+              <Tooltip content="Click to type a threshold">
+                <button
+                  type="button"
+                  className="readout-value compact-readout-value"
+                  onClick={() => {
+                    if (dispCurrent != null) {
+                      setValueDraft(
+                        intLikeUnit
+                          ? String(Math.round(dispCurrent))
+                          : String(Number(dispCurrent.toFixed(2))),
+                      );
+                    } else {
+                      setValueDraft('');
+                    }
+                    setEditingValue(true);
+                  }}
+                >
+                  {dispCurrent != null
+                    ? intLikeUnit
+                      ? Math.round(dispCurrent).toLocaleString()
+                      : dispCurrent.toFixed(1)
+                    : 'any'}
+                </button>
+              </Tooltip>
+            )}
+            {dispUnit && (
+              <Tooltip content={`Click to switch units (currently ${unitSystem})`}>
+                <button
+                  type="button"
+                  className="readout-unit compact-readout-unit"
+                  onClick={handleUnitClick}
+                  aria-label={`Unit ${dispUnit} — click to swap unit system`}
+                >
+                  {dispUnit}
+                </button>
+              </Tooltip>
+            )}
+          </>
+        )}
+
+        {!isSliderEligible && multiSelectOptions.length > 0 && (
+          <>
+            <Tooltip
+              content={
+                !filter
+                  ? 'Type to filter, then click to flip include ↔ exclude'
+                  : `${filterMode === 'exclude' ? 'Exclude' : 'Include'} matches — click to flip`
+              }
+            >
+              <button
+                type="button"
+                className="readout-operator compact-readout-operator"
+                onClick={flipCategoricalMode}
+                disabled={!filter}
+                aria-label={`Filter mode ${filterMode ?? 'include'}`}
+              >
+                {filterMode === 'exclude' ? '⊖' : '⊕'}
+              </button>
+            </Tooltip>
+            <input
+              type="text"
+              className="compact-substring-input"
+              value={typeof filter?.value === 'string' ? filter.value : ''}
+              placeholder="contains…"
+              onChange={(e) => setSubstring(e.target.value)}
+              aria-label={`${label} substring filter`}
+            />
+          </>
+        )}
+
+        <Tooltip content="Hide column">
+          <button
+            className="column-remove-btn compact-column-remove-btn"
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemove();
+            }}
+          >
+            <svg
+              width="10"
+              height="10"
+              viewBox="0 0 10 10"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              aria-hidden="true"
+            >
+              <path d="M2 2 L8 8 M8 2 L2 8" />
+            </svg>
+          </button>
+        </Tooltip>
+
+        <div
+          className="col-resize-handle"
+          onMouseDown={(e) => {
+            e.stopPropagation();
+            onResizeStart(e);
+          }}
+          onClick={(e) => e.stopPropagation()}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className={headerClasses} style={{ width }}>
