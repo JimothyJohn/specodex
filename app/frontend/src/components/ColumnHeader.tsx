@@ -463,47 +463,71 @@ export default function ColumnHeader({
   // the table gets the vertical pixels back. The cozy path below
   // keeps the full histogram + slider stack.
   if (isCompact) {
+    // Compact: 3 stacked rows matching the user's mental model —
+    //   Row 1: spec name + sort indicator + close X
+    //   Row 2: value (numeric threshold) OR substring input (categorical)
+    //   Row 3: operator (≥/≤) + unit, OR include/exclude toggle
+    // Reuses cozy's class names (.column-header-top / -value-row /
+    // -bottom) so each row inherits the existing layout and shrinks
+    // further via the `.compact-column-header` overrides in App.css.
+    // Histogram and slider are intentionally absent — the
+    // distribution-shape affordance lives in cozy mode now.
     return (
       <div className={headerClasses + ' compact-column-header'} style={{ width }}>
-        {/* Inner flex row. The outer cell must stay `display: table-cell`
-         * to participate in the table-layout: fixed grid (overriding
-         * display on the cell ejects it from the table flow and
-         * collapses every column's width). */}
-        <div className="compact-column-header-row">
-        <Tooltip content="Click to sort • click again to reverse, again to clear">
-          <button
-            type="button"
-            className="column-header-sort compact-column-sort"
-            onClick={onSort}
-          >
-            <span className="column-header-label-text">{label}</span>
-            <span className="sort-indicator">
-              {sortConfig?.direction === 'asc' && '↑'}
-              {sortConfig?.direction === 'desc' && '↓'}
-              {sortConfig && totalSorts > 1 && (
-                <span className="sort-order">{sortIndex + 1}</span>
-              )}
-            </span>
-          </button>
-        </Tooltip>
-
-        {isSliderEligible && rangeInfo && (
-          <>
-            <Tooltip content={`Operator ${operator} — click to flip (>= ↔ <)`}>
-              <button
-                type="button"
-                className="readout-operator compact-readout-operator"
-                onClick={cycleOperator}
-                aria-label={`Filter operator ${operator}`}
+        {/* Row 1 — spec name (click to sort, with sort indicator) +
+         * close X. Same class as cozy so the layout is familiar. */}
+        <div className="column-header-top">
+          <Tooltip content="Click to sort • click again to reverse, again to clear">
+            <button
+              type="button"
+              className="column-header-sort"
+              onClick={onSort}
+            >
+              <span className="column-header-label-text">{label}</span>
+              <span className="sort-indicator">
+                {sortConfig?.direction === 'asc' && '↑'}
+                {sortConfig?.direction === 'desc' && '↓'}
+                {sortConfig && totalSorts > 1 && (
+                  <span className="sort-order">{sortIndex + 1}</span>
+                )}
+              </span>
+            </button>
+          </Tooltip>
+          <Tooltip content="Hide column">
+            <button
+              className="column-remove-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                onRemove();
+              }}
+            >
+              <svg
+                width="10"
+                height="10"
+                viewBox="0 0 10 10"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                aria-hidden="true"
               >
-                {operator === '>=' ? '≥' : operator === '<=' ? '≤' : operator}
-              </button>
-            </Tooltip>
+                <path d="M2 2 L8 8 M8 2 L2 8" />
+              </svg>
+            </button>
+          </Tooltip>
+        </div>
+
+        {/* Row 2 — value (numeric) or substring input (categorical).
+         * Full-width and the most prominent control in the header so
+         * the user immediately reads the current threshold or the
+         * substring they're filtering on. */}
+        {isSliderEligible && rangeInfo && (
+          <div className="column-header-value-row">
             {editingValue ? (
               <input
                 ref={sliderInputRef}
                 type="number"
-                className="readout-value-input compact-readout-value-input"
+                className="readout-value-input"
                 value={valueDraft}
                 step="any"
                 onChange={(e) => setValueDraft(e.target.value)}
@@ -523,7 +547,7 @@ export default function ColumnHeader({
               <Tooltip content="Click to type a threshold">
                 <button
                   type="button"
-                  className="readout-value compact-readout-value"
+                  className="readout-value"
                   onClick={() => {
                     if (dispCurrent != null) {
                       setValueDraft(
@@ -545,40 +569,10 @@ export default function ColumnHeader({
                 </button>
               </Tooltip>
             )}
-            {dispUnit && (
-              <Tooltip content={`Click to switch units (currently ${unitSystem})`}>
-                <button
-                  type="button"
-                  className="readout-unit compact-readout-unit"
-                  onClick={handleUnitClick}
-                  aria-label={`Unit ${dispUnit} — click to swap unit system`}
-                >
-                  {dispUnit}
-                </button>
-              </Tooltip>
-            )}
-          </>
+          </div>
         )}
-
         {!isSliderEligible && multiSelectOptions.length > 0 && (
-          <>
-            <Tooltip
-              content={
-                !filter
-                  ? 'Type to filter, then click to flip include ↔ exclude'
-                  : `${filterMode === 'exclude' ? 'Exclude' : 'Include'} matches — click to flip`
-              }
-            >
-              <button
-                type="button"
-                className="readout-operator compact-readout-operator"
-                onClick={flipCategoricalMode}
-                disabled={!filter}
-                aria-label={`Filter mode ${filterMode ?? 'include'}`}
-              >
-                {filterMode === 'exclude' ? '⊖' : '⊕'}
-              </button>
-            </Tooltip>
+          <div className="column-header-value-row">
             <input
               type="text"
               className="compact-substring-input"
@@ -587,32 +581,59 @@ export default function ColumnHeader({
               onChange={(e) => setSubstring(e.target.value)}
               aria-label={`${label} substring filter`}
             />
-          </>
+          </div>
         )}
 
-        <Tooltip content="Hide column">
-          <button
-            className="column-remove-btn compact-column-remove-btn"
-            onClick={(e) => {
-              e.stopPropagation();
-              onRemove();
-            }}
-          >
-            <svg
-              width="10"
-              height="10"
-              viewBox="0 0 10 10"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              aria-hidden="true"
+        {/* Row 3 — operator (≥/≤) + unit, OR include/exclude toggle
+         * for categorical. The "direction" row: which way the filter
+         * cuts. */}
+        {isSliderEligible && rangeInfo && (
+          <div className="column-header-bottom">
+            <Tooltip content={`Operator ${operator} — click to flip (>= ↔ <)`}>
+              <button
+                type="button"
+                className="readout-operator"
+                onClick={cycleOperator}
+                aria-label={`Filter operator ${operator}`}
+              >
+                {operator === '>=' ? '≥' : operator === '<=' ? '≤' : operator}
+              </button>
+            </Tooltip>
+            {dispUnit && (
+              <Tooltip content={`Click to switch units (currently ${unitSystem})`}>
+                <button
+                  type="button"
+                  className="readout-unit"
+                  onClick={handleUnitClick}
+                  aria-label={`Unit ${dispUnit} — click to swap unit system`}
+                >
+                  {dispUnit}
+                </button>
+              </Tooltip>
+            )}
+          </div>
+        )}
+        {!isSliderEligible && multiSelectOptions.length > 0 && (
+          <div className="column-header-bottom">
+            <Tooltip
+              content={
+                !filter
+                  ? 'Type to filter first, then this button flips include ↔ exclude'
+                  : `${filterMode === 'exclude' ? 'Excluding' : 'Including'} matches — click to flip`
+              }
             >
-              <path d="M2 2 L8 8 M8 2 L2 8" />
-            </svg>
-          </button>
-        </Tooltip>
-        </div>
+              <button
+                type="button"
+                className="readout-operator compact-mode-toggle"
+                onClick={flipCategoricalMode}
+                disabled={!filter}
+                aria-label={`Filter mode ${filterMode ?? 'include'}`}
+              >
+                {filterMode === 'exclude' ? '⊖ exclude' : '⊕ include'}
+              </button>
+            </Tooltip>
+          </div>
+        )}
 
         <div
           className="col-resize-handle"
