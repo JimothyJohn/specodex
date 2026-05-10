@@ -1,0 +1,93 @@
+/* RelationsPanel — surfaces compatibility candidates from /api/v1/relations.
+ * Styled to fit alongside the existing card primitives (filter chips,
+ * product detail modal). Per CLAUDE.md "per-component CSS" rule, this
+ * lives next to its component, not in App.css. */
+
+.relations-panel {
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--bg-secondary);
+  padding: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.relations-panel__heading {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 0.5rem 0;
+}
+
+.relations-panel__status,
+.relations-panel__empty {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  padding: 0.5rem 0;
+}
+
+.relations-panel__error {
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
+  border-left: 3px solid var(--accent-primary);
+  font-size: 0.85rem;
+  padding: 0.5rem 0.75rem;
+}
+
+.relations-panel__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.relations-panel__item {
+  margin: 0;
+}
+
+.relations-panel__item-button {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) auto;
+  gap: 0.5rem;
+  padding: 0.5rem 0.6rem;
+  background: var(--bg-tertiary);
+  border: 1px solid transparent;
+  border-radius: 4px;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.relations-panel__item-button:hover {
+  border-color: var(--accent-primary);
+  background: var(--bg-secondary);
+}
+
+.relations-panel__item-mfg {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.relations-panel__item-name {
+  color: var(--text-primary);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.relations-panel__item-pn {
+  color: var(--text-secondary);
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 0.8rem;
+}
