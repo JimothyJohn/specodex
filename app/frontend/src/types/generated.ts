@@ -1174,6 +1174,37 @@ export interface LinearActuator {
       )[]
     | null;
   /**
+   * Motor frames this actuator can accept (e.g. ['NEMA 23', 'NEMA 34']). Drives compatible-motor queries on the /actuators page.
+   */
+  compatible_motor_mounts?:
+    | (
+        | "NEMA 8"
+        | "NEMA 11"
+        | "NEMA 14"
+        | "NEMA 17"
+        | "NEMA 23"
+        | "NEMA 34"
+        | "NEMA 42"
+        | "IEC 56"
+        | "IEC 63"
+        | "IEC 71"
+        | "IEC 80"
+        | "IEC 90"
+        | "IEC 100"
+        | "IEC 112"
+        | "IEC 132"
+        | "MAX 8"
+        | "MAX 13"
+        | "MAX 16"
+        | "MAX 20"
+        | "MAX 25"
+        | "MAX 30"
+        | "MAX 35"
+        | "MAX 40"
+        | "custom"
+      )[]
+    | null;
+  /**
    * Rated input voltage (e.g., in V)
    */
   rated_voltage?: MinMaxUnit | null;
