@@ -2127,6 +2127,44 @@ button.secondary:hover {
   margin-bottom: 0.55rem;
 }
 
+/* "Motor application:" label above the rotary/linear/z-axis toggle.
+ * Disambiguates the toggle from a product-type switch — without it,
+ * "Linear" reads as a product type and hides linear_actuator records
+ * from anyone hunting for actuators on the motor view. */
+.transmission-type-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.35rem;
+}
+
+/* Discoverability hint shown when motor + Linear/Z-axis is active.
+ * Deep-links to the linear_actuator product type so a user who clicked
+ * "Linear" hoping to find actuators can switch in one click. */
+.transmission-type-hint {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border-color);
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+.transmission-type-hint-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 700;
+  color: var(--accent-primary);
+  cursor: pointer;
+  text-decoration: underline;
+}
+.transmission-type-hint-link:hover {
+  color: var(--accent-secondary);
+}
+
 /* Application type selector (Rotary / Linear / Z-Axis) — primary
  * mode switch for the motor sidebar. */
 .transmission-type-row {
