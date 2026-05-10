@@ -45,11 +45,55 @@ from specodex.utils import (
     UUIDEncoder,
     get_product_info_from_json,
 )
+from specodex.double_tap.runner import (
+    DoubleTapResult,
+    extract_with_recovery,
+    extract_with_recovery_telemetry,
+)
 from specodex.extract import call_llm_and_parse
 from specodex.page_finder import find_spec_pages_by_text  # noqa: E402
 
 PAGES_PER_CHUNK = int(os.environ.get("PAGES_PER_CHUNK", "4"))
 MAX_PER_PAGE_CALLS = int(os.environ.get("MAX_PER_PAGE_CALLS", "30"))
+
+
+def _double_tap_enabled() -> bool:
+    """Read SPECODEX_DOUBLE_TAP at call time so tests can monkeypatch env.
+
+    Off by default — production single-shot behaviour is unchanged
+    unless the operator sets ``SPECODEX_DOUBLE_TAP=1`` (typically used
+    during the bench A/B and initial rollout). See
+    ``todo/DOUBLE_TAP.md`` Part 4 for the cost gate.
+    """
+    return os.environ.get("SPECODEX_DOUBLE_TAP", "").lower() in ("1", "true", "yes")
+
+
+def _extract_with_optional_double_tap(
+    doc_data: bytes | str,
+    api_key: str,
+    product_type: str,
+    context: dict,
+    content_type: str,
+    tokens: dict,
+) -> tuple[List[Any], Optional[DoubleTapResult]]:
+    """Wrapper that branches on the SPECODEX_DOUBLE_TAP env var.
+
+    Returns ``(parsed_models, double_tap_result_or_None)``. The runner's
+    DoubleTapResult is exposed so the caller can persist its telemetry
+    on the ingest log. When double-tap is off, the second tuple element
+    is ``None`` and the call is exactly the legacy ``call_llm_and_parse``.
+    """
+    if _double_tap_enabled():
+        result = extract_with_recovery(
+            doc_data, api_key, product_type, context, content_type, tokens=tokens
+        )
+        return result.products, result
+    parsed = call_llm_and_parse(
+        doc_data, api_key, product_type, context, content_type, tokens=tokens
+    )
+    return parsed, None
+
+
 # Bridge small gaps between page_finder hits so a non-keyword continuation
 # page rides along in the same chunk as the table it continues. See
 # todo/CHUNKS.md for the algorithm and the failure mode that motivated it.
@@ -688,6 +732,9 @@ def process_datasheet(
     parsed_models: List[Any] = []
     # Source bytes for the failed-pdf snapshot — populated post-download.
     source_bytes: Optional[bytes | str] = None
+    # Double-tap telemetry, populated only when SPECODEX_DOUBLE_TAP=1
+    # and the bundled-PDF / HTML path runs the verifier loop.
+    double_tap_result: Optional[DoubleTapResult] = None
 
     def _maybe_save_failure(status: str, error_message: Optional[str] = None) -> None:
         if save_failed_to is None:
@@ -763,15 +810,25 @@ def process_datasheet(
                 )
                 pages_used = list(pages)
                 doc_data = _extract_bundled_pdf(full_pdf, pages)
-                parsed_models = call_llm_and_parse(
-                    doc_data, api_key, product_type, context, content_type, tokens
+                parsed_models, double_tap_result = _extract_with_optional_double_tap(
+                    doc_data,
+                    api_key,
+                    product_type,
+                    context,
+                    content_type,
+                    tokens,
                 )
                 for model in parsed_models:
                     model.pages = [p + 1 for p in pages]
             else:
                 doc_data = full_pdf
-                parsed_models = call_llm_and_parse(
-                    doc_data, api_key, product_type, context, content_type, tokens
+                parsed_models, double_tap_result = _extract_with_optional_double_tap(
+                    doc_data,
+                    api_key,
+                    product_type,
+                    context,
+                    content_type,
+                    tokens,
                 )
         else:
             if pages:
@@ -792,7 +849,7 @@ def process_datasheet(
                 _maybe_save_failure(STATUS_EXTRACT_FAIL, "html_download_failed")
                 return "failed"
             source_bytes = doc_data
-            parsed_models = call_llm_and_parse(
+            parsed_models, double_tap_result = _extract_with_optional_double_tap(
                 doc_data, api_key, product_type, context, content_type, tokens
             )
 
@@ -915,26 +972,28 @@ def process_datasheet(
         else:
             log_status = STATUS_EXTRACT_FAIL
 
-        _write_ingest_log(
-            client,
-            url=url,
-            manufacturer=manufacturer,
-            product_type=product_type,
-            product_name_hint=product_name,
-            product_family_hint=product_family,
-            status=log_status,
-            products_extracted=products_extracted_raw,
-            products_written=success_count,
-            fields_total=total_fields,
-            fields_filled_avg=fields_filled_avg,
-            fields_missing=missing_union,
-            pages_detected=pages_detected,
-            pages_used=pages_used,
-            page_finder_method=page_finder_method,
-            extracted_part_numbers=extracted_part_numbers,
-            gemini_input_tokens=tokens["input"],
-            gemini_output_tokens=tokens["output"],
-        )
+        ingest_kwargs: dict = {
+            "url": url,
+            "manufacturer": manufacturer,
+            "product_type": product_type,
+            "product_name_hint": product_name,
+            "product_family_hint": product_family,
+            "status": log_status,
+            "products_extracted": products_extracted_raw,
+            "products_written": success_count,
+            "fields_total": total_fields,
+            "fields_filled_avg": fields_filled_avg,
+            "fields_missing": missing_union,
+            "pages_detected": pages_detected,
+            "pages_used": pages_used,
+            "page_finder_method": page_finder_method,
+            "extracted_part_numbers": extracted_part_numbers,
+            "gemini_input_tokens": tokens["input"],
+            "gemini_output_tokens": tokens["output"],
+        }
+        if double_tap_result is not None:
+            ingest_kwargs.update(extract_with_recovery_telemetry(double_tap_result))
+        _write_ingest_log(client, **ingest_kwargs)
 
         if success_count == 0:
             _maybe_save_failure(log_status)

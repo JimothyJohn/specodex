@@ -72,6 +72,7 @@ def generate_content(
     context: Optional[Dict[str, Any]] = None,
     content_type: str = "pdf",
     mime_type: Optional[str] = None,
+    prompt_prefix: Optional[str] = None,
 ) -> Any:
     """Generate a structured JSON extraction for a datasheet.
 
@@ -85,6 +86,11 @@ def generate_content(
         content_type: ``"pdf"``, ``"image"``, or ``"html"``.
         mime_type: Required when ``content_type="image"``. One of
             ``image/png``, ``image/jpeg``, ``image/webp``.
+        prompt_prefix: Optional text injected ahead of the standard
+            extraction prompt. Used by the double-tap runner to prime
+            a second pass with the first-pass result + the fields the
+            verifier flagged. Empty / ``None`` = standard one-pass
+            extraction.
 
     Returns the raw ``google.genai`` response object. The JSON payload is
     accessed via ``response.text`` and parsed downstream by
@@ -116,7 +122,10 @@ def generate_content(
             "products array.\n\n"
         )
 
+    prefix_block = f"{prompt_prefix}\n\n" if prompt_prefix else ""
+
     prompt = (
+        f"{prefix_block}"
         "You are extracting product specifications from an industrial catalog.\n\n"
         f"{single_page_nudge}"
         f"{context_block}"

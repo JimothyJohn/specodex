@@ -24,6 +24,7 @@ from typing import Literal, Optional, Union
 from pydantic import BaseModel
 
 from specodex.models.common import MinMaxUnit, ValueUnit
+from specodex.models.encoder import EncoderFeedback, EncoderProtocol
 
 
 Direction = Literal["input", "output"]
@@ -60,14 +61,16 @@ class MechanicalShaftPort(BaseModel):
 class FeedbackPort(BaseModel):
     """Encoder / position feedback.
 
-    Motors expose exactly one type (``provides``); drives accept one of
-    a list (``supports``). The compat check verifies membership.
+    Motors expose exactly one structured ``EncoderFeedback`` (``provides``);
+    drives accept a list of wire protocols (``supports``). The compat
+    check verifies the motor's protocol is in the drive's supported
+    list, with the SUBSUMES widening (EnDat 2.2 accepts 2.1, etc.).
     """
 
     kind: Literal["feedback"] = "feedback"
     direction: Direction
-    provides: Optional[str] = None  # motor side — single encoder type
-    supports: Optional[list[str]] = None  # drive side — list of accepted types
+    provides: Optional[EncoderFeedback] = None  # motor side — single encoder
+    supports: Optional[list[EncoderProtocol]] = None  # drive side — protocols
 
 
 class FieldbusPort(BaseModel):

@@ -7,7 +7,9 @@
 
 from __future__ import annotations
 
-from typing import List, Literal, Optional
+from typing import Annotated, Any, List, Literal, Optional
+
+from pydantic import BeforeValidator
 
 from specodex.models.common import (
     Current,
@@ -19,7 +21,30 @@ from specodex.models.common import (
     VoltageRange,
 )
 from specodex.models.communication_protocol import CommunicationProtocol
+from specodex.models.encoder import EncoderProtocol, coerce_protocol_string
 from specodex.models.product import ProductBase
+
+
+def _coerce_protocol_list(v: Any) -> Any:
+    """Map free-text encoder protocol strings to canonical enum values.
+
+    Handles legacy DB rows / LLM payloads that say ``"EnDat 2.2"`` or
+    ``"Resolver"`` rather than ``"endat_2_2"`` / ``"resolver_analog"``.
+    Strings that don't match any synonym become ``"unknown"`` (the enum
+    sentinel) so the row still validates and the verifier can flag it.
+    """
+    if v is None:
+        return None
+    if not isinstance(v, list):
+        return v
+    out: list[Any] = []
+    for item in v:
+        if isinstance(item, str):
+            mapped = coerce_protocol_string(item)
+            out.append(mapped if mapped else ("unknown" if item.strip() else item))
+        else:
+            out.append(item)
+    return out
 
 
 # AI-generated comment:
@@ -45,7 +70,16 @@ class Drive(ProductBase):
     switching_frequency: Optional[List[Frequency]] = None
     fieldbus: Optional[List[CommunicationProtocol]] = None
     # control_modes: Optional[List[str]] = None
-    encoder_feedback_support: Optional[List[str]] = None
+    # Drives accept a list of wire protocols. The compat layer
+    # (`integration/compat.py:_compare_feedback`) checks membership
+    # against the motor side's `EncoderFeedback.protocol`. Drives don't
+    # need the full `EncoderFeedback` model because the device behind
+    # the wire is the motor's problem. The BeforeValidator coerces
+    # legacy free-text payloads ("EnDat 2.2", "Resolver") to canonical
+    # enum values so back-compat with old DB rows is preserved.
+    encoder_feedback_support: Annotated[
+        Optional[List[EncoderProtocol]], BeforeValidator(_coerce_protocol_list)
+    ] = None
     ethernet_ports: Optional[int] = None
     digital_inputs: Optional[int] = None
     digital_outputs: Optional[int] = None

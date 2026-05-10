@@ -459,7 +459,32 @@ export interface Drive {
   fieldbus?:
     | ("EtherCAT" | "EtherNet/IP" | "PROFINET" | "Modbus TCP" | "POWERLINK" | "Sercos III" | "CC-Link IE")[]
     | null;
-  encoder_feedback_support?: string[] | null;
+  encoder_feedback_support?:
+    | (
+        | "quadrature_ttl"
+        | "open_collector"
+        | "hall_uvw"
+        | "sin_cos_1vpp"
+        | "ssi"
+        | "biss_c"
+        | "endat_2_1"
+        | "endat_2_2"
+        | "hiperface"
+        | "hiperface_dsl"
+        | "tamagawa_t_format"
+        | "mitsubishi_j3"
+        | "mitsubishi_j4"
+        | "mitsubishi_j5"
+        | "panasonic_a6"
+        | "yaskawa_sigma"
+        | "fanuc_serial"
+        | "drive_cliq"
+        | "oct_beckhoff"
+        | "resolver_analog"
+        | "proprietary_other"
+        | "unknown"
+      )[]
+    | null;
   ethernet_ports?: number | null;
   digital_inputs?: number | null;
   digital_outputs?: number | null;
@@ -620,9 +645,9 @@ export interface ElectricCylinder {
    */
   max_axial_load?: ValueUnit | null;
   /**
-   * Encoder or position feedback type
+   * Encoder or position feedback type (structured)
    */
-  encoder_feedback_support?: string | null;
+  encoder_feedback_support?: EncoderFeedback | null;
   /**
    * Communication interface (e.g., 'CANopen', 'RS-232')
    */
@@ -643,6 +668,103 @@ export interface ElectricCylinder {
    * Noise level (e.g., in dBA)
    */
   noise_level?: ValueUnit | null;
+}
+/**
+ * One encoder-feedback specification (motor / actuator side).
+ *
+ * All fields except ``device`` are optional because real catalogs
+ * publish wildly varying levels of detail. The verifier flags rows
+ * with ``device="unknown"`` (or with a populated ``raw`` indicating
+ * legacy free-text shim) for a primed second-pass extraction.
+ *
+ * Drives don't use this full model — they use ``Optional[List[
+ * EncoderProtocol]]`` directly because the wire format is what has
+ * to line up for compatibility.
+ */
+export interface EncoderFeedback {
+  /**
+   * Physical sensor type. Use 'incremental_optical' for plain quadrature optical encoders; 'absolute_optical' for single-turn absolute optical (BiSS-C, EnDat, etc.); 'absolute_optical_multiturn' when the spec mentions multi-turn or 'MT'; 'resolver' for resolvers; 'none' for sensorless / open-loop; 'unknown' only when the catalog text doesn't fit any enum.
+   */
+  device?:
+    | "incremental_optical"
+    | "absolute_optical"
+    | "absolute_optical_multiturn"
+    | "incremental_magnetic"
+    | "absolute_magnetic"
+    | "sin_cos_analog"
+    | "resolver"
+    | "inductive"
+    | "capacitive"
+    | "tachometer_dc"
+    | "hall_only"
+    | "none"
+    | "unknown";
+  /**
+   * Wire / digital interface protocol. Map vendor names to enums: 'EnDat 2.2'→'endat_2_2', 'BiSS-C'→'biss_c', 'Hiperface DSL'→'hiperface_dsl' (vs bare 'Hiperface'→'hiperface'), 'Mitsubishi MR-J5'→'mitsubishi_j5'. Bare 'EnDat' with no version → 'endat_2_2'. Bare 'N-bit absolute' with no vendor name → leave null and set bits_per_turn=N — DO NOT guess the protocol from the bit count alone.
+   */
+  protocol?:
+    | (
+        | "quadrature_ttl"
+        | "open_collector"
+        | "hall_uvw"
+        | "sin_cos_1vpp"
+        | "ssi"
+        | "biss_c"
+        | "endat_2_1"
+        | "endat_2_2"
+        | "hiperface"
+        | "hiperface_dsl"
+        | "tamagawa_t_format"
+        | "mitsubishi_j3"
+        | "mitsubishi_j4"
+        | "mitsubishi_j5"
+        | "panasonic_a6"
+        | "yaskawa_sigma"
+        | "fanuc_serial"
+        | "drive_cliq"
+        | "oct_beckhoff"
+        | "resolver_analog"
+        | "proprietary_other"
+        | "unknown"
+      )
+    | null;
+  /**
+   * 'incremental' (relative position) or 'absolute'.
+   */
+  mode?: ("incremental" | "absolute") | null;
+  /**
+   * True for multi-turn encoders (track revolution count), False for single-turn (reset every revolution). Only meaningful for absolute encoders.
+   */
+  multiturn?: boolean | null;
+  /**
+   * Number of revolution-counting bits, when multiturn=true. Common values: 12, 16, 20. Leave null if not stated — industry default varies by vendor (don't guess).
+   */
+  multiturn_bits?: number | null;
+  /**
+   * True for battery-backed multi-turn encoders, False for true (mechanical / Wiegand) batteryless multi-turn (Panasonic A6, Mitsubishi MR-J5). Omit when unknown.
+   */
+  multiturn_battery_backed?: boolean | null;
+  /**
+   * Single-turn resolution in bits, for absolute encoders. Examples: 17, 20, 22, 23, 24, 26.
+   */
+  bits_per_turn?: number | null;
+  /**
+   * Pulses per revolution, for incremental encoders (PPR). Quote the catalog value before edge multiplication — 2,500 PPR not 10,000 CPR.
+   */
+  pulses_per_rev?: number | null;
+  /**
+   * Lines per revolution, for sin/cos analog encoders. Common values: 1,024 / 2,048 / 4,096.
+   */
+  lines_per_rev?: number | null;
+  /**
+   * Resolver pole-pair count (1, 2, 4...). Only meaningful for device='resolver'. If unstated for a 'resolver' entry, industry default is 1 (1X).
+   */
+  resolver_pole_pairs?: number | null;
+  /**
+   * Original catalog text. Populated by the back-compat shim when legacy free-text payloads are coerced; the verifier uses it to drive the primed second-pass extraction.
+   */
+  raw?: string | null;
+  [k: string]: unknown;
 }
 /**
  * Defines the specifications of the built-in force/torque sensor.
@@ -1019,7 +1141,7 @@ export interface LinearActuator {
   /**
    * Types of encoder feedback supported.
    */
-  encoder_feedback_support?: string[] | null;
+  encoder_feedback_support?: EncoderFeedback[] | null;
   /**
    * Motor frames this actuator can accept (e.g. ['NEMA 23', 'NEMA 34']). Drives compatible-motor queries on the /actuators page.
    */
@@ -1168,7 +1290,7 @@ export interface Motor {
   rated_torque?: ValueUnit | null;
   peak_torque?: ValueUnit | null;
   rated_power?: ValueUnit | null;
-  encoder_feedback_support?: string | null;
+  encoder_feedback_support?: EncoderFeedback | null;
   poles?: number | null;
   rated_current?: ValueUnit | null;
   peak_current?: ValueUnit | null;
