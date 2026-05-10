@@ -54,6 +54,89 @@
             <div class="divider"><span>▮▮▮ RECENT PULL REQUESTS ▮▮▮</span></div>
             <ol class="pr-cards">
                 <li>
+                    <a class="pr-card" href="114.html">
+                        <div class="pr-card-head">
+                            <span class="pr-num">PR #114 (DRAFT)</span>
+                            <h2 class="pr-title">fix(test) — de-flake <code>test_resilience.py</code></h2>
+                        </div>
+                        <div class="pr-card-meta">
+                            <span>Opened 2026-05-10</span>
+                            <span>+35 / −2 in <code>tests/unit/test_resilience.py</code></span>
+                            <span>Branch <code>fix/test-resilience-flake-20260510</code></span>
+                        </div>
+                        <p class="pr-card-body">
+                            Two real bugs surfaced during the HARDENING
+                            sprint: (1) the @retry exponential-backoff
+                            ran for real in tests despite a comment
+                            claiming otherwise — 20-300s of real waiting
+                            per failing call; (2) cross-test
+                            <code>lru_cache</code> pollution on
+                            <code>_client_for</code> made the genai mock
+                            unreliable, so the real google.genai built
+                            a UserContent that failed on empty parts.
+                            Module-scoped autouse fixture clears the
+                            cache + overrides the wait to
+                            <code>wait_none()</code>, restoring both in
+                            finally. 5×verify all green in ~2.7s (was
+                            bimodal 2s vs 22s).
+                        </p>
+                    </a>
+                </li>
+                <li>
+                    <a class="pr-card" href="113.html">
+                        <div class="pr-card-head">
+                            <span class="pr-num">PR #113 (DRAFT)</span>
+                            <h2 class="pr-title">HARDENING Phase 3.1 target 3 — <code>find_spec_pages_by_text</code> property tests</h2>
+                        </div>
+                        <div class="pr-card-meta">
+                            <span>Opened 2026-05-10</span>
+                            <span>+147 / −0 in <code>tests/unit/test_page_finder_property.py</code></span>
+                            <span>Branch <code>auto/hardening-3-1-property-page-finder-20260510</code></span>
+                        </div>
+                        <p class="pr-card-body">
+                            Closes Phase 3.1 (3rd of 3 targets). Property
+                            tests over <code>find_spec_pages_by_text</code>,
+                            which eats raw bytes — a malformed PDF is the
+                            canonical untrusted-bytes attack surface.
+                            Contract: success returns sorted
+                            <code>list[int]</code>; failure raises
+                            <code>FileDataError</code> /
+                            <code>EmptyFileError</code> (typed PyMuPDF
+                            exceptions). A <code>KeyError</code> /
+                            <code>TypeError</code> escaping is the
+                            regression to catch.
+                        </p>
+                    </a>
+                </li>
+                <li>
+                    <a class="pr-card" href="112.html">
+                        <div class="pr-card-head">
+                            <span class="pr-num">PR #112 (DRAFT)</span>
+                            <h2 class="pr-title">HARDENING Phase 3.1 target 2 — common.py BeforeValidator property tests <em>(caught a real bug)</em></h2>
+                        </div>
+                        <div class="pr-card-meta">
+                            <span>Opened 2026-05-10</span>
+                            <span>+393 / −2 across 3 files</span>
+                            <span>Branch <code>auto/hardening-3-1-property-validators-20260510</code></span>
+                        </div>
+                        <p class="pr-card-body">
+                            Hypothesis ran 200-300 examples per coercer
+                            and <strong>found a real bug</strong> in
+                            <code>_coerce_ip_rating</code>: list/tuple/
+                            float inputs were returning the input
+                            unchanged instead of None (contradicting the
+                            "Anything else becomes None" docstring); bool
+                            inputs slipped through
+                            <code>isinstance(v, int)</code> and became
+                            IP ratings of 1/0. Two-line fix + 5 explicit
+                            regression cases pin the behaviour. 12
+                            property tests across the BeforeValidator
+                            surface verify never-raises and well-formed
+                            shapes.
+                        </p>
+                    </a>
+                </li>
+                <li>
                     <a class="pr-card" href="111.html">
                         <div class="pr-card-head">
                             <span class="pr-num">PR #111 (DRAFT)</span>

@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Specodex PR #114 — fix flaky test_resilience.py via module autouse wait + lru_cache patch.">
+    <meta name="theme-color" content="#3A2C1C">
+    <title>Specodex — PR #114: de-flake test_resilience.py</title>
+    <link rel="icon" type="image/svg+xml" href="../logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-issue="PR-114">
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="band">
+        <div class="band-inner">
+            <a class="band-brand" href="../index.html">
+                <svg class="band-mark" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <rect width="120" height="120" fill="#E8E2C9"/>
+                    <rect x="14" y="14" width="92" height="92" fill="none" stroke="#1A1A14" stroke-width="3"/>
+                    <rect x="14" y="14" width="92" height="22" fill="#3A2C1C"/>
+                    <rect x="62" y="60" width="40" height="10" fill="#A88A1C"/>
+                    <line x1="14" y1="56" x2="106" y2="56" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="74" x2="106" y2="74" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="92" x2="106" y2="92" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="60" y1="36" x2="60" y2="106" stroke="#1A1A14" stroke-width="2"/>
+                </svg>
+                <span class="wordmark">SPECODEX</span>
+            </a>
+            <nav class="band-nav" aria-label="Section">
+                <a href="../index.html">Catalog</a>
+                <a href="./" class="active">Pull Requests</a>
+                <a href="https://github.com/JimothyJohn/specodex" rel="noreferrer">GitHub</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="hero-tag">▮▮▮ PULL REQUEST #114 ▮▮▮</div>
+            <h1 class="hero-title">fix(test) — de-flake <code>test_resilience.py</code></h1>
+            <p class="hero-sub">
+                Two real bugs surfaced during the HARDENING sprint, both
+                costing wall time and CI determinism. The pre-existing
+                <code>test_generate_content_retries_on_failure</code> had
+                a comment claiming "we patch the retry decorator's wait
+                to be instant" but never actually did it — the test ran
+                in 20+ seconds and flaked under CI deadlines. A second,
+                more subtle bug: cross-test <code>lru_cache</code>
+                pollution on <code>specodex.llm._client_for</code> made
+                the genai mock unreliable.
+            </p>
+            <dl class="pr-meta">
+                <div><dt>Branch</dt><dd><code>fix/test-resilience-flake-20260510</code></dd></div>
+                <div><dt>Opened</dt><dd>2026-05-10 (DRAFT)</dd></div>
+                <div><dt>Diff</dt><dd>+35 / −2 in <code>tests/unit/test_resilience.py</code></dd></div>
+                <div><dt>Plan</dt><dd>None — surfaced as a heads-up in PR #110, fixed here</dd></div>
+                <div><dt>Type</dt><dd>Test reliability fix — no production code change</dd></div>
+            </dl>
+            <div class="cta-row">
+                <a class="cta cta-primary" href="https://github.com/JimothyJohn/specodex/pull/114" rel="noreferrer">View on GitHub →</a>
+                <a class="cta cta-ghost" href="./">All requests</a>
+            </div>
+        </section>
+
+        <section aria-label="The two bugs">
+            <div class="divider"><span>▮▮▮ THE TWO BUGS ▮▮▮</span></div>
+            <ol class="cell-list">
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">B-1</span><h2 class="cell-title">Real exponential-backoff waits were running</h2></div>
+                    <p class="cell-body">
+                        The <code>@retry</code> decorator on
+                        <code>generate_content</code> uses
+                        <code>wait_exponential(min=4, max=60)</code>.
+                        Multiplied by 5 attempts, that's 20-300s of real
+                        waiting per failing call.
+                        <code>test_invalid_content_type_raises</code> had
+                        the same problem inadvertently — it raises
+                        <code>ValueError</code> inside the retry
+                        decorator, and tenacity retries every exception
+                        by default.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">B-2</span><h2 class="cell-title">Cross-test <code>lru_cache</code> pollution</h2></div>
+                    <p class="cell-body">
+                        <code>specodex.llm._client_for</code> is
+                        <code>@lru_cache(maxsize=4)</code>. When a prior
+                        test populated the cache with
+                        <code>"fake-key"</code>, this test's
+                        <code>@patch("specodex.llm.genai")</code> didn't
+                        intercept the call — the cache returned a stale
+                        Client and the real <code>google.genai</code>
+                        built a UserContent that failed on empty parts.
+                    </p>
+                </li>
+            </ol>
+        </section>
+
+        <section aria-label="The fix">
+            <div class="divider"><span>▮▮▮ THE FIX ▮▮▮</span></div>
+            <p class="prose">
+                Module-scoped autouse fixture
+                <code>_no_retry_waits</code> that:
+            </p>
+            <ul class="prose">
+                <li>Clears the <code>lru_cache</code> before each test in the module so <code>@patch("specodex.llm.genai")</code> is the source of truth.</li>
+                <li>Mutates <code>generate_content.retry.wait → wait_none()</code> so tenacity retries fire instantaneously.</li>
+                <li>Restores both in <code>finally</code> so the patch doesn't leak into the rest of the suite.</li>
+            </ul>
+            <p class="prose">
+                Module-scope (not per-test) because two tests in the
+                file exercise the retry path and a third inadvertently
+                does too — keeping the override per-file scopes the
+                patch correctly without affecting other tests that
+                legitimately want backoff timing.
+            </p>
+        </section>
+
+        <section aria-label="Files touched">
+            <div class="divider"><span>▮▮▮ FILES TOUCHED ▮▮▮</span></div>
+            <table class="spec-table">
+                <thead><tr><th>File</th><th>Lines</th><th>Note</th></tr></thead>
+                <tbody>
+                    <tr><td><code>tests/unit/test_resilience.py</code></td><td>+35 / −2</td><td>Module autouse fixture; remove obsolete inline patch comment</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section aria-label="How to verify">
+            <div class="divider"><span>▮▮▮ HOW TO VERIFY ▮▮▮</span></div>
+            <ol class="cell-list">
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">V-1</span><h2 class="cell-title">5× consecutive verify runs all green</h2></div>
+                    <p class="cell-body">
+                        <code>./Quickstart verify --only python</code>
+                        × 5 — all green. Total wall time ~2.7s
+                        consistently (was bimodal 2s vs 22s depending
+                        on test order).
+                    </p>
+                </li>
+            </ol>
+        </section>
+
+        <a class="back-link" href="./">← back to requests log</a>
+    </main>
+
+    <footer>
+        <div class="footer-inner">
+            <span>© 2026 Specodex · PR #114</span>
+            <span class="footer-rule" aria-hidden="true"></span>
+            <a class="footer-link" href="https://github.com/JimothyJohn/specodex/pull/114" rel="noreferrer">View on GitHub</a>
+            <a class="footer-link" href="./">All requests</a>
+        </div>
+    </footer>
+</body>
+</html>
