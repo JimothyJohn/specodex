@@ -54,6 +54,31 @@
             <div class="divider"><span>▮▮▮ RECENT PULL REQUESTS ▮▮▮</span></div>
             <ol class="pr-cards">
                 <li>
+                    <a class="pr-card" href="130.html">
+                        <div class="pr-card-head">
+                            <span class="pr-num">PR #130 (DRAFT)</span>
+                            <h2 class="pr-title">Per-spec “?” complaint button on the product detail modal</h2>
+                        </div>
+                        <div class="pr-card-meta">
+                            <span>Opened 2026-05-10</span>
+                            <span>+319 / −11 across 6 files</span>
+                            <span>Branch <code>feat/spec-complaint-button-20260510</code></span>
+                        </div>
+                        <p class="pr-card-body">
+                            Adds a small <code>?</code> button next to
+                            every spec row (and every nested sub-row) in
+                            the product detail modal. Click opens the
+                            existing <code>FeedbackModal</code> with
+                            <em>“A spec is wrong”</em> pre-selected and
+                            the field label/value/unit threaded into the
+                            mailto body. Sets up the data shape the
+                            future double-check / alternative-source
+                            pipeline will read. Zero new infra — reuses
+                            the mailto pattern already in production.
+                        </p>
+                    </a>
+                </li>
+                <li>
                     <a class="pr-card" href="118.html">
                         <div class="pr-card-head">
                             <span class="pr-num">PR #118 (DRAFT)</span>

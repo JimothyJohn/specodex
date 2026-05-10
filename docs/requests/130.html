@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Specodex PR #130 — per-spec “?” complaint button on the product detail modal that opens the existing FeedbackModal with field-level context.">
+    <meta name="theme-color" content="#3A2C1C">
+    <title>Specodex — PR #130: Per-spec “?” complaint button</title>
+    <link rel="icon" type="image/svg+xml" href="../logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-issue="PR-130">
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="band">
+        <div class="band-inner">
+            <a class="band-brand" href="../index.html">
+                <svg class="band-mark" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <rect width="120" height="120" fill="#E8E2C9"/>
+                    <rect x="14" y="14" width="92" height="92" fill="none" stroke="#1A1A14" stroke-width="3"/>
+                    <rect x="14" y="14" width="92" height="22" fill="#3A2C1C"/>
+                    <rect x="62" y="60" width="40" height="10" fill="#A88A1C"/>
+                    <line x1="14" y1="56" x2="106" y2="56" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="74" x2="106" y2="74" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="92" x2="106" y2="92" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="60" y1="36" x2="60" y2="106" stroke="#1A1A14" stroke-width="2"/>
+                </svg>
+                <span class="wordmark">SPECODEX</span>
+            </a>
+            <nav class="band-nav" aria-label="Section">
+                <a href="../index.html">Catalog</a>
+                <a href="./" class="active">Pull Requests</a>
+                <a href="https://github.com/JimothyJohn/specodex" rel="noreferrer">GitHub</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="hero-tag">▮▮▮ PULL REQUEST #130 ▮▮▮</div>
+            <h1 class="hero-title">Per-spec “?” complaint button on the product modal.</h1>
+            <p class="hero-sub">
+                Every spec row in the product detail modal now has a
+                small <code>?</code> button next to it. Click → the
+                existing <code>FeedbackModal</code> opens with
+                <em>“A spec is wrong”</em> pre-selected and the field
+                label/value/unit threaded into the mailto body. The
+                long-term play: feed those complaints into a verifier
+                pipeline that double-checks the value against an
+                alternative source.
+            </p>
+            <dl class="pr-meta">
+                <div><dt>Branch</dt><dd><code>feat/spec-complaint-button-20260510</code></dd></div>
+                <div><dt>Opened</dt><dd>2026-05-10 (DRAFT)</dd></div>
+                <div><dt>Diff</dt><dd>+319 / −11 across 6 files</dd></div>
+                <div><dt>Surface</dt><dd>Frontend only — zero new infra</dd></div>
+                <div><dt>Type</dt><dd>Feature</dd></div>
+            </dl>
+            <div class="cta-row">
+                <a class="cta cta-primary" href="https://github.com/JimothyJohn/specodex/pull/130" rel="noreferrer">View on GitHub →</a>
+                <a class="cta cta-ghost" href="./">All requests</a>
+            </div>
+        </section>
+
+        <section aria-label="What changes">
+            <div class="divider"><span>▮▮▮ WHAT CHANGES ▮▮▮</span></div>
+            <ul class="prose">
+                <li><strong>New <code>?</code> button per spec row.</strong> Lives at the right edge of every <code>.spec-row</code> and every nested <code>.spec-subrow</code> (so dimensions get one button per width / height / depth, not one for the whole group).</li>
+                <li><strong>Click opens the existing FeedbackModal</strong> with <code>defaultCategory="wrong_info"</code>. The heading swaps from <em>“Send feedback”</em> to <em>“Report inaccurate value”</em>, and the field label/value/unit show up in the mailto body as <code>Field: …</code> + <code>Reported value: …</code> lines.</li>
+                <li><strong>Tooltip primitive, not native <code>title=</code>.</strong> Per STYLE.md Phase 1 — every action stays inside the app, no OS chrome. The button's hover label is themed and portaled like every other Tooltip.</li>
+                <li><strong>Stacked-modal hygiene.</strong> The FeedbackModal mounts inside the parent's <code>modalRef</code>. The parent's outside-click and Escape handlers are gated while the sub-modal is open, so dismissing one no longer unwinds the other.</li>
+                <li><strong><code>FeedbackModal.title</code> → <code>heading</code>.</strong> The STYLE.md drift gate's blanket <code>title=</code> ban can't distinguish a custom React prop from the native HTML attribute. Renaming the prop dodges the gate naturally without an allowlist exception.</li>
+                <li><strong>Per-component CSS file.</strong> <code>ProductDetailModal.css</code> follows the CLAUDE.md convention introduced for Tooltip / ConfirmDialog / FeedbackModal / Toast. <code>App.css</code> is unchanged — keeps it from being the universal merge target.</li>
+            </ul>
+        </section>
+
+        <section aria-label="Why mailto, not a POST endpoint">
+            <div class="divider"><span>▮▮▮ WHY MAILTO ▮▮▮</span></div>
+            <p class="prose">
+                The minimum viable shape of <em>“flag a wrong spec”</em>
+                is a structured email — same pattern the existing
+                feedback button already uses. Zero new infra, no auth /
+                rate-limit / abuse surface to design, no DynamoDB
+                schema, no IAM. Complaints land in the inbox where the
+                future verifier pipeline can pick them up.
+            </p>
+            <p class="prose">
+                When volume warrants it, the natural follow-up is a
+                <code>POST /api/v1/complaints</code> + DynamoDB row —
+                <code>utils/feedback.ts</code> already flags that as the
+                next move. Until then, a tighter feedback loop with a
+                human in the loop beats a half-built pipeline.
+            </p>
+        </section>
+
+        <section aria-label="Files touched">
+            <div class="divider"><span>▮▮▮ FILES TOUCHED ▮▮▮</span></div>
+            <table class="spec-table">
+                <thead><tr><th>File</th><th>Lines</th><th>Note</th></tr></thead>
+                <tbody>
+                    <tr><td><code>app/frontend/src/components/ProductDetailModal.tsx</code></td><td>+~80 / −10</td><td>Render <code>?</code> button per row + nested sub-row; gate parent dismiss while sub-modal is open</td></tr>
+                    <tr><td><code>app/frontend/src/components/ProductDetailModal.css</code></td><td>+50</td><td>NEW — selectors for <code>.spec-complaint-cell</code> + <code>.spec-complaint-btn</code></td></tr>
+                    <tr><td><code>app/frontend/src/components/ProductDetailModal.test.tsx</code></td><td>+115</td><td>NEW — 4 unit tests pinning the new flow</td></tr>
+                    <tr><td><code>app/frontend/src/components/ui/FeedbackModal.tsx</code></td><td>+5 / −3</td><td>Rename <code>title</code> prop → <code>heading</code> to dodge STYLE.md drift gate</td></tr>
+                    <tr><td><code>app/frontend/src/components/ui/FeedbackModal.test.tsx</code></td><td>+19</td><td>New case: per-spec field context in the mailto body</td></tr>
+                    <tr><td><code>app/frontend/src/utils/feedback.ts</code></td><td>+24</td><td><code>FeedbackContext.field</code> + body builder support</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section aria-label="How to verify">
+            <div class="divider"><span>▮▮▮ HOW TO VERIFY ▮▮▮</span></div>
+            <ul class="prose">
+                <li><code>./Quickstart verify --only frontend</code> — lint + 496 unit tests + tsc + build. Four new tests added.</li>
+                <li><code>./Quickstart dev</code>, open <em>any</em> product, hover near the right edge of any spec row → the <code>?</code> button reveals on row-hover. Click it; the modal swaps to <em>“Report inaccurate value”</em>, with <em>“A spec is wrong”</em> pre-selected and the field already cited in the body.</li>
+                <li>Press <kbd>Esc</kbd> — only the inner FeedbackModal closes; the parent product modal stays open.</li>
+            </ul>
+        </section>
+
+        <a class="back-link" href="./">← back to requests log</a>
+    </main>
+
+    <footer>
+        <div class="footer-inner">
+            <span>© 2026 Specodex · PR #130</span>
+            <span class="footer-rule" aria-hidden="true"></span>
+            <a class="footer-link" href="https://github.com/JimothyJohn/specodex/pull/130" rel="noreferrer">View on GitHub</a>
+            <a class="footer-link" href="./">All requests</a>
+        </div>
+    </footer>
+</body>
+</html>
