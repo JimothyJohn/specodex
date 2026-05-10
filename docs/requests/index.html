@@ -54,6 +54,58 @@
             <div class="divider"><span>▮▮▮ RECENT PULL REQUESTS ▮▮▮</span></div>
             <ol class="pr-cards">
                 <li>
+                    <a class="pr-card" href="111.html">
+                        <div class="pr-card-head">
+                            <span class="pr-num">PR #111 (DRAFT)</span>
+                            <h2 class="pr-title">HARDENING Phase 3.1 — property tests for <code>parse_gemini_response</code></h2>
+                        </div>
+                        <div class="pr-card-meta">
+                            <span>Opened 2026-05-10</span>
+                            <span>+237 / −0 in <code>tests/unit/test_parse_gemini_property.py</code></span>
+                            <span>Branch <code>auto/hardening-3-1-property-parse-gemini-20260510</code></span>
+                        </div>
+                        <p class="pr-card-body">
+                            Three Hypothesis property tests at 200 / 200
+                            / 100 examples covering malformed, unicode-
+                            laced, fence-wrapped, and truncated JSON.
+                            Documents the parser's contract (returns
+                            <code>List[Motor]</code> or raises
+                            <code>ValueError</code> — never any other
+                            exception, never half-validated objects).
+                            First of three Phase 3.1 targets;
+                            <code>find_spec_pages_by_text</code> and the
+                            common.py BeforeValidators land as follow-ups.
+                        </p>
+                    </a>
+                </li>
+                <li>
+                    <a class="pr-card" href="110.html">
+                        <div class="pr-card-head">
+                            <span class="pr-num">PR #110 (DRAFT)</span>
+                            <h2 class="pr-title">HARDENING Phase 3.4 — concurrent-write stress test</h2>
+                        </div>
+                        <div class="pr-card-meta">
+                            <span>Opened 2026-05-10</span>
+                            <span>+216 / −0 in <code>tests/integration/test_concurrent_writes.py</code></span>
+                            <span>Branch <code>auto/hardening-3-4-concurrent-write-stress-20260510</code></span>
+                        </div>
+                        <p class="pr-card-body">
+                            20 parallel <code>batch_create</code> writers
+                            with overlapping <code>product_id</code>s.
+                            Three assertions on the result: no exceptions,
+                            no torn writes per ID (each writer signs
+                            every text field on its rows; the read-back
+                            verifies all fields encode the SAME writer_id),
+                            no rows lost or duplicated. Sub-millisecond
+                            timing jitter per writer (seeded for
+                            determinism) interleaves writes across
+                            threads — without it the OS scheduler can
+                            serialise the writes by accident and miss
+                            the race.
+                        </p>
+                    </a>
+                </li>
+                <li>
                     <a class="pr-card" href="108.html">
                         <div class="pr-card-head">
                             <span class="pr-num">PR #108 (DRAFT)</span>

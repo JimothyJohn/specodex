@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Specodex PR #111 — HARDENING Phase 3.1 Hypothesis property tests for parse_gemini_response covering malformed/unicode/truncated JSON.">
+    <meta name="theme-color" content="#3A2C1C">
+    <title>Specodex — PR #111: HARDENING 3.1 property tests for parse_gemini_response</title>
+    <link rel="icon" type="image/svg+xml" href="../logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-issue="PR-111">
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="band">
+        <div class="band-inner">
+            <a class="band-brand" href="../index.html">
+                <svg class="band-mark" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <rect width="120" height="120" fill="#E8E2C9"/>
+                    <rect x="14" y="14" width="92" height="92" fill="none" stroke="#1A1A14" stroke-width="3"/>
+                    <rect x="14" y="14" width="92" height="22" fill="#3A2C1C"/>
+                    <rect x="62" y="60" width="40" height="10" fill="#A88A1C"/>
+                    <line x1="14" y1="56" x2="106" y2="56" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="74" x2="106" y2="74" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="92" x2="106" y2="92" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="60" y1="36" x2="60" y2="106" stroke="#1A1A14" stroke-width="2"/>
+                </svg>
+                <span class="wordmark">SPECODEX</span>
+            </a>
+            <nav class="band-nav" aria-label="Section">
+                <a href="../index.html">Catalog</a>
+                <a href="./" class="active">Pull Requests</a>
+                <a href="https://github.com/JimothyJohn/specodex" rel="noreferrer">GitHub</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="hero-tag">▮▮▮ PULL REQUEST #111 ▮▮▮</div>
+            <h1 class="hero-title">HARDENING Phase 3.1 — property tests for <code>parse_gemini_response</code></h1>
+            <p class="hero-sub">
+                The parser eats Gemini-generated JSON, which is by
+                definition untrusted bytes. Existing example-based tests
+                covered the happy path and a handful of edge cases; this
+                PR adds three Hypothesis property tests at 200 / 200 /
+                100 examples that generate malformed, unicode-laced,
+                fence-wrapped, and truncated JSON to confirm the
+                documented contract holds for every input the strategy
+                can think of.
+            </p>
+            <dl class="pr-meta">
+                <div><dt>Branch</dt><dd><code>auto/hardening-3-1-property-parse-gemini-20260510</code></dd></div>
+                <div><dt>Opened</dt><dd>2026-05-10 (DRAFT)</dd></div>
+                <div><dt>Diff</dt><dd>+237 / −0 in <code>tests/unit/test_parse_gemini_property.py</code></dd></div>
+                <div><dt>Plan</dt><dd><code>todo/HARDENING.md</code> Phase 3.1 (target 1 of 3)</dd></div>
+                <div><dt>Type</dt><dd>Test-only — first-of-three property targets</dd></div>
+            </dl>
+            <div class="cta-row">
+                <a class="cta cta-primary" href="https://github.com/JimothyJohn/specodex/pull/111" rel="noreferrer">View on GitHub →</a>
+                <a class="cta cta-ghost" href="./">All requests</a>
+            </div>
+        </section>
+
+        <section aria-label="The contract under test">
+            <div class="divider"><span>▮▮▮ THE CONTRACT ▮▮▮</span></div>
+            <p class="prose">
+                From the docstring: (1) returns a
+                <code>List[&lt;schema_type instance&gt;]</code> when at
+                least one row validates; (2) raises
+                <code>ValueError</code> when the response is unusable
+                (missing <code>.text</code>, empty after fence-strip,
+                not valid JSON, top-level scalar, zero rows validated);
+                (3) <strong>never raises any other exception type</strong>
+                — a <code>KeyError</code> / <code>TypeError</code> /
+                <code>AttributeError</code> escaping is the regression
+                to catch, since the parser is the isolation barrier
+                between Gemini's text and the rest of the pipeline;
+                (4) <strong>never returns half-validated objects</strong>
+                — every list element is a real Pydantic instance.
+            </p>
+        </section>
+
+        <section aria-label="What changes">
+            <div class="divider"><span>▮▮▮ WHAT CHANGES ▮▮▮</span></div>
+            <ol class="cell-list">
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">A-1</span><h2 class="cell-title">RAW_TEXT strategy — 4-way mix</h2></div>
+                    <p class="cell-body">
+                        Pure JSON, fence-wrapped JSON ("```json…```"),
+                        plain non-JSON text, and JSON truncated mid-
+                        string. <code>test_only_raises_value_error_or_returns_list</code>
+                        runs 200 examples against this strategy.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">A-2</span><h2 class="cell-title">Pure-JSON strategy — st.recursive</h2></div>
+                    <p class="cell-body">
+                        Recursive JSON values (primitives at the leaves,
+                        lists / dicts at internal nodes). Catches the
+                        case where the parser pre-decodes successfully
+                        but per-row Pydantic validation misbehaves on a
+                        weird input.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">A-3</span><h2 class="cell-title">Context-merge strategy</h2></div>
+                    <p class="cell-body">
+                        Caller-provided context dicts with arbitrary
+                        identifier keys + primitive values. Verifies the
+                        merge step doesn't propagate weird-input failures
+                        past the per-row exception swallowing.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">A-4</span><h2 class="cell-title">5 example-based sanity cases</h2></div>
+                    <p class="cell-body">
+                        Documented <code>ValueError</code> paths: None
+                        response, no <code>.text</code> attr, empty text,
+                        top-level string, top-level number. Covers the
+                        cases hypothesis is unlikely to hit reliably.
+                    </p>
+                </li>
+            </ol>
+        </section>
+
+        <section aria-label="Files touched">
+            <div class="divider"><span>▮▮▮ FILES TOUCHED ▮▮▮</span></div>
+            <table class="spec-table">
+                <thead><tr><th>File</th><th>Lines</th><th>Note</th></tr></thead>
+                <tbody>
+                    <tr><td><code>tests/unit/test_parse_gemini_property.py</code></td><td>+237</td><td>NEW — autouse log-silence fixture, _FakeResponse stub, 3 @given properties, 5 example tests</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section aria-label="Scope">
+            <div class="divider"><span>▮▮▮ SCOPE ▮▮▮</span></div>
+            <p class="prose">
+                Phase 3.1's DoD names three targets:
+                <code>parse_gemini_response</code> (this PR),
+                <code>find_spec_pages_by_text</code>, and the
+                BeforeValidators in <code>specodex/models/common.py</code>.
+                The latter two land as separate sprint rows so each PR
+                scopes to one logical chunk per the per-PR HTML doc
+                convention. Validation logging is silenced via an
+                autouse fixture — without it a 200-example run prints
+                200 stack traces and obscures real failure output.
+            </p>
+        </section>
+
+        <a class="back-link" href="./">← back to requests log</a>
+    </main>
+
+    <footer>
+        <div class="footer-inner">
+            <span>© 2026 Specodex · PR #111</span>
+            <span class="footer-rule" aria-hidden="true"></span>
+            <a class="footer-link" href="https://github.com/JimothyJohn/specodex/pull/111" rel="noreferrer">View on GitHub</a>
+            <a class="footer-link" href="./">All requests</a>
+        </div>
+    </footer>
+</body>
+</html>
