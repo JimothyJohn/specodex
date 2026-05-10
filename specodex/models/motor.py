@@ -15,6 +15,7 @@ from specodex.models.common import (
     Inertia,
     IpRating,
     Length,
+    MotorMountPattern,
     Power,
     Resistance,
     Speed,
@@ -65,3 +66,9 @@ class Motor(ProductBase):
     # the output shaft OD the gearhead input bore must match.
     shaft_diameter: Length = None
     frame_size: Optional[str] = None
+    # Canonical mount designator used by the device-relations layer to
+    # match motors to gearheads / actuators. Backfilled from frame_size
+    # via `./Quickstart admin backfill-motor-mounts` (planned per
+    # SCHEMA.md Phase 2). New extractions populate this directly when the
+    # LLM sees an unambiguous "NEMA 23" / "IEC 80" frame in the catalog.
+    motor_mount_pattern: Optional[MotorMountPattern] = None

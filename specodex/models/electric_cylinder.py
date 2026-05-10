@@ -9,6 +9,7 @@ from specodex.models.common import (
     Force,
     IpRating,
     Length,
+    MotorMountPattern,
     Power,
     TemperatureRange,
     ValueUnit,
@@ -66,6 +67,13 @@ class ElectricCylinder(ProductBase):
     motor_type: Optional[str] = Field(
         None,
         description="Type of integrated motor (e.g., 'brushless dc', 'brushed dc')",
+    )
+    # Motor mount pattern (typically just one — electric cylinders are
+    # usually a single integrated package). Bridges to
+    # Motor.motor_mount_pattern for cross-product queries.
+    motor_mount_pattern: Optional[MotorMountPattern] = Field(
+        None,
+        description="Motor frame designator the cylinder mounts to (e.g. 'NEMA 23').",
     )
 
     # --- Mechanical ---
