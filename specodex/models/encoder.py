@@ -87,10 +87,11 @@ EncoderProtocol = Literal[
 EncoderMode = Literal["incremental", "absolute"]
 
 
-# Frozensets of canonical enum values, used by the back-compat coercers
+# Frozenset of canonical enum values, used by ``coerce_protocol_string``
 # to identity-passthrough a string that's already a valid enum member.
+# (No symmetric ``_CANONICAL_DEVICES`` — the device-side coercion is
+# inline in ``_coerce_legacy_freetext`` and doesn't need passthrough.)
 _CANONICAL_PROTOCOLS: frozenset[str] = frozenset(get_args(EncoderProtocol))
-_CANONICAL_DEVICES: frozenset[str] = frozenset(get_args(EncoderDevice))
 
 
 # ---------------------------------------------------------------------------
