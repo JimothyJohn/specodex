@@ -242,6 +242,21 @@ class TestErrorSpecificity:
 class TestLLMResilience:
     """Test LLM failure modes without making real API calls."""
 
+    def setup_method(self) -> None:
+        # _client_for is lru-cached for prod hot-path reuse. Under
+        # pytest-randomly any earlier test that calls generate_content
+        # without patching genai leaves a real Client cached against
+        # "fake-key"; the @patch("specodex.llm.genai") below can't
+        # override it, so client.models.generate_content runs the real
+        # SDK and chokes on the MagicMock Parts. Wipe the cache so the
+        # mock takes effect. Also use wait_none() so retries don't
+        # spend ~120s on exponential backoff before raising.
+        from tenacity import wait_none
+        from specodex.llm import _client_for, generate_content
+
+        generate_content.retry.wait = wait_none()
+        _client_for.cache_clear()
+
     @patch("specodex.llm.genai")
     def test_generate_content_retries_on_failure(self, mock_genai):
         """Tenacity retries should fire on API errors."""
@@ -254,8 +269,6 @@ class TestLLMResilience:
         mock_model.generate_content.side_effect = RuntimeError("API quota exceeded")
         mock_client.models = mock_model
 
-        # With 5 retries and min wait of 4s, this would take too long
-        # so we patch the retry decorator's wait to be instant
         with pytest.raises((RuntimeError, RetryError)):
             generate_content(
                 b"%PDF-fake",
