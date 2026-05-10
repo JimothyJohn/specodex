@@ -54,12 +54,26 @@ docs only when you're about to act on that work.
 > electric_cylinder field drops + audit CLI), filter-UX bug fixes,
 > and a 2026-05-08 dev → prod promotion of 1,657 records.
 >
-> **Just deleted from `todo/`** (2026-05-08 cleanup): MODELGEN.md,
-> DEDUPE.md, PHASE5_RECOVERY.md — scope shipped end-to-end. Earlier
-> 2026-05-03 cleanup retired AUTH.md, REFACTOR.md, VISUALIZATION.md,
-> GODMODE.md; before that REBRAND.md / UNITS.md / INTEGRATION.md /
-> FRONTEND_TESTING.md. `git log --diff-filter=D --follow --
-> todo/<NAME>.md` recovers any design rationale.
+> **Just deleted from `todo/`** (2026-05-10 post-sprint prune):
+> DOUBLE_TAP.md (scope fully shipped via PR #91 — encoder model
+> + verifier loop are the live reference now), CATAGORIES.md
+> (Phase 0+1 shipped via #85/#87, Phase 2+ unscoped),
+> BOARD_FEEDBACK.md (items 1–3 shipped, 4–9 are founder-driven not
+> Claude-actionable), SCHEMA.md (4 of 5 phases shipped — extracted
+> the remaining BREAKING Phase 1.1 design into the much smaller
+> [SCHEMA_BREAKING_HARMONIZE.md](SCHEMA_BREAKING_HARMONIZE.md)).
+> Plus **moved to `todo/longterm/`**: CONFIGURATION.md (deferred,
+> gated on ≥ 2-week MVP soak) and GROWTH_CLI.md (no active plan
+> in churn). DOUBLE_TAP_encoder_taxonomy.md **moved** to
+> `specodex/models/encoder_taxonomy.md` next to the code that uses
+> it.
+>
+> **Earlier deletions:** 2026-05-08 cleanup retired MODELGEN.md,
+> DEDUPE.md, PHASE5_RECOVERY.md. 2026-05-03 cleanup retired
+> AUTH.md, REFACTOR.md, VISUALIZATION.md, GODMODE.md. Before that:
+> REBRAND.md, UNITS.md, INTEGRATION.md, FRONTEND_TESTING.md.
+> `git log --diff-filter=D --follow -- todo/<NAME>.md` recovers
+> any design rationale.
 
 ## How to use it
 
@@ -99,61 +113,51 @@ the merged list above.
 
 Each card body links back to its `todo/<AREA>.md` doc. To add new work, create a card on the board referencing the doc; if the work has file-level triggers, also add a row to **Trigger conditions** below.
 
-Active docs (2026-05-10, post-sprint):
+Active docs (10 total — down from 16 after the 2026-05-10 prune):
 
-- **HARDENING** — adversarial-by-default posture audit. After the
-  sprint: Phase 1.1, 1.3, 2.1, 2.3, 2.4, 3.1 (all 3 targets), 3.3,
-  3.4, 4.1, 4.3 shipped. **Open:** Phase 1.2 (`uv sync --locked` CI
-  sweep — touches `.github/workflows/`, needs human PR), Phase 2.2
-  (real-DAL backend tests, L), Phase 3.2 (atheris fuzz, heavy dep),
-  Phase 4.2 (lockfile-drift CI gate — touches workflows). Plus
+- **HARDENING.md** — adversarial-by-default posture audit. 10 of 14
+  phases shipped (1.1, 1.3, 2.1, 2.3, 2.4, 3.1×3, 3.3, 3.4, 4.1, 4.3).
+  **Open:** Phase 1.2 (`uv sync --locked` CI sweep), 2.2 (real-DAL
+  backend tests, L), 3.2 (atheris fuzz), 4.2 (lockfile-drift CI gate).
   CLAUDE.md "Property testing — adversarial by default" section
-  (PR #124) lists 4 untested adversarial surfaces as the next-
-  sprint queue.
-- **SCHEMA** — Phase 1, 3 (all three sub-phases), 4 shipped; Phase
-  2 backfill CLI shipped as PR #117 (dry-run default — execution
-  is a separate operator action). **Open:** Phase 1.1 (BREAKING
-  `motor_type`/`fieldbus`/`encoder_feedback_support` shape
-  unification + one-shot data migration — needs sign-off).
-- **BUILD** — requirements-first system assembler page that
+  (PR #124) lists 4 untested surfaces as the next-sprint queue.
+- **SCHEMA_BREAKING_HARMONIZE.md** — what's left of the SCHEMA plan.
+  Phases 1, 2 (CLI), 3, 4 all shipped; only the BREAKING type-
+  harmonisation (`motor_type` → `MotorTechnology` literal +
+  `ElectricCylinder.fieldbus` → `List[CommunicationProtocol]`) is
+  deferred. **Needs sign-off** before applying — reshapes JSON
+  envelope on existing DB rows.
+- **BUILD.md** — requirements-first system assembler page that
   generalises `/actuators`. **Design-only.** Hard prereqs (SCHEMA
-  Phase 3 ✓, linear_actuator discoverability ✓) shipped. Phase 1
-  implementation can start anytime; first user-facing work in the
+  Phase 3 ✓, linear_actuator discoverability ✓) both shipped.
+  Phase 1 implementation is the first user-facing work in the
   next-sprint queue.
-- **DOUBLE_TAP** — encoder schema rethink + verifier loop. All
-  phases shipped via PR #91. Doc + appendix retained as
-  architecture reference for the closed taxonomy + verifier-loop
-  pattern. The verifier surface gained property-test coverage in
-  PR #123.
-- **CATAGORIES** — supercategory map + `/actuators` MVP. Phase 0+1
-  shipped (PRs #85/#87/#94). Phase 2+ (additional supercategories
-  beyond Linear Motion) not yet scoped.
-- **BOARD_FEEDBACK** — items 1–3 (README brand cleanup + PUBLIC.md
-  continuity + takedown policy) shipped 2026-05-09. Items 4–9 are
-  founder-driven decisions no PR can close (manufacturer outreach,
-  paid-tier price, customer-conversation log, etc.). Doc retained
-  as the working register for those items.
-- **SEO**, **MARKETING** — public-launch readiness. Now genuinely
-  next-up for user-facing impact.
-- **PYTHON_BACKEND** (Phases 1–3) — FastAPI parallel deploy →
-  frontend cutover → Express deletion. Soft-blocked on STYLE / DB /
-  SCHEMA churn settling; that's mostly done now.
-- **PYTHON_STRIPE** (Phases 1.x → 2 → 3) — billing Lambda deploy +
-  SSM cutover + Rust crate retirement. Code scaffolded; needs the
+- **DB_CLEANUP.md** — Phase 1 shipped. Phase 2 (populate vs drop
+  `lead_time` / `warranty` / `msrp`) **needs a decision** — the
+  field-coverage audit recommends dropping; the original framing
+  said populate. Re-decide before implementing.
+- **SEO.md**, **MARKETING.md** — public-launch readiness.
+- **PYTHON_BACKEND.md** (Phases 1–3) — FastAPI parallel deploy →
+  frontend cutover → Express deletion. Code-only; operator-driven
+  deploy.
+- **PYTHON_STRIPE.md** (Phases 1.x → 2 → 3) — billing Lambda deploy
+  + SSM cutover + Rust crate retirement. Code scaffolded; needs the
   operator-driven deploy.
-- **API** — paid programmatic-access tier. Depends on PYTHON_STRIPE
-  Phase 2 cutover (billing live) + SES (already deployed).
-- **DB_CLEANUP** — Phase 2 (populate or drop `lead_time` /
-  `warranty` / `msrp`) is open. The 2026-05-07 field-coverage audit
-  recommended *dropping* these fields outright since the LLM never
-  populates them; the README's Phase 2 framing of "populate" is
-  stale — re-decide before implementing.
-- **CONFIGURATION** — post-MVP architecture rethink. Design-only,
-  gated on ≥ 2-week MVP soak.
-- **GROWTH_CLI** — engagement-footprint reporting. Phase 1 preflight
-  gate is queued; not blocking anything.
+- **API.md** — paid programmatic-access tier. Depends on
+  PYTHON_STRIPE Phase 2 cutover (billing live).
 
-`todo/STYLE.md` was retired 2026-05-08 — all seven STYLE phases shipped.
+`longterm/` (deferred, not in current churn): `BOARD.md` (board
+strategy doc), `CONFIGURATION.md` (post-MVP architecture rethink,
+gated on ≥ 2-week MVP soak), `GROWTH_CLI.md` (engagement-footprint
+reporting, no active plan).
+
+`encoder_taxonomy.md` lives at `specodex/models/encoder_taxonomy.md`
+now (next to the code that uses it), not under `todo/`.
+
+`todo/STYLE.md` retired 2026-05-08 — all seven STYLE phases shipped.
+`todo/DOUBLE_TAP.md`, `todo/CATAGORIES.md`, `todo/BOARD_FEEDBACK.md`
+retired 2026-05-10 — scope shipped (or in BOARD_FEEDBACK's case,
+items 4–9 are founder-driven, not a planning artifact).
 
 CI/CD itself is healthy (full chain green; only outstanding bit is
 apex `specodex.com` DNS) and now lives behind the `/cicd` skill
@@ -224,7 +228,7 @@ Every PR ships with a per-PR HTML doc in `docs/requests/<n>.html`
 | 5 | **HARDENING Phase 2.2** — real-DAL backend integration tests (L) | HARDENING | ⚪ queued |
 | 6 | **BUILD Phase 1** — requirements-first Build page (motion/stroke/speed/payload/orientation form → motion-system kit) | BUILD | ⚪ queued (independent, user-facing) |
 | 7 | **DB_CLEANUP Phase 2 decision** — populate vs drop `lead_time` / `warranty` / `msrp` (audit says drop; README says populate) | DB_CLEANUP | 🔴 needs sign-off |
-| 8 | **SCHEMA Phase 1.1 (BREAKING)** — `motor_type` / `fieldbus` / `encoder_feedback_support` shape unification + one-shot data migration | SCHEMA | 🔴 needs sign-off |
+| 8 | **SCHEMA BREAKING harmonize** — `motor_type` → `MotorTechnology` literal + `ElectricCylinder.fieldbus` → `List[CommunicationProtocol]` + harmonize CLI. See [SCHEMA_BREAKING_HARMONIZE.md](SCHEMA_BREAKING_HARMONIZE.md). | SCHEMA_BREAKING_HARMONIZE | 🔴 needs sign-off |
 | 9 | **PYTHON_STRIPE Phase 1.x deploy** — billing Lambda goes live on dev, dev round-trip, soak | PYTHON_STRIPE | ⚪ queued (operator-driven deploy) |
 | 10 | **PYTHON_STRIPE Phase 2** — SSM cutover + 7-day soak | PYTHON_STRIPE | ⚪ queued |
 | 11 | **PYTHON_STRIPE Phase 3** — delete Rust crate (subsumes PYTHON_BACKEND Phase 4) | PYTHON_STRIPE | ⚪ queued |
@@ -238,10 +242,6 @@ Every PR ships with a per-PR HTML doc in `docs/requests/<n>.html`
 | 19 | **HARDENING Phase 3.2** — atheris fuzz target for PDF intake | HARDENING | ⚪ queued (heavier dep — needs LLVM/clang on macOS) |
 | 20 | **HARDENING Phase 1.2** — `uv sync --locked` sweep across CI workflows | HARDENING | ⚪ queued (touches `.github/workflows/` — needs human PR) |
 | 21 | **HARDENING Phase 4.2** — lockfile-drift gate post-install | HARDENING | ⚪ queued (touches CI — needs human PR) |
-| 22 | **CONFIGURATION Phase 1** — lift configurator templates to YAML | CONFIGURATION | ⏸ deferred (gated on ≥ 2-week MVP soak) |
-| 23+ | **CONFIGURATION Phases 2–6** | CONFIGURATION | ⏸ deferred |
-| ⋯ | **GROWTH_CLI Phase 1** — preflight gate (engagement footprint + Search Console + GitHub traffic) | GROWTH_CLI | ⚪ queued (independent) |
-| ⋯ | **CATAGORIES Phase 2+** — additional supercategories beyond Linear Motion | CATAGORIES | ⚪ queued (not yet scoped) |
 
 **Status legend.** 🟡 = ready to PR now. ⚪ = queued, no blockers
 beyond the row above. 🔴 = blocked on explicit human sign-off. ⏸ =
@@ -356,13 +356,15 @@ If your current task matches any "trigger" entry, the linked doc is queued and w
 |---|---|
 | New parser, deserializer, coercer, or `BeforeValidator`; CodeQL log-injection or input-handling finding; user asks "fuzz", "property test", "input validation" | [HARDENING.md](HARDENING.md) + CLAUDE.md "Property testing — adversarial by default" |
 | `cli/processor.py`, `specodex/integration/compat.py`, `specodex/spec_rules.py`, `specodex/quality.py` | CLAUDE.md "Property testing" untested-surfaces list — these four are the next-sprint targets |
-| `specodex/models/common.py` (`MotorMountPattern`, `ProductType`), `specodex/models/{linear_actuator,electric_cylinder,motor,drive,gearhead}.py` cross-product fields; user asks "compatible motor", "matching drive", "device pairing", "integration", "transform part numbers" | [SCHEMA.md](SCHEMA.md) — Phase 1.1 is BREAKING and needs sign-off; everything else shipped |
-| `app/frontend/src/types/{categories,configuratorTemplates}.ts`, `app/frontend/src/components/ActuatorPage.tsx`; user asks "supercategory", "subcategory", "actuator landing page", "configurator template", "synthesise part number", "ordering information page" | [CATAGORIES.md](CATAGORIES.md) |
+| Touching `Motor.type`, `ElectricCylinder.motor_type`, `LinearActuator.motor_type`, or `ElectricCylinder.fieldbus`; user asks "harmonize motor types", "MotorTechnology literal", "BREAKING schema migration" | [SCHEMA_BREAKING_HARMONIZE.md](SCHEMA_BREAKING_HARMONIZE.md) — needs sign-off |
+| `specodex/models/common.py` (`MotorMountPattern`, `ProductType`), cross-product fields on motor/drive/gearhead/actuator; user asks "compatible motor", "matching drive", "device pairing", "integration" | SCHEMA — Phase 1, 2 (CLI), 3, 4 all shipped (PRs #87, #117, #89/#90/#92, #106). Recover the design rationale via `git log --diff-filter=D --follow -- todo/SCHEMA.md` if needed |
 | `app/frontend/src/components/Build*.tsx`, `/build` route, requirements form, system-assembler page; user asks "build page", "requirements-first", "motion class", "system assembler", "wizard" | [BUILD.md](BUILD.md) — Phase 1 unblocked |
-| `specodex/models/encoder.py`, `EncoderDevice` / `EncoderProtocol` enums, structured `EncoderFeedback`, verifier-loop runner, bench A/B harness; user asks "encoder taxonomy", "verifier loop", "second-pass extraction", "encoder compat" | [DOUBLE_TAP.md](DOUBLE_TAP.md) + [appendix](DOUBLE_TAP_encoder_taxonomy.md) — phases shipped, doc retained as architecture reference |
+| `specodex/models/encoder.py`, `EncoderDevice` / `EncoderProtocol` enums, structured `EncoderFeedback`, verifier-loop runner, bench A/B harness; user asks "encoder taxonomy", "verifier loop", "second-pass extraction", "encoder compat" | `specodex/models/encoder_taxonomy.md` — taxonomy reference next to the code. The DOUBLE_TAP plan-doc was retired; scope shipped via PR #91. |
+| `app/frontend/src/types/{categories,configuratorTemplates}.ts`, `app/frontend/src/components/ActuatorPage.tsx`; user asks "supercategory", "subcategory", "actuator landing page", "configurator template", "synthesise part number" | CATAGORIES — Phase 0+1 shipped (PRs #85/#87/#94). Phase 2+ unscoped; recover the design rationale via `git log --diff-filter=D --follow -- todo/CATAGORIES.md` |
 | `app/frontend/index.html` head metadata, `app/frontend/public/{robots.txt,sitemap.xml}`, JSON-LD blocks, OG/Twitter card tags, per-product page rendering, dynamic sitemap, prerender/SSR, "SEO", "canonical", "search ranking", "OG image" | [SEO.md](SEO.md) |
 | Landing-page copy, "marketing", "launch", "audience", "Reddit / HN / mailing list", outreach plans, paid spend (don't), Stripe pricing surface | [MARKETING.md](MARKETING.md) |
-| `cli/growth.py`, `specodex/growth/`, "growth CLI", "engagement footprint", "Google Ads", "Meta Marketing", "LinkedIn Ads", "feedback loop on traffic", Search Console / GitHub traffic / CloudFront logs into a weekly report | [GROWTH_CLI.md](GROWTH_CLI.md) |
+| `cli/growth.py`, `specodex/growth/`, "growth CLI", "engagement footprint", "Google Ads", "Meta Marketing", "LinkedIn Ads", Search Console / GitHub traffic / CloudFront logs into a weekly report | [longterm/GROWTH_CLI.md](longterm/GROWTH_CLI.md) — design-only, deferred |
+| Configurator template architecture beyond `/actuators` MVP; user asks about declarative YAML templates, derivation graph, cross-device compat | [longterm/CONFIGURATION.md](longterm/CONFIGURATION.md) — gated on ≥ 2-week MVP soak |
 | `.github/workflows/`, `cli/quickstart.py`, push to master, deploy attempt, "CI red", `HOSTED_ZONE_ID`/`HOSTED_ZONE_NAME`/`DOMAIN_NAME`/`CERTIFICATE_ARN`, `gh-deploy-datasheetminer`, OIDC trust policy, apex/`www` domain support | `/cicd` skill (`.claude/skills/cicd/SKILL.md`) |
 | `app/backend/src/` beyond a bug fix, new endpoint, new middleware, "FastAPI", "Mangum", "rewrite Express in Python" | [PYTHON_BACKEND.md](PYTHON_BACKEND.md) |
 | `stripe/` (Rust source), `stripe_py/` (Python port), Stripe webhook handler, `${ssmPrefix}/stripe-lambda-url`, billing Lambda deploy or cutover | [PYTHON_STRIPE.md](PYTHON_STRIPE.md) |
@@ -371,4 +373,4 @@ If your current task matches any "trigger" entry, the linked doc is queued and w
 | Any URL-fetching path in `specodex/` (scraper, pricing, browser); user asks "SSRF", "metadata", "internal hostname" | [HARDENING.md](HARDENING.md) Phase 2.1 (shipped) + `validate_url` |
 | Stripe webhook handler change; new external-integration retry logic; user asks "replay attack", "idempotency", "webhook signature" | [HARDENING.md](HARDENING.md) Phase 2.4 (shipped — pattern to follow) |
 | Adding a new `ProductType` literal or model field to `specodex/models/` | CLAUDE.md "Adding a new product type" — includes step 5 for snapshot refresh |
-| Founder-driven items (manufacturer outreach, paid-tier price, customer-conversation log) | [BOARD_FEEDBACK.md](BOARD_FEEDBACK.md) |
+| Founder-driven items (manufacturer outreach, paid-tier price, customer-conversation log) | [longterm/BOARD.md](longterm/BOARD.md) — board-strategy register; the BOARD_FEEDBACK action subset was retired 2026-05-10 |
