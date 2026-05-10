@@ -30,7 +30,8 @@ def _coerce_protocol_list(v: Any) -> Any:
 
     Handles legacy DB rows / LLM payloads that say ``"EnDat 2.2"`` or
     ``"Resolver"`` rather than ``"endat_2_2"`` / ``"resolver_analog"``.
-    Strings that don't match any synonym become ``"unknown"`` (the enum
+    Strings that don't match any synonym (including empty /
+    whitespace-only strings) become ``"unknown"`` (the enum
     sentinel) so the row still validates and the verifier can flag it.
     """
     if v is None:
@@ -41,7 +42,10 @@ def _coerce_protocol_list(v: Any) -> Any:
     for item in v:
         if isinstance(item, str):
             mapped = coerce_protocol_string(item)
-            out.append(mapped if mapped else ("unknown" if item.strip() else item))
+            # No-match strings (including empty/whitespace) collapse to
+            # "unknown" so the downstream Literal[EncoderProtocol]
+            # validator doesn't reject the whole row.
+            out.append(mapped if mapped else "unknown")
         else:
             out.append(item)
     return out

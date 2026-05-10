@@ -158,6 +158,54 @@ class TestProtocolStringCoercer:
         assert coerce_protocol_string("xyzzy") is None
 
 
+class TestCoerceProtocolListEdgeCases:
+    """Regression cases for ``drive.py:_coerce_protocol_list``.
+
+    Hypothesis surfaced an empty-string fall-through: ``[""]`` was
+    returning ``[""]`` instead of ``["unknown"]`` because the original
+    expression preferred the input over the sentinel when ``item.strip()``
+    was falsy. Pin the contract here so the specific shape can't
+    regress.
+    """
+
+    def test_empty_string_becomes_unknown(self) -> None:
+        from specodex.models.drive import _coerce_protocol_list
+
+        assert _coerce_protocol_list([""]) == ["unknown"]
+
+    def test_whitespace_only_becomes_unknown(self) -> None:
+        from specodex.models.drive import _coerce_protocol_list
+
+        assert _coerce_protocol_list(["   ", "\t", "\n"]) == [
+            "unknown",
+            "unknown",
+            "unknown",
+        ]
+
+    def test_unknown_protocol_becomes_unknown_sentinel(self) -> None:
+        from specodex.models.drive import _coerce_protocol_list
+
+        assert _coerce_protocol_list(["xyzzy"]) == ["unknown"]
+
+    def test_mix_of_canonical_and_garbage(self) -> None:
+        from specodex.models.drive import _coerce_protocol_list
+
+        assert _coerce_protocol_list(["endat_2_2", "", "biss_c", "xyzzy"]) == [
+            "endat_2_2",
+            "unknown",
+            "biss_c",
+            "unknown",
+        ]
+
+    def test_non_string_passthrough(self) -> None:
+        """Non-string list elements pass through unchanged for
+        Pydantic's downstream validation to handle."""
+        from specodex.models.drive import _coerce_protocol_list
+
+        result = _coerce_protocol_list([42, None, "endat_2_2"])
+        assert result == [42, None, "endat_2_2"]
+
+
 @pytest.mark.unit
 class TestModelIntegration:
     """End-to-end: legacy free-text payload survives Motor / Drive validation."""
