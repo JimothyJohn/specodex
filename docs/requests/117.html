@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Specodex PR #117 — SCHEMA Phase 2 motor_mount_pattern backfill CLI with dry-run default.">
+    <meta name="theme-color" content="#3A2C1C">
+    <title>Specodex — PR #117: SCHEMA Phase 2 motor-mount backfill CLI</title>
+    <link rel="icon" type="image/svg+xml" href="../logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-issue="PR-117">
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="band">
+        <div class="band-inner">
+            <a class="band-brand" href="../index.html">
+                <svg class="band-mark" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <rect width="120" height="120" fill="#E8E2C9"/>
+                    <rect x="14" y="14" width="92" height="92" fill="none" stroke="#1A1A14" stroke-width="3"/>
+                    <rect x="14" y="14" width="92" height="22" fill="#3A2C1C"/>
+                    <rect x="62" y="60" width="40" height="10" fill="#A88A1C"/>
+                    <line x1="14" y1="56" x2="106" y2="56" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="74" x2="106" y2="74" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="92" x2="106" y2="92" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="60" y1="36" x2="60" y2="106" stroke="#1A1A14" stroke-width="2"/>
+                </svg>
+                <span class="wordmark">SPECODEX</span>
+            </a>
+            <nav class="band-nav" aria-label="Section">
+                <a href="../index.html">Catalog</a>
+                <a href="./" class="active">Pull Requests</a>
+                <a href="https://github.com/JimothyJohn/specodex" rel="noreferrer">GitHub</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="hero-tag">▮▮▮ PULL REQUEST #117 ▮▮▮</div>
+            <h1 class="hero-title">SCHEMA Phase 2 — <code>motor_mount_pattern</code> backfill CLI</h1>
+            <p class="hero-sub">
+                SCHEMA Phase 1 (PR #87) introduced
+                <code>motor_mount_pattern</code>; every motor row written
+                before that PR has the field null. This PR ships the
+                one-shot backfill that derives the canonical pattern
+                from <code>frame_size</code> and writes it back —
+                code-only, no DynamoDB writes from the sprint.
+                <code>--apply</code> is the explicit opt-in; default is
+                <code>--dry-run</code> (prints a summary and exits).
+            </p>
+            <dl class="pr-meta">
+                <div><dt>Branch</dt><dd><code>auto/schema-phase2-mount-backfill-20260510</code></dd></div>
+                <div><dt>Opened</dt><dd>2026-05-10 (DRAFT)</dd></div>
+                <div><dt>Diff</dt><dd>+447 / −0 across 4 files</dd></div>
+                <div><dt>Plan</dt><dd><code>todo/SCHEMA.md</code> Phase 2</dd></div>
+                <div><dt>Type</dt><dd>Backfill script — execution gated behind <code>--apply</code></dd></div>
+            </dl>
+            <div class="cta-row">
+                <a class="cta cta-primary" href="https://github.com/JimothyJohn/specodex/pull/117" rel="noreferrer">View on GitHub →</a>
+                <a class="cta cta-ghost" href="./">All requests</a>
+            </div>
+        </section>
+
+        <section aria-label="Walker invariants">
+            <div class="divider"><span>▮▮▮ WALKER INVARIANTS ▮▮▮</span></div>
+            <ol class="cell-list">
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">I-1</span><h2 class="cell-title"><code>apply=False</code> is read-only</h2></div>
+                    <p class="cell-body">
+                        No DB writes regardless of how many rows would
+                        match. Prints a summary listing
+                        <code>matched</code> count + first 10 sample
+                        mappings for spot-check.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">I-2</span><h2 class="cell-title">Writes only derivable, currently-null rows</h2></div>
+                    <p class="cell-body">
+                        Walker skips rows where
+                        <code>motor_mount_pattern</code> is already set
+                        (idempotent), where <code>frame_size</code> is
+                        null/empty (nothing to derive from), or where
+                        the normalizer returns None (vendor-specific
+                        encodings like "60mm" / "60" — pending a per-
+                        vendor lookup PR).
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">I-3</span><h2 class="cell-title">Second apply pass is a no-op</h2></div>
+                    <p class="cell-body">
+                        <code>matched=0, written=0</code>;
+                        <code>already_set</code> count rises by the
+                        first pass's writes.
+                    </p>
+                </li>
+            </ol>
+        </section>
+
+        <section aria-label="Files touched">
+            <div class="divider"><span>▮▮▮ FILES TOUCHED ▮▮▮</span></div>
+            <table class="spec-table">
+                <thead><tr><th>File</th><th>Lines</th><th>Note</th></tr></thead>
+                <tbody>
+                    <tr><td><code>specodex/admin/motor_mount_backfill.py</code></td><td>+~125</td><td>NEW — pure normalizer + DB walker + result dataclass</td></tr>
+                    <tr><td><code>cli/admin.py</code></td><td>+~40</td><td><code>backfill-motor-mounts</code> subcommand</td></tr>
+                    <tr><td><code>tests/unit/test_motor_mount_backfill.py</code></td><td>+~95</td><td>NEW — 26 parametrised cases on the normalizer</td></tr>
+                    <tr><td><code>tests/integration/test_motor_mount_backfill.py</code></td><td>+~150</td><td>NEW — 5 moto-backed walker tests</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section aria-label="Heads-up">
+            <div class="divider"><span>▮▮▮ HEADS-UP ▮▮▮</span></div>
+            <p class="prose">
+                <code>specodex/admin/motor_mount_backfill.py</code>
+                needed <code>git add -f</code> because
+                <code>.gitignore</code> has <code>admin/</code> which
+                matches any directory named "admin". The existing
+                <code>operations.py</code> / <code>blacklist.py</code>
+                in that dir pre-date the rule. A follow-up could
+                tighten the ignore (e.g. <code>/app/admin/</code> if
+                that was the original intent) so future additions
+                don't trip the same footgun silently.
+            </p>
+        </section>
+
+        <a class="back-link" href="./">← back to requests log</a>
+    </main>
+
+    <footer>
+        <div class="footer-inner">
+            <span>© 2026 Specodex · PR #117</span>
+            <span class="footer-rule" aria-hidden="true"></span>
+            <a class="footer-link" href="https://github.com/JimothyJohn/specodex/pull/117" rel="noreferrer">View on GitHub</a>
+            <a class="footer-link" href="./">All requests</a>
+        </div>
+    </footer>
+</body>
+</html>
