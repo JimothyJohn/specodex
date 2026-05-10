@@ -104,7 +104,7 @@ describe('RelationsPanel', () => {
     });
   });
 
-  it('builds the right URL for motors-for-actuator (includes type)', async () => {
+  it('builds the right URL for motors-for-actuator (output + output_type)', async () => {
     const fetchMock = mockFetchResponse({ success: true, data: [], count: 0 });
     vi.stubGlobal('fetch', fetchMock);
 
@@ -116,12 +116,12 @@ describe('RelationsPanel', () => {
       expect(fetchMock).toHaveBeenCalledTimes(1);
     });
     const url = String(fetchMock.mock.calls[0][0]);
-    expect(url).toContain('/api/v1/relations/motors-for-actuator');
-    expect(url).toContain('id=la-23');
-    expect(url).toContain('type=linear_actuator');
+    expect(url).toContain('/api/v1/relations/motors');
+    expect(url).toContain('output=la-23');
+    expect(url).toContain('output_type=linear_actuator');
   });
 
-  it('builds the right URL for drives-for-motor (no type param)', async () => {
+  it('builds the right URL for drives-for-motor (output, no type)', async () => {
     const fetchMock = mockFetchResponse({ success: true, data: [], count: 0 });
     vi.stubGlobal('fetch', fetchMock);
 
@@ -133,8 +133,24 @@ describe('RelationsPanel', () => {
       expect(fetchMock).toHaveBeenCalledTimes(1);
     });
     const url = String(fetchMock.mock.calls[0][0]);
-    expect(url).toContain('/api/v1/relations/drives-for-motor');
-    expect(url).toContain('id=m-23');
-    expect(url).not.toContain('type=');
+    expect(url).toContain('/api/v1/relations/drives');
+    expect(url).toContain('output=m-23');
+    expect(url).not.toContain('output_type=');
+  });
+
+  it('builds the right URL for gearheads-for-motor (input role)', async () => {
+    const fetchMock = mockFetchResponse({ success: true, data: [], count: 0 });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <RelationsPanel sourceProduct={sampleMotor} relation="gearheads-for-motor" />,
+    );
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+    const url = String(fetchMock.mock.calls[0][0]);
+    expect(url).toContain('/api/v1/relations/gearheads');
+    expect(url).toContain('input=m-23');
   });
 });

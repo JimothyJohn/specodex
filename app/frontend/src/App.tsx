@@ -58,6 +58,7 @@ const DatasheetsPage = lazy(() => import('./components/DatasheetsPage'));
 const AdminPanel = lazy(() => import('./components/AdminPanel'));
 const ProjectsPage = lazy(() => import('./components/ProjectsPage'));
 const ProjectDetailPage = lazy(() => import('./components/ProjectDetailPage'));
+const BuildPage = lazy(() => import('./components/BuildPage'));
 
 /**
  * Loading Fallback Component
@@ -170,6 +171,11 @@ export function AppShell() {
                   page renders a sign-in CTA when logged out. */}
               <Route path="/projects" element={<ProjectsPage />} />
               <Route path="/projects/:id" element={<ProjectDetailPage />} />
+
+              {/* Build — requirements-first system assembler. Scaffold
+                  per todo/BUILD.md Phase 1 PR-1; full requirements form
+                  + derivation in follow-ups. */}
+              <Route path="/build" element={<BuildPage />} />
 
               {/* Catch-all: Redirect to products */}
               <Route path="*" element={<Navigate to="/" replace />} />
