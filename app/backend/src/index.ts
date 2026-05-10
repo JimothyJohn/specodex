@@ -15,6 +15,7 @@ import uploadRouter from './routes/upload';
 import subscriptionRouter from './routes/subscription';
 import searchRouter from './routes/search';
 import compatRouter from './routes/compat';
+import relationsRouter from './routes/relations';
 import docsRouter from './routes/docs';
 import adminRouter from './routes/admin';
 import authRouter from './routes/auth';
@@ -77,6 +78,9 @@ app.use('/api/datasheets', datasheetsRouter);
 app.use('/api/subscription', subscriptionRouter);
 app.use('/api/v1/search', searchRouter);
 app.use('/api/v1/compat', compatRouter);
+// Device-relations API — typed compatibility queries (Phase 3b of
+// SCHEMA Phase 3; see todo/SCHEMA.md Part 3 and todo/BUILD.md Part 4).
+app.use('/api/v1/relations', relationsRouter);
 app.use('/api/admin', requireAuth, adminOnly, adminRouter);
 app.use('/api', docsRouter);
 
