@@ -3,7 +3,7 @@
  * Appears at the click location and expands
  */
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Product } from '../types/models';
 import { formatPropertyLabel } from '../utils/formatting';
 import { sanitizeUrl } from '../utils/sanitize';
@@ -16,7 +16,10 @@ import {
 import CompatChecker from './CompatChecker';
 import AddToProjectMenu from './AddToProjectMenu';
 import ExternalLink from './ui/ExternalLink';
+import FeedbackModal from './ui/FeedbackModal';
+import Tooltip from './ui/Tooltip';
 import { BUILD_SLOTS, BuildSlot } from '../utils/compat';
+import './ProductDetailModal.css';
 
 interface ProductDetailModalProps {
   product: Product | null;
@@ -24,14 +27,29 @@ interface ProductDetailModalProps {
   clickPosition: { x: number; y: number } | null;
 }
 
+interface SpecComplaint {
+  name: string;
+  label: string;
+  value: string;
+  unit?: string;
+}
+
 export default function ProductDetailModal({ product, onClose, clickPosition }: ProductDetailModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const { unitSystem, build, addToBuild, removeFromBuild } = useApp();
+  // Field-level complaint state. Stored as a single object so the
+  // FeedbackModal can read { field } context — the future verifier
+  // pipeline will need to know which spec the user flagged.
+  const [complaint, setComplaint] = useState<SpecComplaint | null>(null);
 
   useEffect(() => {
     if (!product) return;
 
     const handleEscape = (e: KeyboardEvent) => {
+      // While the field-complaint sub-modal is open, Escape must close
+      // only the sub-modal — not unwind the whole product detail. The
+      // sub-modal owns its own Escape handler.
+      if (complaint) return;
       if (e.key === 'Escape') onClose();
     };
 
@@ -42,6 +60,11 @@ export default function ProductDetailModal({ product, onClose, clickPosition }: 
       // parent modal closes on every click inside the popover, killing
       // the popover before it can act on the click.
       if (target && target.closest?.('[data-portaled-popover]')) return;
+      // Same idea for the nested FeedbackModal: it renders inside
+      // modalRef so contains() already returns true for clicks on its
+      // form, but the overlay's mousedown-to-dismiss path needs the
+      // parent's outside-click handler not to also fire.
+      if (target && target.closest?.('.confirm-dialog-overlay')) return;
       if (modalRef.current && !modalRef.current.contains(e.target as Node)) {
         onClose();
       }
@@ -54,7 +77,7 @@ export default function ProductDetailModal({ product, onClose, clickPosition }: 
       document.removeEventListener('keydown', handleEscape);
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [product, onClose]);
+  }, [product, onClose, complaint]);
 
   if (!product || !clickPosition) return null;
 
@@ -92,7 +115,23 @@ export default function ProductDetailModal({ product, onClose, clickPosition }: 
     return { display: String(value) };
   };
 
-  const renderNestedObject = (value: any) => {
+  const renderComplaintButton = (field: SpecComplaint) => (
+    <Tooltip content="Report inaccurate value">
+      <button
+        type="button"
+        className="spec-complaint-btn"
+        aria-label={`Report inaccurate value for ${field.label}`}
+        onClick={(e) => {
+          e.stopPropagation();
+          setComplaint(field);
+        }}
+      >
+        ?
+      </button>
+    </Tooltip>
+  );
+
+  const renderNestedObject = (value: any, parentLabel: string) => {
     const entries = Object.entries(value);
 
     // Check if there's a separate "unit" property at the same level
@@ -144,6 +183,14 @@ export default function ProductDetailModal({ product, onClose, clickPosition }: 
                 <td className="spec-sublabel">{subLabel}</td>
                 <td className="spec-subvalue">{formatted.display}</td>
                 <td className="spec-subunit">{cellUnit}</td>
+                <td className="spec-complaint-cell">
+                  {renderComplaintButton({
+                    name: `${parentLabel.toLowerCase().replace(/\s+/g, '_')}.${subKey}`,
+                    label: `${parentLabel} — ${subLabel}`,
+                    value: formatted.display,
+                    unit: cellUnit || undefined,
+                  })}
+                </td>
               </tr>
             );
           })}
@@ -258,8 +305,8 @@ export default function ProductDetailModal({ product, onClose, clickPosition }: 
                       return (
                         <tr key={key} className="spec-row spec-row-nested">
                           <td className="spec-label">{label}</td>
-                          <td className="spec-value-nested" colSpan={2}>
-                            {renderNestedObject(value)}
+                          <td className="spec-value-nested" colSpan={3}>
+                            {renderNestedObject(value, label)}
                           </td>
                         </tr>
                       );
@@ -271,8 +318,15 @@ export default function ProductDetailModal({ product, onClose, clickPosition }: 
                       <tr key={key} className="spec-row">
                         <td className="spec-label">{label}</td>
                         <td className="spec-value">{formatted.display}</td>
-                        {formatted.unit && <td className="spec-unit">{formatted.unit}</td>}
-                        {!formatted.unit && <td className="spec-unit"></td>}
+                        <td className="spec-unit">{formatted.unit ?? ''}</td>
+                        <td className="spec-complaint-cell">
+                          {renderComplaintButton({
+                            name: key,
+                            label,
+                            value: formatted.display,
+                            unit: formatted.unit,
+                          })}
+                        </td>
                       </tr>
                     );
                   })}
@@ -285,6 +339,20 @@ export default function ProductDetailModal({ product, onClose, clickPosition }: 
             productRef={{
               product_type: product.product_type,
               product_id: product.product_id,
+            }}
+          />
+          <FeedbackModal
+            open={complaint !== null}
+            onClose={() => setComplaint(null)}
+            defaultCategory="wrong_info"
+            heading="Report inaccurate value"
+            context={{
+              productType: product.product_type,
+              product: {
+                manufacturer: product.manufacturer ?? undefined,
+                part_number: product.part_number ?? undefined,
+              },
+              field: complaint ?? undefined,
             }}
           />
           {(BUILD_SLOTS as readonly string[]).includes(product.product_type) && (() => {
