@@ -54,6 +54,82 @@
             <div class="divider"><span>▮▮▮ RECENT PULL REQUESTS ▮▮▮</span></div>
             <ol class="pr-cards">
                 <li>
+                    <a class="pr-card" href="118.html">
+                        <div class="pr-card-head">
+                            <span class="pr-num">PR #118 (DRAFT)</span>
+                            <h2 class="pr-title">Gearhead falsy-value coerce fix <em>(3rd Hypothesis-caught bug this sprint)</em></h2>
+                        </div>
+                        <div class="pr-card-meta">
+                            <span>Opened 2026-05-10</span>
+                            <span>+198 / −6 across 2 files</span>
+                            <span>Branch <code>auto/hardening-gearhead-coerce-fields-20260510</code></span>
+                        </div>
+                        <p class="pr-card-body">
+                            <code>Gearhead.coerce_string_fields</code>'s
+                            <code>if v</code> check fell through to
+                            <code>str(val)</code> on falsy values,
+                            producing literal dict-repr strings
+                            (<code>"{'value': 0, 'unit': 'mm'}"</code>,
+                            <code>"{}"</code>) in the DB. Fixed with
+                            explicit "no meaningful value" check that
+                            formats 0 and other falsy-but-real values
+                            correctly while dropping None / whitespace-
+                            only inputs to None. 7 regression cases +
+                            2 property tests at 200 examples.
+                        </p>
+                    </a>
+                </li>
+                <li>
+                    <a class="pr-card" href="117.html">
+                        <div class="pr-card-head">
+                            <span class="pr-num">PR #117 (DRAFT)</span>
+                            <h2 class="pr-title">SCHEMA Phase 2 — <code>motor_mount_pattern</code> backfill CLI (dry-run default)</h2>
+                        </div>
+                        <div class="pr-card-meta">
+                            <span>Opened 2026-05-10</span>
+                            <span>+447 / −0 across 4 files</span>
+                            <span>Branch <code>auto/schema-phase2-mount-backfill-20260510</code></span>
+                        </div>
+                        <p class="pr-card-body">
+                            Code-only — no DynamoDB writes from this
+                            PR. Pure normalizer
+                            (<code>normalize_frame_to_mount</code>) + DB
+                            walker + new
+                            <code>./Quickstart admin -- backfill-motor-mounts</code>
+                            subcommand. <code>--apply</code> is the
+                            explicit opt-in; default is dry-run.
+                            Walker is idempotent (never overwrites a
+                            non-null pattern); second apply pass
+                            produces <code>matched=0, written=0</code>.
+                            26 unit cases + 5 moto-backed walker tests.
+                        </p>
+                    </a>
+                </li>
+                <li>
+                    <a class="pr-card" href="116.html">
+                        <div class="pr-card-head">
+                            <span class="pr-num">PR #116 (DRAFT)</span>
+                            <h2 class="pr-title">Property tests for encoder/drive free-text coercers <em>(caught _coerce_protocol_list bug)</em></h2>
+                        </div>
+                        <div class="pr-card-meta">
+                            <span>Opened 2026-05-10</span>
+                            <span>+345 / −2 across 3 files</span>
+                            <span>Branch <code>auto/hardening-3-1-encoder-coercers-20260510</code></span>
+                        </div>
+                        <p class="pr-card-body">
+                            Adds adversarial coverage to the three
+                            free-text coercion paths DOUBLE_TAP added.
+                            Hypothesis caught a real bug:
+                            <code>_coerce_protocol_list([""])</code> was
+                            returning <code>[""]</code> instead of
+                            <code>["unknown"]</code>, so the Pydantic
+                            <code>Literal[EncoderProtocol]</code>
+                            validator killed the whole row. One-line
+                            fix + 5 explicit regression cases.
+                        </p>
+                    </a>
+                </li>
+                <li>
                     <a class="pr-card" href="113.html">
                         <div class="pr-card-head">
                             <span class="pr-num">PR #113</span>
