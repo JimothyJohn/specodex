@@ -40,7 +40,15 @@ class Gearhead(ProductBase):
     @model_validator(mode="before")
     @classmethod
     def coerce_string_fields(cls, data: Any) -> Any:
-        """Convert dict-stored fields to strings when the model expects str."""
+        """Convert dict-stored fields to strings when the model expects str.
+
+        Handles the legacy ``{value, unit}`` shape Gemini sometimes
+        emits for what's logically a free-text spec (``frame_size``,
+        ``gear_type``, ``lubrication_type``). Returns ``None`` for the
+        field when no meaningful value is present — never ``"{}"`` or
+        the dict's ``repr()``, which would leak into the frontend
+        table and survive serialisation.
+        """
         if isinstance(data, dict):
             for field_name in (
                 "frame_size",
@@ -48,11 +56,21 @@ class Gearhead(ProductBase):
                 "lubrication_type",
             ):
                 val = data.get(field_name)
-                if isinstance(val, dict):
-                    # Convert {value: X, unit: Y} to "X Y" string
-                    v = val.get("value", val.get("min", ""))
-                    u = val.get("unit", "")
-                    data[field_name] = f"{v} {u}".strip() if v else str(val)
+                if not isinstance(val, dict):
+                    continue
+                # Accept both {value: X} and {min: X} shapes (Gemini
+                # sometimes emits one for what should be a scalar).
+                v = val.get("value")
+                if v is None:
+                    v = val.get("min")
+                u = val.get("unit", "")
+                if v is None or (isinstance(v, str) and not v.strip()):
+                    # No meaningful value — drop the field.
+                    data[field_name] = None
+                else:
+                    # ``0`` is a legitimate value (e.g. backlash spec);
+                    # don't treat it as missing.
+                    data[field_name] = f"{v} {u}".strip()
         return data
 
     # --- Performance Specifications ---
