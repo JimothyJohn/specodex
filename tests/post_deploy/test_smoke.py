@@ -9,32 +9,74 @@ import json
 import os
 import time
 import pytest
+from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 
 BASE_URL = os.environ.get("API_BASE_URL", "http://localhost:3001")
+
+# AWS trace headers worth surfacing in smoke-failure assertions so
+# the next investigation has request IDs to grep CloudWatch with.
+# Added 2026-05-10 after issue #104 (transient prod 403 with
+# x-deny-reason: host_not_allowed) — the failure output captured no
+# trace IDs, leaving the root cause untraceable.
+_TRACE_HEADERS = (
+    "apigw-requestid",
+    "x-amzn-requestid",
+    "x-amz-cf-id",
+    "x-amz-cf-pop",
+    "x-cache",
+    "x-deny-reason",
+)
+
+
+def _smoke_get(path: str, *, timeout: int = 5):
+    """GET helper that on non-2xx attaches AWS trace headers to the error.
+
+    A bare urlopen() failure prints "HTTP Error 403: Forbidden" with
+    no context — useless for chasing a transient edge issue across
+    CloudFront / WAF / API Gateway / Lambda. This wrapper re-raises
+    the HTTPError as an AssertionError whose message includes every
+    header CloudFront and API Gateway echo back (request IDs, cache
+    state, edge POP, custom deny-reason if any), so the next failure
+    is greppable in CloudWatch by request-id.
+    """
+    req = Request(f"{BASE_URL}{path}")
+    try:
+        return urlopen(req, timeout=timeout)
+    except HTTPError as exc:
+        trace_parts = []
+        for hname in _TRACE_HEADERS:
+            hval = exc.headers.get(hname) if exc.headers else None
+            if hval:
+                trace_parts.append(f"{hname}={hval}")
+        try:
+            body_preview = exc.read(200).decode("utf-8", errors="replace")
+        except Exception:
+            body_preview = "<unreadable>"
+        trace = " ".join(trace_parts) if trace_parts else "no AWS trace headers"
+        raise AssertionError(
+            f"{path} → HTTP {exc.code} ({trace}); body[:200]={body_preview!r}"
+        ) from exc
 
 
 @pytest.mark.integration
 class TestSmoke:
     def test_health_check_200(self):
         """Service is running and healthy."""
-        req = Request(f"{BASE_URL}/health")
-        with urlopen(req, timeout=5) as resp:
+        with _smoke_get("/health") as resp:
             assert resp.status == 200
             body = json.loads(resp.read().decode())
             assert body["status"] == "healthy"
 
     def test_products_endpoint_200(self):
         """Products endpoint is accessible."""
-        req = Request(f"{BASE_URL}/api/products")
-        with urlopen(req, timeout=5) as resp:
+        with _smoke_get("/api/products") as resp:
             assert resp.status == 200
 
     def test_summary_endpoint_200(self):
         """Summary endpoint returns data."""
-        req = Request(f"{BASE_URL}/api/products/summary")
-        with urlopen(req, timeout=5) as resp:
+        with _smoke_get("/api/products/summary") as resp:
             assert resp.status == 200
             body = json.loads(resp.read().decode())
             assert "total" in body.get("data", {})
@@ -42,14 +84,12 @@ class TestSmoke:
     def test_response_time_under_5s(self):
         """Health check responds within 5 seconds."""
         start = time.time()
-        req = Request(f"{BASE_URL}/health")
-        with urlopen(req, timeout=5) as resp:
+        with _smoke_get("/health") as resp:
             elapsed = time.time() - start
             assert resp.status == 200
             assert elapsed < 5.0, f"Response took {elapsed:.2f}s"
 
     def test_datasheets_endpoint_200(self):
         """Datasheets endpoint is accessible."""
-        req = Request(f"{BASE_URL}/api/datasheets")
-        with urlopen(req, timeout=5) as resp:
+        with _smoke_get("/api/datasheets") as resp:
             assert resp.status == 200
