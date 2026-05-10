@@ -1,8 +1,12 @@
-# Encoder Taxonomy Reference (DOUBLE_TAP appendix)
+# Encoder Taxonomy Reference
 
 Source-of-truth research for the closed enums that back
 `specodex/models/encoder.py`. Cited from vendor docs and standards;
 update when you widen an enum or change a default.
+
+Originally `todo/DOUBLE_TAP_encoder_taxonomy.md` — moved next to the
+code that uses it after the DOUBLE_TAP plan-doc was retired (its
+scope shipped end-to-end via PR #91).
 
 Goal: replace `Optional[str | List[str]]` with a closed taxonomy that
 lets us match motors to drives across vendors. Two orthogonal axes:
