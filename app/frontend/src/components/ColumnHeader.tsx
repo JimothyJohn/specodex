@@ -465,6 +465,11 @@ export default function ColumnHeader({
   if (isCompact) {
     return (
       <div className={headerClasses + ' compact-column-header'} style={{ width }}>
+        {/* Inner flex row. The outer cell must stay `display: table-cell`
+         * to participate in the table-layout: fixed grid (overriding
+         * display on the cell ejects it from the table flow and
+         * collapses every column's width). */}
+        <div className="compact-column-header-row">
         <Tooltip content="Click to sort • click again to reverse, again to clear">
           <button
             type="button"
@@ -607,6 +612,7 @@ export default function ColumnHeader({
             </svg>
           </button>
         </Tooltip>
+        </div>
 
         <div
           className="col-resize-handle"

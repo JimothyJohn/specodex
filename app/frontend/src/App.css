@@ -6764,14 +6764,26 @@ input.transmission-param-input {
  *
  * For categorical (string/number/array) columns the popover trigger
  * and DistributionChart are also stripped — the inline substring
- * input + ⊕/⊖ mode toggle replaces both. */
+ * input + ⊕/⊖ mode toggle replaces both.
+ *
+ * Layout note: the outer .product-grid-header-item must keep its
+ * `display: table-cell` so it participates in the table-layout: fixed
+ * grid that gives every column a stable width. Overriding the cell
+ * to `display: flex` ejects it from the table flow and collapses
+ * every column to the right edge — chased that bug once already.
+ * The flex layout lives on an inner `.compact-column-header-row`. */
 .product-grid-header-item.compact-column-header {
+  padding: 0.15rem 0.25rem;
+  vertical-align: middle;
+}
+
+.compact-column-header-row {
   display: flex;
   flex-direction: row;
   align-items: center;
   gap: 0.2rem;
-  padding: 0.15rem 0.25rem;
-  min-height: 0;
+  width: 100%;
+  min-width: 0;
 }
 
 .compact-column-header .compact-column-sort {
