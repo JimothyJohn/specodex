@@ -153,6 +153,13 @@ class PriceFetcher:
     # ── primary fetch ──────────────────────────────────────────────
 
     def fetch(self, url: str) -> Optional[FetchResult]:
+        # SSRF defense — URL comes from search-result candidates, which
+        # are user-influenced (manufacturer/part-number queries flow into
+        # Serper, then back here as URLs to fetch). See specodex.url_safety.
+        from specodex.url_safety import validate_url
+
+        validate_url(url)
+
         cached = self._cache_read(url)
         if cached is not None:
             return cached
