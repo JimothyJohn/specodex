@@ -613,6 +613,18 @@ export default function ColumnHeader({
        * column-header's has-include/has-exclude class. */}
       {!isSliderEligible && multiSelectOptions.length > 0 && (
         <>
+          {/* Top-3 + Other breakdown of the *currently visible* rows for
+           * this column — the categorical analogue of the slider-column
+           * histogram above. Lets the user eyeball the dominant values
+           * before clicking into the multi-select. DistributionChart auto-
+           * routes string/array attributes through its categorical path
+           * and falls back gracefully when the filtered set is empty. */}
+          <DistributionChart
+            products={products}
+            attribute={attribute.key}
+            attributeType={attribute.type}
+            allProducts={allProducts}
+          />
           <Tooltip
             content={
               multiSelectedCount === 0
