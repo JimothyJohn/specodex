@@ -8,7 +8,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Literal, Optional
+from typing import Any, List, Literal, Optional
 
 from pydantic import Field, model_validator
 
@@ -17,6 +17,7 @@ from specodex.models.common import (
     Inertia,
     IpRating,
     Length,
+    MotorMountPattern,
     Speed,
     TemperatureRange,
     Torque,
@@ -109,6 +110,22 @@ class Gearhead(ProductBase):
     )
     output_shaft_diameter: Length = Field(
         None, description="Diameter of the output shaft (e.g., in mm)"
+    )
+    # Motor-side mount pattern(s) this gearhead accepts (often more than
+    # one via swappable adapter plates). Bridges to Motor.motor_mount_pattern
+    # for the device-relations layer (SCHEMA.md Part 3).
+    input_motor_mount: Optional[List[MotorMountPattern]] = Field(
+        None,
+        description=(
+            "Motor frames this gearhead accepts on its input flange "
+            "(e.g. ['NEMA 23', 'NEMA 34'])."
+        ),
+    )
+    # Output-side flange — relevant when the gearhead is itself bolted
+    # to a downstream device (linear actuator, second gearbox).
+    output_motor_mount: Optional[MotorMountPattern] = Field(
+        None,
+        description="Output flange pattern (matches downstream device's input mount).",
     )
     max_radial_load: Force = Field(
         None, description="Maximum radial load (F2m) (e.g., in N)"
