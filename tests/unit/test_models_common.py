@@ -361,5 +361,27 @@ class TestCoerceIpRating:
     def test_garbage_becomes_none(self):
         assert _coerce_ip_rating("unknown") is None
 
+    def test_list_input_becomes_none(self):
+        """Hypothesis-found regression: list input was returning the list
+        unchanged instead of None. The docstring says "Anything else
+        becomes None" but the original fall-through `return v` violated
+        that contract for lists, tuples, and floats."""
+        assert _coerce_ip_rating([]) is None
+        assert _coerce_ip_rating([1, 2, 3]) is None
+
+    def test_tuple_input_becomes_none(self):
+        assert _coerce_ip_rating((54,)) is None
+
+    def test_float_input_becomes_none(self):
+        assert _coerce_ip_rating(54.0) is None
+
+    def test_bool_input_becomes_none(self):
+        """bool is an int subclass in Python — without an explicit check,
+        ``True``/``False`` slip through ``isinstance(v, int)`` and become
+        IP ratings of 1/0. Real IP ratings are two digits; treat bools
+        as garbage."""
+        assert _coerce_ip_rating(True) is None
+        assert _coerce_ip_rating(False) is None
+
     def test_bare_dict_becomes_none(self):
         assert _coerce_ip_rating({"unit": "IP"}) is None

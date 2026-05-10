@@ -387,7 +387,13 @@ def _coerce_ip_rating(v: Any) -> Any:
     Anything else becomes None so Pydantic validation doesn't crash on
     a dict-shaped LLM mis-extraction.
     """
-    if v is None or isinstance(v, int):
+    if v is None:
+        return None
+    # bool is an int subclass in Python — narrow before the int check
+    # so True/False don't survive as 1/0 IP ratings.
+    if isinstance(v, bool):
+        return None
+    if isinstance(v, int):
         return v
     if isinstance(v, str):
         s = v.strip().upper().removeprefix("IP").strip()
@@ -401,7 +407,7 @@ def _coerce_ip_rating(v: Any) -> Any:
             if inner is not None:
                 return _coerce_ip_rating(inner)
         return None
-    return v
+    return None
 
 
 IpRating = Annotated[Optional[int], BeforeValidator(_coerce_ip_rating)]
