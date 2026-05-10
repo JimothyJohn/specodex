@@ -302,7 +302,7 @@ export class DynamoDBService {
       try {
         const requests = batch.map((product) => ({
           PutRequest: {
-            Item: marshall(this.serializeProduct(product), {
+            Item: marshall(this.serializeItem(product), {
               removeUndefinedValues: true
             }),
           },
@@ -797,14 +797,6 @@ export class DynamoDBService {
       PK: `PRODUCT#${typeUpper}`,
       SK: `PRODUCT#${product.product_id}`,
     };
-  }
-
-  /**
-   * Serialize product for DynamoDB storage
-   * @deprecated Use serializeItem instead
-   */
-  private serializeProduct(product: Product): any {
-    return this.serializeItem(product);
   }
 
   /**
