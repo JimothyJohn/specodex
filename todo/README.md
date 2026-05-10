@@ -57,6 +57,37 @@ docs only when you're about to act on that work.
 > real attacker surface (SSRF defense, IDOR coverage, Stripe webhook
 > replay/signature, real-DAL backend tests). Independent of the rest of
 > the backlog — run in parallel with whatever else is in flight.
+>
+> **Recently shipped (2026-05-09 → 2026-05-10).** **SCHEMA Phase 1**
+> (PR #87 — `MotorMountPattern` literal + bridge fields), **SCHEMA Phase
+> 3 end-to-end** (PR #89 Phase 3a `relations.py`, PR #90 Phase 3b
+> `/api/v1/relations` endpoints, PR #92 Phase 3c `RelationsPanel`
+> skeleton), **DOUBLE_TAP end-to-end** (PR #91 — closed `EncoderDevice`
+> + `EncoderProtocol` taxonomy, structured `EncoderFeedback` model,
+> typed compat checker, verifier-loop runner, bench A/B harness),
+> **BUILD scaffold + RelationsPanel URL fix** (PR #94 — `/build`
+> route placeholder + bug fix to relations panel),
+> **categorical DistributionChart in ColumnHeader** (PR #88), recovered
+> design docs (PR #85 — SCHEMA, CATAGORIES, CONFIGURATION docs landed),
+> linear-actuator type discoverability fix (PR #86), and a **HARDENING
+> Phase 1+2+4 sweep**: 1.1 `_test_security.py` rename (PR #95), 1.3
+> log-injection regressions (PR #97), 2.1 SSRF defense (PR #98), 2.3
+> IDOR + cross-tenant tests (PR #100), 2.4 Stripe webhook replay/signature
+> /tamper tests (PR #101), 4.1 mutmut + pytest-randomly + freezegun
+> dev-deps (PR #103), 4.3 log secret-leak assertion tests (PR #102).
+> Plus quickstart `npm ci` correctness fix (PR #99) and lockfile
+> regen under Node 20 (PR #96).
+>
+> **New on 2026-05-09 → 2026-05-10:** [BOARD_FEEDBACK.md](BOARD_FEEDBACK.md)
+> (founder-driven action subset of `longterm/BOARD.md` — items 1–3
+> shipped 2026-05-09, items 4–9 are founder-driven decisions),
+> [BUILD.md](BUILD.md) (requirements-first system assembler — the
+> third user-facing page, generalising `/actuators`; design-only,
+> depends on SCHEMA Phase 3 ✓), [DOUBLE_TAP.md](DOUBLE_TAP.md) and
+> its appendix [DOUBLE_TAP_encoder_taxonomy.md](DOUBLE_TAP_encoder_taxonomy.md)
+> (encoder-feedback schema rethink + verifier-loop extraction — phases
+> 1+2 and 3+4+5+6 shipped via PR #91; doc retained as architecture
+> reference for the closed taxonomy + verifier loop).
 
 ## How to use it
 
@@ -77,33 +108,28 @@ Drained as of 2026-04-30. No operator-only actions outstanding.
 
 ## Working tree state
 
-Snapshot 2026-05-08. **Stale within hours; re-run `git status` and
+Snapshot 2026-05-10. **Stale within hours; re-run `git status` and
 `git worktree list` for ground truth.**
 
-Active branch is `feat-actuators-mvp-20260508` with **uncommitted MVP
-work from the prior session**:
+Master is at the post-PR-#103 cohort (HARDENING Phase 1+2+4 sweep,
+SCHEMA Phase 1 + 3a/3b/3c, DOUBLE_TAP, BUILD scaffold). The actuator
+MVP and SCHEMA Phase 1 work that was uncommitted on
+`feat-actuators-mvp-20260508` has all landed.
 
-- New: `app/frontend/src/components/ActuatorPage.{tsx,css}`,
-  `app/frontend/src/types/{categories,configuratorTemplates,
-  configuratorTemplates.test}.ts`,
-  `todo/CATAGORIES.md`, `todo/SCHEMA.md`,
-  `outputs/schema_fit_check/` (fit-check runner + per-PDF artifacts).
-- Modified: `app/frontend/src/App.tsx` (route + nav), `app/package-lock.json`
-  (pre-existing drift, not session-introduced).
-
-The `pr-34` worktree at `/private/tmp/pr34` is from a separate review
-session and is unrelated. The four stranded auth Phase 5 worktrees were
-**resolved 2026-05-04** when Phase 5 landed — they should already be
-cleaned up.
+Live worktrees (re-run `git worktree list` for ground truth):
 
 ```
-/Users/nick/github/specodex   feat-actuators-mvp-20260508    ← this one (uncommitted)
-/private/tmp/pr34             pr-34                          (unrelated review)
+/Users/nick/github/specodex                   master                                          (this one)
+/Users/nick/github/specodex-build-scaffold    feat/build-page-scaffold-20260510               (shipped via PR #94 — can prune)
+/Users/nick/github/specodex-chart             feat/categorical-column-histogram-20260509      (shipped via PR #88 — can prune)
+/Users/nick/github/specodex-hardening         auto/hardening-4-1-adversarial-deps-20260509    (shipped via PR #103 — can prune)
+/Users/nick/github/specodex-lockfile-node20   fix/lockfile-node20-regen-20260510              (shipped via PR #96 — can prune)
+/Users/nick/github/specodex-quickstart-fix    fix/quickstart-npm-ci-20260510                  (shipped via PR #99 — can prune)
+/Users/nick/github/specodex-relations-api     feat/schema-phase3b-relations-api-20260510      (shipped via PR #90 — can prune)
 ```
 
-The four stranded Phase 5 worktrees (`specodex-{ses,revoke,audit,alarms}`)
-can be removed locally — PR #65 (`feat-auth-phase5-tail`) landed all of
-5a/5c/5e/5f on master.
+Five of the six side-worktrees are now stale (their branches merged).
+A separate worktree-GC pass can prune them.
 
 ---
 
@@ -113,17 +139,24 @@ can be removed locally — PR #65 (`feat-auth-phase5-tail`) landed all of
 
 Each card body links back to its `todo/<AREA>.md` doc. To add new work, create a card on the board referencing the doc; if the work has file-level triggers, also add a row to **Trigger conditions** below.
 
-Active docs (2026-05-08):
-- **CATAGORIES** — supercategory taxonomy + procedural part-number configurator + `/actuators` MVP page. Phase 0+1 uncommitted on `feat-actuators-mvp-20260508`. Companion to SCHEMA.md.
-- **SCHEMA** — Lintech/Toyo schema fit-check + cross-product field hygiene + device-relations design. Phase 1 (additive migrations) **applied 2026-05-08, uncommitted**; Phase 1.1 (breaking type harmonisation, deferred for sign-off); Phases 2 (backfill) and 3 (relations API + RelationsPanel) follow; Phase 4 (Force coercion) is a small follow-up.
+Active docs (2026-05-10):
+- **CATAGORIES** — supercategory taxonomy + procedural part-number configurator + `/actuators` MVP page. Phase 0+1 shipped via PRs #85/#87. Companion to SCHEMA.md and BUILD.md.
+- **SCHEMA** — Lintech/Toyo schema fit-check + cross-product field hygiene + device-relations design. Phase 1 (additive migrations) and Phase 3 (relations API + RelationsPanel) **shipped 2026-05-09 via PRs #87/#89/#90/#92**; Phase 1.1 (breaking type harmonisation, deferred for sign-off); Phase 2 (backfill `motor_mount_pattern` from `frame_size` on dev DB, then promote) and Phase 4 (Force coercion `kg→kgf→N`) remain.
+- **BUILD** — requirements-first system assembler — third user-facing page that generalises `/actuators` into a Build page driven by motion/stroke/speed/payload/orientation requirements. **Design-only as of 2026-05-09.** Hard prereqs (SCHEMA Phase 3 ✓, linear_actuator discoverability fix ✓) both shipped — Phase 1 implementation can start whenever it's prioritised.
+- **DOUBLE_TAP** — encoder-feedback schema rethink + verifier-loop extraction. **Phases 1+2 (closed `EncoderDevice`/`EncoderProtocol` taxonomy + structured `EncoderFeedback` + typed compat) and 3+4+5+6 (verifier-loop runner + bench A/B harness) shipped 2026-05-09 via PR #91.** Doc + appendix retained as architecture reference for the closed taxonomy and verifier-loop pattern.
+- **BOARD_FEEDBACK** — easy/obvious subset of `longterm/BOARD.md`. Items 1–3 (README brand cleanup + PUBLIC.md continuity + takedown policy) shipped 2026-05-09. Items 4–9 are founder-driven decisions that no PR can close (manufacturer outreach, paid tier price, customer-conversation log, etc.).
 - **CONFIGURATION** — post-MVP architecture rethink. **Discovery + design only**, not in flight. Six structural MVP limits + a 6-phase migration to declarative YAML grammar + derivation graph + strict cross-device compat. Pick up after the MVP soaks ≥ 2 weeks and ≥ 3 user-visible signals.
 - **SEO**, **MARKETING**
 - **PYTHON_BACKEND** (Phases 1–3 only)
 - **PYTHON_STRIPE**
-- **STYLE** (Phases 3, 4, 7)
 - **API**
 - **DB_CLEANUP** — Phase 1 shipped (gearhead torque + electric_cylinder field drops); Phase 2 (lead_time / warranty / msrp population) is open per the field-coverage audit.
-- **HARDENING** — adversarial-by-default testing posture audit (2026-05-09). 14 findings across 4 phases; Phase 1 = three immediate wins (~1.5h total); Phase 2 = real attacker surface (SSRF, IDOR, Stripe replay, real-DAL backend tests). Companion to the new `~/.claude/CLAUDE.md` "Testing — adversarial by default" rules.
+- **HARDENING** — adversarial-by-default testing posture audit (2026-05-09). 14 findings across 4 phases. **Phase 1.1 (PR #95), 1.3 (#97), 2.1 (#98), 2.3 (#100), 2.4 (#101), 4.1 (#103), 4.3 (#102) shipped 2026-05-09 → 10.** Open: Phase 1.2 (`uv sync --locked` CI sweep — touches `.github/workflows/`), Phase 2.2 (real-DAL backend tests), Phase 3.1–3.4 (Hypothesis + atheris + schema-compat + concurrent-write stress), Phase 4.2 (lockfile-drift gate). Companion to the `~/.claude/CLAUDE.md` "Testing — adversarial by default" rules.
+
+`todo/STYLE.md` was retired 2026-05-08 — the per-PR HTML callouts above
+mention all seven STYLE phases as shipped (Tooltip, ConfirmDialog,
+Toast, FormField + noValidate, themed scrollbars, ExternalLink,
+Quickstart drift gate).
 
 CI/CD itself is healthy (full chain green; only outstanding bit is apex
 `specodex.com` DNS) and now lives behind the `/cicd` skill rather than
@@ -135,15 +168,29 @@ a `todo/*.md` plan — invoke the skill or read
 ## Suggested chronological order
 
 With UNITS, REBRAND, INTEGRATION, FRONTEND_TESTING, GODMODE, CICD,
-**MODELGEN end-to-end**, **DEDUPE end-to-end**, and **PHASE5_RECOVERY**
-all landed, the remaining order:
+**MODELGEN end-to-end**, **DEDUPE end-to-end**, **PHASE5_RECOVERY**,
+**STYLE end-to-end**, **CATAGORIES Phase 0+1**, **SCHEMA Phase 1+3
+end-to-end**, **DOUBLE_TAP end-to-end**, and the **HARDENING Phase
+1+2+4 sweep** all landed, the remaining order:
 
-1. **CATAGORIES + SCHEMA Phase 1 first.** The actuator MVP is uncommitted on `feat-actuators-mvp-20260508` and is half-shipped without the schema-hygiene work. Land Phase 1 of SCHEMA.md (additive cross-product fields + `MotorMountPattern` literal) on the same branch, then merge. Without this, the `/actuators` page is a calculator, not the integration story Nick framed.
-2. **PYTHON_STRIPE Phase 1 deploy + Phase 2 cutover.** Code is scaffolded; just needs deploy + soak. Independent of everything else, ship in any spare slot.
-3. **SEO + MARKETING.** Public launch is now possible. SEO structural lifts pair with marketing distribution; product pages serve both.
-4. **SCHEMA Phase 2 (backfill `motor_mount_pattern`) + Phase 3 (relations API).** After Phase 1 lands. Phase 2 is a Late Night candidate; Phase 3 is a focused PR.
-5. **PYTHON_BACKEND Phase 1+** once everything above stops shifting. Don't start the FastAPI parallel-deploy on a moving target.
-6. **STYLE** runs alongside in any spare slot. Phases 3 (Toast) and 4 (FormField) are next; Phase 7 (drift gates) closes the plan once the others ship.
+1. **SCHEMA Phase 4** (Force coercion, `kg → kgf → N`) — small clean
+   PR; can ship anytime. Surfaces Lintech load-rating coverage.
+2. **HARDENING Phase 3.x** — adversarial input coverage (Hypothesis
+   property tests, atheris fuzz, schema forward/backward compat,
+   concurrent-write stress). Code-only, sprint-able in parallel.
+3. **HARDENING Phase 2.2** — backend integration tests against real
+   DAL. Larger but code-only.
+4. **PYTHON_STRIPE Phase 1 deploy + Phase 2 cutover.** Code is
+   scaffolded; just needs deploy + soak. Operator-driven (deploy
+   command), so a sprint can stage the code PR but not the deploy.
+5. **SEO + MARKETING.** Public launch is now possible. SEO structural
+   lifts pair with marketing distribution; product pages serve both.
+6. **SCHEMA Phase 2** (backfill `motor_mount_pattern`) — Late Night
+   candidate. Borderline for autonomous sprint (writes to dev DB).
+7. **BUILD Phase 1** — requirements-first system assembler. Now
+   unblocked by SCHEMA Phase 3 + linear_actuator discoverability fix.
+8. **PYTHON_BACKEND Phase 1+** once everything above stops shifting.
+   Don't start the FastAPI parallel-deploy on a moving target.
 
 **Out-of-band exceptions.** Urgent bugs, security issues, or user-visible breakage jump the queue.
 
@@ -158,17 +205,17 @@ documentation pages" — each merge updates the requests index).
 
 | # | PR scope | Doc | Branch | Status |
 |---|---|---|---|---|
-| 1 | **Actuator MVP commit** — land the uncommitted CATAGORIES Phase 0+1 + SCHEMA Phase 1 work that's already on the working tree (supercategory map, `/actuators` page, additive cross-product fields, 6 configurator templates, schema fit-check artifacts) | CATAGORIES + SCHEMA | `feat-actuators-mvp-20260508` (current) | 🟡 ready to PR |
+| 1 | ~~**Actuator MVP commit** — land the uncommitted CATAGORIES Phase 0+1 + SCHEMA Phase 1 work~~ | CATAGORIES + SCHEMA | shipped via PRs #85 + #87 | ✅ shipped 2026-05-09 |
 | 2 | **SCHEMA Phase 2** — backfill `motor_mount_pattern` from `frame_size` on dev DB, then promote | SCHEMA | new auto-branch | ⚪ queued |
-| 3 | **SCHEMA Phase 3** — device-relations module + `/api/v1/relations/*` + `RelationsPanel` on `/actuators` ("Compatible motors for this configuration") | SCHEMA | new auto-branch | ⚪ queued |
-| 4 | **SCHEMA Phase 4** — `kg → kgf → N` coercion on Force fields (surfaced by Lintech fit-check) | SCHEMA | new auto-branch | ⚪ queued |
+| 3 | ~~**SCHEMA Phase 3** — device-relations module + `/api/v1/relations/*` + `RelationsPanel` on `/actuators`~~ | SCHEMA | shipped via PRs #89 + #90 + #92 | ✅ shipped 2026-05-09/10 |
+| 4 | **SCHEMA Phase 4** — `kg → kgf → N` coercion on Force fields (surfaced by Lintech fit-check) | SCHEMA | new auto-branch | 🟡 ready to PR |
 | 5 | **SCHEMA Phase 1.1 (BREAKING)** — `motor_type` / `fieldbus` / `encoder_feedback_support` shape unification + one-shot data migration. Needs explicit sign-off. | SCHEMA | new auto-branch | 🔴 needs sign-off |
 | 6 | **PYTHON_STRIPE Phase 1.x deploy** — billing Lambda goes live on dev, dev round-trip, soak | PYTHON_STRIPE | new auto-branch | ⚪ queued |
 | 7 | **PYTHON_STRIPE Phase 2** — SSM cutover + 7-day soak | PYTHON_STRIPE | new auto-branch | ⚪ queued |
 | 8 | **PYTHON_STRIPE Phase 3** — delete Rust crate (subsumes PYTHON_BACKEND Phase 4) | PYTHON_STRIPE | new auto-branch | ⚪ queued |
-| 9 | **STYLE Phase 3** — Toast primitive + migrate ~25 silent failure paths in AppContext / DatasheetEditModal | STYLE | new auto-branch | ⚪ queued |
-| 10 | **STYLE Phase 4** — FormField primitive (validation + `noValidate` + inline error pattern) | STYLE | new auto-branch | ⚪ queued |
-| 11 | **STYLE Phase 7** — drift gates in `./Quickstart verify` (forbidden-pattern grep) | STYLE | new auto-branch | ⚪ queued |
+| 9 | ~~**STYLE Phase 3** — Toast primitive~~ | STYLE | shipped (todo/STYLE.md retired) | ✅ shipped (pre-2026-05-08) |
+| 10 | ~~**STYLE Phase 4** — FormField primitive~~ | STYLE | shipped (todo/STYLE.md retired) | ✅ shipped (pre-2026-05-08) |
+| 11 | ~~**STYLE Phase 7** — drift gates in `./Quickstart verify`~~ | STYLE | shipped (todo/STYLE.md retired) | ✅ shipped (pre-2026-05-08) |
 | 12 | **SEO Phase 1** — prerender + sitemap + per-product page rendering | SEO | new auto-branch | ⚪ queued |
 | 13 | **SEO Phase 2** — content scaffolding | SEO | new auto-branch | ⚪ queued |
 | 14 | **MARKETING Phase 1** — public launch (Show HN, mailing list) | MARKETING | new auto-branch | ⚪ queued |
@@ -178,10 +225,16 @@ documentation pages" — each merge updates the requests index).
 | 18 | **API.md** — paid programmatic access tier (depends on Stripe Phase 2 cutover + PHASE5_RECOVERY's SES) | API | new auto-branch | ⚪ queued |
 | 19 | **CONFIGURATION Phase 1** — lift templates to YAML (`specodex/configurators/<vendor>/<family>.yaml` + codegen). Gated on ≥ 2-week MVP soak + ≥ 3 user signals. | CONFIGURATION | new auto-branch | ⏸ deferred |
 | 20+ | **CONFIGURATION Phases 2–6** — declarative grammar, derivation graph, `./Quickstart configgen`, strict cross-device compat, need-first design surface | CONFIGURATION | new auto-branches | ⏸ deferred |
+| ⋯ | **BUILD Phase 1** — implement the requirements-first Build page (motion/stroke/speed/payload/orientation form → recommended motion-system kit) per `todo/BUILD.md`. Hard prereqs (SCHEMA Phase 3 ✓, linear_actuator discoverability ✓) both shipped. | BUILD | new auto-branch | ⚪ queued (independent) |
 | ⋯ | **DB_CLEANUP Phase 2** — populate `lead_time` / `warranty` / `msrp` (per field-coverage audit) | DB_CLEANUP | new auto-branch | ⚪ queued (independent) |
-| ⋯ | **HARDENING Phase 1.x** — three immediate-win cards: rename `_test_security.py`, `uv sync --locked` CI sweep, log-injection regression tests for PRs #82/#83/#84. ~1.5h total. | HARDENING | new auto-branch each | ⚪ queued (independent) |
-| ⋯ | **HARDENING Phase 2.x** — real attacker surface: SSRF defense, IDOR + cross-tenant tests, Stripe webhook signature/replay, real-DAL backend tests. Multi-day. | HARDENING | new auto-branch each | ⚪ queued (independent) |
-| ⋯ | **HARDENING Phase 3.x + 4.x** — adversarial input coverage (property tests, atheris fuzz, schema compat, concurrent-write stress) + hygiene (mutmut/pytest-randomly/freezegun + lockfile-drift gate + log secret-leak tests). | HARDENING | new auto-branch each | ⚪ queued (independent) |
+| ⋯ | ~~**HARDENING Phase 1.1 + 1.3**~~ — `_test_security.py` rename + log-injection regression tests | HARDENING | shipped via PRs #95 + #97 | ✅ shipped 2026-05-09 |
+| ⋯ | **HARDENING Phase 1.2** — `uv sync --locked` sweep across CI workflows | HARDENING | new auto-branch | ⚪ queued (touches `.github/workflows/` — needs human PR) |
+| ⋯ | ~~**HARDENING Phase 2.1**~~ — SSRF defense for URL-fetching paths | HARDENING | shipped via PR #98 | ✅ shipped 2026-05-09 |
+| ⋯ | **HARDENING Phase 2.2** — backend integration tests against real DAL (L) | HARDENING | new auto-branch | ⚪ queued |
+| ⋯ | ~~**HARDENING Phase 2.3 + 2.4**~~ — IDOR + cross-tenant tests + Stripe webhook signature/replay tests | HARDENING | shipped via PRs #100 + #101 | ✅ shipped 2026-05-09 |
+| ⋯ | **HARDENING Phase 3.x** — adversarial input coverage: 3.1 Hypothesis property tests, 3.2 atheris fuzz target, 3.3 schema forward/backward compat, 3.4 concurrent-write stress | HARDENING | new auto-branch each | ⚪ queued |
+| ⋯ | ~~**HARDENING Phase 4.1 + 4.3**~~ — mutmut + pytest-randomly + freezegun dev-deps + log secret-leak assertion tests | HARDENING | shipped via PRs #103 + #102 | ✅ shipped 2026-05-09/10 |
+| ⋯ | **HARDENING Phase 4.2** — lockfile-drift gate post-install | HARDENING | new auto-branch | ⚪ queued |
 
 **Status legend.** 🟡 = ready to PR now. ⚪ = queued, no blockers
 beyond the row above. 🔴 = blocked on explicit human sign-off. ⏸ =
@@ -343,6 +396,8 @@ If your current task matches any "trigger" entry, the linked doc is queued and w
 |---|---|
 | `specodex/models/common.py` (`MotorMountPattern`, `MotorTechnology`), `specodex/models/{linear_actuator,electric_cylinder,motor,drive,gearhead}.py` cross-product fields (`encoder_feedback_support`, `fieldbus`, `motor_type`, `frame_size`); user asks "compatible motor", "matching drive", "device pairing", "integration", "transform part numbers" | [SCHEMA.md](SCHEMA.md) |
 | `app/frontend/src/types/{categories,configuratorTemplates}.ts`, `app/frontend/src/components/ActuatorPage.tsx`; user asks "supercategory", "subcategory", "actuator landing page", "configurator template", "synthesise part number", "ordering information page" | [CATAGORIES.md](CATAGORIES.md) |
+| `app/frontend/src/components/Build*.tsx`, `/build` route, requirements form, system-assembler page; user asks "build page", "requirements-first", "motion class", "system assembler", "wizard" | [BUILD.md](BUILD.md) |
+| `specodex/models/encoder.py`, `EncoderDevice` / `EncoderProtocol` enums, structured `EncoderFeedback`, verifier-loop runner, bench A/B harness; user asks "encoder taxonomy", "verifier loop", "second-pass extraction", "encoder compat" | [DOUBLE_TAP.md](DOUBLE_TAP.md) + [appendix](DOUBLE_TAP_encoder_taxonomy.md) (architecture reference — phases all shipped) |
 | `app/frontend/index.html` head metadata, `app/frontend/public/{robots.txt,sitemap.xml}`, JSON-LD blocks, OG/Twitter card tags, per-product page rendering, dynamic sitemap, prerender/SSR, "SEO", "canonical", "search ranking", "OG image" | [SEO.md](SEO.md) |
 | Landing-page copy, "marketing", "launch", "audience", "Reddit / HN / mailing list", outreach plans, paid spend (don't), Stripe pricing surface | [MARKETING.md](MARKETING.md) |
 | `cli/growth.py`, `specodex/growth/`, "growth CLI", "engagement footprint", "Google Ads", "Meta Marketing", "LinkedIn Ads", "feedback loop on traffic", Search Console / GitHub traffic / CloudFront logs into a weekly report | [GROWTH_CLI.md](GROWTH_CLI.md) |
