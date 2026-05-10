@@ -27,20 +27,19 @@ the seam between them needs to be locked early (the requirement
 schema in Part 2 must be JSON-serialisable so Wizard can hand it
 off as URL state or a saved draft).
 
-## Status
+## Status (post-2026-05-10 sprint)
 
-**Design-only as of 2026-05-09.** No code shipped.
+**Design-only.** Phase 1 implementation **unblocked** — both hard
+prereqs shipped during the 2026-05-09 / 10 sprints. Promoted to the
+top of the next-sprint user-facing-work queue in `todo/README.md`.
 
-Hard prerequisites:
+Hard prerequisites — both ✅ shipped:
 
-- **SCHEMA Phase 3** (`specodex/relations.py` + `/api/v1/relations/*`
-  + `RelationsPanel` skeleton) — see `todo/SCHEMA.md`. Build's
-  "compatible motors / drives for this actuator" panel reads the
-  relations API directly; no frontend-only fallback.
-- The bug investigation in Part 5 — `linear_actuator` records exist
-  in the DB (46 in dev) and the categories endpoint returns them,
-  but they're not surfacing on Selection in some path. Diagnose
-  before Build ships, since Build will surface the same records.
+- ~~**SCHEMA Phase 3** (`specodex/relations.py` + `/api/v1/relations/*`
+  + `RelationsPanel` skeleton)~~ ✅ shipped via PRs #89/#90/#92.
+- ~~The bug investigation in Part 5 (linear_actuator surfacing on
+  Selection)~~ ✅ shipped via PR #86 (linear-actuator type
+  discoverability fix).
 
 Soft predecessors (already shipped):
 

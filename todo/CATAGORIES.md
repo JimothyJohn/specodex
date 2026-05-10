@@ -4,6 +4,14 @@
 > ("CATAGORIES.md") so the original ask is grep-able. Body text uses
 > the standard spelling ("categories") throughout.
 
+**Status (post-2026-05-10 sprint):** Phase 0 + Phase 1 ✅ shipped via
+PRs #85 (recovered design docs) and #87 (MotorMountPattern bridge
+fields). Phase 2+ (additional supercategories beyond Linear Motion —
+e.g. Rotary Motion, Sensing, Fluid Power) not yet scoped. The
+`/actuators` MVP page lives at `app/frontend/src/components/ActuatorPage.tsx`
+and is the working baseline; BUILD.md will generalise it into the
+requirements-first `/build` page.
+
 This doc covers two coupled designs that arrived together with the
 "new actuator MVP" ask:
 

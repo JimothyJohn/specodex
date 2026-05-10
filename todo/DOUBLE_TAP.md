@@ -1,7 +1,16 @@
 # DOUBLE_TAP — encoder feedback schema rethink + verifier-loop extraction
 
-**Status:** in flight on `feat/encoder-feedback-double-tap-20260509`.
-First draft 2026-05-09.
+**Status (post-2026-05-10 sprint):** ✅ all phases shipped via PR #91
+(2026-05-09). Phases 1+2 (closed `EncoderDevice` / `EncoderProtocol`
+taxonomy + structured `EncoderFeedback` + typed compat) and 3+4+5+6
+(verifier-loop runner + bench A/B harness + scraper integration
+behind `SPECODEX_DOUBLE_TAP=1` + frontend codegen). Doc + appendix
+(`DOUBLE_TAP_encoder_taxonomy.md`) retained as architecture reference
+for the closed taxonomy and verifier-loop pattern. Property-test
+coverage on the verifier surface added in PR #123; on the legacy
+free-text shim (`coerce_protocol_string`, `_coerce_protocol_list`,
+`EncoderFeedback._coerce_legacy_freetext`) added in PR #116 (which
+also caught a real `_coerce_protocol_list` empty-string bug).
 
 This doc has two things stapled together because they're driven by the
 same observation:

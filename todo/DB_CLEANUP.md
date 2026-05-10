@@ -6,6 +6,15 @@ Driven by the field-coverage audit at
 `products-dev` and tabulates, per `product_type`, the fraction of rows
 that have a populated value for every Pydantic-declared field.
 
+**Status (post-2026-05-10 sprint):** Phase 1 ✅ shipped (gearhead
+torque rename + electric_cylinder field drops). **Phase 2 needs a
+decision before implementation** — the audit memory
+(`project_field_audit_findings.md`) recommends *dropping* `lead_time` /
+`warranty` / `msrp` outright (0% populate rate, fields inherited
+speculatively from a Stripe-driven design that never landed). The
+churn plan's previous framing of "Phase 2 = populate these fields" is
+stale. Decide drop-vs-populate before opening a PR.
+
 This doc enumerates the cleanup phases that fell out of the
 2026-05-07 audit (against 6578 PRODUCT rows, 6 product types) and which
 of them this PR ships.
