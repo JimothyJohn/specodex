@@ -29,13 +29,24 @@ web-scraper = "specodex.web_scraper:main"
 [dependency-groups]
 dev = [
     "awslambdaric>=4.0.0",
+    # Time mocking — required by the "Testing — adversarial by default"
+    # rule in ~/.claude/CLAUDE.md ("Determinism is non-negotiable").
+    "freezegun>=1.5.0",
     "hypothesis>=6.152.4",
     "moto[dynamodb]>=5.2.0",
+    # Mutation testing — measures real assertion strength rather than
+    # line coverage. Run as a periodic job (not a CI gate) until a
+    # baseline mutation-catch rate is established.
+    "mutmut>=3.0.0",
     "mypy>=1.20.2",
     "pydantic-to-typescript>=2.0.0",
     "pytest>=9.0.3",
     "pytest-cov>=7.1.0",
     "pytest-mock>=3.15.1",
+    # Random test order — auto-loads as a pytest plugin and surfaces
+    # hidden inter-test dependencies / global-state leaks. Pin a seed
+    # in CI via PYTEST_RANDOMLY_SEED for reproducibility.
+    "pytest-randomly>=3.15.0",
     "ruff>=0.15.12",
 ]
 
@@ -44,3 +55,10 @@ packages = ["specodex", "cli"]
 
 [tool.uv]
 package = true
+
+[tool.mutmut]
+# Start narrow on a single high-leverage module; expand the path-list
+# once a baseline mutation-catch rate is measured.
+paths_to_mutate = "specodex/quality.py"
+runner = "uv run pytest -x --no-header -q"
+tests_dir = "tests/unit"
