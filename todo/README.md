@@ -48,6 +48,15 @@ docs only when you're about to act on that work.
 > on `feat-actuators-mvp-20260508`; CONFIGURATION is design-only,
 > picked up after the MVP soaks. See "The churn plan" below for the
 > ordered PR sequence.
+>
+> **New on 2026-05-09:** [HARDENING.md](HARDENING.md) — adversarial-by-default
+> testing posture audit (14 findings, 4 phases). Phase 1 = three immediate
+> wins (~1.5h total): rename `_test_security.py` to activate 376 lines of
+> dormant tests, `uv sync --locked` sweep across CI workflows, regression
+> tests for the freshly-shipped log-injection PRs (#82/#83/#84). Phase 2 =
+> real attacker surface (SSRF defense, IDOR coverage, Stripe webhook
+> replay/signature, real-DAL backend tests). Independent of the rest of
+> the backlog — run in parallel with whatever else is in flight.
 
 ## How to use it
 
@@ -114,6 +123,7 @@ Active docs (2026-05-08):
 - **STYLE** (Phases 3, 4, 7)
 - **API**
 - **DB_CLEANUP** — Phase 1 shipped (gearhead torque + electric_cylinder field drops); Phase 2 (lead_time / warranty / msrp population) is open per the field-coverage audit.
+- **HARDENING** — adversarial-by-default testing posture audit (2026-05-09). 14 findings across 4 phases; Phase 1 = three immediate wins (~1.5h total); Phase 2 = real attacker surface (SSRF, IDOR, Stripe replay, real-DAL backend tests). Companion to the new `~/.claude/CLAUDE.md` "Testing — adversarial by default" rules.
 
 CI/CD itself is healthy (full chain green; only outstanding bit is apex
 `specodex.com` DNS) and now lives behind the `/cicd` skill rather than
@@ -169,6 +179,9 @@ documentation pages" — each merge updates the requests index).
 | 19 | **CONFIGURATION Phase 1** — lift templates to YAML (`specodex/configurators/<vendor>/<family>.yaml` + codegen). Gated on ≥ 2-week MVP soak + ≥ 3 user signals. | CONFIGURATION | new auto-branch | ⏸ deferred |
 | 20+ | **CONFIGURATION Phases 2–6** — declarative grammar, derivation graph, `./Quickstart configgen`, strict cross-device compat, need-first design surface | CONFIGURATION | new auto-branches | ⏸ deferred |
 | ⋯ | **DB_CLEANUP Phase 2** — populate `lead_time` / `warranty` / `msrp` (per field-coverage audit) | DB_CLEANUP | new auto-branch | ⚪ queued (independent) |
+| ⋯ | **HARDENING Phase 1.x** — three immediate-win cards: rename `_test_security.py`, `uv sync --locked` CI sweep, log-injection regression tests for PRs #82/#83/#84. ~1.5h total. | HARDENING | new auto-branch each | ⚪ queued (independent) |
+| ⋯ | **HARDENING Phase 2.x** — real attacker surface: SSRF defense, IDOR + cross-tenant tests, Stripe webhook signature/replay, real-DAL backend tests. Multi-day. | HARDENING | new auto-branch each | ⚪ queued (independent) |
+| ⋯ | **HARDENING Phase 3.x + 4.x** — adversarial input coverage (property tests, atheris fuzz, schema compat, concurrent-write stress) + hygiene (mutmut/pytest-randomly/freezegun + lockfile-drift gate + log secret-leak tests). | HARDENING | new auto-branch each | ⚪ queued (independent) |
 
 **Status legend.** 🟡 = ready to PR now. ⚪ = queued, no blockers
 beyond the row above. 🔴 = blocked on explicit human sign-off. ⏸ =
@@ -202,6 +215,9 @@ the queue rather than the work.
 - `PYTHON_STRIPE 1.x deploy`
 - `SEO Phase 1`
 - `STYLE Phase 3 (Toast)` — closes ~25 silent failure paths in AppContext / DatasheetEditModal alert
+- `HARDENING Phase 1.x` — three immediate wins (`_test_security.py` rename, `uv sync --locked`, log-injection regressions); ~1.5h total
+- `HARDENING Phase 2.x` — real attacker surface (SSRF, IDOR, Stripe replay, real-DAL backend tests); multi-day
+- `HARDENING Phase 3.x + 4.x` — adversarial input coverage (property/fuzz/schema-compat/concurrent-stress) + hygiene (mutmut/randomly/freezegun, lockfile-drift gate, log-leak tests)
 - ~~`PYTHON_BACKEND Phase 5` (cli/migrations cleanup)~~ ✅ shipped 2026-04-30 (commit `c322393`)
 
 ```mermaid
@@ -334,3 +350,8 @@ If your current task matches any "trigger" entry, the linked doc is queued and w
 | `app/backend/src/` beyond a bug fix, new endpoint, new middleware, "FastAPI", "Mangum", "rewrite Express in Python" | [PYTHON_BACKEND.md](PYTHON_BACKEND.md) |
 | `stripe/` (Rust source), `stripe_py/` (Python port), Stripe webhook handler, `${ssmPrefix}/stripe-lambda-url`, billing Lambda deploy or cutover | [PYTHON_STRIPE.md](PYTHON_STRIPE.md) |
 | Programmatic API access, long-lived API keys, per-key rate limits, `/api/v1/*` from non-SPA callers, paid Stripe surface activation | [API.md](API.md) |
+| New HTTP endpoint, middleware, or auth refactor in `app/backend/src/routes/`; user asks "IDOR", "auth bypass", "cross-tenant" | [HARDENING.md](HARDENING.md) Phase 2.3 |
+| Any URL-fetching path in `specodex/` (scraper, pricing, browser); user asks "SSRF", "metadata", "internal hostname" | [HARDENING.md](HARDENING.md) Phase 2.1 |
+| New parser, deserializer, or `BeforeValidator`; CodeQL log-injection or input-handling finding; user asks "fuzz", "property test", "input validation" | [HARDENING.md](HARDENING.md) Phases 1.3, 3.1, 3.2, 4.3 |
+| Stripe webhook handler change; new external-integration retry logic; user asks "replay attack", "idempotency", "webhook signature" | [HARDENING.md](HARDENING.md) Phase 2.4 |
+| Adding a new `ProductType` literal or model field to `specodex/models/` | [HARDENING.md](HARDENING.md) Phase 3.3 (refresh schema-compat snapshot) |
