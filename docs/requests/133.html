@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Specodex PR #133 — restore @types/node global pickup so cdk bootstrap stops dying on TS6's stricter typeRoots auto-discovery.">
+    <meta name="theme-color" content="#3A2C1C">
+    <title>Specodex — PR #133: CDK tsconfig types pin</title>
+    <link rel="icon" type="image/svg+xml" href="../logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-issue="PR-133">
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="band">
+        <div class="band-inner">
+            <a class="band-brand" href="../index.html">
+                <svg class="band-mark" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <rect width="120" height="120" fill="#E8E2C9"/>
+                    <rect x="14" y="14" width="92" height="92" fill="none" stroke="#1A1A14" stroke-width="3"/>
+                    <rect x="14" y="14" width="92" height="22" fill="#3A2C1C"/>
+                    <rect x="62" y="60" width="40" height="10" fill="#A88A1C"/>
+                    <line x1="14" y1="56" x2="106" y2="56" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="74" x2="106" y2="74" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="92" x2="106" y2="92" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="60" y1="36" x2="60" y2="106" stroke="#1A1A14" stroke-width="2"/>
+                </svg>
+                <span class="wordmark">SPECODEX</span>
+            </a>
+            <nav class="band-nav" aria-label="Section">
+                <a href="../index.html">Catalog</a>
+                <a href="./" class="active">Pull Requests</a>
+                <a href="https://github.com/JimothyJohn/specodex" rel="noreferrer">GitHub</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="hero-tag">▮▮▮ PULL REQUEST #133 ▮▮▮</div>
+            <h1 class="hero-title">Pin tsconfig types — unblock cdk bootstrap on TS 6.</h1>
+            <p class="hero-sub">
+                PR #132 just unblocked the backend Lambda bundle
+                step. The next step in the deploy chain —
+                <code>cdk bootstrap</code> — has been failing the
+                same way since 2026-05-03 with
+                <code>Cannot find name 'path'</code> and
+                <code>Cannot find name '__dirname'</code>. Root
+                cause: Dependabot PR #22 bumped
+                <code>typescript</code> 5.9.3 → 6.0.3 in
+                <code>/app/infrastructure</code>, and TS 6 changed
+                <code>typeRoots</code> auto-discovery — with no
+                explicit <code>types</code> field,
+                <code>@types/node</code> is silently dropped.
+                One-line fix.
+            </p>
+            <dl class="pr-meta">
+                <div><dt>Branch</dt><dd><code>fix/cdk-tsconfig-types-node-20260510</code></dd></div>
+                <div><dt>Opened</dt><dd>2026-05-10 (DRAFT)</dd></div>
+                <div><dt>Diff</dt><dd>+1 across 1 file</dd></div>
+                <div><dt>Surface</dt><dd>Infra compile config — no runtime change</dd></div>
+                <div><dt>Type</dt><dd>Build fix</dd></div>
+            </dl>
+            <div class="cta-row">
+                <a class="cta cta-primary" href="https://github.com/JimothyJohn/specodex/pull/133" rel="noreferrer">View on GitHub →</a>
+                <a class="cta cta-ghost" href="./">All requests</a>
+            </div>
+        </section>
+
+        <section aria-label="What was broken">
+            <div class="divider"><span>▮▮▮ WHAT WAS BROKEN ▮▮▮</span></div>
+            <ul class="prose">
+                <li><strong>cdk bootstrap died at compile time.</strong> <code>cdk.json</code> declares <code>"app": "npx ts-node bin/app.ts"</code>. ts-node compiles the entry file with infra's <code>tsconfig.json</code>. After 2026-05-03 every compile reported <code>lib/api-stack.ts(10,23): TS2591 Cannot find name 'path'</code> and <code>lib/api-stack.ts(37,45): TS2304 Cannot find name '__dirname'</code>. Bootstrap never reached the CDK app.</li>
+                <li><strong>TS 6 changed <code>typeRoots</code> auto-discovery.</strong> The infra tsconfig declares <code>"typeRoots": ["./node_modules/@types", "../node_modules/@types"]</code> and no <code>types</code> field. TS 5 honored an implicit-include rule (every <code>@types/*</code> package under <code>typeRoots</code> auto-loaded). TS 6's <code>getAutomaticTypeDirectiveNames</code> returns <code>[]</code> in this config — verified locally: <code>node -e "console.log(ts.getAutomaticTypeDirectiveNames({typeRoots: […]}, host))"</code> → <code>[]</code>.</li>
+                <li><strong>Result: <code>@types/node</code> never loaded.</strong> <code>import * as path from 'path'</code> and the global <code>__dirname</code> were both undefined at compile time. Locally <code>app/infrastructure/node_modules/@types/node/</code> still exists at 25.6.0 — the file is right there, TS 6 just refuses to look at it.</li>
+                <li><strong>Why now.</strong> Dependabot PR #22 merged 2026-05-03. Every master push between then and 2026-05-10 either cancelled before the deploy step ran or was caught by PR #132's lockfile bug. PR #132 just merged, the bundle step now succeeds, this is the next layer of the same onion. Prod hasn't shipped via CI since 2026-05-02.</li>
+            </ul>
+        </section>
+
+        <section aria-label="The fix">
+            <div class="divider"><span>▮▮▮ THE FIX ▮▮▮</span></div>
+            <p class="prose">
+                Declare <code>"types": ["node", "jest"]</code> explicitly. <code>node</code> covers everything under <code>lib/*.ts</code> (every file that imports <code>'path'</code> or references <code>__dirname</code>). <code>jest</code> covers <code>test/*.test.ts</code> (auto-included previously via <code>@types/jest</code> sitting in <code>node_modules/@types</code>; without it, <code>tsc --noEmit</code> in the build script fails 33 times in <code>test/waf-alarms.test.ts</code>).
+            </p>
+            <p class="prose">
+                The list is closed: <code>@types/node</code> and <code>@types/jest</code> are the only <code>@types/*</code> packages in the infra dep tree. Pinning them explicitly matches the previous implicit-include behavior exactly — no expansion, no surprise. <code>typeRoots</code> stays in place so that if a future dep adds a third <code>@types/*</code> package, we can extend the list without re-deriving the resolution paths.
+            </p>
+        </section>
+
+        <section aria-label="Files touched">
+            <div class="divider"><span>▮▮▮ FILES TOUCHED ▮▮▮</span></div>
+            <table class="spec-table">
+                <thead><tr><th>File</th><th>Lines</th><th>Note</th></tr></thead>
+                <tbody>
+                    <tr><td><code>app/infrastructure/tsconfig.json</code></td><td>+1</td><td>Add <code>"types": ["node", "jest"]</code> directly after <code>"typeRoots"</code></td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section aria-label="How to verify">
+            <div class="divider"><span>▮▮▮ HOW TO VERIFY ▮▮▮</span></div>
+            <ul class="prose">
+                <li><strong>Local repro of the failure</strong>: <code>cd app/infrastructure && AWS_ACCOUNT_ID=&hellip; npx ts-node bin/app.ts</code> on master HEAD reproduces both errors verbatim. The same path is what <code>cdk bootstrap</code> runs.</li>
+                <li><strong>Local proof of the fix</strong>: with the one-line patch, <code>npx tsc --noEmit</code> is clean (exit 0), <code>npx cdk synth --quiet</code> synthesizes all 4 dev stacks cleanly, <code>npm test</code> runs 35/35 jest tests in 5.7s.</li>
+                <li><strong>Why <code>"types": [&hellip;]</code> doesn't expand the surface.</strong> <code>@types/node</code> and <code>@types/jest</code> are the only packages installed under <code>app/infrastructure/node_modules/@types/</code> and under <code>app/node_modules/@types/</code> hoisted from infra. Locking the list to those two names matches the previous auto-load behavior 1:1.</li>
+                <li><strong>Real gate</strong>: this PR's <code>Deploy Staging</code> job — the only path that exercises <code>cdk bootstrap</code> in CI. <code>./Quickstart verify</code> doesn't run it (worth filing as a follow-up; the latency from "PR #22 merged" to "deploy red" was 7 days).</li>
+            </ul>
+        </section>
+
+        <a class="back-link" href="./">← back to requests log</a>
+    </main>
+
+    <footer>
+        <div class="footer-inner">
+            <span>© 2026 Specodex · PR #133</span>
+            <span class="footer-rule" aria-hidden="true"></span>
+            <a class="footer-link" href="https://github.com/JimothyJohn/specodex/pull/133" rel="noreferrer">View on GitHub</a>
+            <a class="footer-link" href="./">All requests</a>
+        </div>
+    </footer>
+</body>
+</html>
