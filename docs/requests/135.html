@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Specodex PR #135 — hiding a column now also clears its filter, so removed columns no longer narrow results invisibly.">
+    <meta name="theme-color" content="#3A2C1C">
+    <title>Specodex — PR #135: Clear filter on a column when that column is removed</title>
+    <link rel="icon" type="image/svg+xml" href="../logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-issue="PR-135">
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="band">
+        <div class="band-inner">
+            <a class="band-brand" href="../index.html">
+                <svg class="band-mark" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <rect width="120" height="120" fill="#E8E2C9"/>
+                    <rect x="14" y="14" width="92" height="92" fill="none" stroke="#1A1A14" stroke-width="3"/>
+                    <rect x="14" y="14" width="92" height="22" fill="#3A2C1C"/>
+                    <rect x="62" y="60" width="40" height="10" fill="#A88A1C"/>
+                    <line x1="14" y1="56" x2="106" y2="56" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="74" x2="106" y2="74" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="92" x2="106" y2="92" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="60" y1="36" x2="60" y2="106" stroke="#1A1A14" stroke-width="2"/>
+                </svg>
+                <span class="wordmark">SPECODEX</span>
+            </a>
+            <nav class="band-nav" aria-label="Section">
+                <a href="../index.html">Catalog</a>
+                <a href="./" class="active">Pull Requests</a>
+                <a href="https://github.com/JimothyJohn/specodex" rel="noreferrer">GitHub</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="hero-tag">▮▮▮ PULL REQUEST #135 ▮▮▮</div>
+            <h1 class="hero-title">Removing a column now clears that column's filter.</h1>
+            <p class="hero-sub">
+                Hiding a column via its × button used to leave any
+                active filter on that attribute silently narrowing
+                the row set — invisible from the UI but still living
+                in <code>filters</code> state. Restoring the column
+                later resurfaced the stale value. One-line fix to
+                <code>handleRemoveColumn</code> in
+                <code>ProductList.tsx</code>.
+            </p>
+            <dl class="pr-meta">
+                <div><dt>Branch</dt><dd><code>fix/clear-filters-on-column-remove-20260510</code></dd></div>
+                <div><dt>Opened</dt><dd>2026-05-10</dd></div>
+                <div><dt>Diff</dt><dd>+1 across 1 file</dd></div>
+                <div><dt>Surface</dt><dd>Frontend table — filter/visibility state</dd></div>
+                <div><dt>Type</dt><dd>UX bug fix</dd></div>
+            </dl>
+            <div class="cta-row">
+                <a class="cta cta-primary" href="https://github.com/JimothyJohn/specodex/pull/135" rel="noreferrer">View on GitHub →</a>
+                <a class="cta cta-ghost" href="./">All requests</a>
+            </div>
+        </section>
+
+        <section aria-label="What was broken">
+            <div class="divider"><span>▮▮▮ WHAT WAS BROKEN ▮▮▮</span></div>
+            <ul class="prose">
+                <li><strong>Two pieces of state, one user action.</strong> The visible-column list (<code>userHiddenKeys</code> / <code>userRestoredKeys</code>) and the active-filter list (<code>filters</code>) are independent. Clicking × on a column header only touched the visibility set and the sort list — <code>filters</code> kept its entry for that attribute.</li>
+                <li><strong>Silent narrowing.</strong> A user sets <code>rated_voltage &gt;= 200 V</code>, hides the Rated Voltage column, and the row count stays narrowed. There's no chip or column to point at the filter; the product list just looks under-populated for no visible reason.</li>
+                <li><strong>Stale value on restore.</strong> "+ Add Spec" brought the column back with the old filter value still applied — a value the user has no recent context for.</li>
+                <li><strong>User-stated invariant.</strong> "Whenever a filter column is deleted its values should be reset to null so that the filters are no longer active." The previous behaviour violated the invariant; this PR restores it.</li>
+            </ul>
+        </section>
+
+        <section aria-label="The fix">
+            <div class="divider"><span>▮▮▮ THE FIX ▮▮▮</span></div>
+            <p class="prose">
+                One line inside <code>handleRemoveColumn</code> in <code>app/frontend/src/components/ProductList.tsx</code>, paired with the existing sort/visibility cleanup:
+            </p>
+            <pre class="prose"><code>setFilters(prev =&gt; prev.filter(f =&gt; f.attribute !== attribute));</code></pre>
+            <p class="prose">
+                The handler now drops any <code>FilterCriterion</code> whose <code>attribute</code> matches the removed column. Restoring the column via "+ Add Spec" brings it back without a filter attached — same starting state as if the user had never touched that column.
+            </p>
+            <p class="prose">
+                <strong>Why a one-line fix is enough.</strong> <code>handleRemoveColumn</code> is the single entry point for the × button (called from <code>ColumnHeader</code>'s <code>onRemove</code> at line 1233). Bulk-clear ("× All") flows through <code>setFilters([])</code> already. There's no other surface where a column gets hidden without going through this handler.
+            </p>
+        </section>
+
+        <section aria-label="Files touched">
+            <div class="divider"><span>▮▮▮ FILES TOUCHED ▮▮▮</span></div>
+            <table class="spec-table">
+                <thead><tr><th>File</th><th>Lines</th><th>Note</th></tr></thead>
+                <tbody>
+                    <tr><td><code>app/frontend/src/components/ProductList.tsx</code></td><td>+1 / −0</td><td>Add <code>setFilters(prev =&gt; prev.filter(...))</code> inside <code>handleRemoveColumn</code></td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section aria-label="How to verify">
+            <div class="divider"><span>▮▮▮ HOW TO VERIFY ▮▮▮</span></div>
+            <ul class="prose">
+                <li><strong>Lint</strong>: <code>npm run lint</code> in <code>app/frontend</code> — clean (82 pre-existing warnings, 0 errors).</li>
+                <li><strong>Typecheck</strong>: <code>npx tsc --noEmit</code> — clean.</li>
+                <li><strong>Unit</strong>: <code>npm test -- --run</code> — 499 passed / 1 skipped (no regressions in the <code>ProductList.typeSwitch</code> contract test, which still covers the type-switch reset bundle).</li>
+                <li><strong>Manual</strong>: load any product type, set a numeric filter on a visible column, note the filtered row count, click × on the column header. Rows return to the unfiltered total. Restore the column via "+ Add Spec"; no filter chip appears.</li>
+                <li><strong>Test coverage gap.</strong> No integration test was added — <code>ProductList</code> has no full-render test harness today (the existing <code>ProductList.typeSwitch.test.tsx</code> only covers the extracted pure helper <code>defaultStateForType</code>). Pinning this contract via render would either need a render harness or a handler-extraction refactor; both are bigger than the one-line fix. Filed as a follow-up consideration in the PR description.</li>
+            </ul>
+        </section>
+
+        <a class="back-link" href="./">← back to requests log</a>
+    </main>
+
+    <footer>
+        <div class="footer-inner">
+            <span>© 2026 Specodex · PR #135</span>
+            <span class="footer-rule" aria-hidden="true"></span>
+            <a class="footer-link" href="https://github.com/JimothyJohn/specodex/pull/135" rel="noreferrer">View on GitHub</a>
+            <a class="footer-link" href="./">All requests</a>
+        </div>
+    </footer>
+</body>
+</html>
