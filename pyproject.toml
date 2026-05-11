@@ -5,7 +5,7 @@ description = "Extract technical specifications from product datasheets using AI
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "google-genai>=1.74.0",
+    "google-genai>=2.0.1",
     "pypdf2>=3.0.1",
     "pydantic>=2.13.3",
     "boto3>=1.43.2",
