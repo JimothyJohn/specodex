@@ -33,7 +33,7 @@ dev = [
     # rule in ~/.claude/CLAUDE.md ("Determinism is non-negotiable").
     "freezegun>=1.5.0",
     "hypothesis>=6.152.4",
-    "moto[dynamodb]>=5.2.0",
+    "moto[dynamodb]>=5.2.1",
     # Mutation testing — measures real assertion strength rather than
     # line coverage. Run as a periodic job (not a CI gate) until a
     # baseline mutation-catch rate is established.
