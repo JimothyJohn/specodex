@@ -914,6 +914,7 @@ export default function ProductList() {
   // from userHiddenKeys).
   const handleRemoveColumn = (attribute: string) => {
     setSorts(sorts.filter(s => s.attribute !== attribute));
+    setFilters(prev => prev.filter(f => f.attribute !== attribute));
     setUserHiddenKeys(prev => (prev.includes(attribute) ? prev : [...prev, attribute]));
     setUserRestoredKeys(prev => prev.filter(k => k !== attribute));
   };
