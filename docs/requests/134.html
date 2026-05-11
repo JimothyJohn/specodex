@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Specodex PR #134 — skip cdk bootstrap on every deploy; it's idempotent on paper but creates+deletes a no-op change set that needs IAM perms the CI role doesn't have.">
+    <meta name="theme-color" content="#3A2C1C">
+    <title>Specodex — PR #134: Skip cdk bootstrap when toolkit is current</title>
+    <link rel="icon" type="image/svg+xml" href="../logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-issue="PR-134">
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="band">
+        <div class="band-inner">
+            <a class="band-brand" href="../index.html">
+                <svg class="band-mark" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <rect width="120" height="120" fill="#E8E2C9"/>
+                    <rect x="14" y="14" width="92" height="92" fill="none" stroke="#1A1A14" stroke-width="3"/>
+                    <rect x="14" y="14" width="92" height="22" fill="#3A2C1C"/>
+                    <rect x="62" y="60" width="40" height="10" fill="#A88A1C"/>
+                    <line x1="14" y1="56" x2="106" y2="56" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="74" x2="106" y2="74" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="92" x2="106" y2="92" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="60" y1="36" x2="60" y2="106" stroke="#1A1A14" stroke-width="2"/>
+                </svg>
+                <span class="wordmark">SPECODEX</span>
+            </a>
+            <nav class="band-nav" aria-label="Section">
+                <a href="../index.html">Catalog</a>
+                <a href="./" class="active">Pull Requests</a>
+                <a href="https://github.com/JimothyJohn/specodex" rel="noreferrer">GitHub</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="hero-tag">▮▮▮ PULL REQUEST #134 ▮▮▮</div>
+            <h1 class="hero-title">Skip cdk bootstrap when the toolkit is current — third layer of the same onion.</h1>
+            <p class="hero-sub">
+                PR #132 fixed the backend bundle lockfile. PR #133
+                fixed the TS6 tsconfig. With those gone, the same
+                deploy run hits a third failure:
+                <code>npx cdk bootstrap</code> tries to clean up a
+                no-op change set on <code>CDKToolkit</code> and the
+                CI role lacks <code>cloudformation:DeleteChangeSet</code>.
+                Fix: skip bootstrap when the live stack is healthy
+                and on a recent enough version. No IAM mutation.
+            </p>
+            <dl class="pr-meta">
+                <div><dt>Branch</dt><dd><code>fix/skip-cdk-bootstrap-when-current-20260510</code></dd></div>
+                <div><dt>Opened</dt><dd>2026-05-10 (DRAFT)</dd></div>
+                <div><dt>Diff</dt><dd>+71 / −6 across 1 file</dd></div>
+                <div><dt>Surface</dt><dd>Build/deploy script — no runtime change</dd></div>
+                <div><dt>Type</dt><dd>Build fix</dd></div>
+            </dl>
+            <div class="cta-row">
+                <a class="cta cta-primary" href="https://github.com/JimothyJohn/specodex/pull/134" rel="noreferrer">View on GitHub →</a>
+                <a class="cta cta-ghost" href="./">All requests</a>
+            </div>
+        </section>
+
+        <section aria-label="What was broken">
+            <div class="divider"><span>▮▮▮ WHAT WAS BROKEN ▮▮▮</span></div>
+            <ul class="prose">
+                <li><strong>Bootstrap ran on every deploy.</strong> <code>cli/quickstart.py</code>'s <code>cmd_deploy</code> called <code>npx cdk bootstrap aws://&lt;account&gt;/&lt;region&gt;</code> unconditionally. The script's been that way since the AWS deploy step landed (commit <code>09500c8</code>) on the theory that <code>cdk bootstrap</code> is idempotent.</li>
+                <li><strong>Idempotent ≠ permissionless.</strong> The cdk@2.1120.0 bootstrap CLI still creates a no-op change set against <code>CDKToolkit</code>, computes the diff, and deletes the change set. That round-trip requires <code>cloudformation:{Create,Describe,Execute,Delete}ChangeSet</code>. The <code>gh-deploy-datasheetminer</code> OIDC role grants <code>DescribeStacks</code> / <code>DescribeStackEvents</code> / <code>GetTemplate</code> via the <code>ReadCloudFormationStateForCdkCli</code> Sid, but no change-set actions.</li>
+                <li><strong>Result.</strong> Every <code>Deploy Staging</code> after PR #133 merged dies with <code>AccessDenied: User: arn:aws:sts::***:assumed-role/gh-deploy-datasheetminer/GitHubActions is not authorized to perform: cloudformation:DeleteChangeSet on resource: stack/CDKToolkit/&lt;uuid&gt;</code>. Same chain as #132 and #133 — the failure moved one step downstream each time the prior layer landed.</li>
+                <li><strong>Why now.</strong> Bootstrap has needed <code>DeleteChangeSet</code> for ages — the cdk CLI behavior here predates the project. Earlier deploys had it because the IAM policy used to include it (or used a broader-scoped CFN allow that masked the gap). At some point between then and 2026-05 the policy was scoped down and the gap surfaced the next time the deploy actually completed past the bundle and synth steps. Pinning the exact policy commit is a follow-up — not blocking the fix.</li>
+            </ul>
+        </section>
+
+        <section aria-label="The fix">
+            <div class="divider"><span>▮▮▮ THE FIX ▮▮▮</span></div>
+            <p class="prose">
+                Add <code>cdk_toolkit_is_current(region)</code> to <code>cli/quickstart.py</code>. It runs <code>aws cloudformation describe-stacks --stack-name CDKToolkit</code>, parses the result, and returns <code>True</code> iff the stack is <code>*_COMPLETE</code> (not in any <code>ROLLBACK</code> state) AND its <code>BootstrapVersion</code> output is ≥ a constant <code>_CDK_BOOTSTRAP_MIN_VERSION = 21</code>. The deploy code wraps the bootstrap call in <code>if cdk_toolkit_is_current(region): info("…skipping bootstrap")</code>.
+            </p>
+            <p class="prose">
+                Why 21: that's the asset-publishing-role era. Every cdk-lib release in the last two years has worked against a v21+ bootstrap. The live stack is at v30 (last updated 2026-03-21). If a future cdk-lib needs newer, <code>cdk deploy</code> itself fails with a clear <em>"bootstrap version too old"</em> message — we re-bootstrap once from a local terminal with permissions, and CI resumes skipping. The version floor stays as a single constant near the helper so the next bump is one-line.
+            </p>
+            <p class="prose">
+                <strong>The <code>DescribeStacks</code> call is free.</strong> The OIDC role's <code>CdkDeploy</code> policy already grants <code>cloudformation:DescribeStacks</code> via the <code>ReadCloudFormationStateForCdkCli</code> Sid (added when <code>./Quickstart cdk-outputs</code> shipped). No IAM mutation needed for this PR. <strong>Alternative considered:</strong> expand the role to add the change-set actions on <code>stack/CDKToolkit/*</code>. Rejected here in favor of the reversible in-repo fix; can revisit if bootstrap upgrades start landing more than once a year.
+            </p>
+        </section>
+
+        <section aria-label="Files touched">
+            <div class="divider"><span>▮▮▮ FILES TOUCHED ▮▮▮</span></div>
+            <table class="spec-table">
+                <thead><tr><th>File</th><th>Lines</th><th>Note</th></tr></thead>
+                <tbody>
+                    <tr><td><code>cli/quickstart.py</code></td><td>+71 / −6</td><td>Add <code>_CDK_BOOTSTRAP_MIN_VERSION</code> constant + <code>cdk_toolkit_is_current(region)</code> helper; gate the bootstrap call in <code>cmd_deploy</code></td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section aria-label="How to verify">
+            <div class="divider"><span>▮▮▮ HOW TO VERIFY ▮▮▮</span></div>
+            <ul class="prose">
+                <li><strong>Lint</strong>: <code>uv run ruff check cli/quickstart.py</code> — clean.</li>
+                <li><strong>Live check</strong>: <code>uv run python -c "from cli.quickstart import cdk_toolkit_is_current; print(cdk_toolkit_is_current('us-east-1'))"</code> → <code>True</code> against the live <code>CDKToolkit</code> stack (v30, <code>UPDATE_COMPLETE</code>).</li>
+                <li><strong>Skip log line</strong>: the deploy script logs <code>==&gt; CDK toolkit current (&gt;= v21) — skipping bootstrap</code> when the guard trips. Easy to grep in CI logs after merge.</li>
+                <li><strong>Real gate</strong>: this PR's <code>Deploy Staging</code> job — the only path that exercises the bootstrap call in CI. Pre-merge CI runs the test jobs only; bootstrap-skip is verified post-merge against the staging deploy.</li>
+                <li><strong>Future-proof check</strong>: if <code>describe-stacks</code> ever fails (permissions revoked, stack deleted, mid-update), <code>cdk_toolkit_is_current</code> returns <code>False</code> and the script falls back to running bootstrap — same behavior as before, just gated.</li>
+            </ul>
+        </section>
+
+        <a class="back-link" href="./">← back to requests log</a>
+    </main>
+
+    <footer>
+        <div class="footer-inner">
+            <span>© 2026 Specodex · PR #134</span>
+            <span class="footer-rule" aria-hidden="true"></span>
+            <a class="footer-link" href="https://github.com/JimothyJohn/specodex/pull/134" rel="noreferrer">View on GitHub</a>
+            <a class="footer-link" href="./">All requests</a>
+        </div>
+    </footer>
+</body>
+</html>
