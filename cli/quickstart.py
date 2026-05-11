@@ -180,6 +180,66 @@ def run_quiet(cmd: list[str], *, cwd: Path | None = None) -> str:
     return result.stdout.strip()
 
 
+# Minimum CDKToolkit bootstrap version we consider "current enough" to skip
+# `cdk bootstrap` on. aws-cdk-lib has required bootstrap >= 6 since 2021, >= 21
+# (the asset-publishing-role era) since mid-2024. The live stack as of
+# 2026-05-10 is at version 30. Floor at 21 to allow any reasonably modern
+# bootstrap to skip while still forcing an upgrade for ancient ones.
+_CDK_BOOTSTRAP_MIN_VERSION = 21
+
+
+def cdk_toolkit_is_current(region: str) -> bool:
+    """Return True iff CDKToolkit stack is healthy and bootstrap version is current.
+
+    `cdk bootstrap` is meant to run once per account/region (or when the CLI's
+    bootstrap-template version requirement bumps), not on every deploy. We
+    called it unconditionally for a long time because it's idempotent — but
+    on 2026-05-10 we discovered the idempotent path still creates+deletes a
+    no-op change set on CDKToolkit, requiring `cloudformation:CreateChangeSet`
+    / `DescribeChangeSet` / `ExecuteChangeSet` / `DeleteChangeSet` permissions
+    the CI deploy role doesn't grant. Skipping when the stack is current
+    sidesteps the gap.
+
+    If a future cdk-lib needs a newer bootstrap version, the actual `cdk
+    deploy` fails with a clear "bootstrap version too old" error and we
+    re-bootstrap from a local terminal (one-shot, with credentials that have
+    the change-set permissions).
+    """
+    result = subprocess.run(
+        [
+            "aws",
+            "cloudformation",
+            "describe-stacks",
+            "--stack-name",
+            "CDKToolkit",
+            "--region",
+            region,
+            "--query",
+            "Stacks[0].{Status:StackStatus,Outputs:Outputs}",
+            "--output",
+            "json",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        return False
+    try:
+        data = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return False
+    stack_status = data.get("Status") or ""
+    if not stack_status.endswith("_COMPLETE") or "ROLLBACK" in stack_status:
+        return False
+    for output in data.get("Outputs") or []:
+        if output.get("OutputKey") == "BootstrapVersion":
+            try:
+                return int(output.get("OutputValue", "0")) >= _CDK_BOOTSTRAP_MIN_VERSION
+            except (TypeError, ValueError):
+                return False
+    return False
+
+
 def check_node_version() -> str:
     require_cmd("node")
     version = run_quiet(["node", "-v"]).lstrip("v")
@@ -728,12 +788,17 @@ def cmd_deploy(args: argparse.Namespace) -> None:
         cwd=backend_dist,
     )
 
-    info("Bootstrapping CDK")
-    run(
-        ["npx", "cdk", "bootstrap", f"aws://{account_id}/{region}"],
-        cwd=APP / "infrastructure",
-        env=deploy_env,
-    )
+    if cdk_toolkit_is_current(region):
+        info(
+            f"CDK toolkit current (>= v{_CDK_BOOTSTRAP_MIN_VERSION}) — skipping bootstrap"
+        )
+    else:
+        info("Bootstrapping CDK")
+        run(
+            ["npx", "cdk", "bootstrap", f"aws://{account_id}/{region}"],
+            cwd=APP / "infrastructure",
+            env=deploy_env,
+        )
 
     info("Deploying all stacks")
     run(
