@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Specodex PR #150 — Bauhaus port wave 1: design tokens, header rule weight, filter chip truncation fix.">
+    <meta name="theme-color" content="#3A2C1C">
+    <title>Specodex — PR #150: Bauhaus port wave 1</title>
+    <link rel="icon" type="image/svg+xml" href="../logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-issue="PR-150">
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="band">
+        <div class="band-inner">
+            <a class="band-brand" href="../index.html">
+                <svg class="band-mark" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <rect width="120" height="120" fill="#E8E2C9"/>
+                    <rect x="14" y="14" width="92" height="92" fill="none" stroke="#1A1A14" stroke-width="3"/>
+                    <rect x="14" y="14" width="92" height="22" fill="#3A2C1C"/>
+                    <rect x="62" y="60" width="40" height="10" fill="#A88A1C"/>
+                    <line x1="14" y1="56" x2="106" y2="56" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="74" x2="106" y2="74" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="92" x2="106" y2="92" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="60" y1="36" x2="60" y2="106" stroke="#1A1A14" stroke-width="2"/>
+                </svg>
+                <span class="wordmark">SPECODEX</span>
+            </a>
+            <nav class="band-nav" aria-label="Section">
+                <a href="../index.html">Catalog</a>
+                <a href="./" class="active">Pull Requests</a>
+                <a href="../design/">Design Lab</a>
+                <a href="https://github.com/JimothyJohn/specodex" rel="noreferrer">GitHub</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="hero-tag">▮▮▮ PULL REQUEST #150 ▮▮▮</div>
+            <h1 class="hero-title">Bauhaus port — wave 1. Tokens, header rule, filter-chip truncation.</h1>
+            <p class="hero-sub">
+                First wave of the design refresh Nick picked in
+                <a href="136.html">PR #136</a>. Scope is intentionally
+                narrow: the <strong>tokens</strong> the rest of the
+                refresh will hang off, plus the
+                <strong>two surfaces the audit flagged as loudest
+                jank</strong> — the header's soft-shadow drift and
+                the filter chip's silent truncation. One file, pure
+                CSS, no TSX, no deps.
+            </p>
+            <dl class="pr-meta">
+                <div><dt>Branch</dt><dd><code>design/bauhaus-port-tokens-header-table-20260510</code></dd></div>
+                <div><dt>Opened</dt><dd>2026-05-10 (DRAFT)</dd></div>
+                <div><dt>Diff</dt><dd>+77 / −22 across 1 file</dd></div>
+                <div><dt>Surface</dt><dd>Frontend CSS — tokens, header, filter chip, column header</dd></div>
+                <div><dt>Type</dt><dd>Design refinement</dd></div>
+            </dl>
+            <div class="cta-row">
+                <a class="cta cta-primary" href="https://github.com/JimothyJohn/specodex/pull/150" rel="noreferrer">View on GitHub →</a>
+                <a class="cta cta-ghost" href="../design/bauhaus-catalog.html">See the target mock →</a>
+            </div>
+        </section>
+
+        <section aria-label="The two jank surfaces this fixes">
+            <div class="divider"><span>▮▮▮ WHAT WAS BROKEN ▮▮▮</span></div>
+            <ul class="prose">
+                <li><strong>Filter chip silent truncation.</strong> <code>.filter-attribute</code> had <code>white-space: nowrap; overflow: hidden; text-overflow: ellipsis</code> on a chip that was effectively 380&nbsp;px wide. Long names like <code>network_protocol</code> or <code>encoder_resolution_bits</code> clipped into <code>Re…</code> — invisible information loss. This is the "text is being truncated" complaint that motivated the redesign.</li>
+                <li><strong>Header soft-shadow drift.</strong> The header used <code>box-shadow: 0 2px 6px var(--shadow-md)</code> + a 2&nbsp;px ink border underneath. The shadow blurred the boundary, undermining the field-manual personality. Field manuals have rule lines, not shadows.</li>
+                <li><strong>Token chaos.</strong> The audit found 12 different z-index values from <code>0</code> to <code>10000</code> scattered across <code>App.css</code>. Five bare <code>font-family: monospace</code> declarations bypassing the <code>--font-mono</code> cascade — Plex Mono's tabular figures and the cross-platform fallback chain were being lost at those sites, contributing to "things weren't lining up."</li>
+                <li><strong>Web-pill chip shapes.</strong> <code>.filter-chip-minimal</code> used <code>border-radius: 4px</code> + a 135° gradient fill. On a manila paper background that reads as a button from a different design language. Squared cards read as catalog.</li>
+            </ul>
+        </section>
+
+        <section aria-label="The fix">
+            <div class="divider"><span>▮▮▮ THE FIX ▮▮▮</span></div>
+            <ul class="prose">
+                <li><strong>Tokens layer.</strong> Both <code>:root[data-theme="light"]</code> and the dark/default <code>:root</code> blocks now declare a 5-tier z-index scale (<code>--z-content / --z-toolbar / --z-header / --z-popover / --z-modal / --z-toast</code>) and two rule tokens (<code>--rule-fine / --rule-strong</code>). Call sites migrate piecewise; the only one this PR migrates is <code>.header</code> itself.</li>
+                <li><strong>Global tabular numerals.</strong> <code>body</code> sets <code>font-variant-numeric: tabular-nums</code>. The existing 18 component-level declarations stay, but new numeric surfaces no longer have to remember to opt in.</li>
+                <li><strong>Five <code>font-family: monospace</code> sites</strong> rewritten to <code>var(--font-mono)</code>. Mechanical, but it brings those surfaces back into the Plex Mono cascade.</li>
+                <li><strong>Header polish.</strong> Drop the box-shadow, raise the bottom border 2&nbsp;px → 3&nbsp;px ink, use <code>var(--z-header)</code> for the z-index. <code>.nav-btn</code> goes from <code>border-radius: 2px</code> to squared, letter-spacing <code>0.14em</code> → <code>0.16em</code> (matches the stencil treatment everywhere else).</li>
+                <li><strong>Filter chip — the truncation fix.</strong> <code>.filter-attribute</code> switches to multi-line wrap: <code>word-break: break-word; overflow-wrap: anywhere; min-width: 0</code>. Long names extend the chip by one line; nothing clips silently. Same selector now uses Oswald uppercase + letter-spacing <code>0.16em</code> — the Bauhaus stencil signature applied where users read filter names most.</li>
+                <li><strong>Filter chip — squared corners.</strong> <code>.filter-chip-minimal</code>: <code>border-radius: 4px</code> → <code>2px</code>, drop the 135° gradient for a flat <code>var(--bg-secondary)</code> fill.</li>
+                <li><strong>Column header stencil.</strong> <code>.column-header-label-text</code> takes Oswald uppercase + letter-spacing <code>0.16em</code>. The prior proportional-cased mono with ellipsis was the second truncation surface the audit called out; the condensed headline fits more text before ellipsis kicks in.</li>
+            </ul>
+        </section>
+
+        <section aria-label="Files touched">
+            <div class="divider"><span>▮▮▮ FILES TOUCHED ▮▮▮</span></div>
+            <table class="spec-table">
+                <thead><tr><th>File</th><th>Lines</th><th>Note</th></tr></thead>
+                <tbody>
+                    <tr><td><code>app/frontend/src/App.css</code></td><td>+77 / −22</td><td>Tokens (<code>:root</code>×2), <code>body</code> tabular-nums, 5× bare-monospace → var, <code>.header</code>, <code>.nav-btn</code>, <code>.filter-chip-minimal</code>, <code>.filter-attribute</code>, <code>.column-header-label-text</code></td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section aria-label="Out of scope">
+            <div class="divider"><span>▮▮▮ OUT OF SCOPE FOR THIS WAVE ▮▮▮</span></div>
+            <ul class="prose">
+                <li><strong>Z-index migration.</strong> The tokens exist; the dozen call sites that still inline magic numbers (<code>z-index: 1000</code>, <code>9999</code>) stay until the next pass. Hygiene PR.</li>
+                <li><strong><code>!important</code> wars</strong> in <code>.column-remove-btn</code>, the button overrides, and the modal close button — six clusters, ~100+ declarations. Each one wants its own specificity refactor.</li>
+                <li><strong>Surfaces not touched here:</strong> modal, build page, projects, datasheets admin. The Bauhaus mock doesn't cover them yet either.</li>
+                <li><strong>Backend, API, tests:</strong> all untouched.</li>
+            </ul>
+        </section>
+
+        <section aria-label="How to verify">
+            <div class="divider"><span>▮▮▮ HOW TO VERIFY ▮▮▮</span></div>
+            <ul class="prose">
+                <li><strong>Lint</strong>: <code>npm run lint</code> in <code>app/frontend</code> — clean (82 pre-existing warnings, 0 errors).</li>
+                <li><strong>Typecheck</strong>: <code>npx tsc --noEmit</code> — clean.</li>
+                <li><strong>Unit</strong>: <code>npm test -- --run</code> — 499 passed / 1 skipped.</li>
+                <li><strong>Visual</strong>: <code>./Quickstart dev</code>, walk through the catalog page with long filter attribute names. Chips should grow by one line instead of clipping into <code>…</code>. Header should read as a hard rule edge, no soft drop-shadow. Column headers should read as Oswald stencil labels.</li>
+                <li><strong>Target mock</strong>: <a href="../design/bauhaus-catalog.html">the Bauhaus catalog in the design lab</a> — the shape this wave is reaching toward.</li>
+            </ul>
+        </section>
+
+        <a class="back-link" href="./">← back to requests log</a>
+    </main>
+
+    <footer>
+        <div class="footer-inner">
+            <span>© 2026 Specodex · PR #150</span>
+            <span class="footer-rule" aria-hidden="true"></span>
+            <a class="footer-link" href="https://github.com/JimothyJohn/specodex/pull/150" rel="noreferrer">View on GitHub</a>
+            <a class="footer-link" href="../design/bauhaus-catalog.html">Target mock</a>
+            <a class="footer-link" href="./">All requests</a>
+        </div>
+    </footer>
+</body>
+</html>
