@@ -687,30 +687,34 @@ def cmd_deploy(args: argparse.Namespace) -> None:
     # `Cannot find module 'express'`. Clean dist/ first so stale compiled
     # files from removed sources don't leak into the zip.
     #
-    # Use `npm ci` (with the workspace lockfile copied alongside package.json)
-    # so the bundle is deterministic. `npm install` without a lockfile re-
-    # resolves every `^x.y.z` range against latest, which silently drifts the
-    # bundle whenever a transitive publishes a new patch — and recently bit
-    # us when @aws-sdk/xml-builder@3.972.20 added a hard pin on the ESM-only
-    # @nodable/entities@2.1.0. Node 18 `require()` doesn't load ESM, so the
-    # Lambda init crashes with ERR_REQUIRE_ESM. The lockfile pins xml-builder
-    # to 3.910.0 (no @nodable/entities dep), which loads cleanly.
+    # We generate a backend-rooted lockfile in dist/ (one shot, registry
+    # resolve) then `npm ci` against it. The previous approach copied the
+    # workspace lockfile (app/package-lock.json) into dist/ to reuse its
+    # pins, but that file is workspace-shaped: when a backend dep diverges
+    # from the workspace's hoisted version (e.g. backend's jest@30 vs the
+    # workspace's hoisted jest@29), the lockfile carries the backend
+    # version under `backend/node_modules/<pkg>` — which is unreachable
+    # from a non-workspace `npm ci` rooted at dist/, so npm bails with
+    # "Missing: <pkg> from lock file" and "Invalid: lock file's X does not
+    # satisfy Y". The fix is to generate the dist/-rooted lockfile here.
     info("Building backend Lambda bundle")
     backend_dist = APP / "backend" / "dist"
     if backend_dist.exists():
         shutil.rmtree(backend_dist)
     run(["npm", "run", "build"], cwd=APP / "backend")
     shutil.copy(APP / "backend" / "package.json", backend_dist / "package.json")
-    # The workspace's lockfile sits at app/package-lock.json (npm workspaces),
-    # not app/backend/package-lock.json. Copy that into dist so npm ci resolves
-    # against the same pins the rest of the workspace uses.
-    workspace_lock = APP / "package-lock.json"
-    if not workspace_lock.exists():
-        fail(
-            "app/package-lock.json missing — Lambda bundle would be "
-            "non-deterministic. Run `npm install` from app/ to regenerate."
-        )
-    shutil.copy(workspace_lock, backend_dist / "package-lock.json")
+    run(
+        [
+            "npm",
+            "install",
+            "--package-lock-only",
+            "--ignore-scripts",
+            "--no-audit",
+            "--no-fund",
+            "--silent",
+        ],
+        cwd=backend_dist,
+    )
     run(
         [
             "npm",

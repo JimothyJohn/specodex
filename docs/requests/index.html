@@ -54,6 +54,33 @@
             <div class="divider"><span>▮▮▮ RECENT PULL REQUESTS ▮▮▮</span></div>
             <ol class="pr-cards">
                 <li>
+                    <a class="pr-card" href="132.html">
+                        <div class="pr-card-head">
+                            <span class="pr-num">PR #132 (DRAFT)</span>
+                            <h2 class="pr-title">Backend Lambda bundle — generate dist-rooted lockfile <em>(unblocks deploy chain)</em></h2>
+                        </div>
+                        <div class="pr-card-meta">
+                            <span>Opened 2026-05-10</span>
+                            <span>+22 / −18 across 1 file</span>
+                            <span>Branch <code>fix/backend-lockfile-npmci-20260510</code></span>
+                        </div>
+                        <p class="pr-card-body">
+                            CI's <code>Deploy Staging</code> job has
+                            been failing since PR #130 — the deploy
+                            step copied the workspace lockfile into
+                            <code>app/backend/dist/</code> and ran
+                            <code>npm ci --omit=dev</code> against
+                            it, which broke the moment backend's
+                            <code>jest</code> bumped 30.x while
+                            other workspaces stayed on 29.x. Fix
+                            generates a dist-rooted lockfile via
+                            <code>npm install --package-lock-only</code>
+                            before <code>npm ci</code>. Surgical,
+                            one file, no runtime change.
+                        </p>
+                    </a>
+                </li>
+                <li>
                     <a class="pr-card" href="130.html">
                         <div class="pr-card-head">
                             <span class="pr-num">PR #130 (DRAFT)</span>

@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Specodex PR #132 — fix the broken Deploy Staging job by generating a dist-rooted lockfile for the backend Lambda bundle instead of reusing the workspace lockfile.">
+    <meta name="theme-color" content="#3A2C1C">
+    <title>Specodex — PR #132: Backend Lambda bundle lockfile fix</title>
+    <link rel="icon" type="image/svg+xml" href="../logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-issue="PR-132">
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="band">
+        <div class="band-inner">
+            <a class="band-brand" href="../index.html">
+                <svg class="band-mark" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <rect width="120" height="120" fill="#E8E2C9"/>
+                    <rect x="14" y="14" width="92" height="92" fill="none" stroke="#1A1A14" stroke-width="3"/>
+                    <rect x="14" y="14" width="92" height="22" fill="#3A2C1C"/>
+                    <rect x="62" y="60" width="40" height="10" fill="#A88A1C"/>
+                    <line x1="14" y1="56" x2="106" y2="56" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="74" x2="106" y2="74" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="92" x2="106" y2="92" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="60" y1="36" x2="60" y2="106" stroke="#1A1A14" stroke-width="2"/>
+                </svg>
+                <span class="wordmark">SPECODEX</span>
+            </a>
+            <nav class="band-nav" aria-label="Section">
+                <a href="../index.html">Catalog</a>
+                <a href="./" class="active">Pull Requests</a>
+                <a href="https://github.com/JimothyJohn/specodex" rel="noreferrer">GitHub</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="hero-tag">▮▮▮ PULL REQUEST #132 ▮▮▮</div>
+            <h1 class="hero-title">Unblock the deploy chain — backend Lambda bundle lockfile.</h1>
+            <p class="hero-sub">
+                CI's <code>Deploy Staging</code> job has been failing
+                on every master push since PR #130 was the first
+                merge to actually run the deploy step to completion.
+                Earlier merges all cancelled before reaching it.
+                Result: prod hasn't shipped via CI since 2026-05-02
+                (stack timestamps confirm). The bug is in the
+                Lambda-bundle step copying the workspace lockfile
+                into a non-workspace context — fine until backend's
+                <code>jest</code> bumped 29 → 30 (PR #19) and the
+                divergent copy moved to a path npm couldn't reach.
+            </p>
+            <dl class="pr-meta">
+                <div><dt>Branch</dt><dd><code>fix/backend-lockfile-npmci-20260510</code></dd></div>
+                <div><dt>Opened</dt><dd>2026-05-10 (DRAFT)</dd></div>
+                <div><dt>Diff</dt><dd>+22 / −18 across 1 file</dd></div>
+                <div><dt>Surface</dt><dd>Build/deploy script — no runtime change</dd></div>
+                <div><dt>Type</dt><dd>Build fix</dd></div>
+            </dl>
+            <div class="cta-row">
+                <a class="cta cta-primary" href="https://github.com/JimothyJohn/specodex/pull/132" rel="noreferrer">View on GitHub →</a>
+                <a class="cta cta-ghost" href="./">All requests</a>
+            </div>
+        </section>
+
+        <section aria-label="What was broken">
+            <div class="divider"><span>▮▮▮ WHAT WAS BROKEN ▮▮▮</span></div>
+            <ul class="prose">
+                <li><strong>The deploy bundling step.</strong> <code>cli/quickstart.py</code>'s <code>cmd_deploy</code> compiled <code>app/backend</code> with <code>tsc</code> into <code>app/backend/dist/</code>, then copied <code>app/package-lock.json</code> alongside <code>backend/package.json</code> and ran <code>npm ci --omit=dev</code> from inside <code>dist/</code>.</li>
+                <li><strong>The workspace lockfile is workspace-shaped.</strong> When backend's <code>jest</code> bumped to 30.x while other workspaces kept 29.x, the lockfile carried the divergent copy under <code>backend/node_modules/jest@30.3.0</code>. From a non-workspace <code>npm ci</code> rooted at <code>dist/</code>, that path is unreachable — npm only sees <code>node_modules/jest@29.7.0</code> at the top level.</li>
+                <li><strong>npm bailed silently.</strong> The deploy step ran with <code>--silent</code>, so CI captured the exit code without the diagnostic. Reproducing locally surfaces it: <code>Missing: @sinclair/typebox@0.34.49 from lock file</code>, <code>Missing: ci-info@4.4.0</code>, <code>Invalid: lock file's brace-expansion@1.1.12 does not satisfy 1.1.14</code>, etc.</li>
+                <li><strong>Why now.</strong> PR #130 was the first master push in days where CI actually ran the deploy step to completion (every prior push got cancelled by the next merge). The bug was latent since PR #19 merged jest@30.</li>
+            </ul>
+        </section>
+
+        <section aria-label="The fix">
+            <div class="divider"><span>▮▮▮ THE FIX ▮▮▮</span></div>
+            <p class="prose">
+                Generate a dist/-rooted lockfile via <code>npm install --package-lock-only</code> immediately before the <code>npm ci</code>. This sidesteps the workspace-vs-non-workspace mismatch entirely — the lockfile in <code>dist/</code> now describes the tree from <code>backend/package.json</code>'s point of view, which is what <code>npm ci</code> in <code>dist/</code> needs.
+            </p>
+            <p class="prose">
+                Trade-off: the previous comment valued the workspace lockfile's exact transitive pins as a guard against transient registry breakage (the <code>@aws-sdk/xml-builder@3.972.20</code> + ESM-only <code>@nodable/entities@2.1.0</code> incident on Node 18). We lose that here — backend's prod transitives now resolve fresh from the registry on each deploy. Acceptable because Node 20 supports ESM-in-require, dependabot already churns these pins weekly, and a future incident can be pinned surgically via <code>overrides</code> in <code>backend/package.json</code>.
+            </p>
+        </section>
+
+        <section aria-label="Files touched">
+            <div class="divider"><span>▮▮▮ FILES TOUCHED ▮▮▮</span></div>
+            <table class="spec-table">
+                <thead><tr><th>File</th><th>Lines</th><th>Note</th></tr></thead>
+                <tbody>
+                    <tr><td><code>cli/quickstart.py</code></td><td>+22 / −18</td><td>Lambda-bundle block in <code>cmd_deploy</code> — replace workspace-lockfile copy with <code>npm install --package-lock-only</code>; comment block rewritten to document the new contract</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section aria-label="How to verify">
+            <div class="divider"><span>▮▮▮ HOW TO VERIFY ▮▮▮</span></div>
+            <ul class="prose">
+                <li><strong>Local repro of the failure</strong>: from <code>app/backend</code>, <code>npm run build</code> → <code>cp package.json dist/</code> → <code>cp ../package-lock.json dist/</code> → <code>cd dist && npm ci --omit=dev --ignore-scripts --no-audit --no-fund</code>. Bombs with <code>Missing: @sinclair/typebox@0.34.49 from lock file</code>.</li>
+                <li><strong>Local proof of the fix</strong>: same flow but skip the <code>cp</code> of the workspace lockfile and instead run <code>npm install --package-lock-only --ignore-scripts --no-audit --no-fund</code> from <code>dist/</code> first. <code>npm ci</code> then installs 210 prod packages cleanly. <code>node -e "require('express')"</code> succeeds.</li>
+                <li><strong>Regression sweep</strong>: <code>./Quickstart verify --only python</code> still passes (1435 tests) — the change is in the deploy code path which the verify suite doesn't currently exercise. <em>Follow-up worth filing: have <code>verify</code> exercise the bundle step too, so a regression here doesn't sit latent for days again.</em></li>
+                <li><strong>Real gate</strong>: CI's <code>Deploy Staging</code> job on this PR. That's the only test that actually exercises the broken path.</li>
+            </ul>
+        </section>
+
+        <a class="back-link" href="./">← back to requests log</a>
+    </main>
+
+    <footer>
+        <div class="footer-inner">
+            <span>© 2026 Specodex · PR #132</span>
+            <span class="footer-rule" aria-hidden="true"></span>
+            <a class="footer-link" href="https://github.com/JimothyJohn/specodex/pull/132" rel="noreferrer">View on GitHub</a>
+            <a class="footer-link" href="./">All requests</a>
+        </div>
+    </footer>
+</body>
+</html>
