@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Specodex design direction 01 — Bauhaus Catalog. Strict grid, hairline rules, geometric markers.">
+    <meta name="theme-color" content="#3A2C1C">
+    <title>Specodex — DIR 01: Bauhaus Catalog</title>
+    <link rel="icon" type="image/svg+xml" href="../logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --paper: #E8E2C9;
+            --paper-dim: #DDD5B6;
+            --paper-warm: #D4C8A3;
+            --ink: #1A1A14;
+            --ink-soft: #3A3A2E;
+            --ink-mute: #6B6855;
+            --od: #3A2C1C;
+            --brass: #866C25;
+            --brass-bright: #A88A1C;
+            --stamp: #7A1F1F;
+            --grid-line: #B8AC85;
+            --grid-fine: rgba(184, 172, 133, 0.35);
+
+            --type-display: 'Oswald', sans-serif;
+            --type-mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+            --grid-unit: 8px;
+            --rule: 1px solid var(--ink);
+            --rule-fine: 1px solid var(--grid-line);
+        }
+
+        *, *::before, *::after { box-sizing: border-box; }
+        html, body { margin: 0; padding: 0; }
+        body {
+            background: var(--paper);
+            color: var(--ink);
+            font-family: var(--type-mono);
+            font-size: 13px;
+            line-height: 1.5;
+            font-feature-settings: 'tnum' 1, 'cv11' 1;
+            background-image:
+                linear-gradient(var(--grid-fine) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid-fine) 1px, transparent 1px);
+            background-size: 24px 24px;
+            background-position: -1px -1px;
+            -webkit-font-smoothing: antialiased;
+            min-height: 100vh;
+        }
+
+        h1, h2, h3, h4 {
+            font-family: var(--type-display);
+            font-weight: 600;
+            margin: 0;
+            letter-spacing: 0.02em;
+        }
+
+        a { color: var(--ink); text-decoration: none; }
+
+        .top-strip {
+            border-bottom: 2px solid var(--ink);
+            background: var(--paper);
+        }
+        .top-strip-inner {
+            max-width: 1440px;
+            margin: 0 auto;
+            padding: 18px 32px;
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            align-items: center;
+            gap: 32px;
+        }
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .brand-mark {
+            width: 28px;
+            height: 28px;
+            background: var(--ink);
+            position: relative;
+        }
+        .brand-mark::after {
+            content: "";
+            position: absolute;
+            inset: 6px;
+            background: var(--brass-bright);
+        }
+        .brand-name {
+            font-family: var(--type-display);
+            font-weight: 700;
+            font-size: 18px;
+            letter-spacing: 0.22em;
+        }
+        .top-nav {
+            display: flex;
+            gap: 0;
+            border-left: 1px solid var(--ink);
+        }
+        .top-nav a {
+            padding: 4px 16px;
+            font-family: var(--type-display);
+            font-weight: 500;
+            font-size: 11px;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            border-right: 1px solid var(--ink);
+            display: flex;
+            align-items: center;
+            transition: background 100ms;
+        }
+        .top-nav a:hover { background: var(--paper-dim); }
+        .top-nav a.active {
+            background: var(--ink);
+            color: var(--paper);
+        }
+        .top-options {
+            display: flex;
+            gap: 0;
+            font-family: var(--type-mono);
+            font-size: 11px;
+        }
+        .top-options button {
+            font: inherit;
+            border: 1px solid var(--ink);
+            background: var(--paper);
+            padding: 4px 10px;
+            margin-left: -1px;
+            cursor: pointer;
+            letter-spacing: 0.06em;
+            color: var(--ink);
+        }
+        .top-options button:first-child { margin-left: 0; }
+        .top-options button:hover { background: var(--paper-dim); }
+
+        .breadcrumb-strip {
+            border-bottom: 1px solid var(--ink);
+            background: var(--paper-dim);
+        }
+        .breadcrumb-inner {
+            max-width: 1440px;
+            margin: 0 auto;
+            padding: 6px 32px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 11px;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+        .breadcrumb-inner .sep { color: var(--ink-mute); }
+        .breadcrumb-inner strong { font-weight: 600; }
+        .breadcrumb-inner .fig {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--ink-mute);
+        }
+        .fig-mark {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            background: var(--brass);
+            transform: rotate(45deg);
+        }
+
+        .layout {
+            max-width: 1440px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 0;
+        }
+
+        aside.rail {
+            border-right: 2px solid var(--ink);
+            background: var(--paper);
+            padding: 24px 24px 48px;
+            min-height: 80vh;
+        }
+        .rail-section {
+            margin-bottom: 32px;
+        }
+        .rail-head {
+            font-family: var(--type-display);
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.22em;
+            text-transform: uppercase;
+            color: var(--ink);
+            padding-bottom: 8px;
+            border-bottom: 2px solid var(--ink);
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+        }
+        .rail-head .badge {
+            font-family: var(--type-mono);
+            font-size: 10px;
+            color: var(--ink-mute);
+            letter-spacing: 0.06em;
+        }
+        .rail-type-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+        }
+        .rail-type-list li a {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 7px 10px;
+            font-size: 12px;
+            border: 1px solid transparent;
+            position: relative;
+        }
+        .rail-type-list li a:hover {
+            border-color: var(--ink);
+            background: var(--paper-warm);
+        }
+        .rail-type-list li a.is-active {
+            background: var(--ink);
+            color: var(--paper);
+            border-color: var(--ink);
+        }
+        .rail-type-list li a.is-active .count { color: var(--brass-bright); }
+        .rail-type-list .marker {
+            width: 8px;
+            height: 8px;
+            background: var(--ink);
+            margin-right: 10px;
+            flex-shrink: 0;
+        }
+        .rail-type-list li a.is-active .marker { background: var(--brass-bright); }
+        .rail-type-list .label {
+            flex: 1;
+            letter-spacing: 0.04em;
+        }
+        .rail-type-list .count {
+            font-variant-numeric: tabular-nums;
+            color: var(--ink-mute);
+            font-weight: 500;
+        }
+
+        .filter-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+        .filter-row {
+            display: grid;
+            grid-template-rows: auto auto;
+            gap: 4px;
+        }
+        .filter-row label {
+            font-family: var(--type-display);
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            color: var(--ink-soft);
+        }
+        .filter-chip {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            align-items: center;
+            padding: 6px 0 6px 10px;
+            border: 1px solid var(--ink);
+            background: var(--paper);
+            font-size: 12px;
+        }
+        .filter-chip .op {
+            color: var(--brass);
+            margin-right: 6px;
+            font-weight: 600;
+        }
+        .filter-chip .close {
+            width: 28px;
+            height: 28px;
+            display: grid;
+            place-items: center;
+            border-left: 1px solid var(--ink);
+            font-family: var(--type-display);
+            font-size: 14px;
+            cursor: pointer;
+            background: var(--paper);
+        }
+        .filter-chip .close:hover { background: var(--stamp); color: var(--paper); }
+        .add-filter {
+            margin-top: 4px;
+            padding: 8px 10px;
+            background: transparent;
+            border: 1px dashed var(--ink);
+            font: inherit;
+            cursor: pointer;
+            text-align: left;
+            letter-spacing: 0.08em;
+            color: var(--ink-soft);
+        }
+        .add-filter:hover { color: var(--ink); border-style: solid; }
+
+        main.content {
+            padding: 24px 32px 64px;
+        }
+
+        .results-head {
+            display: grid;
+            grid-template-columns: 1fr auto auto;
+            align-items: end;
+            gap: 24px;
+            margin-bottom: 24px;
+            padding-bottom: 14px;
+            border-bottom: 2px solid var(--ink);
+        }
+        .results-title {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .results-eyebrow {
+            font-family: var(--type-display);
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.22em;
+            text-transform: uppercase;
+            color: var(--brass);
+        }
+        .results-eyebrow .triangle {
+            display: inline-block;
+            vertical-align: -1px;
+            width: 0;
+            height: 0;
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-bottom: 9px solid var(--brass);
+            margin-right: 6px;
+        }
+        .results-title h1 {
+            font-size: 32px;
+            line-height: 1;
+            letter-spacing: 0.01em;
+            color: var(--ink);
+        }
+        .results-counts {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            font-family: var(--type-mono);
+            font-size: 11px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--ink-soft);
+        }
+        .results-counts strong {
+            font-family: var(--type-display);
+            font-size: 28px;
+            font-weight: 600;
+            color: var(--ink);
+            font-variant-numeric: tabular-nums;
+            letter-spacing: 0;
+        }
+        .toolbar {
+            display: flex;
+            gap: 0;
+            border: 1px solid var(--ink);
+        }
+        .toolbar button {
+            font: inherit;
+            font-size: 11px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            background: var(--paper);
+            border: 0;
+            border-right: 1px solid var(--ink);
+            padding: 7px 12px;
+            cursor: pointer;
+            color: var(--ink);
+        }
+        .toolbar button:last-child { border-right: 0; }
+        .toolbar button:hover { background: var(--paper-dim); }
+        .toolbar button.is-on { background: var(--ink); color: var(--paper); }
+
+        .stat-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0;
+            margin-bottom: 32px;
+            border: 1px solid var(--ink);
+            background: var(--paper);
+        }
+        .stat-cell {
+            padding: 14px 18px;
+            border-right: 1px solid var(--ink);
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            position: relative;
+        }
+        .stat-cell:last-child { border-right: 0; }
+        .stat-cell::before {
+            content: "";
+            position: absolute;
+            top: -1px;
+            right: -1px;
+            width: 8px;
+            height: 8px;
+            background: var(--ink);
+        }
+        .stat-cell:last-child::before { display: none; }
+        .stat-label {
+            font-family: var(--type-display);
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: var(--ink-soft);
+        }
+        .stat-value {
+            font-family: var(--type-display);
+            font-size: 24px;
+            font-weight: 600;
+            color: var(--ink);
+            font-variant-numeric: tabular-nums;
+            line-height: 1.1;
+        }
+        .stat-value .unit {
+            font-size: 12px;
+            color: var(--ink-mute);
+            margin-left: 4px;
+            letter-spacing: 0.04em;
+        }
+        .stat-value .accent { color: var(--brass); }
+
+        .results-table-wrap {
+            border: 1px solid var(--ink);
+            background: var(--paper);
+            overflow-x: auto;
+        }
+        table.results {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+        table.results thead th {
+            text-align: left;
+            font-family: var(--type-display);
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            padding: 12px 14px;
+            background: var(--paper-dim);
+            border-bottom: 2px solid var(--ink);
+            border-right: 1px solid var(--grid-line);
+            color: var(--ink);
+            white-space: nowrap;
+            position: relative;
+        }
+        table.results thead th:last-child { border-right: 0; }
+        table.results thead th.is-numeric { text-align: right; }
+        table.results thead th .unit-tag {
+            font-family: var(--type-mono);
+            font-size: 9px;
+            color: var(--ink-mute);
+            margin-left: 6px;
+            letter-spacing: 0.04em;
+            text-transform: none;
+        }
+        table.results tbody td {
+            padding: 12px 14px;
+            border-bottom: 1px solid var(--grid-fine);
+            border-right: 1px solid var(--grid-fine);
+            vertical-align: top;
+        }
+        table.results tbody td:last-child { border-right: 0; }
+        table.results tbody tr:last-child td { border-bottom: 0; }
+        table.results tbody tr:hover td { background: var(--paper-warm); }
+        table.results td.is-numeric {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+        td .pn {
+            font-family: var(--type-display);
+            font-weight: 600;
+            font-size: 13px;
+            letter-spacing: 0.04em;
+            color: var(--ink);
+        }
+        td .mfg {
+            display: block;
+            font-size: 11px;
+            color: var(--ink-mute);
+            margin-top: 2px;
+            letter-spacing: 0.04em;
+        }
+        .tag {
+            display: inline-block;
+            padding: 2px 6px;
+            font-size: 10px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            border: 1px solid var(--ink);
+            background: var(--paper);
+        }
+        .tag.brass { background: var(--brass); color: var(--paper); border-color: var(--brass); }
+        .tag-list { display: flex; flex-wrap: wrap; gap: 4px; }
+
+        .legend {
+            margin-top: 24px;
+            padding: 14px 18px;
+            border: 1px dashed var(--ink);
+            font-size: 11px;
+            color: var(--ink-soft);
+            display: flex;
+            gap: 24px;
+            flex-wrap: wrap;
+        }
+        .legend strong {
+            font-family: var(--type-display);
+            font-weight: 600;
+            font-size: 10px;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: var(--ink);
+        }
+        .legend-item { display: flex; align-items: center; gap: 8px; }
+        .legend-mark {
+            width: 12px; height: 12px;
+            border: 1px solid var(--ink);
+            background: var(--paper);
+        }
+        .legend-mark.brass { background: var(--brass); }
+        .legend-mark.stamp { background: var(--stamp); }
+        .legend-mark.tri {
+            background: transparent;
+            border: 0;
+            width: 0; height: 0;
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-bottom: 11px solid var(--brass);
+        }
+
+        .footnote {
+            margin-top: 48px;
+            padding-top: 14px;
+            border-top: 1px solid var(--ink);
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: var(--ink-mute);
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+        }
+        .footnote .corner-mark {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .corner-mark::before {
+            content: "";
+            width: 10px;
+            height: 10px;
+            background: var(--ink);
+        }
+
+        @media (max-width: 980px) {
+            .layout { grid-template-columns: 1fr; }
+            aside.rail { border-right: 0; border-bottom: 2px solid var(--ink); }
+            .stat-row { grid-template-columns: repeat(2, 1fr); }
+            .stat-cell:nth-child(2)::before { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <header class="top-strip">
+        <div class="top-strip-inner">
+            <a href="./index.html" class="brand">
+                <div class="brand-mark" aria-hidden="true"></div>
+                <div class="brand-name">SPECODEX</div>
+            </a>
+            <nav class="top-nav" aria-label="Primary">
+                <a href="#" class="active">Catalog</a>
+                <a href="#">Build</a>
+                <a href="#">Projects</a>
+                <a href="#">Admin</a>
+            </nav>
+            <div class="top-options">
+                <button type="button">Density · Cozy</button>
+                <button type="button">Units · SI</button>
+                <button type="button">Theme · Day</button>
+            </div>
+        </div>
+    </header>
+
+    <div class="breadcrumb-strip">
+        <div class="breadcrumb-inner">
+            <span>Catalog</span><span class="sep">/</span>
+            <strong>Drive</strong><span class="sep">/</span>
+            <span>Filtered · 142 of 6,108</span>
+            <div class="fig">
+                <span>FIG. 01</span>
+                <span class="fig-mark" aria-hidden="true"></span>
+                <span>DIR · BAUHAUS CAT.</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="layout">
+        <aside class="rail" aria-label="Filters">
+            <div class="rail-section">
+                <div class="rail-head">
+                    <span>Product Type</span>
+                    <span class="badge">06</span>
+                </div>
+                <ul class="rail-type-list">
+                    <li><a href="#" class="is-active"><span class="marker"></span><span class="label">Drive</span><span class="count">6 108</span></a></li>
+                    <li><a href="#"><span class="marker"></span><span class="label">Motor</span><span class="count">14 220</span></a></li>
+                    <li><a href="#"><span class="marker"></span><span class="label">Gearhead</span><span class="count">2 941</span></a></li>
+                    <li><a href="#"><span class="marker"></span><span class="label">Robot Arm</span><span class="count">187</span></a></li>
+                    <li><a href="#"><span class="marker"></span><span class="label">Contactor</span><span class="count">4 612</span></a></li>
+                    <li><a href="#"><span class="marker"></span><span class="label">Cylinder</span><span class="count">803</span></a></li>
+                </ul>
+            </div>
+
+            <div class="rail-section">
+                <div class="rail-head">
+                    <span>Active Filters</span>
+                    <span class="badge">03</span>
+                </div>
+                <div class="filter-stack">
+                    <div class="filter-row">
+                        <label>Rated Voltage</label>
+                        <div class="filter-chip">
+                            <span><span class="op">≥</span>200&nbsp;V</span>
+                            <button class="close" aria-label="Remove">×</button>
+                        </div>
+                    </div>
+                    <div class="filter-row">
+                        <label>Rated Power</label>
+                        <div class="filter-chip">
+                            <span><span class="op">≤</span>5&nbsp;kW</span>
+                            <button class="close" aria-label="Remove">×</button>
+                        </div>
+                    </div>
+                    <div class="filter-row">
+                        <label>Network Protocol</label>
+                        <div class="filter-chip">
+                            <span><span class="op">IN</span>EtherCAT, PROFINET, sercos III</span>
+                            <button class="close" aria-label="Remove">×</button>
+                        </div>
+                    </div>
+                    <button class="add-filter" type="button">+ ADD FILTER</button>
+                </div>
+            </div>
+
+            <div class="rail-section">
+                <div class="rail-head">
+                    <span>Manufacturer</span>
+                    <span class="badge">12</span>
+                </div>
+                <div class="filter-stack">
+                    <div class="filter-row">
+                        <label>Top Suppliers</label>
+                        <div class="filter-chip">
+                            <span>Mitsubishi, Omron, Yaskawa +9</span>
+                            <button class="close" aria-label="Remove">×</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <main class="content">
+            <div class="results-head">
+                <div class="results-title">
+                    <div class="results-eyebrow"><span class="triangle"></span>RESULTS · DRIVE</div>
+                    <h1>Servo drives, 200&nbsp;V class, ≤ 5&nbsp;kW</h1>
+                </div>
+                <div class="results-counts">
+                    matching <strong>142</strong> of <strong>6,108</strong>
+                </div>
+                <div class="toolbar">
+                    <button type="button" class="is-on">Table</button>
+                    <button type="button">Grid</button>
+                    <button type="button">Compat</button>
+                </div>
+            </div>
+
+            <div class="stat-row">
+                <div class="stat-cell">
+                    <div class="stat-label">Voltage range</div>
+                    <div class="stat-value">200<span class="unit">–&nbsp;400&nbsp;V</span></div>
+                </div>
+                <div class="stat-cell">
+                    <div class="stat-label">Median power</div>
+                    <div class="stat-value">1.5<span class="unit">&nbsp;kW</span></div>
+                </div>
+                <div class="stat-cell">
+                    <div class="stat-label">Encoder kinds</div>
+                    <div class="stat-value">7</div>
+                </div>
+                <div class="stat-cell">
+                    <div class="stat-label">Network protocols</div>
+                    <div class="stat-value"><span class="accent">9</span></div>
+                </div>
+            </div>
+
+            <div class="results-table-wrap">
+                <table class="results">
+                    <thead>
+                        <tr>
+                            <th style="width: 30%;">Part / Manufacturer</th>
+                            <th class="is-numeric">Voltage<span class="unit-tag">V</span></th>
+                            <th class="is-numeric">Current<span class="unit-tag">A</span></th>
+                            <th class="is-numeric">Power<span class="unit-tag">kW</span></th>
+                            <th>Encoder</th>
+                            <th>Protocol</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="pn">MR-J5-100B</span><span class="mfg">Mitsubishi Electric</span></td>
+                            <td class="is-numeric">200</td>
+                            <td class="is-numeric">7.5</td>
+                            <td class="is-numeric">1.00</td>
+                            <td><span class="tag">Absolute 26-bit</span></td>
+                            <td><span class="tag">SSCNET&nbsp;III/H</span></td>
+                        </tr>
+                        <tr>
+                            <td><span class="pn">MR-J5-200B</span><span class="mfg">Mitsubishi Electric</span></td>
+                            <td class="is-numeric">200</td>
+                            <td class="is-numeric">11.0</td>
+                            <td class="is-numeric">2.00</td>
+                            <td><span class="tag">Absolute 26-bit</span></td>
+                            <td><span class="tag">SSCNET&nbsp;III/H</span></td>
+                        </tr>
+                        <tr>
+                            <td><span class="pn">R88D-1SN02H-ECT</span><span class="mfg">Omron</span></td>
+                            <td class="is-numeric">200</td>
+                            <td class="is-numeric">1.6</td>
+                            <td class="is-numeric">0.20</td>
+                            <td><span class="tag">Incremental</span></td>
+                            <td><span class="tag brass">EtherCAT</span></td>
+                        </tr>
+                        <tr>
+                            <td><span class="pn">R88D-1SN08H-ECT</span><span class="mfg">Omron</span></td>
+                            <td class="is-numeric">200</td>
+                            <td class="is-numeric">5.5</td>
+                            <td class="is-numeric">0.75</td>
+                            <td><span class="tag">Incremental</span></td>
+                            <td><span class="tag brass">EtherCAT</span></td>
+                        </tr>
+                        <tr>
+                            <td><span class="pn">SGD7S-200A</span><span class="mfg">Yaskawa</span></td>
+                            <td class="is-numeric">200</td>
+                            <td class="is-numeric">11.6</td>
+                            <td class="is-numeric">2.00</td>
+                            <td><span class="tag">Serial 24-bit</span></td>
+                            <td><span class="tag">MECHATROLINK-III</span></td>
+                        </tr>
+                        <tr>
+                            <td><span class="pn">2198-S086-ERS4</span><span class="mfg">Allen-Bradley</span></td>
+                            <td class="is-numeric">230</td>
+                            <td class="is-numeric">6.5</td>
+                            <td class="is-numeric">1.50</td>
+                            <td><span class="tag">DSL Hiperface</span></td>
+                            <td><span class="tag brass">EtherNet/IP</span></td>
+                        </tr>
+                        <tr>
+                            <td><span class="pn">8EI4X5HWS10.0200-1</span><span class="mfg">B&amp;R</span></td>
+                            <td class="is-numeric">400</td>
+                            <td class="is-numeric">9.5</td>
+                            <td class="is-numeric">4.50</td>
+                            <td><span class="tag">EnDat&nbsp;2.2</span></td>
+                            <td><span class="tag">POWERLINK</span></td>
+                        </tr>
+                        <tr>
+                            <td><span class="pn">HCS01.1E-W0013</span><span class="mfg">Bosch Rexroth</span></td>
+                            <td class="is-numeric">400</td>
+                            <td class="is-numeric">16.0</td>
+                            <td class="is-numeric">7.50</td>
+                            <td><span class="tag">HIPERFACE</span></td>
+                            <td><span class="tag brass">sercos&nbsp;III</span></td>
+                        </tr>
+                        <tr>
+                            <td><span class="pn">LXM32MU60M2</span><span class="mfg">Schneider Electric</span></td>
+                            <td class="is-numeric">230</td>
+                            <td class="is-numeric">6.0</td>
+                            <td class="is-numeric">1.50</td>
+                            <td><span class="tag">SinCos</span></td>
+                            <td><span class="tag brass">EtherCAT</span></td>
+                        </tr>
+                        <tr>
+                            <td><span class="pn">6SL3210-5FE11-0UA0</span><span class="mfg">Siemens</span></td>
+                            <td class="is-numeric">230</td>
+                            <td class="is-numeric">4.7</td>
+                            <td class="is-numeric">1.00</td>
+                            <td><span class="tag">Incremental</span></td>
+                            <td><span class="tag brass">PROFINET</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="legend">
+                <strong>Legend</strong>
+                <div class="legend-item"><span class="legend-mark brass"></span><span>Brass — accent (active filter / preferred protocol)</span></div>
+                <div class="legend-item"><span class="legend-mark"></span><span>Paper — value field</span></div>
+                <div class="legend-item"><span class="legend-mark stamp"></span><span>Stamp — destructive / warn</span></div>
+                <div class="legend-item"><span class="legend-mark tri"></span><span>Triangle — section opener</span></div>
+            </div>
+
+            <div class="footnote">
+                <div class="corner-mark">FIG. 01 · BAUHAUS CATALOG</div>
+                <a href="./index.html">← back to design lab</a>
+            </div>
+        </main>
+    </div>
+</body>
+</html>
