@@ -54,6 +54,35 @@
             <div class="divider"><span>▮▮▮ RECENT PULL REQUESTS ▮▮▮</span></div>
             <ol class="pr-cards">
                 <li>
+                    <a class="pr-card" href="134.html">
+                        <div class="pr-card-head">
+                            <span class="pr-num">PR #134 (DRAFT)</span>
+                            <h2 class="pr-title">Skip <code>cdk bootstrap</code> when the toolkit is current <em>(3rd layer of the deploy-chain onion)</em></h2>
+                        </div>
+                        <div class="pr-card-meta">
+                            <span>Opened 2026-05-10</span>
+                            <span>+71 / −6 across 1 file</span>
+                            <span>Branch <code>fix/skip-cdk-bootstrap-when-current-20260510</code></span>
+                        </div>
+                        <p class="pr-card-body">
+                            PR #132 fixed the backend bundle.
+                            PR #133 fixed the tsconfig. With those
+                            gone, the same deploy run hit a third
+                            failure: <code>cdk bootstrap</code>
+                            creates a no-op change set on
+                            <code>CDKToolkit</code> and the OIDC
+                            role lacks
+                            <code>cloudformation:DeleteChangeSet</code>.
+                            Fix gates the bootstrap call on
+                            <code>cdk_toolkit_is_current(region)</code> —
+                            skip when the stack is healthy and
+                            <code>BootstrapVersion &gt;= 21</code>.
+                            No IAM mutation; <code>DescribeStacks</code>
+                            is already in the role's policy.
+                        </p>
+                    </a>
+                </li>
+                <li>
                     <a class="pr-card" href="133.html">
                         <div class="pr-card-head">
                             <span class="pr-num">PR #133 (DRAFT)</span>
