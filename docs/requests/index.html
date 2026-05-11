@@ -54,6 +54,33 @@
             <div class="divider"><span>▮▮▮ RECENT PULL REQUESTS ▮▮▮</span></div>
             <ol class="pr-cards">
                 <li>
+                    <a class="pr-card" href="133.html">
+                        <div class="pr-card-head">
+                            <span class="pr-num">PR #133 (DRAFT)</span>
+                            <h2 class="pr-title">CDK tsconfig — pin <code>types: ["node", "jest"]</code> <em>(unblocks cdk bootstrap on TS 6)</em></h2>
+                        </div>
+                        <div class="pr-card-meta">
+                            <span>Opened 2026-05-10</span>
+                            <span>+1 across 1 file</span>
+                            <span>Branch <code>fix/cdk-tsconfig-types-node-20260510</code></span>
+                        </div>
+                        <p class="pr-card-body">
+                            PR #132 unblocked the backend Lambda
+                            bundle step. The very next step in the
+                            deploy chain — <code>cdk bootstrap</code> —
+                            has been failing since 2026-05-03 with
+                            <code>Cannot find name 'path'</code> and
+                            <code>Cannot find name '__dirname'</code>.
+                            TS 6 changed <code>typeRoots</code>
+                            auto-discovery — with no explicit
+                            <code>types</code> field,
+                            <code>@types/node</code> never loads. One
+                            line in <code>tsconfig.json</code>
+                            restores the previous behavior.
+                        </p>
+                    </a>
+                </li>
+                <li>
                     <a class="pr-card" href="132.html">
                         <div class="pr-card-head">
                             <span class="pr-num">PR #132 (DRAFT)</span>
