@@ -54,6 +54,31 @@
             <div class="divider"><span>▮▮▮ RECENT PULL REQUESTS ▮▮▮</span></div>
             <ol class="pr-cards">
                 <li>
+                    <a class="pr-card" href="135.html">
+                        <div class="pr-card-head">
+                            <span class="pr-num">PR #135</span>
+                            <h2 class="pr-title">Clear filter on a column when that column is removed <em>(one-line state cleanup)</em></h2>
+                        </div>
+                        <div class="pr-card-meta">
+                            <span>Opened 2026-05-10</span>
+                            <span>+1 across 1 file</span>
+                            <span>Branch <code>fix/clear-filters-on-column-remove-20260510</code></span>
+                        </div>
+                        <p class="pr-card-body">
+                            Hiding a column via its × button used to
+                            leave any active filter on that attribute
+                            silently narrowing results — invisible
+                            from the UI, still present in
+                            <code>filters</code> state, and resurrected
+                            on restore. <code>handleRemoveColumn</code>
+                            in <code>ProductList.tsx</code> now also
+                            drops any <code>FilterCriterion</code> whose
+                            <code>attribute</code> matches the removed
+                            column.
+                        </p>
+                    </a>
+                </li>
+                <li>
                     <a class="pr-card" href="134.html">
                         <div class="pr-card-head">
                             <span class="pr-num">PR #134 (DRAFT)</span>
