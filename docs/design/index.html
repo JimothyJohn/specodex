@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Specodex — design exploration. Three directions for refining the field-manual aesthetic without losing its personality.">
+    <meta name="theme-color" content="#3A2C1C">
+    <title>Specodex — Design Lab</title>
+    <link rel="icon" type="image/svg+xml" href="../logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../requests/style.css">
+    <style>
+        .lab-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+        .lab-card {
+            display: flex;
+            flex-direction: column;
+            border: 2px solid var(--ink, #1A1A14);
+            background: var(--paper, #E8E2C9);
+            text-decoration: none;
+            color: inherit;
+            position: relative;
+            transition: transform 120ms ease-out, box-shadow 120ms ease-out;
+            overflow: hidden;
+        }
+        .lab-card:hover {
+            transform: translate(-2px, -2px);
+            box-shadow: 4px 4px 0 var(--od, #3A2C1C);
+        }
+        .lab-thumb {
+            display: block;
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            object-fit: cover;
+            object-position: top center;
+            border-bottom: 2px solid var(--ink, #1A1A14);
+            background: #f4eed8;
+        }
+        .lab-card-inner { padding: 1.25rem 1.5rem 1.5rem; }
+        .lab-card-num {
+            font-family: 'Oswald', sans-serif;
+            font-weight: 600;
+            font-size: 0.75rem;
+            letter-spacing: 0.18em;
+            color: var(--stencil, #A88A1C);
+            margin-bottom: 0.5rem;
+        }
+        .lab-card-title {
+            font-family: 'Oswald', sans-serif;
+            font-weight: 600;
+            font-size: 1.5rem;
+            line-height: 1.1;
+            margin: 0 0 0.75rem 0;
+            color: var(--ink, #1A1A14);
+        }
+        .lab-card-sub {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.8125rem;
+            line-height: 1.55;
+            color: var(--ink-soft, #3A3A2E);
+            margin: 0 0 1rem 0;
+        }
+        .lab-card-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.4rem;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.6875rem;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+        }
+        .lab-card-tags span {
+            padding: 0.2rem 0.5rem;
+            border: 1px solid var(--ink, #1A1A14);
+        }
+    </style>
+</head>
+<body data-issue="DESIGN LAB">
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="band">
+        <div class="band-inner">
+            <a class="band-brand" href="../index.html">
+                <svg class="band-mark" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <rect width="120" height="120" fill="#E8E2C9"/>
+                    <rect x="14" y="14" width="92" height="92" fill="none" stroke="#1A1A14" stroke-width="3"/>
+                    <rect x="14" y="14" width="92" height="22" fill="#3A2C1C"/>
+                    <rect x="62" y="60" width="40" height="10" fill="#A88A1C"/>
+                    <line x1="14" y1="56" x2="106" y2="56" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="74" x2="106" y2="74" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="92" x2="106" y2="92" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="60" y1="36" x2="60" y2="106" stroke="#1A1A14" stroke-width="2"/>
+                </svg>
+                <span class="wordmark">SPECODEX</span>
+            </a>
+            <nav class="band-nav" aria-label="Section">
+                <a href="../index.html">Catalog</a>
+                <a href="../requests/">Pull Requests</a>
+                <a href="./" class="active">Design Lab</a>
+                <a href="https://github.com/JimothyJohn/specodex" rel="noreferrer">GitHub</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="hero-tag">▮▮▮ DESIGN LAB · 3 DIRECTIONS ▮▮▮</div>
+            <h1 class="hero-title">Same field-manual personality, three ways of holding it together.</h1>
+            <p class="hero-sub">
+                The current Specodex UI has the right aesthetic — manila
+                palette, Oswald + IBM Plex Mono, deliberately desaturated
+                brass accent — but the execution is rough: 380px rigid
+                sidebars, ellipsis-clipped chips, eight different z-index
+                values, <code>!important</code> patches. Before
+                propagating a fix into the React app, here are three
+                distinct ways the same vocabulary could resolve. Each
+                renders the same mocked drives table so you can compare
+                apples to apples.
+            </p>
+        </section>
+
+        <section aria-label="Directions">
+            <div class="divider"><span>▮▮▮ THE DIRECTIONS ▮▮▮</span></div>
+            <div class="lab-grid">
+                <a class="lab-card" href="bauhaus-catalog.html">
+                    <img class="lab-thumb" src="img/bauhaus.jpg" alt="Bauhaus catalog preview" loading="lazy">
+                    <div class="lab-card-inner">
+                        <div class="lab-card-num">DIRECTION 01</div>
+                        <h2 class="lab-card-title">Bauhaus Catalog</h2>
+                        <p class="lab-card-sub">
+                            Strict 12-column grid, hairline rules,
+                            ALL-CAPS section labels, geometric markers
+                            (triangle, square, circle) pulled through
+                            the brass-and-stamp palette. Graph-paper
+                            background the content actually aligns to.
+                        </p>
+                        <div class="lab-card-tags">
+                            <span>Hairline rules</span>
+                            <span>Strict grid</span>
+                            <span>Geometric markers</span>
+                        </div>
+                    </div>
+                </a>
+                <a class="lab-card" href="aicher-manual.html">
+                    <img class="lab-thumb" src="img/aicher.jpg" alt="Aicher manual preview" loading="lazy">
+                    <div class="lab-card-inner">
+                        <div class="lab-card-num">DIRECTION 02</div>
+                        <h2 class="lab-card-title">Aicher Manual</h2>
+                        <p class="lab-card-sub">
+                            Otl Aicher's 1972 Munich aesthetic.
+                            Pictogram-led left rail (one SVG icon per
+                            product type and per metric), wide gutters,
+                            no rules — separation is by negative space.
+                            Density via icons, not labels.
+                        </p>
+                        <div class="lab-card-tags">
+                            <span>Pictograms</span>
+                            <span>Wide space</span>
+                            <span>No rules</span>
+                        </div>
+                    </div>
+                </a>
+                <a class="lab-card" href="vignelli-transit.html">
+                    <img class="lab-thumb" src="img/vignelli.jpg" alt="Vignelli transit preview" loading="lazy">
+                    <div class="lab-card-inner">
+                        <div class="lab-card-num">DIRECTION 03</div>
+                        <h2 class="lab-card-title">Vignelli Transit</h2>
+                        <p class="lab-card-sub">
+                            Massimo Vignelli's NYC subway diagrams meet
+                            a Knoll catalog. Heavy rule weights,
+                            oversized Archivo Black numerals as the
+                            visual hierarchy, one bold color, tight
+                            tracking on every header. Numerals do the
+                            work labels usually do.
+                        </p>
+                        <div class="lab-card-tags">
+                            <span>Heavy rules</span>
+                            <span>Oversized numerals</span>
+                            <span>One color</span>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        </section>
+
+        <section aria-label="What stays the same">
+            <div class="divider"><span>▮▮▮ WHAT STAYS THE SAME ▮▮▮</span></div>
+            <ul class="prose">
+                <li><strong>Palette.</strong> Paper <code>#E8E2C9</code>, ink <code>#1A1A14</code>, OD <code>#3A2C1C</code>, brass <code>#866C25</code>, stamp red <code>#7A1F1F</code>. Already shared between docs and app.</li>
+                <li><strong>Type families.</strong> Oswald (display) + IBM Plex Mono (body). Each direction adds at most one supporting family for a signature element.</li>
+                <li><strong>Dark theme.</strong> Espresso variant from the current app carries through. Demos use the light theme only — dark mode behavior is fully derivable.</li>
+                <li><strong>The "no native chrome" rule.</strong> Every primitive shown (chips, dropdowns, modals) renders without OS chrome — same constraint that's in CLAUDE.md today.</li>
+            </ul>
+        </section>
+
+        <a class="back-link" href="../index.html">← back to catalog</a>
+    </main>
+
+    <footer>
+        <div class="footer-inner">
+            <span>© 2026 Specodex · Design Lab</span>
+            <span class="footer-rule" aria-hidden="true"></span>
+            <a class="footer-link" href="../requests/">Pull Requests</a>
+            <a class="footer-link" href="../index.html">Catalog</a>
+        </div>
+    </footer>
+</body>
+</html>

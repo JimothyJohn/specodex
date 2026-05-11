@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Specodex design direction 02 — Aicher Manual. Pictograms, wide space, no rules.">
+    <meta name="theme-color" content="#3A2C1C">
+    <title>Specodex — DIR 02: Aicher Manual</title>
+    <link rel="icon" type="image/svg+xml" href="../logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --paper: #EFE9D1;
+            --paper-warm: #E5DCBC;
+            --paper-cool: #DBD2B0;
+            --ink: #1A1A14;
+            --ink-soft: #44432F;
+            --ink-mute: #6B6855;
+            --brass: #866C25;
+            --brass-bright: #A88A1C;
+            --stamp: #7A1F1F;
+            --rail-tint: #E1D8B4;
+
+            --type-display: 'Oswald', sans-serif;
+            --type-body: 'IBM Plex Sans', system-ui, sans-serif;
+            --type-mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+            --col-rail: 320px;
+            --pad-x: 56px;
+            --pad-y: 40px;
+        }
+
+        *, *::before, *::after { box-sizing: border-box; }
+        html, body { margin: 0; padding: 0; }
+        body {
+            background: var(--paper);
+            color: var(--ink);
+            font-family: var(--type-body);
+            font-size: 14px;
+            line-height: 1.55;
+            -webkit-font-smoothing: antialiased;
+            min-height: 100vh;
+        }
+        a { color: inherit; text-decoration: none; }
+        h1, h2, h3, h4 { margin: 0; font-family: var(--type-display); font-weight: 600; letter-spacing: 0; }
+
+        .pict { display: inline-block; vertical-align: middle; flex-shrink: 0; }
+        .pict path,
+        .pict rect,
+        .pict line,
+        .pict circle,
+        .pict polyline,
+        .pict polygon { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: square; stroke-linejoin: miter; }
+        .pict .fill { fill: currentColor; stroke: none; }
+
+        .top {
+            padding: 28px var(--pad-x) 0;
+        }
+        .top-inner {
+            max-width: 1480px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            align-items: center;
+            gap: 48px;
+        }
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        .brand .pict-mark {
+            width: 36px; height: 36px;
+            color: var(--ink);
+        }
+        .brand-name {
+            font-family: var(--type-display);
+            font-weight: 600;
+            font-size: 20px;
+            letter-spacing: 0.16em;
+        }
+        nav.primary {
+            display: flex;
+            gap: 32px;
+            font-size: 13px;
+            letter-spacing: 0.02em;
+            color: var(--ink-soft);
+        }
+        nav.primary a {
+            padding: 6px 0;
+            border-bottom: 2px solid transparent;
+        }
+        nav.primary a:hover { color: var(--ink); }
+        nav.primary a.active {
+            color: var(--ink);
+            border-bottom-color: var(--ink);
+        }
+        .top-tools {
+            display: flex;
+            gap: 6px;
+        }
+        .icon-btn {
+            width: 36px; height: 36px;
+            border: 0;
+            background: transparent;
+            display: grid;
+            place-items: center;
+            cursor: pointer;
+            color: var(--ink-soft);
+            border-radius: 50%;
+            transition: background 100ms, color 100ms;
+        }
+        .icon-btn:hover { background: var(--paper-warm); color: var(--ink); }
+        .icon-btn.is-on { background: var(--ink); color: var(--paper); }
+
+        .layout {
+            max-width: 1480px;
+            margin: 24px auto 0;
+            padding: 0 var(--pad-x) 80px;
+            display: grid;
+            grid-template-columns: var(--col-rail) 1fr;
+            gap: 64px;
+        }
+
+        aside.rail {
+            background: var(--rail-tint);
+            padding: 36px 28px;
+            align-self: start;
+            position: sticky;
+            top: 24px;
+        }
+        .rail-group {
+            margin-bottom: 40px;
+        }
+        .rail-group:last-child { margin-bottom: 0; }
+        .rail-label {
+            font-family: var(--type-display);
+            font-size: 11px;
+            letter-spacing: 0.22em;
+            text-transform: uppercase;
+            color: var(--ink-soft);
+            margin-bottom: 18px;
+        }
+        ul.type-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        ul.type-list a {
+            display: grid;
+            grid-template-columns: 32px 1fr auto;
+            align-items: center;
+            gap: 14px;
+            padding: 10px 12px;
+            font-size: 13.5px;
+            color: var(--ink-soft);
+            border-radius: 2px;
+            transition: background 100ms, color 100ms;
+        }
+        ul.type-list a:hover { background: var(--paper-warm); color: var(--ink); }
+        ul.type-list a.is-active {
+            background: var(--ink);
+            color: var(--paper);
+        }
+        ul.type-list a.is-active .count { color: var(--brass-bright); }
+        ul.type-list .pict { width: 24px; height: 24px; color: inherit; }
+        ul.type-list .label { letter-spacing: 0.01em; }
+        ul.type-list .count {
+            font-family: var(--type-mono);
+            font-size: 11.5px;
+            font-variant-numeric: tabular-nums;
+            color: var(--ink-mute);
+        }
+
+        .filter-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+        .filter-block {
+            display: grid;
+            grid-template-columns: 32px 1fr;
+            gap: 14px;
+            align-items: start;
+        }
+        .filter-block .pict { width: 24px; height: 24px; color: var(--brass); margin-top: 2px; }
+        .filter-block .body {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .filter-block .label {
+            font-family: var(--type-display);
+            font-size: 10px;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--ink-mute);
+        }
+        .filter-block .value {
+            font-family: var(--type-mono);
+            font-size: 13.5px;
+            color: var(--ink);
+            font-variant-numeric: tabular-nums;
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 8px;
+        }
+        .filter-block .value .op {
+            color: var(--brass);
+            font-weight: 600;
+        }
+        .filter-block .close {
+            font: inherit;
+            background: transparent;
+            border: 0;
+            color: var(--ink-mute);
+            cursor: pointer;
+            padding: 0;
+            font-size: 18px;
+            line-height: 1;
+        }
+        .filter-block .close:hover { color: var(--stamp); }
+
+        .add-filter {
+            margin-top: 4px;
+            margin-left: 46px;
+            background: transparent;
+            border: 0;
+            color: var(--brass);
+            font: inherit;
+            font-family: var(--type-display);
+            font-size: 11px;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            cursor: pointer;
+            padding: 4px 0;
+        }
+        .add-filter:hover { color: var(--ink); }
+
+        main.content {
+            min-width: 0;
+        }
+        .content-head {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            align-items: end;
+            gap: 32px;
+            margin-bottom: 36px;
+        }
+        .content-eyebrow {
+            font-family: var(--type-display);
+            font-size: 11px;
+            letter-spacing: 0.24em;
+            text-transform: uppercase;
+            color: var(--brass);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .content-eyebrow .pict { width: 16px; height: 16px; }
+        .content-title {
+            font-size: 38px;
+            line-height: 1.05;
+            letter-spacing: 0;
+            color: var(--ink);
+            margin-bottom: 8px;
+        }
+        .content-sub {
+            font-size: 14px;
+            color: var(--ink-soft);
+            max-width: 60ch;
+        }
+        .results-meta {
+            font-family: var(--type-mono);
+            font-size: 12px;
+            color: var(--ink-soft);
+            text-align: right;
+            line-height: 1.6;
+            font-variant-numeric: tabular-nums;
+        }
+        .results-meta strong {
+            display: block;
+            font-family: var(--type-display);
+            font-size: 32px;
+            font-weight: 600;
+            color: var(--ink);
+            letter-spacing: 0;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .stat-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0;
+            margin-bottom: 48px;
+        }
+        .stat-cell {
+            padding: 20px 24px 20px 0;
+            display: grid;
+            grid-template-columns: 36px 1fr;
+            gap: 16px;
+            align-items: start;
+        }
+        .stat-cell .pict { width: 28px; height: 28px; color: var(--brass); margin-top: 4px; }
+        .stat-cell .lbl {
+            font-family: var(--type-display);
+            font-size: 10.5px;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--ink-mute);
+            margin-bottom: 4px;
+        }
+        .stat-cell .val {
+            font-family: var(--type-display);
+            font-size: 26px;
+            font-weight: 600;
+            color: var(--ink);
+            font-variant-numeric: tabular-nums;
+            letter-spacing: 0;
+            line-height: 1;
+        }
+        .stat-cell .val .unit {
+            font-size: 13px;
+            color: var(--ink-mute);
+            margin-left: 4px;
+        }
+
+        .results-card {
+            background: var(--paper-warm);
+            padding: 8px 0;
+        }
+        table.results {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13.5px;
+        }
+        table.results thead th {
+            text-align: left;
+            font-family: var(--type-display);
+            font-size: 10.5px;
+            font-weight: 600;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            padding: 16px 20px 14px;
+            color: var(--ink-mute);
+            white-space: nowrap;
+        }
+        table.results thead th.is-numeric { text-align: right; }
+        table.results thead .col-icon {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        table.results thead .pict { width: 16px; height: 16px; color: var(--brass); }
+        table.results tbody td {
+            padding: 16px 20px;
+            color: var(--ink);
+            vertical-align: middle;
+        }
+        table.results tbody tr { transition: background 120ms; }
+        table.results tbody tr:nth-child(even) { background: rgba(0,0,0,0.018); }
+        table.results tbody tr:hover { background: var(--paper-cool); }
+        table.results td.is-numeric {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+            font-family: var(--type-mono);
+            font-size: 13.5px;
+        }
+        td .pn {
+            font-family: var(--type-display);
+            font-weight: 600;
+            font-size: 15px;
+            color: var(--ink);
+            letter-spacing: 0;
+            display: block;
+        }
+        td .mfg {
+            font-size: 12px;
+            color: var(--ink-mute);
+            margin-top: 2px;
+            letter-spacing: 0.02em;
+        }
+        td .protocol {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-family: var(--type-mono);
+            font-size: 12.5px;
+            color: var(--ink);
+        }
+        td .protocol .pict { width: 14px; height: 14px; color: var(--brass); }
+        td .encoder {
+            font-family: var(--type-mono);
+            font-size: 12.5px;
+            color: var(--ink-soft);
+        }
+        td .pn-row {
+            display: grid;
+            grid-template-columns: 28px 1fr;
+            gap: 12px;
+            align-items: center;
+        }
+        td .pn-row .pict { width: 22px; height: 22px; color: var(--ink-mute); }
+
+        .pagination {
+            margin-top: 28px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-family: var(--type-mono);
+            font-size: 12px;
+            color: var(--ink-mute);
+        }
+        .pagination .nav {
+            display: flex;
+            gap: 8px;
+        }
+        .pagination button {
+            font: inherit;
+            font-family: var(--type-mono);
+            font-size: 12px;
+            background: transparent;
+            border: 0;
+            padding: 6px 14px;
+            color: var(--ink-soft);
+            cursor: pointer;
+            border-radius: 999px;
+            transition: background 100ms, color 100ms;
+        }
+        .pagination button:hover { background: var(--paper-warm); color: var(--ink); }
+        .pagination button.is-current {
+            background: var(--ink);
+            color: var(--paper);
+        }
+
+        .footer {
+            margin: 80px auto 32px;
+            max-width: 1480px;
+            padding: 0 var(--pad-x);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            color: var(--ink-mute);
+        }
+        .footer .left { display: flex; align-items: center; gap: 12px; }
+        .footer .left .pict { width: 20px; height: 20px; color: var(--brass); }
+
+        @media (max-width: 1100px) {
+            .layout { grid-template-columns: 1fr; gap: 40px; }
+            aside.rail { position: static; }
+            .stat-row { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+    <header class="top">
+        <div class="top-inner">
+            <a href="./index.html" class="brand">
+                <svg class="pict pict-mark" viewBox="0 0 36 36" aria-hidden="true">
+                    <rect class="fill" x="4" y="4" width="28" height="28"/>
+                    <rect x="10" y="10" width="16" height="16" stroke="#EFE9D1" stroke-width="2"/>
+                    <line x1="10" y1="18" x2="26" y2="18" stroke="#EFE9D1" stroke-width="2"/>
+                </svg>
+                <div class="brand-name">SPECODEX</div>
+            </a>
+            <nav class="primary">
+                <a href="#" class="active">Catalog</a>
+                <a href="#">Build</a>
+                <a href="#">Projects</a>
+                <a href="#">Datasheets</a>
+                <a href="#">Admin</a>
+            </nav>
+            <div class="top-tools">
+                <button class="icon-btn" type="button" aria-label="Density">
+                    <svg class="pict" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                        <line x1="4" y1="7" x2="20" y2="7"/>
+                        <line x1="4" y1="12" x2="20" y2="12"/>
+                        <line x1="4" y1="17" x2="20" y2="17"/>
+                    </svg>
+                </button>
+                <button class="icon-btn is-on" type="button" aria-label="Units">
+                    <svg class="pict" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                        <polyline points="4,16 9,11 13,15 20,8"/>
+                        <line x1="4" y1="20" x2="20" y2="20"/>
+                    </svg>
+                </button>
+                <button class="icon-btn" type="button" aria-label="Theme">
+                    <svg class="pict" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                        <circle cx="12" cy="12" r="5"/>
+                        <line x1="12" y1="2" x2="12" y2="5"/>
+                        <line x1="12" y1="19" x2="12" y2="22"/>
+                        <line x1="2" y1="12" x2="5" y2="12"/>
+                        <line x1="19" y1="12" x2="22" y2="12"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <div class="layout">
+        <aside class="rail" aria-label="Filters">
+            <div class="rail-group">
+                <div class="rail-label">Product Type</div>
+                <ul class="type-list">
+                    <li><a href="#" class="is-active">
+                        <svg class="pict" viewBox="0 0 24 24" aria-hidden="true">
+                            <rect x="4" y="6" width="16" height="14"/>
+                            <line x1="8" y1="3" x2="8" y2="6"/>
+                            <line x1="12" y1="3" x2="12" y2="6"/>
+                            <line x1="16" y1="3" x2="16" y2="6"/>
+                            <line x1="7" y1="13" x2="11" y2="13"/>
+                            <line x1="13" y1="13" x2="17" y2="13"/>
+                            <line x1="7" y1="17" x2="17" y2="17"/>
+                        </svg>
+                        <span class="label">Drive</span>
+                        <span class="count">6,108</span>
+                    </a></li>
+                    <li><a href="#">
+                        <svg class="pict" viewBox="0 0 24 24" aria-hidden="true">
+                            <rect x="5" y="9" width="11" height="6"/>
+                            <line x1="16" y1="12" x2="21" y2="12"/>
+                            <circle cx="9" cy="12" r="1.6" class="fill"/>
+                        </svg>
+                        <span class="label">Motor</span>
+                        <span class="count">14,220</span>
+                    </a></li>
+                    <li><a href="#">
+                        <svg class="pict" viewBox="0 0 24 24" aria-hidden="true">
+                            <circle cx="9" cy="12" r="4"/>
+                            <circle cx="17" cy="12" r="3"/>
+                            <line x1="9" y1="6" x2="9" y2="8"/>
+                            <line x1="9" y1="16" x2="9" y2="18"/>
+                            <line x1="3" y1="12" x2="5" y2="12"/>
+                            <line x1="17" y1="7" x2="17" y2="9"/>
+                            <line x1="17" y1="15" x2="17" y2="17"/>
+                        </svg>
+                        <span class="label">Gearhead</span>
+                        <span class="count">2,941</span>
+                    </a></li>
+                    <li><a href="#">
+                        <svg class="pict" viewBox="0 0 24 24" aria-hidden="true">
+                            <circle cx="6" cy="18" r="2"/>
+                            <line x1="6" y1="18" x2="11" y2="11"/>
+                            <circle cx="12" cy="10" r="2"/>
+                            <line x1="13" y1="9" x2="18" y2="6"/>
+                            <rect x="17" y="3" width="3" height="4"/>
+                        </svg>
+                        <span class="label">Robot Arm</span>
+                        <span class="count">187</span>
+                    </a></li>
+                    <li><a href="#">
+                        <svg class="pict" viewBox="0 0 24 24" aria-hidden="true">
+                            <line x1="4" y1="8" x2="11" y2="8"/>
+                            <line x1="11" y1="8" x2="14" y2="14"/>
+                            <line x1="14" y1="14" x2="20" y2="14"/>
+                            <line x1="4" y1="20" x2="20" y2="20"/>
+                            <circle cx="6" cy="4" r="1.5" class="fill"/>
+                            <circle cx="18" cy="4" r="1.5" class="fill"/>
+                        </svg>
+                        <span class="label">Contactor</span>
+                        <span class="count">4,612</span>
+                    </a></li>
+                    <li><a href="#">
+                        <svg class="pict" viewBox="0 0 24 24" aria-hidden="true">
+                            <rect x="4" y="8" width="11" height="8"/>
+                            <line x1="15" y1="12" x2="21" y2="12"/>
+                            <line x1="19" y1="10" x2="21" y2="12"/>
+                            <line x1="19" y1="14" x2="21" y2="12"/>
+                        </svg>
+                        <span class="label">Electric Cylinder</span>
+                        <span class="count">803</span>
+                    </a></li>
+                </ul>
+            </div>
+
+            <div class="rail-group">
+                <div class="rail-label">Active Filters</div>
+                <div class="filter-stack">
+                    <div class="filter-block">
+                        <svg class="pict" viewBox="0 0 24 24" aria-hidden="true">
+                            <polyline points="11,3 5,13 11,13 9,21 19,9 13,9 15,3" />
+                        </svg>
+                        <div class="body">
+                            <div class="label">Rated Voltage</div>
+                            <div class="value"><span><span class="op">≥</span>&nbsp;200&nbsp;V</span><button class="close" aria-label="Remove">×</button></div>
+                        </div>
+                    </div>
+                    <div class="filter-block">
+                        <svg class="pict" viewBox="0 0 24 24" aria-hidden="true">
+                            <rect x="6" y="4" width="12" height="16"/>
+                            <line x1="9" y1="9" x2="15" y2="9"/>
+                            <line x1="9" y1="13" x2="15" y2="13"/>
+                            <line x1="9" y1="17" x2="13" y2="17"/>
+                        </svg>
+                        <div class="body">
+                            <div class="label">Rated Power</div>
+                            <div class="value"><span><span class="op">≤</span>&nbsp;5&nbsp;kW</span><button class="close" aria-label="Remove">×</button></div>
+                        </div>
+                    </div>
+                    <div class="filter-block">
+                        <svg class="pict" viewBox="0 0 24 24" aria-hidden="true">
+                            <line x1="3" y1="8" x2="21" y2="8"/>
+                            <line x1="3" y1="12" x2="21" y2="12"/>
+                            <line x1="3" y1="16" x2="21" y2="16"/>
+                            <circle cx="6" cy="8" r="1.6" class="fill"/>
+                            <circle cx="14" cy="12" r="1.6" class="fill"/>
+                            <circle cx="18" cy="16" r="1.6" class="fill"/>
+                        </svg>
+                        <div class="body">
+                            <div class="label">Protocol</div>
+                            <div class="value"><span><span class="op">IN</span>&nbsp;3 of 12</span><button class="close" aria-label="Remove">×</button></div>
+                        </div>
+                    </div>
+                </div>
+                <button class="add-filter" type="button">+ Add filter</button>
+            </div>
+
+            <div class="rail-group">
+                <div class="rail-label">Manufacturer</div>
+                <div class="filter-stack">
+                    <div class="filter-block">
+                        <svg class="pict" viewBox="0 0 24 24" aria-hidden="true">
+                            <rect x="3" y="8" width="6" height="12"/>
+                            <rect x="9" y="4" width="6" height="16"/>
+                            <rect x="15" y="11" width="6" height="9"/>
+                        </svg>
+                        <div class="body">
+                            <div class="label">Suppliers</div>
+                            <div class="value"><span>12 selected</span><button class="close" aria-label="Remove">×</button></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <main class="content">
+            <div class="content-head">
+                <div>
+                    <div class="content-eyebrow">
+                        <svg class="pict" viewBox="0 0 16 16" aria-hidden="true">
+                            <rect x="2" y="3" width="12" height="10"/>
+                            <line x1="5" y1="1" x2="5" y2="3"/>
+                            <line x1="11" y1="1" x2="11" y2="3"/>
+                            <line x1="5" y1="8" x2="11" y2="8"/>
+                        </svg>
+                        Catalog · Drive
+                    </div>
+                    <h1 class="content-title">Servo drives, 200&nbsp;V class</h1>
+                    <p class="content-sub">Three-phase AC servo drives filtered to ≤ 5 kW continuous and one of three industrial fieldbuses. Ordered by rated power, ascending.</p>
+                </div>
+                <div class="results-meta">
+                    matching<br>
+                    <strong>142</strong>
+                    of 6,108
+                </div>
+            </div>
+
+            <div class="stat-row">
+                <div class="stat-cell">
+                    <svg class="pict" viewBox="0 0 24 24" aria-hidden="true">
+                        <polyline points="11,3 5,13 11,13 9,21 19,9 13,9 15,3"/>
+                    </svg>
+                    <div>
+                        <div class="lbl">Voltage range</div>
+                        <div class="val">200<span class="unit">– 400 V</span></div>
+                    </div>
+                </div>
+                <div class="stat-cell">
+                    <svg class="pict" viewBox="0 0 24 24" aria-hidden="true">
+                        <rect x="6" y="4" width="12" height="16"/>
+                        <line x1="9" y1="9" x2="15" y2="9"/>
+                        <line x1="9" y1="13" x2="15" y2="13"/>
+                        <line x1="9" y1="17" x2="13" y2="17"/>
+                    </svg>
+                    <div>
+                        <div class="lbl">Median power</div>
+                        <div class="val">1.5<span class="unit">kW</span></div>
+                    </div>
+                </div>
+                <div class="stat-cell">
+                    <svg class="pict" viewBox="0 0 24 24" aria-hidden="true">
+                        <circle cx="12" cy="12" r="7"/>
+                        <circle cx="12" cy="12" r="2" class="fill"/>
+                        <line x1="12" y1="3" x2="12" y2="5"/>
+                        <line x1="12" y1="19" x2="12" y2="21"/>
+                        <line x1="3" y1="12" x2="5" y2="12"/>
+                        <line x1="19" y1="12" x2="21" y2="12"/>
+                    </svg>
+                    <div>
+                        <div class="lbl">Encoder kinds</div>
+                        <div class="val">7</div>
+                    </div>
+                </div>
+                <div class="stat-cell">
+                    <svg class="pict" viewBox="0 0 24 24" aria-hidden="true">
+                        <line x1="3" y1="8" x2="21" y2="8"/>
+                        <line x1="3" y1="12" x2="21" y2="12"/>
+                        <line x1="3" y1="16" x2="21" y2="16"/>
+                        <circle cx="6" cy="8" r="1.6" class="fill"/>
+                        <circle cx="14" cy="12" r="1.6" class="fill"/>
+                        <circle cx="18" cy="16" r="1.6" class="fill"/>
+                    </svg>
+                    <div>
+                        <div class="lbl">Protocols</div>
+                        <div class="val">9</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="results-card">
+                <table class="results">
+                    <thead>
+                        <tr>
+                            <th>Part / Manufacturer</th>
+                            <th class="is-numeric">
+                                <span class="col-icon">
+                                    <svg class="pict" viewBox="0 0 24 24" aria-hidden="true"><polyline points="11,3 5,13 11,13 9,21 19,9 13,9 15,3"/></svg>
+                                    Voltage&nbsp;<small>V</small>
+                                </span>
+                            </th>
+                            <th class="is-numeric">Current&nbsp;<small>A</small></th>
+                            <th class="is-numeric">Power&nbsp;<small>kW</small></th>
+                            <th>Encoder</th>
+                            <th>Protocol</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><div class="pn-row">
+                                <svg class="pict" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="6" width="16" height="14"/><line x1="8" y1="3" x2="8" y2="6"/><line x1="12" y1="3" x2="12" y2="6"/><line x1="16" y1="3" x2="16" y2="6"/></svg>
+                                <div><span class="pn">MR-J5-100B</span><span class="mfg">Mitsubishi Electric</span></div>
+                            </div></td>
+                            <td class="is-numeric">200</td>
+                            <td class="is-numeric">7.5</td>
+                            <td class="is-numeric">1.00</td>
+                            <td><span class="encoder">Absolute 26-bit</span></td>
+                            <td><span class="protocol"><svg class="pict" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="3" class="fill"/></svg>SSCNET&nbsp;III/H</span></td>
+                        </tr>
+                        <tr>
+                            <td><div class="pn-row">
+                                <svg class="pict" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="6" width="16" height="14"/><line x1="8" y1="3" x2="8" y2="6"/><line x1="12" y1="3" x2="12" y2="6"/><line x1="16" y1="3" x2="16" y2="6"/></svg>
+                                <div><span class="pn">MR-J5-200B</span><span class="mfg">Mitsubishi Electric</span></div>
+                            </div></td>
+                            <td class="is-numeric">200</td>
+                            <td class="is-numeric">11.0</td>
+                            <td class="is-numeric">2.00</td>
+                            <td><span class="encoder">Absolute 26-bit</span></td>
+                            <td><span class="protocol"><svg class="pict" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="3" class="fill"/></svg>SSCNET&nbsp;III/H</span></td>
+                        </tr>
+                        <tr>
+                            <td><div class="pn-row">
+                                <svg class="pict" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="6" width="16" height="14"/><line x1="8" y1="3" x2="8" y2="6"/><line x1="12" y1="3" x2="12" y2="6"/><line x1="16" y1="3" x2="16" y2="6"/></svg>
+                                <div><span class="pn">R88D-1SN02H-ECT</span><span class="mfg">Omron</span></div>
+                            </div></td>
+                            <td class="is-numeric">200</td>
+                            <td class="is-numeric">1.6</td>
+                            <td class="is-numeric">0.20</td>
+                            <td><span class="encoder">Incremental</span></td>
+                            <td><span class="protocol"><svg class="pict" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="3" class="fill"/></svg>EtherCAT</span></td>
+                        </tr>
+                        <tr>
+                            <td><div class="pn-row">
+                                <svg class="pict" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="6" width="16" height="14"/><line x1="8" y1="3" x2="8" y2="6"/><line x1="12" y1="3" x2="12" y2="6"/><line x1="16" y1="3" x2="16" y2="6"/></svg>
+                                <div><span class="pn">R88D-1SN08H-ECT</span><span class="mfg">Omron</span></div>
+                            </div></td>
+                            <td class="is-numeric">200</td>
+                            <td class="is-numeric">5.5</td>
+                            <td class="is-numeric">0.75</td>
+                            <td><span class="encoder">Incremental</span></td>
+                            <td><span class="protocol"><svg class="pict" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="3" class="fill"/></svg>EtherCAT</span></td>
+                        </tr>
+                        <tr>
+                            <td><div class="pn-row">
+                                <svg class="pict" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="6" width="16" height="14"/><line x1="8" y1="3" x2="8" y2="6"/><line x1="12" y1="3" x2="12" y2="6"/><line x1="16" y1="3" x2="16" y2="6"/></svg>
+                                <div><span class="pn">SGD7S-200A</span><span class="mfg">Yaskawa</span></div>
+                            </div></td>
+                            <td class="is-numeric">200</td>
+                            <td class="is-numeric">11.6</td>
+                            <td class="is-numeric">2.00</td>
+                            <td><span class="encoder">Serial 24-bit</span></td>
+                            <td><span class="protocol"><svg class="pict" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="3" class="fill"/></svg>MECHATROLINK-III</span></td>
+                        </tr>
+                        <tr>
+                            <td><div class="pn-row">
+                                <svg class="pict" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="6" width="16" height="14"/><line x1="8" y1="3" x2="8" y2="6"/><line x1="12" y1="3" x2="12" y2="6"/><line x1="16" y1="3" x2="16" y2="6"/></svg>
+                                <div><span class="pn">2198-S086-ERS4</span><span class="mfg">Allen-Bradley</span></div>
+                            </div></td>
+                            <td class="is-numeric">230</td>
+                            <td class="is-numeric">6.5</td>
+                            <td class="is-numeric">1.50</td>
+                            <td><span class="encoder">DSL Hiperface</span></td>
+                            <td><span class="protocol"><svg class="pict" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="3" class="fill"/></svg>EtherNet/IP</span></td>
+                        </tr>
+                        <tr>
+                            <td><div class="pn-row">
+                                <svg class="pict" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="6" width="16" height="14"/><line x1="8" y1="3" x2="8" y2="6"/><line x1="12" y1="3" x2="12" y2="6"/><line x1="16" y1="3" x2="16" y2="6"/></svg>
+                                <div><span class="pn">8EI4X5HWS10.0200-1</span><span class="mfg">B&amp;R Automation</span></div>
+                            </div></td>
+                            <td class="is-numeric">400</td>
+                            <td class="is-numeric">9.5</td>
+                            <td class="is-numeric">4.50</td>
+                            <td><span class="encoder">EnDat 2.2</span></td>
+                            <td><span class="protocol"><svg class="pict" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="3" class="fill"/></svg>POWERLINK</span></td>
+                        </tr>
+                        <tr>
+                            <td><div class="pn-row">
+                                <svg class="pict" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="6" width="16" height="14"/><line x1="8" y1="3" x2="8" y2="6"/><line x1="12" y1="3" x2="12" y2="6"/><line x1="16" y1="3" x2="16" y2="6"/></svg>
+                                <div><span class="pn">LXM32MU60M2</span><span class="mfg">Schneider Electric</span></div>
+                            </div></td>
+                            <td class="is-numeric">230</td>
+                            <td class="is-numeric">6.0</td>
+                            <td class="is-numeric">1.50</td>
+                            <td><span class="encoder">SinCos</span></td>
+                            <td><span class="protocol"><svg class="pict" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="3" class="fill"/></svg>EtherCAT</span></td>
+                        </tr>
+                        <tr>
+                            <td><div class="pn-row">
+                                <svg class="pict" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="6" width="16" height="14"/><line x1="8" y1="3" x2="8" y2="6"/><line x1="12" y1="3" x2="12" y2="6"/><line x1="16" y1="3" x2="16" y2="6"/></svg>
+                                <div><span class="pn">6SL3210-5FE11-0UA0</span><span class="mfg">Siemens</span></div>
+                            </div></td>
+                            <td class="is-numeric">230</td>
+                            <td class="is-numeric">4.7</td>
+                            <td class="is-numeric">1.00</td>
+                            <td><span class="encoder">Incremental</span></td>
+                            <td><span class="protocol"><svg class="pict" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="3" class="fill"/></svg>PROFINET</span></td>
+                        </tr>
+                        <tr>
+                            <td><div class="pn-row">
+                                <svg class="pict" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="6" width="16" height="14"/><line x1="8" y1="3" x2="8" y2="6"/><line x1="12" y1="3" x2="12" y2="6"/><line x1="16" y1="3" x2="16" y2="6"/></svg>
+                                <div><span class="pn">HCS01.1E-W0013</span><span class="mfg">Bosch Rexroth</span></div>
+                            </div></td>
+                            <td class="is-numeric">400</td>
+                            <td class="is-numeric">16.0</td>
+                            <td class="is-numeric">7.50</td>
+                            <td><span class="encoder">HIPERFACE</span></td>
+                            <td><span class="protocol"><svg class="pict" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="3" class="fill"/></svg>sercos&nbsp;III</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="pagination">
+                <div>Showing 1 – 10 of 142</div>
+                <div class="nav">
+                    <button>‹</button>
+                    <button class="is-current">1</button>
+                    <button>2</button>
+                    <button>3</button>
+                    <button>…</button>
+                    <button>15</button>
+                    <button>›</button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <footer class="footer">
+        <div class="left">
+            <svg class="pict" viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="4" y="4" width="16" height="16"/>
+                <line x1="4" y1="12" x2="20" y2="12"/>
+                <line x1="12" y1="4" x2="12" y2="20"/>
+            </svg>
+            Design Lab · Direction 02 · Aicher Manual
+        </div>
+        <a href="./index.html">← back to design lab</a>
+    </footer>
+</body>
+</html>
