@@ -111,14 +111,14 @@ After touching the five files above, run this loop locally before pushing. Skipp
 
 1. **Pre-push gate.** `./Quickstart verify` runs the same lint + tests + build that CI runs (Python ruff + pytest, backend lint + jest + tsc, frontend lint + vitest + tsc + vite). Green here means CI will be green; red here is your problem to fix before pushing. A missing `common.py` patch fails the Python pytest stage; a forgotten `gen-types` run fails the `test-codegen` drift gate; a missing backend or frontend interface fails the TypeScript build stage.
 2. **Seed at least one record.** Drop a PDF in `tests/benchmark/datasheets/`, add a fixture entry, and run `./Quickstart bench --live --update-cache --filter <slug>` — the extraction path writes nothing to DynamoDB but validates the model end-to-end. To actually populate dev DynamoDB, point `./Quickstart process` at a local S3 upload (see "Processing the upload queue" in `cli/processor.py`).
-3. **Start dev servers** with `./Quickstart dev` (backend: `localhost:3001`, frontend Vite: `localhost:5173`).
+3. **Start dev servers** with `./Quickstart dev` (backend: `localhost:3001`, frontend Vite: `localhost:3000`).
 4. **Verify API surface:**
 
         curl -s localhost:3001/api/products/categories | jq '.data[].type'       # new type listed
         curl -s "localhost:3001/api/v1/search?type=<new>" | jq '.success'         # returns true (not 400)
 
    If `categories` omits the type or `search` 400s, `./Quickstart gen-types` wasn't run (step 3) — `VALID_PRODUCT_TYPES` and the search Zod enum both derive from the generated artifact.
-5. **UI check.** Load `http://localhost:5173`, select the new type in the sidebar dropdown, confirm filter chips and table columns render. Missing frontend `ProductType` entry manifests as "type is not assignable" at compile time OR as the type silently filtered out by `deriveAttributesFromRecords`.
+5. **UI check.** Load `http://localhost:3000`, select the new type in the sidebar dropdown, confirm filter chips and table columns render. Missing frontend `ProductType` entry manifests as "type is not assignable" at compile time OR as the type silently filtered out by `deriveAttributesFromRecords`.
 
 ## Frontend UI conventions
 
