@@ -830,7 +830,7 @@ body {
   justify-content: flex-end;
   padding-top: 8rem;
   padding-right: 2rem;
-  z-index: 1000;
+  z-index: var(--z-modal);
   animation: fadeIn 0.15s ease-out;
 }
 
@@ -1195,7 +1195,7 @@ button.secondary:hover {
     -8px 0 24px var(--shadow-md),
     -4px 0 12px var(--shadow-sm),
     inset 1px 0 0 rgba(255, 255, 255, 0.1);
-  z-index: 10;
+  z-index: var(--z-toolbar);
 }
 
 /* Left main area for results */
@@ -1903,7 +1903,7 @@ button.secondary:hover {
   box-shadow: 0 4px 16px var(--shadow-lg);
   max-height: 180px;
   overflow-y: auto;
-  z-index: 9999;
+  z-index: var(--z-popover);
   animation: dropdownSlideIn 0.15s ease-out;
 }
 
@@ -3140,7 +3140,7 @@ button.secondary:hover {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 2000;
+  z-index: var(--z-modal);
   animation: fadeIn 0.2s ease-out;
 }
 
@@ -4686,7 +4686,7 @@ hr::after {
   border: 1px solid var(--border-color);
   border-radius: 6px;
   box-shadow: 0 8px 24px var(--shadow-xl);
-  z-index: 1000;
+  z-index: var(--z-popover);
   padding: 0.5rem 0;
   display: flex;
   flex-direction: column;
@@ -5151,7 +5151,7 @@ hr::after {
   bottom: 0;
   left: 0;
   right: 0;
-  z-index: 50;
+  z-index: var(--z-toolbar);
   background: var(--bg-secondary);
   border-top: 2px solid var(--accent-primary);
   padding: 0.35rem 0.6rem;
@@ -5324,7 +5324,7 @@ hr::after {
   align-items: flex-start;
   justify-content: center;
   padding: 4rem 1rem 1rem;
-  z-index: 100;
+  z-index: var(--z-modal);
 }
 
 .chain-review-modal {
@@ -6199,7 +6199,7 @@ input.transmission-param-input {
   border-radius: 2px;
   box-shadow: 0 6px 18px var(--shadow-lg);
   overflow-y: auto;
-  z-index: 10000;
+  z-index: var(--z-popover);
   font-family: var(--font-mono);
   animation: customDropdownIn 0.12s ease-out;
 }
@@ -6313,7 +6313,7 @@ input.transmission-param-input {
   background: var(--bg-primary);
   border: 1px solid var(--border);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
-  z-index: 30;
+  z-index: var(--z-popover);
 }
 .account-menu-dropdown-header {
   padding: 0.6rem 0.8rem;
@@ -6339,7 +6339,7 @@ input.transmission-param-input {
 .auth-modal-overlay {
   position: fixed;
   inset: 0;
-  z-index: 100;
+  z-index: var(--z-modal);
   background: rgba(0, 0, 0, 0.55);
   display: flex;
   align-items: center;
@@ -7212,7 +7212,7 @@ input.transmission-param-input {
   padding: 6px 9px;
   max-width: 280px;
   box-shadow: 0 4px 12px var(--shadow-md);
-  z-index: 1100;
+  z-index: var(--z-popover);
   /* The component sets pointerEvents:none inline so the tooltip never
    * intercepts the cursor; this rule just nails the visual contract. */
 }
@@ -7236,7 +7236,7 @@ input.transmission-param-input {
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md, 8px);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.32);
-  z-index: 1000;
+  z-index: var(--z-popover);
   display: flex;
   flex-direction: column;
   font-family: var(--font-mono, monospace);
