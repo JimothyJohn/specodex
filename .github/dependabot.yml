@@ -34,6 +34,15 @@ updates:
         exclude-patterns:
           - "eslint-plugin-react-refresh"
           - "esbuild"
+    ignore:
+      # uuid v12+ is ESM-only; app/backend/'s jest (ts-jest CJS, no
+      # transformIgnorePatterns) can't load it without a real ESM
+      # migration — and app/backend/ is slated for deletion in
+      # todo/PYTHON_BACKEND.md Phase 3. Hold on 11.x until that lands;
+      # remove this entry as part of the Phase 3 cleanup. See PR #147
+      # (closed 2026-05-12) for the diagnosis.
+      - dependency-name: "uuid"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "github-actions"
     directory: "/"
