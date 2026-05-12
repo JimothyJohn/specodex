@@ -13,6 +13,7 @@
 
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import type { JSX } from 'react';
 import ErrorBoundary from './ErrorBoundary';
 
 function Boom({ message = 'kapow' }: { message?: string }): JSX.Element {
