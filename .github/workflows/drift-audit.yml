@@ -1,0 +1,116 @@
+name: DB drift audit
+
+# Weekly Monday 16:00 UTC (11:00 Chicago CDT / 10:00 CST). Read-only:
+# scans the products-dev DynamoDB table and tabulates per-field hit
+# rates (audit_fields) + duplicate-row review queue (audit_dedupes,
+# without --apply). Both scripts default to --stage dev so prod data
+# never enters the runner. Resolves issue #152.
+#
+# Replaces the claude.ai-cloud routine (trig_017chQwVWhzpXAJCB2NpLrYH)
+# that couldn't reach AWS — see reference_maintenance_routines memory.
+on:
+  schedule:
+    - cron: "0 16 * * 1"   # Monday 16:00 UTC
+  workflow_dispatch:
+    inputs:
+      stage:
+        description: "Stage to audit (dev only — prod scan needs an IAM widen)"
+        required: false
+        default: "dev"
+        type: choice
+        options:
+          - dev
+
+# OIDC: assume gh-deploy-datasheetminer. The CdkDeploy inline policy
+# needs an additional `dynamodb:Scan` + `dynamodb:DescribeTable`
+# statement on products-dev — see PR body for the put-role-policy
+# command. Without it, the job fails fast on NoCredentialsError /
+# AccessDeniedException.
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AWS_REGION: us-east-1
+
+concurrency:
+  group: drift-audit
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    name: Run audits
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: "latest"
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Install Python dependencies
+        run: uv sync --quiet
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6.1.1
+        with:
+          role-to-assume: arn:aws:iam::403059190476:role/gh-deploy-datasheetminer
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Resolve stage
+        id: stage
+        run: |
+          STAGE="${{ github.event.inputs.stage || 'dev' }}"
+          echo "stage=$STAGE" >> "$GITHUB_OUTPUT"
+          echo "Auditing stage: $STAGE"
+
+      - name: audit_fields (per-field hit rate)
+        env:
+          STAGE: ${{ steps.stage.outputs.stage }}
+        run: |
+          mkdir -p outputs
+          uv run python -m cli.audit_fields --stage "$STAGE" --quiet \
+            --output  outputs/audit_fields.json \
+            --md-output outputs/audit_fields.md
+
+      - name: audit_dedupes (duplicate review queue, read-only)
+        env:
+          STAGE: ${{ steps.stage.outputs.stage }}
+        run: |
+          uv run python -m cli.audit_dedupes --stage "$STAGE" --quiet \
+            --output outputs/dedupe_audit.json \
+            --review-output outputs/dedupe_review.md
+
+      - name: Render step summary
+        run: |
+          {
+            echo "## DB drift audit — \`${{ steps.stage.outputs.stage }}\`"
+            echo
+            echo "<details><summary>audit_fields.md</summary>"
+            echo
+            cat outputs/audit_fields.md
+            echo
+            echo "</details>"
+            echo
+            echo "<details><summary>dedupe_review.md</summary>"
+            echo
+            cat outputs/dedupe_review.md
+            echo
+            echo "</details>"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload audit artifacts
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: drift-audit-${{ steps.stage.outputs.stage }}
+          path: |
+            outputs/audit_fields.json
+            outputs/audit_fields.md
+            outputs/dedupe_audit.json
+            outputs/dedupe_review.md
+          retention-days: 90
