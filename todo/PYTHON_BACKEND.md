@@ -244,6 +244,11 @@ fallback for one release cycle.
 4. Update `./Quickstart verify` to drop the `backend` stage.
 5. Update `.github/workflows/ci.yml` to drop the `backend` job.
 6. Remove every `app/backend` reference from `CLAUDE.md`.
+7. Drop the `uuid` ignore from `.github/dependabot.yml`. Added because
+   uuid v14 is ESM-only and the Express jest setup (ts-jest CJS, no
+   `transformIgnorePatterns`) couldn't load it; once Express is gone
+   the constraint expires. See PR #147 (closed 2026-05-12) for the
+   diagnosis.
 
 ### 3.2 Exit criteria
 
