@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Specodex PR #136 — three design directions for refining the field-manual UI without losing its personality.">
+    <meta name="theme-color" content="#3A2C1C">
+    <title>Specodex — PR #136: Three design directions</title>
+    <link rel="icon" type="image/svg+xml" href="../logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .dir-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1rem;
+            margin: 1.5rem 0;
+        }
+        .dir-thumb {
+            display: block;
+            border: 1px solid var(--ink, #1A1A14);
+            text-decoration: none;
+            color: inherit;
+            background: #f4eed8;
+        }
+        .dir-thumb img {
+            display: block;
+            width: 100%;
+            aspect-ratio: 16 / 10;
+            object-fit: cover;
+            object-position: top center;
+            border-bottom: 1px solid var(--ink, #1A1A14);
+        }
+        .dir-thumb-caption {
+            padding: 0.65rem 0.9rem;
+            font-family: 'Oswald', sans-serif;
+            font-weight: 600;
+            font-size: 0.85rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+        }
+        .dir-thumb-caption .num {
+            color: var(--stencil, #A88A1C);
+            font-size: 0.7rem;
+        }
+    </style>
+</head>
+<body data-issue="PR-136">
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="band">
+        <div class="band-inner">
+            <a class="band-brand" href="../index.html">
+                <svg class="band-mark" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <rect width="120" height="120" fill="#E8E2C9"/>
+                    <rect x="14" y="14" width="92" height="92" fill="none" stroke="#1A1A14" stroke-width="3"/>
+                    <rect x="14" y="14" width="92" height="22" fill="#3A2C1C"/>
+                    <rect x="62" y="60" width="40" height="10" fill="#A88A1C"/>
+                    <line x1="14" y1="56" x2="106" y2="56" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="74" x2="106" y2="74" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="92" x2="106" y2="92" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="60" y1="36" x2="60" y2="106" stroke="#1A1A14" stroke-width="2"/>
+                </svg>
+                <span class="wordmark">SPECODEX</span>
+            </a>
+            <nav class="band-nav" aria-label="Section">
+                <a href="../index.html">Catalog</a>
+                <a href="./" class="active">Pull Requests</a>
+                <a href="../design/">Design Lab</a>
+                <a href="https://github.com/JimothyJohn/specodex" rel="noreferrer">GitHub</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="hero-tag">▮▮▮ PULL REQUEST #136 ▮▮▮</div>
+            <h1 class="hero-title">Three design directions for the UI refresh.</h1>
+            <p class="hero-sub">
+                The product UI is janky — rigid <code>380px</code>
+                sidebars, ellipsis-clipped filter chips, eight different
+                z-index values, <code>!important</code> patches — but
+                the field-manual aesthetic itself is correct. Before
+                propagating a fix into the React app, this PR ships
+                three standalone HTML directions that render the same
+                mocked drives table three different ways. Lock the
+                direction in one round, port to React in the next.
+            </p>
+            <dl class="pr-meta">
+                <div><dt>Branch</dt><dd><code>design/three-direction-exploration-20260510</code></dd></div>
+                <div><dt>Opened</dt><dd>2026-05-10 (DRAFT)</dd></div>
+                <div><dt>Diff</dt><dd>+2,698 across 8 files</dd></div>
+                <div><dt>Surface</dt><dd>Static docs site only — no React-app change</dd></div>
+                <div><dt>Type</dt><dd>Design exploration</dd></div>
+            </dl>
+            <div class="cta-row">
+                <a class="cta cta-primary" href="https://github.com/JimothyJohn/specodex/pull/136" rel="noreferrer">View on GitHub →</a>
+                <a class="cta cta-ghost" href="../design/">Open the design lab →</a>
+            </div>
+        </section>
+
+        <section aria-label="The three directions">
+            <div class="divider"><span>▮▮▮ THE THREE DIRECTIONS ▮▮▮</span></div>
+            <div class="dir-grid">
+                <a class="dir-thumb" href="../design/bauhaus-catalog.html">
+                    <img src="../design/img/bauhaus.jpg" alt="Bauhaus catalog preview">
+                    <div class="dir-thumb-caption">
+                        <span>Bauhaus Catalog</span>
+                        <span class="num">DIR 01</span>
+                    </div>
+                </a>
+                <a class="dir-thumb" href="../design/aicher-manual.html">
+                    <img src="../design/img/aicher.jpg" alt="Aicher manual preview">
+                    <div class="dir-thumb-caption">
+                        <span>Aicher Manual</span>
+                        <span class="num">DIR 02</span>
+                    </div>
+                </a>
+                <a class="dir-thumb" href="../design/vignelli-transit.html">
+                    <img src="../design/img/vignelli.jpg" alt="Vignelli transit preview">
+                    <div class="dir-thumb-caption">
+                        <span>Vignelli Transit</span>
+                        <span class="num">DIR 03</span>
+                    </div>
+                </a>
+            </div>
+            <ul class="prose">
+                <li><strong>DIR 01 — Bauhaus Catalog.</strong> Strict 12-column grid, hairline rules, ALL-CAPS section labels, geometric markers (triangle / square / circle) pulled through the brass-and-stamp palette. Subtle graph-paper background the content actually aligns to. Closest in spirit to the current React app — sharper edges, fewer surprises.</li>
+                <li><strong>DIR 02 — Aicher Manual.</strong> Otl Aicher's 1972 Munich aesthetic. Pictogram-led left rail (one inline SVG icon per product type and per metric), wide gutters, no visible rules — separation is by negative space and gentle zebra striping. Density via icons, not labels. Most distinct departure; would need an icon library investment.</li>
+                <li><strong>DIR 03 — Vignelli Transit.</strong> Vignelli's NYC subway diagrams meet a Knoll catalog. Heavy 3-6px rule weights between sections, oversized Archivo Black numerals (<code>6.1k</code>, <code>14k</code>, <code>142</code>) as the visual hierarchy, one bold accent color, tight tracking on every header. Loudest of the three; most memorable.</li>
+            </ul>
+        </section>
+
+        <section aria-label="What stays constant">
+            <div class="divider"><span>▮▮▮ WHAT STAYS CONSTANT ▮▮▮</span></div>
+            <ul class="prose">
+                <li><strong>Palette</strong> across all three: paper <code>#E8E2C9</code>, ink <code>#1A1A14</code>, OD <code>#3A2C1C</code>, brass <code>#866C25</code>, stamp red <code>#7A1F1F</code>. Already shared between docs and React app today.</li>
+                <li><strong>Type stack</strong>: Oswald (display) + IBM Plex Mono (body). Each direction adds at most <em>one</em> supporting family for its signature element — Archivo Black for Vignelli's numerals, IBM Plex Sans for Aicher's UI labels. Bauhaus uses Oswald + Plex Mono only.</li>
+                <li><strong>Tabular numerals everywhere</strong>: every numeric column uses <code>font-variant-numeric: tabular-nums</code>. The "things don't line up" complaint in the current app is partly because some columns inherit proportional figures.</li>
+                <li><strong>The "no native chrome" rule</strong>: every primitive shown (filter chips, dropdowns, toolbars, popovers) renders without OS chrome — same constraint as <code>CLAUDE.md</code> today.</li>
+                <li><strong>Dark theme</strong>: not rendered. Derivable from the espresso variant the React app already has.</li>
+            </ul>
+        </section>
+
+        <section aria-label="Files touched">
+            <div class="divider"><span>▮▮▮ FILES TOUCHED ▮▮▮</span></div>
+            <table class="spec-table">
+                <thead><tr><th>File</th><th>Lines</th><th>Note</th></tr></thead>
+                <tbody>
+                    <tr><td><code>docs/design/index.html</code></td><td>+214</td><td>Landing page with thumbnail previews of each direction</td></tr>
+                    <tr><td><code>docs/design/bauhaus-catalog.html</code></td><td>+829</td><td>DIR 01 — strict grid, hairlines, geometric markers</td></tr>
+                    <tr><td><code>docs/design/aicher-manual.html</code></td><td>+877</td><td>DIR 02 — pictogram rail, wide space, no rules</td></tr>
+                    <tr><td><code>docs/design/vignelli-transit.html</code></td><td>+776</td><td>DIR 03 — heavy rules, oversized Archivo Black numerals</td></tr>
+                    <tr><td><code>docs/design/img/{bauhaus,aicher,vignelli}.jpg</code></td><td>+460&nbsp;KB</td><td>1200&nbsp;px-wide JPEG previews used by the lab index and this PR doc</td></tr>
+                    <tr><td><code>docs/index.html</code></td><td>+2</td><td>Band nav links to <code>DESIGN LAB</code></td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section aria-label="What this isn't">
+            <div class="divider"><span>▮▮▮ WHAT THIS ISN'T ▮▮▮</span></div>
+            <ul class="prose">
+                <li><strong>Not a React-app refactor.</strong> The actual product UI under <code>app/frontend/</code> is untouched. The plan: Nick picks a direction here, a follow-up PR ports the chosen direction's tokens, spacing, and primitives into the React app.</li>
+                <li><strong>Not exhaustive.</strong> Each direction shows one page — header + filter rail + stat block + 10-row results table + footer. Modal, build page, datasheet admin, and the projects views are deferred to the port PR.</li>
+                <li><strong>Not auto-mergeable.</strong> Draft on purpose. It's design work that needs a human eye, not a CI gate.</li>
+            </ul>
+        </section>
+
+        <section aria-label="How to review">
+            <div class="divider"><span>▮▮▮ HOW TO REVIEW ▮▮▮</span></div>
+            <ul class="prose">
+                <li><strong>Local.</strong> <code>cd docs && python3 -m http.server 8765</code>, then open <code>http://127.0.0.1:8765/design/</code>. Click into each direction. Three tabs side-by-side reads cleanly.</li>
+                <li><strong>Hosted (post-merge).</strong> GitHub Pages auto-deploys to <code>…/design/</code> when the PR merges.</li>
+                <li><strong>What to evaluate.</strong> (1) Does the personality survive? (2) Is the density correct? (3) Does the type hierarchy survive the zoom-in test (try Cmd-+ and -)? (4) Which direction would you not get tired of after six months?</li>
+            </ul>
+        </section>
+
+        <a class="back-link" href="./">← back to requests log</a>
+    </main>
+
+    <footer>
+        <div class="footer-inner">
+            <span>© 2026 Specodex · PR #136</span>
+            <span class="footer-rule" aria-hidden="true"></span>
+            <a class="footer-link" href="https://github.com/JimothyJohn/specodex/pull/136" rel="noreferrer">View on GitHub</a>
+            <a class="footer-link" href="../design/">Open design lab</a>
+            <a class="footer-link" href="./">All requests</a>
+        </div>
+    </footer>
+</body>
+</html>

@@ -38,6 +38,37 @@ def _get_dynamo_client():
     return DynamoDBClient()
 
 
+def parse_datasheet_id_from_key(key: str) -> str | None:
+    """Extract the datasheet_id from an S3 upload-queue key.
+
+    Upload-queue keys are shaped ``<prefix>/<datasheet_id>/<filename>``
+    where ``<prefix>`` is ``good_examples`` or ``queue``. This helper
+    returns the datasheet_id segment, or ``None`` if the key is
+    malformed (insufficient segments) or carries an empty id slot.
+
+    Contract:
+      * Returns ``None`` when ``key`` is not a ``str``.
+      * Returns ``None`` when the key has fewer than 3 ``/``-separated
+        segments (no id slot present).
+      * Returns ``None`` when the id slot is empty
+        (``queue//file.pdf``-style keys).
+      * Otherwise returns ``parts[1]`` unchanged — no normalisation.
+
+    The function never raises. Adversarial S3 keys (unicode,
+    control characters, leading slashes) produce ``None`` or a
+    string but never an exception.
+    """
+    if not isinstance(key, str):
+        return None
+    parts = key.split("/")
+    if len(parts) < 3:
+        return None
+    datasheet_id = parts[1]
+    if not datasheet_id:
+        return None
+    return datasheet_id
+
+
 def list_queued(bucket: str) -> list[dict]:
     """List all objects under good_examples/ (primary) and queue/ (legacy) in S3."""
     s3 = _get_s3_client()
@@ -259,12 +290,10 @@ def run(bucket: str, *, once: bool = False, api_key: str | None = None) -> None:
         for item in items:
             s3_key = item["key"]
             # Extract datasheet_id from key: queue/{id}/{filename}.pdf
-            parts = s3_key.split("/")
-            if len(parts) < 3:
+            datasheet_id = parse_datasheet_id_from_key(s3_key)
+            if datasheet_id is None:
                 log.warning(f"Unexpected key format: {s3_key}")
                 continue
-
-            datasheet_id = parts[1]
 
             # Look up metadata from DynamoDB
             record = find_datasheet_record(None, datasheet_id)
