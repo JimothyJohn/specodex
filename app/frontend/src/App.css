@@ -6740,16 +6740,18 @@ input.transmission-param-input {
   font-weight: 600;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  /* Bauhaus stencil label. Column headers were proportional-cased mono
-   * with `nowrap + ellipsis`, which clipped long attribute names into
-   * "Re…" — one of the two truncation surfaces the audit called out.
-   * Switching to Oswald uppercase reads as a manual heading and the
-   * ellipsis is no longer the only resort because the headline font
-   * is condensed. We still clip on very long labels, but at the cell
-   * width it now takes a *real* outlier to lose information. */
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.15;
+  /* Wrap to multiple lines rather than ellipsis-clipping. PR #150
+   * switched to Oswald (condensed) on the theory that more characters
+   * would fit on one line, but at the live cell width (~52px after
+   * the sort indicator and remove button claim their share) even
+   * "Manufacturer" still clips to "MANUF…". Mirror the same wrap
+   * treatment used on .filter-attribute: word-break + overflow-wrap,
+   * no nowrap, no ellipsis. The header grows by ~17px on long labels
+   * — cheap given the column-header is already 208px tall. */
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  min-width: 0;
 }
 
 .column-header-slider {
