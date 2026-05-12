@@ -313,39 +313,52 @@ After `./Quickstart deploy --stage <stage>` returns, confirm the stack is actual
     tests/                  Python tests (unit/, integration/, staging/, post_deploy/, benchmark/)
     outputs/                Extraction outputs and benchmark results
 
-## Per-PR documentation pages
+## Shipping a change
 
-**Every pull request ships a static HTML doc** under
-`docs/requests/<pr-number>.html` that explains EXACTLY what the PR
-does, in the same manila / engineering-paper field-manual style as
-`docs/index.html`. The doc is part of the PR, not a follow-up:
+Default flow for non-routine work in an interactive session:
 
-1. **One page per PR**, named by PR number (e.g. `docs/requests/65.html`).
-2. **Style is mandatory.** Same palette (`--paper #E8E2C9`, `--od
-   #3A2C1C`, `--stencil #A88A1C`), same fonts (`Oswald` headlines,
-   `IBM Plex Mono` body), same square-bordered cells, no rounded
-   corners or shadows. Copy the head/band/footer scaffolding from
-   `docs/index.html`. Use `body[data-issue]` for the rotated stamp
-   watermark — set it to `PR-<n>`.
-3. **Required sections:** PR number/title/branch/merge date in the
-   band; one-line "what it does" hero; "What changes" cell-list;
-   files-touched table; a "Why it's safe" or "How to verify" block
-   when applicable; back-link to `docs/requests/`.
-4. **The index updates too.** `docs/requests/index.html` lists every
-   PR with a card linking to its page. Newest first. Add a row when
-   the PR's HTML doc lands.
-5. **Don't fabricate.** Pull title/body/files from
-   `gh pr view <n> --json title,body,headRefName,mergedAt,files` —
-   never paraphrase a PR you haven't read.
+1. Branch off master.
+2. Commit + push.
+3. Open a **non-draft** PR. Title says what changed; body says why.
+4. Watch CI. When all required checks pass and there are no
+   conflicts, **merge it** — don't wait for Nick to click approve.
 
-The link from `docs/index.html` to `docs/requests/` lives in the
-top band as "PULL REQUESTS". Don't bury it.
+Nick approves every clean PR; the click is theater. The PR exists for
+CI gating and as a paper trail, not as a review gate.
 
-**Why we do this.** The PR descriptions are private to GitHub and
-agglomerate into noise; the per-PR HTML doc is a public, indexable,
-human-readable record of what changed and why — the same artifact a
-new contributor (or future you) would want when asking "what did
-PR #59 do?" without opening a code-review tool.
+**Exception — hard-to-reverse blast radius.** Keep the PR draft and
+hand back when the diff touches `app/infrastructure/**` (CDK),
+`.github/workflows/**` (CI/CD), IAM/secrets/KMS policy, Stripe
+live-mode, prod deploy, or shared infra mutations. For these, the
+review-wait gate still matters.
+
+(The daily orchestrator agent runs unattended and keeps the
+draft-PR-then-Nick-merges flow — that's a different mode, documented
+in "Backlog & orchestration board" below.)
+
+### Per-PR HTML documentation
+
+The `docs/requests/<n>.html` per-PR pages are reserved for **major
+functional changes** — user-visible features, schema migrations,
+architecture shifts, security-meaningful fixes. Dependabot bumps,
+lint fixes, lockfile regens, doc syncs, formatting passes, or other
+chore PRs **do not** get a per-PR page. The signal-to-noise on the
+public archive was the reason for the rule change; if a PR doesn't
+move the product forward, it doesn't deserve a public page.
+
+When you do write one, match the manila / engineering-paper style of
+`docs/index.html`: same palette (`--paper #E8E2C9`, `--od #3A2C1C`,
+`--stencil #A88A1C`), same fonts (Oswald headlines, IBM Plex Mono
+body), square-bordered cells, no rounded corners or shadows. Set
+`body[data-issue]="PR-<n>"` for the watermark. Pull source from
+`gh pr view <n> --json title,body,headRefName,mergedAt,files` —
+never paraphrase a PR you haven't read.
+
+The existing `docs/requests/` archive remains as historical record
+but is no longer linked from the `docs/index.html` top band. If you
+write a new per-PR page, update `docs/requests/index.html`
+(newest-first) so the archive page itself stays internally
+navigable.
 
 ---
 
