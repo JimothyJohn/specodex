@@ -1176,13 +1176,20 @@ button.secondary:hover {
   background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
 }
 
-/* Right sidebar for filters — laptop+ default. Width tuned to fit two
- * filter-chip columns at 380px; chips, sliders, and inline distribution
- * charts still have breathing room. Tablet (~320px) and mobile
- * (full-width, collapsible) overrides live in the @media blocks below. */
+/* Right sidebar for filters — laptop+ default. Bauhaus phase 4 narrowed
+ * this from 380→280 to match docs/design/bauhaus-catalog.html's rail
+ * dimension. At 280px chips render as a single column (which the mock
+ * already shows), with sliders and inline distribution charts still
+ * fitting because they're horizontal full-width controls. Tablet
+ * (~280px, same as desktop now) and mobile (full-width, collapsible)
+ * overrides live in the @media blocks below.
+ *
+ * NOTE: the mock has the rail on the LEFT with border-right; this app
+ * keeps it on the right (`order: 2` below) — flipping sides is a
+ * separate design call not folded into this PR. */
 .filter-sidebar {
-  width: 380px;
-  min-width: 380px;
+  width: 280px;
+  min-width: 280px;
   order: 2;
   background: linear-gradient(180deg, var(--card-bg) 0%, var(--bg-secondary) 50%, var(--bg-tertiary) 100%);
   padding: 0.6rem 0.7rem;
@@ -3818,12 +3825,12 @@ button.secondary:hover {
 /* Tablet optimizations */
 @media (min-width: 769px) and (max-width: 1024px) {
   .filter-sidebar {
-    width: 320px;
-    min-width: 320px;
+    width: 280px;
+    min-width: 280px;
   }
 
   .filter-bar {
-    width: 320px;
+    width: 280px;
   }
 
   /* 320px sidebar is too narrow for two chip columns — collapse to one. */
