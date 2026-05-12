@@ -63,6 +63,24 @@
   --scrollbar-track: transparent;
   --scrollbar-thumb: #b8ac85;
   --scrollbar-thumb-hover: #8a7f5c;
+
+  /* Z-index scale — five tiers, named so consumers stop inventing
+   * magic numbers. 0 / 10 / 100 / 500 / 1000 / 9999 covers everything
+   * we have today (header, toolbars, popovers, modals, toasts) without
+   * the prior 0/1/2/10/30/50/100/999/1000/2000/9999/10000 spread that
+   * made stacking impossible to reason about. */
+  --z-content: 0;
+  --z-toolbar: 10;
+  --z-header: 100;
+  --z-popover: 500;
+  --z-modal: 1000;
+  --z-toast: 9999;
+
+  /* Hairline rules — single source of truth for the field-manual look.
+   * Fine = mute tan on cell joints (table rows, filter chip body),
+   * strong = ink on section boundaries (header bottom, divider rules). */
+  --rule-fine: 1px solid var(--border-color-light);
+  --rule-strong: 1px solid var(--text-primary);
 }
 
 :root[data-theme="dark"],
@@ -138,6 +156,18 @@
   --scrollbar-track: transparent;
   --scrollbar-thumb: #5c5c4a;
   --scrollbar-thumb-hover: #7a7a64;
+
+  /* Z-index scale (see light theme for narrative). Same tiers for dark. */
+  --z-content: 0;
+  --z-toolbar: 10;
+  --z-header: 100;
+  --z-popover: 500;
+  --z-modal: 1000;
+  --z-toast: 9999;
+
+  /* Hairline rules — dark theme uses the espresso tan for fine joints. */
+  --rule-fine: 1px solid var(--border-color-light);
+  --rule-strong: 1px solid var(--text-primary);
 }
 
 * {
@@ -172,6 +202,7 @@
 
 body {
   font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background-color: var(--bg-primary);
@@ -193,14 +224,17 @@ body {
   background-color: var(--header-bg-start);
   color: var(--header-text);
   padding: 0.4rem 1rem;
-  border-bottom: 2px solid var(--text-primary);
-  box-shadow: 0 2px 6px var(--shadow-md);
+  /* Bauhaus rule line in place of the soft shadow. A hard 3px ink
+   * border below the chrome reads as a section boundary on the field
+   * manual; the prior `box-shadow: 0 2px 6px ...` softened that into
+   * a vague drop. */
+  border-bottom: 3px solid var(--text-primary);
   display: flex;
   justify-content: space-between;
   align-items: center;
   position: sticky;
   top: 0;
-  z-index: 100;
+  z-index: var(--z-header);
 }
 
 .header-left {
@@ -331,11 +365,12 @@ body {
   color: var(--header-text);
   background: transparent;
   border: 1px solid rgba(232, 226, 201, 0.35);
-  border-radius: 2px;
+  /* Squared corners — field-manual catalog tabs, not pill chrome. */
+  border-radius: 0;
   font-family: var(--font-headline);
   font-weight: 500;
   font-size: 0.75rem;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   cursor: pointer;
   transition: background-color 0.12s linear, color 0.12s linear, border-color 0.12s linear;
@@ -598,7 +633,7 @@ body {
   background-color: #e9ecef;
   border: 1px solid #ced4da;
   border-radius: 3px;
-  font-family: monospace;
+  font-family: var(--font-mono);
   font-size: 0.85rem;
 }
 
@@ -989,7 +1024,7 @@ body {
 }
 
 .attribute-selector-item-key {
-  font-family: monospace;
+  font-family: var(--font-mono);
   background-color: var(--bg-tertiary);
   color: var(--text-secondary);
   padding: 0.1rem 0.4rem;
@@ -1422,13 +1457,15 @@ button.secondary:hover {
 .filter-chip-minimal {
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
-  padding: 0.25rem 0.4rem;
-  background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
+  gap: 0.25rem;
+  padding: 0.35rem 0.45rem 0.4rem;
+  background: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: 4px;
+  /* Squared corners + flat fill — Bauhaus signature. The prior 4px
+   * radius + 135° gradient read as a webby pill on top of paper. */
+  border-radius: 2px;
   font-size: 0.9rem;
-  transition: all 0.2s;
+  transition: border-color 0.12s linear, background-color 0.12s linear;
   position: relative;
 }
 
@@ -1508,17 +1545,25 @@ button.secondary:hover {
 }
 
 .filter-attribute {
+  font-family: var(--font-headline);
   font-weight: 600;
   color: var(--text-primary);
-  font-size: 0.85rem;
+  font-size: 0.78rem;
   line-height: 1.25;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  /* Stencil-label treatment: long attribute names wrap to a second line
+   * rather than ellipsis-clipping into invisibility. The chip is a flex
+   * column, so growing taller is the cheap path; the old nowrap +
+   * overflow: hidden was the source of the "text being truncated"
+   * complaint. */
+  word-break: break-word;
+  overflow-wrap: anywhere;
   flex: 1;
-  transition: all 0.2s;
+  min-width: 0;
+  transition: background-color 0.12s linear, color 0.12s linear;
   padding: 0.05rem 0.25rem;
-  border-radius: 3px;
+  border-radius: 2px;
 }
 
 .filter-attribute:hover {
@@ -1642,7 +1687,7 @@ button.secondary:hover {
   justify-content: space-between;
   font-size: 0.75rem;
   color: var(--text-tertiary);
-  font-family: monospace;
+  font-family: var(--font-mono);
   padding: 0 2px;
   user-select: none;
 }
@@ -1742,7 +1787,7 @@ button.secondary:hover {
   color: var(--text-primary);
   text-align: center;
   font-weight: 700;
-  font-family: monospace;
+  font-family: var(--font-mono);
   padding: 0.15rem 0.4rem;
   background: var(--bg-tertiary);
   border-radius: 3px;
@@ -1828,7 +1873,7 @@ button.secondary:hover {
   padding: 0.05rem 0.3rem;
   font: inherit;
   font-weight: 700;
-  font-family: monospace;
+  font-family: var(--font-mono);
   color: var(--text-primary);
   background: var(--bg-primary);
   border: 1px solid var(--accent-primary);
@@ -6690,8 +6735,18 @@ input.transmission-param-input {
 }
 
 .column-header-label-text {
-  font-size: 0.78rem;
+  font-family: var(--font-headline);
+  font-size: 0.72rem;
   font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  /* Bauhaus stencil label. Column headers were proportional-cased mono
+   * with `nowrap + ellipsis`, which clipped long attribute names into
+   * "Re…" — one of the two truncation surfaces the audit called out.
+   * Switching to Oswald uppercase reads as a manual heading and the
+   * ellipsis is no longer the only resort because the headline font
+   * is condensed. We still clip on very long labels, but at the cell
+   * width it now takes a *real* outlier to lose information. */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
