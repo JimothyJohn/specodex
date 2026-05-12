@@ -1599,16 +1599,19 @@ button.secondary:hover {
 
 .filter-operator {
   padding: 0.2rem 0.35rem;
-  background: linear-gradient(135deg, var(--accent-gradient-start) 0%, var(--accent-gradient-end) 100%);
-  color: white;
-  border: 1px solid var(--accent-primary);
-  border-radius: 3px;
+  background: transparent;
+  /* Mock's `.op` is just a brass-colored text prefix inline with the
+   * value. The React chip needs button semantics (click cycles through
+   * operators) so we keep it a <button> but strip the gradient pill
+   * and use brass text color for the symbol. */
+  color: var(--accent-primary);
+  border: 1px solid transparent;
+  border-radius: 0;
   font-size: 0.95rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: color 0.15s linear, background-color 0.15s linear, border-color 0.15s linear;
   text-align: center;
-  box-shadow: 0 1px 2px var(--shadow-sm);
   position: relative;
   min-width: 24px;
   line-height: 1;
@@ -1619,34 +1622,19 @@ button.secondary:hover {
   justify-content: center;
 }
 
-/* Color-coded operators */
-.filter-operator[data-operator="="] {
-  background: var(--accent-primary);
-  border-color: var(--accent-secondary);
-}
-
+/* Stamp-red text color for the not-equals operator keeps the
+ * "excluding" semantic visible without re-introducing the pill. */
 .filter-operator[data-operator="!="] {
-  background: var(--danger);
-  border-color: #9a7060;
+  color: var(--danger);
 }
-
-.filter-operator[data-operator=">"],
-.filter-operator[data-operator="<"] {
-  background: linear-gradient(135deg, var(--accent-gradient-start) 0%, var(--accent-gradient-end) 100%);
-  border-color: var(--accent-primary);
-}
-
-/* Removed rotation icon for cleaner look */
 
 .filter-operator:hover {
-  background: linear-gradient(135deg, var(--accent-secondary) 0%, var(--accent-primary) 100%);
-  border-color: var(--accent-secondary);
-  box-shadow: 0 2px 4px var(--shadow-md);
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
 }
 
 .filter-operator:active {
-  transform: scale(0.95);
-  box-shadow: 0 1px 2px var(--shadow-sm);
+  transform: translateY(1px);
 }
 
 .filter-input-wrapper {
@@ -1960,24 +1948,27 @@ button.secondary:hover {
   padding-left: 0.6rem;
 }
 
-/* !important on background/color/box-shadow defeats the global button
- * rule (App.css ~3738) that paints every <button> in accent yellow.
- * Matches .column-remove-btn so the X reads as the same flat pink
- * glyph in both the filter pane and the table header. */
+/* Hard-divided close cell — matches the mock's `.filter-chip .close`
+ * (border-left + stamp-red hover). The !important's defeat the global
+ * button rule at App.css L4053/L4111/L4126 that paint every <button>
+ * with accent-yellow background, accent-yellow border, and accent
+ * box-shadow. Phase 7 will remove the upstream rule; until then the
+ * !important's are the seam. */
 .filter-remove {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: transparent !important;
   border: none !important;
-  border-radius: 2px;
-  font-size: 1.35rem;
-  font-weight: 800;
-  color: #d96b85 !important;
+  border-left: 1px solid var(--border-color) !important;
+  border-radius: 0;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--text-secondary) !important;
   cursor: pointer;
-  transition: color 0.15s, transform 0.15s;
+  transition: color 0.15s linear, background-color 0.15s linear;
   line-height: 1;
   flex-shrink: 0;
   padding: 0 !important;
@@ -1985,9 +1976,8 @@ button.secondary:hover {
 }
 
 .filter-remove:hover {
-  background: transparent !important;
-  color: #c25072 !important;
-  transform: scale(1.2);
+  background: var(--danger) !important;
+  color: var(--bg-primary) !important;
   box-shadow: none !important;
 }
 
@@ -1995,42 +1985,40 @@ button.secondary:hover {
  * page. Full-width, uppercase stencil label, and a 2px ink outer
  * border so it reads as a stamped block on the manila pane rather
  * than a generic button. */
+/* "+ ADD FILTER" — quiet dashed-outline button per the mock's
+ * `.add-filter`. Hover → solid border (no fill change). Previously a
+ * loud stamped CTA with offset drop-shadow; the mock's hierarchy puts
+ * the add action in the same vocabulary as the chip itself rather
+ * than as a competing block. */
 .btn-add-filter,
 .btn-add-sort {
   width: 100%;
   display: block;
   padding: 0.4rem 0.7rem;
-  background: var(--accent-primary);
-  color: #1a1a14;
-  border: 2px solid var(--text-primary);
-  border-radius: 3px;
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px dashed var(--border-color);
+  border-radius: 0;
   font-family: var(--font-headline);
   font-size: 0.85rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.14em;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow:
-    2px 2px 0 var(--text-primary),
-    0 1px 3px var(--shadow-sm);
+  transition: color 0.15s linear, border-color 0.15s linear, border-style 0.15s linear;
+  text-align: left;
 }
 
 .btn-add-filter:hover,
 .btn-add-sort:hover {
-  transform: translate(-1px, -1px);
-  box-shadow:
-    3px 3px 0 var(--text-primary),
-    0 8px 16px var(--shadow-md),
-    0 0 0 3px var(--glow-accent);
-  background: var(--accent-secondary);
-  color: #1a1a14;
+  color: var(--text-primary);
+  border-color: var(--text-primary);
+  border-style: solid;
 }
 
 .btn-add-filter:active,
 .btn-add-sort:active {
-  transform: translate(1px, 1px);
-  box-shadow: 0 0 0 var(--text-primary);
+  transform: translateY(1px);
 }
 
 .hint-text {
