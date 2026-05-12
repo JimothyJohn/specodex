@@ -8,7 +8,7 @@
 
 .toast-region {
   position: fixed;
-  z-index: 120;
+  z-index: var(--z-toast);
   right: 1.25rem;
   bottom: 1.25rem;
   display: flex;
