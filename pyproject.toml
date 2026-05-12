@@ -7,16 +7,16 @@ requires-python = ">=3.12"
 dependencies = [
     "google-genai>=2.0.1",
     "pypdf2>=3.0.1",
-    "pydantic>=2.13.3",
-    "boto3>=1.43.2",
+    "pydantic>=2.13.4",
+    "boto3>=1.43.6",
     "tenacity>=9.1.4",
     "pycryptodome>=3.20.0",
     "playwright>=1.59.0",
-    "google-api-python-client>=2.195.0",
+    "google-api-python-client>=2.196.0",
     "python-dotenv>=1.2.2",
     "pymupdf>=1.27.2.3",
     "httpx>=0.27.0",
-    "selectolax>=0.3.21",
+    "selectolax>=0.4.8",
 ]
 
 [project.scripts]
@@ -32,13 +32,13 @@ dev = [
     # Time mocking — required by the "Testing — adversarial by default"
     # rule in ~/.claude/CLAUDE.md ("Determinism is non-negotiable").
     "freezegun>=1.5.0",
-    "hypothesis>=6.152.4",
+    "hypothesis>=6.152.6",
     "moto[dynamodb]>=5.2.1",
     # Mutation testing — measures real assertion strength rather than
     # line coverage. Run as a periodic job (not a CI gate) until a
     # baseline mutation-catch rate is established.
     "mutmut>=3.0.0",
-    "mypy>=2.0.0",
+    "mypy>=2.1.0",
     "pydantic-to-typescript>=2.0.0",
     "pytest>=9.0.3",
     "pytest-cov>=7.1.0",
