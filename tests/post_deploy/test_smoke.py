@@ -29,8 +29,19 @@ _TRACE_HEADERS = (
     "x-deny-reason",
 )
 
+# AWS-edge transient fingerprints we've seen self-resolve in minutes
+# without any deploy or human intervention. Issues #104 (2026-05-10)
+# and #151 (2026-05-11) both landed with the exact `host_not_allowed`
+# deny-reason at the same edge layer, both recovered before the
+# investigating session finished. Treating them as test failures and
+# opening a fresh `prod-smoke-fail` issue per occurrence is noise:
+# the underlying signal (sustained AWS edge outage) is only meaningful
+# if it persists past one retry.
+_TRANSIENT_DENY_REASONS = frozenset({"host_not_allowed"})
+_TRANSIENT_RETRY_DELAY_S = 30
 
-def _smoke_get(path: str, *, timeout: int = 5):
+
+def _smoke_get(path: str, *, timeout: int = 5, _retried: bool = False):
     """GET helper that on non-2xx attaches AWS trace headers to the error.
 
     A bare urlopen() failure prints "HTTP Error 403: Forbidden" with
@@ -40,11 +51,29 @@ def _smoke_get(path: str, *, timeout: int = 5):
     header CloudFront and API Gateway echo back (request IDs, cache
     state, edge POP, custom deny-reason if any), so the next failure
     is greppable in CloudWatch by request-id.
+
+    Transient retry: when the failure carries an `x-deny-reason` we've
+    observed self-resolving in minutes (see `_TRANSIENT_DENY_REASONS`),
+    sleep `_TRANSIENT_RETRY_DELAY_S` and retry once. If the retry
+    succeeds, print a `KNOWN_TRANSIENT_RECOVERED` marker so the run
+    output still records the hiccup (pattern-detection across runs can
+    grep for it). If the retry also fails, the issue has outlived its
+    transient window — raise normally so the smoke routine flags it.
     """
     req = Request(f"{BASE_URL}{path}")
     try:
         return urlopen(req, timeout=timeout)
     except HTTPError as exc:
+        deny_reason = exc.headers.get("x-deny-reason") if exc.headers else None
+        if not _retried and deny_reason in _TRANSIENT_DENY_REASONS:
+            time.sleep(_TRANSIENT_RETRY_DELAY_S)
+            resp = _smoke_get(path, timeout=timeout, _retried=True)
+            print(
+                f"KNOWN_TRANSIENT_RECOVERED path={path} "
+                f"x-deny-reason={deny_reason} retry_after={_TRANSIENT_RETRY_DELAY_S}s"
+            )
+            return resp
+
         trace_parts = []
         for hname in _TRACE_HEADERS:
             hval = exc.headers.get(hname) if exc.headers else None
