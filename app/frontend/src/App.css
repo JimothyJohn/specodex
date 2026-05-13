@@ -2770,13 +2770,23 @@ button.secondary:hover {
   background: var(--bg-secondary);
 }
 
+/* Bauhaus phase 4b: column header strip as "section head" — port the
+ * mock's `.rail-head` vocabulary to each column. The 2px ink bottom
+ * border replaces the 1px hairline (matches the mock's rail-head
+ * underline + the modal/page-toolbar bottom rules), and the 0.16em
+ * letter-spacing matches `.filter-attribute` and
+ * `.column-header-label-text` so all stencil labels share one
+ * tracking. Right hairline borders between cells mirror the Phase 3
+ * data-cell separation pattern — single visual seam from head
+ * through every row. */
 .product-grid-header-item {
   display: table-cell;
   vertical-align: middle;
   text-align: center;
   padding: 0.25rem 0.35rem;
   border-top: 1px solid var(--text-primary);
-  border-bottom: 1px solid var(--text-primary);
+  border-bottom: 2px solid var(--text-primary);
+  border-right: 1px solid var(--border-color-light);
   position: relative;
   background: var(--bg-secondary);
   overflow: hidden;
@@ -2784,9 +2794,13 @@ button.secondary:hover {
   font-family: var(--font-headline);
   font-weight: 500;
   font-size: 0.78rem;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--text-primary);
+}
+
+.product-grid-header-item:last-child {
+  border-right: 0;
 }
 
 .product-grid-header-item.clickable {
