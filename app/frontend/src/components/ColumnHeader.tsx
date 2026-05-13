@@ -23,7 +23,7 @@
  * pointer-down on the track promotes it into a real filter.
  */
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import {
   AttributeMetadata,
   ComparisonOperator,
@@ -133,6 +133,17 @@ export default function ColumnHeader({
   const [editingValue, setEditingValue] = useState(false);
   const [valueDraft, setValueDraft] = useState('');
   const [multiOpen, setMultiOpen] = useState(false);
+  /* Slider drag perf: while the pointer is moving, fire onFilterChange
+   * inside startTransition so the parent's heavy re-render (applyFilters
+   * over thousands of products + all column-headers re-render + table
+   * re-render) doesn't block the pointer event loop. `localDragValue`
+   * carries the current pointer-tracked value so the THUMB position
+   * still updates synchronously at 60Hz — only the filter side of the
+   * pipeline is deferred. On pointer release the local value is
+   * cleared and the derived `filterValue` from the (now-settled)
+   * filter prop takes over. */
+  const [localDragValue, setLocalDragValue] = useState<number | null>(null);
+  const [, startSliderTransition] = useTransition();
 
   // Slider scale comes from the *unfiltered* source so the track doesn't
   // shrink as the user dials in other filters. Lets the user always
@@ -221,9 +232,15 @@ export default function ColumnHeader({
   const filterValue =
     typeof filter?.value === 'number' ? (filter.value as number) : null;
 
+  /* During drag, prefer the local pointer-tracked value (updates
+   * synchronously on every pointer move). After drag, fall back to
+   * the prop-derived filterValue. */
+  const effectiveFilterValue =
+    isDragging && localDragValue !== null ? localDragValue : filterValue;
+
   const sliderPercent = useMemo(() => {
     if (!rangeInfo) return 0;
-    if (filterValue == null) {
+    if (effectiveFilterValue == null) {
       return operator === '<' || operator === '<=' ? 100 : 0;
     }
     const n = rangeInfo.sortedValues.length;
@@ -232,19 +249,19 @@ export default function ColumnHeader({
     let hi = n - 1;
     while (lo < hi) {
       const mid = (lo + hi) >> 1;
-      if (rangeInfo.sortedValues[mid] < filterValue) lo = mid + 1;
+      if (rangeInfo.sortedValues[mid] < effectiveFilterValue) lo = mid + 1;
       else hi = mid;
     }
     let idx = lo;
     if (
       lo > 0 &&
-      Math.abs(rangeInfo.sortedValues[lo - 1] - filterValue) <
-        Math.abs(rangeInfo.sortedValues[lo] - filterValue)
+      Math.abs(rangeInfo.sortedValues[lo - 1] - effectiveFilterValue) <
+        Math.abs(rangeInfo.sortedValues[lo] - effectiveFilterValue)
     ) {
       idx = lo - 1;
     }
     return (idx / (n - 1)) * 100;
-  }, [rangeInfo, filterValue, operator]);
+  }, [rangeInfo, effectiveFilterValue, operator]);
 
   const updateFromPointer = (clientX: number) => {
     if (!rangeInfo) return;
@@ -257,19 +274,29 @@ export default function ColumnHeader({
     if (n <= 1) return;
     const idx = Math.round(t * (n - 1));
     const newValue = rangeInfo.sortedValues[idx];
-    if (filter) {
-      if (filter.value !== newValue) {
-        onFilterChange({ ...filter, value: newValue });
+    /* Sync the thumb position immediately (cheap state update) so the
+     * slider feels responsive at 60Hz even when the catalog has
+     * thousands of products. */
+    setLocalDragValue(newValue);
+    /* Defer the expensive filter chain (applyFilters → re-render
+     * every ColumnHeader → re-render the table). startTransition
+     * lets React interrupt this work when more pointer events
+     * arrive. */
+    startSliderTransition(() => {
+      if (filter) {
+        if (filter.value !== newValue) {
+          onFilterChange({ ...filter, value: newValue });
+        }
+      } else {
+        onFilterChange({
+          attribute: attribute.key,
+          displayName: label,
+          mode: 'include',
+          operator: '>=',
+          value: newValue,
+        });
       }
-    } else {
-      onFilterChange({
-        attribute: attribute.key,
-        displayName: label,
-        mode: 'include',
-        operator: '>=',
-        value: newValue,
-      });
-    }
+    });
   };
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -290,6 +317,12 @@ export default function ColumnHeader({
     if (!isDragging) return;
     sliderTrackRef.current?.releasePointerCapture(e.pointerId);
     setIsDragging(false);
+    /* Clear the local pointer-tracked value — once isDragging flips
+     * false, `effectiveFilterValue` falls back to the prop. By the
+     * time the rendering pass settles, the transitioned filter
+     * update from the last pointer move will have committed, so
+     * filterValue == localDragValue. */
+    setLocalDragValue(null);
   };
 
   const handleSliderKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
