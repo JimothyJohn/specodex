@@ -77,10 +77,22 @@ export default function DistributionChart({ products, attribute, heading, attrib
   // Anchor values for the histogram bin edges. Defaults to `products`
   // when no allProducts is provided so existing call sites (the categorical
   // path, datasheet page) keep their current behavior.
+  //
+  // Perf: this useMemo used to depend on both `allProducts` and `products`.
+  // ColumnHeader always passes a stable `allProducts` reference (the
+  // unfiltered linearized source), so the body's `allProducts ?? products`
+  // resolves to `allProducts` every time. But the dep list including
+  // `products` meant the memo re-ran on every filter change — walking
+  // 6k items + sorting per column-header per drag tick. Hoisting the
+  // ternary out of the memo lets the dep array use `anchorSource`,
+  // which is `Object.is` to `allProducts` (stable) when ColumnHeader
+  // passes it. For call sites that don't pass `allProducts`,
+  // `anchorSource === products` and the memo still invalidates correctly
+  // when `products` ref changes.
+  const anchorSource = allProducts ?? products;
   const anchorNumeric = useMemo(() => {
-    const source = allProducts ?? products;
     const out: number[] = [];
-    for (const p of source) {
+    for (const p of anchorSource) {
       const raw = resolve(p, attribute);
       if (raw == null) continue;
       const n = extractNumeric(raw);
@@ -88,7 +100,7 @@ export default function DistributionChart({ products, attribute, heading, attrib
     }
     out.sort((a, b) => a - b);
     return out;
-  }, [allProducts, products, attribute]);
+  }, [anchorSource, attribute]);
 
   // Bucket by canonical value (so toggling units doesn't reshuffle the
   // chart), but render labels through toDisplay() so imperial readers

@@ -23,7 +23,7 @@
  * pointer-down on the track promotes it into a real filter.
  */
 
-import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AttributeMetadata,
   ComparisonOperator,
@@ -133,17 +133,14 @@ export default function ColumnHeader({
   const [editingValue, setEditingValue] = useState(false);
   const [valueDraft, setValueDraft] = useState('');
   const [multiOpen, setMultiOpen] = useState(false);
-  /* Slider drag perf: while the pointer is moving, fire onFilterChange
-   * inside startTransition so the parent's heavy re-render (applyFilters
-   * over thousands of products + all column-headers re-render + table
-   * re-render) doesn't block the pointer event loop. `localDragValue`
-   * carries the current pointer-tracked value so the THUMB position
-   * still updates synchronously at 60Hz — only the filter side of the
-   * pipeline is deferred. On pointer release the local value is
-   * cleared and the derived `filterValue` from the (now-settled)
-   * filter prop takes over. */
+  /* Slider drag perf: `localDragValue` carries the current pointer-
+   * tracked value so the THUMB position updates synchronously at 60Hz.
+   * The filter update fires synchronously too — startTransition was
+   * removed in PR #179 once DistributionChart's anchorNumeric stopped
+   * thrashing on every drag tick. On pointer release the local value
+   * is cleared and the derived `filterValue` (now equal to the
+   * just-fired update) takes over. */
   const [localDragValue, setLocalDragValue] = useState<number | null>(null);
-  const [, startSliderTransition] = useTransition();
 
   // Slider scale comes from the *unfiltered* source so the track doesn't
   // shrink as the user dials in other filters. Lets the user always
@@ -274,29 +271,30 @@ export default function ColumnHeader({
     if (n <= 1) return;
     const idx = Math.round(t * (n - 1));
     const newValue = rangeInfo.sortedValues[idx];
-    /* Sync the thumb position immediately (cheap state update) so the
-     * slider feels responsive at 60Hz even when the catalog has
-     * thousands of products. */
+    /* Sync the thumb position immediately (cheap state update) — keeps
+     * the thumb glued to the pointer even when other re-renders are
+     * mid-flight. */
     setLocalDragValue(newValue);
-    /* Defer the expensive filter chain (applyFilters → re-render
-     * every ColumnHeader → re-render the table). startTransition
-     * lets React interrupt this work when more pointer events
-     * arrive. */
-    startSliderTransition(() => {
-      if (filter) {
-        if (filter.value !== newValue) {
-          onFilterChange({ ...filter, value: newValue });
-        }
-      } else {
-        onFilterChange({
-          attribute: attribute.key,
-          displayName: label,
-          mode: 'include',
-          operator: '>=',
-          value: newValue,
-        });
+    /* Fire the filter update synchronously so the table reflects the
+     * slider position on the very next frame. The startTransition
+     * wrapping from PR #178 deferred the table update which made
+     * results feel non-instant; with DistributionChart's anchorNumeric
+     * fixed (PR #179) the heavy per-column-header histogram walk no
+     * longer fires on every drag tick, so the synchronous path is
+     * fast enough at 60Hz. */
+    if (filter) {
+      if (filter.value !== newValue) {
+        onFilterChange({ ...filter, value: newValue });
       }
-    });
+    } else {
+      onFilterChange({
+        attribute: attribute.key,
+        displayName: label,
+        mode: 'include',
+        operator: '>=',
+        value: newValue,
+      });
+    }
   };
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
