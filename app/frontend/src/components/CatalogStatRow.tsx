@@ -17,7 +17,7 @@
  * the catalog top). Users who care about table density can collapse
  * the strip; the toggle stays visible.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 
 import type { Product, ProductType } from '../types/models';
 import type { ProductTypeLiteral } from '../types/generated';
@@ -226,10 +226,18 @@ export default function CatalogStatRow({ products, productType }: Props) {
     }
   }, [open]);
 
+  // useDeferredValue defers stat recomputation until the slider drag
+  // (or any rapid filter change) settles. Without this, dragging a
+  // column-header slider on a ~6k-product catalog runs the per-stat
+  // aggregate walks ~60 times per second and the slider feels laggy.
+  // The stats are a summary, not load-bearing for interaction, so
+  // showing slightly-stale numbers during a drag is the right
+  // trade-off.
+  const deferredProducts = useDeferredValue(products);
   const stats = useMemo(() => {
     if (!config) return [];
-    return config.map((def) => computeStat(products, def)).filter((s): s is ComputedStat => s !== null);
-  }, [config, products]);
+    return config.map((def) => computeStat(deferredProducts, def)).filter((s): s is ComputedStat => s !== null);
+  }, [config, deferredProducts]);
 
   if (!config) return null;
 

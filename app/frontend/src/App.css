@@ -2904,6 +2904,18 @@ button.secondary:hover {
   background: var(--accent-primary);
 }
 
+/* Computed-col header label (used by "Gear", "Net Thrust", "Brake Hold",
+ * etc. — columns that aren't backed by a sortable attribute and so
+ * don't get wrapped in .column-header-label-text from PR #159).
+ *
+ * The parent .product-grid-header-item has letter-spacing: 0.16em +
+ * text-transform: uppercase, which widens longer labels enough to
+ * overflow the column's clip box ("NET THRUST" at 80px → MAN…).
+ * Add the same wrap treatment .column-header-label-text got — the
+ * label grows by one line on outliers instead of silently truncating.
+ *
+ * Tighten letter-spacing locally so two-word labels don't blow up
+ * the column header height by a lot. */
 .product-grid-header-label {
   font-size: 0.82rem;
   font-weight: 600;
@@ -2911,6 +2923,10 @@ button.secondary:hover {
   text-align: center;
   line-height: 1.2;
   display: block;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  letter-spacing: 0.06em;
   gap: 0.3rem;
 }
 
@@ -2966,6 +2982,13 @@ button.secondary:hover {
   line-height: 1;
   display: block;
   margin-top: 0.05rem;
+  /* Unit captions never get the stencil tracking — they're parenthetical
+   * data, not headlines. Override parent's 0.16em uppercase. */
+  letter-spacing: 0;
+  text-transform: none;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .product-grid-header-part {
