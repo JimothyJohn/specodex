@@ -6806,7 +6806,15 @@ input.transmission-param-input {
  * Centered alignment means labels in sortable columns line up with
  * non-sortable column headers (which use the parent's text-align:
  * center). Border-radius: 0 to match the squared Bauhaus vocabulary;
- * hover stays the same subtle bg-tertiary tint. */
+ * hover stays the same subtle bg-tertiary tint.
+ *
+ * min-height (not height) so the button can grow vertically when the
+ * label wraps to two lines — PR #159 added word-break/overflow-wrap
+ * to .column-header-label-text so long labels like "Manufacturer"
+ * wrap, but those rules can't do anything when the button itself is
+ * height-clamped to 22px. The X button (.column-remove-btn) stays
+ * 22×22, so .column-header-top's align-items:center vertically
+ * centers the X against the (possibly taller) sort button. */
 .column-header-sort {
   display: flex;
   align-items: center;
@@ -6814,7 +6822,7 @@ input.transmission-param-input {
   gap: 0.35rem;
   flex: 1 1 auto;
   min-width: 0;
-  height: 22px;
+  min-height: 22px;
   background: none;
   border: none;
   border-radius: 0;
