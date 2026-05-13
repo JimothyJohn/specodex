@@ -235,17 +235,6 @@ export default function ColumnHeader({
   const effectiveFilterValue =
     isDragging && localDragValue !== null ? localDragValue : filterValue;
 
-  /* Continuous-value slider: the thumb's track position uses the catalog's
-   * empirical CDF (percentile mapping) so outliers still get a slice
-   * proportional to their rarity, but the VALUE under the thumb is
-   * linearly interpolated between adjacent catalog points. Drop the
-   * earlier "snap to sortedValues[idx]" behaviour so the user can
-   * dial in any number in [min, max] (e.g. 175 V between catalog
-   * values 170 and 200), not just exact catalog points.
-   *
-   * Filter logic stays numeric (`>= 175`), so the filter still works
-   * across products with values 200, 230, 400 etc. that satisfy the
-   * threshold. */
   const sliderPercent = useMemo(() => {
     if (!rangeInfo) return 0;
     if (effectiveFilterValue == null) {
@@ -253,7 +242,6 @@ export default function ColumnHeader({
     }
     const n = rangeInfo.sortedValues.length;
     if (n <= 1) return 0;
-    // Find first index whose value is >= filterValue
     let lo = 0;
     let hi = n - 1;
     while (lo < hi) {
@@ -261,40 +249,16 @@ export default function ColumnHeader({
       if (rangeInfo.sortedValues[mid] < effectiveFilterValue) lo = mid + 1;
       else hi = mid;
     }
-    // Position is interpolated between adjacent percentile slots so the
-    // thumb glides smoothly to a continuous value instead of jumping
-    // to the nearest catalog point.
-    if (lo === 0) {
-      return 0;
+    let idx = lo;
+    if (
+      lo > 0 &&
+      Math.abs(rangeInfo.sortedValues[lo - 1] - effectiveFilterValue) <
+        Math.abs(rangeInfo.sortedValues[lo] - effectiveFilterValue)
+    ) {
+      idx = lo - 1;
     }
-    const lower = rangeInfo.sortedValues[lo - 1];
-    const upper = rangeInfo.sortedValues[lo];
-    let positionIdx: number;
-    if (upper === lower) {
-      positionIdx = lo;
-    } else if (effectiveFilterValue >= upper) {
-      positionIdx = lo;
-    } else {
-      const frac = (effectiveFilterValue - lower) / (upper - lower);
-      positionIdx = lo - 1 + frac;
-    }
-    return Math.max(0, Math.min(1, positionIdx / (n - 1))) * 100;
+    return (idx / (n - 1)) * 100;
   }, [rangeInfo, effectiveFilterValue, operator]);
-
-  /* Round a continuous slider value to a sensible precision based on
-   * the catalog's value range magnitude. Avoids showing the user
-   * 175.4378612 V when 175 is the meaningful read. */
-  const roundForRange = (v: number, min: number, max: number): number => {
-    const range = max - min;
-    let decimals: number;
-    if (range >= 1000) decimals = 0;
-    else if (range >= 100) decimals = 0;
-    else if (range >= 10) decimals = 1;
-    else if (range >= 1) decimals = 2;
-    else decimals = 3;
-    const factor = 10 ** decimals;
-    return Math.round(v * factor) / factor;
-  };
 
   const updateFromPointer = (clientX: number) => {
     if (!rangeInfo) return;
@@ -305,18 +269,8 @@ export default function ColumnHeader({
     const t = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
     const n = rangeInfo.sortedValues.length;
     if (n <= 1) return;
-    /* Interpolate between adjacent catalog points based on the
-     * empirical-CDF index. Outliers still occupy proportionally
-     * narrow slices of the track (per the percentile mapping),
-     * but the value lerps continuously rather than snapping. */
-    const idxFloat = t * (n - 1);
-    const idxLow = Math.floor(idxFloat);
-    const idxHigh = Math.min(n - 1, idxLow + 1);
-    const frac = idxFloat - idxLow;
-    const interpolated =
-      rangeInfo.sortedValues[idxLow] +
-      frac * (rangeInfo.sortedValues[idxHigh] - rangeInfo.sortedValues[idxLow]);
-    const newValue = roundForRange(interpolated, rangeInfo.min, rangeInfo.max);
+    const idx = Math.round(t * (n - 1));
+    const newValue = rangeInfo.sortedValues[idx];
     /* Sync the thumb position immediately (cheap state update) — keeps
      * the thumb glued to the pointer even when other re-renders are
      * mid-flight. */
