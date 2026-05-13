@@ -1705,6 +1705,19 @@ button.secondary:hover {
   border-radius: 3px;
 }
 
+/* Bauhaus slider visual layer.
+ *
+ * Rail: squared corners + hairline ink frame, no recessed-groove
+ * inset shadow. Reads as a hard ruled line, not a web-pill groove.
+ *
+ * Active region: squared, full opacity brass — the selected range is
+ * a definitive block, not a watercolor wash.
+ *
+ * Thumb: kept circular as a drag affordance (Bauhaus doesn't ban
+ * circles where they signal function), but the layered drop-shadow +
+ * surface halo + hover-glow stack is replaced with a clean ink border
+ * + brass fill. Drag state bumps the border weight rather than adding
+ * a shadow ring. */
 .filter-slider-rail {
   position: absolute;
   left: 0;
@@ -1713,35 +1726,25 @@ button.secondary:hover {
   transform: translateY(-50%);
   height: 4px;
   background: var(--bg-tertiary);
-  border: none;
-  border-radius: 2px;
-  /* Subtle inset shadow so the rail reads as a recessed groove, not
-   * a flat painted strip. */
-  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--border-color);
+  border-radius: 0;
+  box-shadow: none;
   z-index: 0;
   pointer-events: none;
 }
 
-/* Colored region showing which side of the setpoint is included.
- * Sits on the rail with the same height; opacity is up vs. the prior
- * 0.45 so the active range reads as a definitive selection rather
- * than a faded watercolor wash. */
 .filter-slider-active-region {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
   height: 4px;
-  border-radius: 2px;
+  border-radius: 0;
   background: var(--accent-primary);
-  opacity: 0.75;
+  opacity: 1;
   pointer-events: none;
   z-index: 1;
 }
 
-/* Crisp setpoint disc — accent fill with a tight surface-color halo
- * so it punches cleanly through the active-region color without the
- * old double-shadow stack. Smaller (12px) than before so it doesn't
- * dominate the now-shorter rail. */
 .filter-slider-thumb {
   position: absolute;
   top: 50%;
@@ -1750,21 +1753,20 @@ button.secondary:hover {
   margin-left: -6px;
   border-radius: 50%;
   background: var(--accent-primary);
-  border: 2px solid var(--bg-secondary);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  border: 1.5px solid var(--text-primary);
+  box-shadow: none;
   pointer-events: none;
   z-index: 2;
   transform: translateY(-50%);
   transition:
     left 0.16s cubic-bezier(0.22, 1.2, 0.36, 1),
-    width 0.12s ease,
-    height 0.12s ease,
-    box-shadow 0.12s ease;
+    width 0.1s linear,
+    height 0.1s linear,
+    border-width 0.1s linear;
 }
 
 .filter-slider-track-container:hover .filter-slider-thumb {
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45),
-              0 0 0 1px color-mix(in srgb, var(--accent-primary) 35%, transparent);
+  border-width: 2px;
 }
 
 .filter-slider-track-container.is-dragging .filter-slider-thumb {
@@ -1772,11 +1774,13 @@ button.secondary:hover {
   width: 14px;
   height: 14px;
   margin-left: -7px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5),
-              0 0 0 2px color-mix(in srgb, var(--accent-primary) 40%, transparent);
+  border-width: 2px;
 }
 
-/* Setpoint value with operator prefix */
+/* Setpoint value with operator prefix — squared, hairline ink frame
+ * to match the rest of the Bauhaus value-cell vocabulary (filter
+ * chip remove cell, stat-row cells). Mono preserved because this
+ * IS tabular data, not a headline. */
 .filter-slider-value {
   font-size: 0.95rem;
   color: var(--text-primary);
@@ -1785,7 +1789,7 @@ button.secondary:hover {
   font-family: var(--font-mono);
   padding: 0.15rem 0.4rem;
   background: var(--bg-tertiary);
-  border-radius: 3px;
+  border-radius: 0;
   border: 1px solid var(--border-color);
   white-space: nowrap;
   overflow: visible;
@@ -1820,10 +1824,14 @@ button.secondary:hover {
 /* Click-to-edit slider value readout. The slider is the primary input;
  * this is a deliberate secondary path. The pencil glyph hints at
  * editability and the box outline appears on hover/focus only, so a
- * stray tap on the chip can't accidentally drop into edit mode. */
+ * stray tap on the chip can't accidentally drop into edit mode.
+ *
+ * Bauhaus polish: squared corners and a hard 1px ink frame on
+ * hover/focus replaces the prior soft 0-radius + brass box-shadow
+ * ring. Same vocabulary as the chip remove cell + value pill. */
 .filter-slider-value-readout {
   background: none;
-  border: none;
+  border: 1px solid transparent;
   padding: 0 0.15rem;
   margin: 0;
   font: inherit;
@@ -1832,14 +1840,14 @@ button.secondary:hover {
   display: inline-flex;
   align-items: baseline;
   gap: 0.3rem;
-  border-radius: 2px;
-  transition: background 0.15s, box-shadow 0.15s;
+  border-radius: 0;
+  transition: background-color 0.15s linear, border-color 0.15s linear;
 }
 
 .filter-slider-value-readout:hover,
 .filter-slider-value-readout:focus-visible {
   background: var(--bg-secondary);
-  box-shadow: 0 0 0 1px var(--accent-primary);
+  border-color: var(--accent-primary);
   outline: none;
 }
 
@@ -1871,8 +1879,8 @@ button.secondary:hover {
   font-family: var(--font-mono);
   color: var(--text-primary);
   background: var(--bg-primary);
-  border: 1px solid var(--accent-primary);
-  border-radius: 3px;
+  border: 1px solid var(--text-primary);
+  border-radius: 0;
   text-align: right;
   outline: none;
   -moz-appearance: textfield;
