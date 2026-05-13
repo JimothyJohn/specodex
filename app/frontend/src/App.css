@@ -2745,7 +2745,12 @@ button.secondary:hover {
   text-transform: uppercase;
 }
 
-/* Product list - compact table layout */
+/* Product list - compact table layout
+ *
+ * Bauhaus phase 3: 1px ink frame on all four sides replaces the
+ * soft top+bottom hairline. Matches the mock's `.results-table-wrap`
+ * outer rule; turns the table into a framed catalog panel rather
+ * than an unbordered column block. */
 .product-grid {
   display: table;
   table-layout: fixed;
@@ -2753,8 +2758,7 @@ button.secondary:hover {
   min-width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  border-top: 1px solid var(--border-color);
-  border-bottom: 1px solid var(--border-color);
+  border: 1px solid var(--text-primary);
   overflow: hidden;
   margin: 0;
 }
@@ -2971,23 +2975,19 @@ button.secondary:hover {
   background: var(--bg-tertiary);
 }
 
+/* Bauhaus phase 3: drop the zebra striping — the mock's table reads
+ * as a single paper sheet with hairline cell separators, not as
+ * alternating bands. Hover provides the row-tracking affordance
+ * instead. */
 .product-card-minimal {
   display: table-row;
-  background: var(--card-bg);
-  transition: all 0.2s ease;
+  background: var(--bg-primary);
+  transition: background 0.12s linear;
   cursor: pointer;
 }
 
 .product-card-minimal:hover {
-  background: var(--bg-secondary);
-}
-
-.product-card-minimal:nth-child(even) {
-  background: var(--bg-primary);
-}
-
-.product-card-minimal:nth-child(even):hover {
-  background: var(--bg-secondary);
+  background: var(--bg-tertiary);
 }
 
 .product-card-minimal:last-child .product-card-info,
@@ -3001,20 +3001,30 @@ button.secondary:hover {
   border-right: 1px solid var(--border-color-light);
 }
 
+/* Bauhaus phase 3: manufacturer = mute mono caption under the part
+ * number. Matches the mock's `.mfg` — small, low-contrast, sits as a
+ * caption beneath the catalog headline (the part number). */
 .product-manufacturer {
   display: block;
-  font-size: 0.78rem;
-  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
   font-weight: 500;
-  margin-bottom: 0.02rem;
+  letter-spacing: 0.04em;
+  color: var(--text-tertiary);
+  margin-bottom: 0.05rem;
 }
 
+/* Part number = Oswald headline. Mock's `.pn` uses the display family
+ * because catalog part numbers ARE the row's headline — they're the
+ * thing users scan for. Previously was mono (numeric/data treatment);
+ * this shifts to a stencil-headline treatment. */
 .product-part {
   display: block;
-  font-weight: 700;
+  font-family: var(--font-headline);
+  font-weight: 600;
+  font-size: 0.92rem;
+  letter-spacing: 0.04em;
   color: var(--text-primary);
-  font-size: 0.95rem;
-  font-family: var(--font-mono);
 }
 
 .product-name {
@@ -3034,16 +3044,26 @@ button.secondary:hover {
   align-items: center;
 }
 
-/* Spec cell styling */
+/* Spec cell styling
+ *
+ * Bauhaus phase 3: adds a hairline right border (grid-line) so cells
+ * read as a divided grid rather than floating values in a row. The
+ * last cell's right border is suppressed by `:last-child` below
+ * (existing rule). */
 .spec-header-item {
   display: table-cell;
   vertical-align: middle;
   text-align: center;
   padding: 0.25rem 0.35rem;
+  border-right: 1px solid var(--border-color-light);
   border-bottom: 1px solid var(--border-color-light);
-  transition: all 0.2s;
+  transition: background-color 0.12s linear;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.spec-header-item:last-child {
+  border-right: 0;
 }
 
 .spec-header-value {
@@ -3078,23 +3098,30 @@ button.secondary:hover {
 }
 
 /* Product info on left side */
+/* Bauhaus phase 3: identity cell — drops the heavy 2px right border
+ * (soft border-color) for the same 1px hairline grid-line all other
+ * cells use. Single visual seam from header through every row. */
 .product-card-info {
   display: table-cell;
   vertical-align: middle;
   text-align: left;
   width: var(--product-part-width);
   padding: 0.3rem 0.8rem;
-  border-right: 2px solid var(--border-color);
+  border-right: 1px solid var(--border-color-light);
   border-bottom: 1px solid var(--border-color-light);
 }
 
+/* Part number inside the identity cell — Oswald headline so the row
+ * headline reads as a stamped catalog figure rather than a mono data
+ * field. */
 .product-info-part {
-  font-size: 1rem;
-  color: var(--text-primary);
-  font-weight: 600;
-  font-family: var(--font-mono);
-  white-space: nowrap;
   display: block;
+  font-family: var(--font-headline);
+  font-weight: 600;
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
+  color: var(--text-primary);
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   width: 100%;
