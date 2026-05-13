@@ -1,0 +1,151 @@
+/* CatalogStatRow — Bauhaus phase 2b.
+ *
+ * 4-cell summary strip beneath the catalog page-toolbar with hard ink
+ * borders + 8x8 ink corner marks + Oswald uppercase labels + tabular
+ * numerals. Mirrors the mock's `.stat-row` at
+ * docs/design/bauhaus-catalog.html.
+ *
+ * Collapsible: when `.is-collapsed` is on the wrapper, only the toggle
+ * button renders. Open state persists in localStorage; see component
+ * source for the storage key.
+ *
+ * Component-owned CSS — see CLAUDE.md "Per-component CSS files"
+ * convention. */
+
+.catalog-stat-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border-bottom: 1px solid var(--border-color);
+  background: transparent;
+}
+
+.catalog-stat-row.is-collapsed {
+  border-bottom: 1px solid var(--border-color);
+}
+
+/* Toggle button: slim strip flush against the cells (when open) or
+ * the page-toolbar (when collapsed). Mirrors the rail-head treatment
+ * — Oswald uppercase, brass chevron, paper background. */
+.catalog-stat-row-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.35rem 0.6rem;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font-family: var(--font-headline);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  align-self: flex-start;
+  transition: color 0.15s linear;
+}
+.catalog-stat-row-toggle:hover {
+  color: var(--text-primary);
+}
+.catalog-stat-row-toggle-chev {
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 7px solid var(--accent-primary);
+  transition: transform 0.12s linear;
+}
+.catalog-stat-row.is-collapsed .catalog-stat-row-toggle-chev {
+  /* Pointing right when collapsed (expand cue), down when open. */
+  transform: rotate(-90deg);
+}
+
+/* The cells: 4 hard-bordered tiles in a row, joined by shared borders.
+ * Squared corners. The 8x8 ink corner mark is the Bauhaus signature
+ * the mock uses to make the row read as a tab-divided panel rather
+ * than four loose boxes. */
+.catalog-stat-row-cells {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+  border: 1px solid var(--text-primary);
+  background: var(--bg-primary);
+}
+.catalog-stat-cell {
+  position: relative;
+  padding: 0.65rem 0.85rem 0.7rem;
+  border-right: 1px solid var(--text-primary);
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+.catalog-stat-cell:last-child {
+  border-right: 0;
+}
+/* 8x8 ink corner mark at the top-right of each cell except the last —
+ * mock's signature accent. The mark sits *over* the shared border so
+ * it visually anchors the joining seam. */
+.catalog-stat-cell::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  width: 8px;
+  height: 8px;
+  background: var(--text-primary);
+  pointer-events: none;
+}
+.catalog-stat-cell:last-child::before {
+  display: none;
+}
+
+.catalog-stat-label {
+  font-family: var(--font-headline);
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  /* Single-line label — long stat names should be terse by design.
+   * If a label genuinely needs two lines, switch to wrap here. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.catalog-stat-value {
+  font-family: var(--font-headline);
+  font-size: 1.45rem;
+  font-weight: 600;
+  line-height: 1.05;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+  /* Long range values like "200–400 V" — wrap if the cell is narrow
+   * rather than ellipsis-clipping (the mock's value is the load-bearing
+   * read, not the chrome). */
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+.catalog-stat-value.is-accent {
+  color: var(--accent-primary);
+}
+
+/* Responsive: at narrow viewports the four cells stack 2x2 instead of
+ * a single horizontal row, mirroring the mock's @media (max-width:
+ * 980px) handling. */
+@media (max-width: 980px) {
+  .catalog-stat-row-cells {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .catalog-stat-cell:nth-child(2)::before {
+    display: none;
+  }
+  .catalog-stat-cell:nth-child(3) {
+    border-top: 1px solid var(--text-primary);
+  }
+  .catalog-stat-cell:nth-child(4) {
+    border-top: 1px solid var(--text-primary);
+  }
+}

@@ -23,6 +23,7 @@ import {
 import ColumnHeader from './ColumnHeader';
 import ProductDetailModal from './ProductDetailModal';
 import AttributeSelector from './AttributeSelector';
+import CatalogStatRow from './CatalogStatRow';
 import Dropdown from './Dropdown';
 import FeedbackModal from './ui/FeedbackModal';
 import type { FeedbackCategory } from '../utils/feedback';
@@ -1005,6 +1006,12 @@ export default function ProductList() {
             )}
           </div>
         </div>
+
+        {/* Bauhaus phase 2b: 4-cell summary stat row over the currently
+         * filtered set. Renders for the product types declared in
+         * STAT_CONFIGS (drive + motor today); other types render
+         * nothing. Collapsible — state persists in localStorage. */}
+        <CatalogStatRow products={displayProducts} productType={productType} />
 
         {/* Linear / Z-axis controls for motors — moved out of the sidebar.
          * The label above the buttons ("Motor application:") is intentional:
