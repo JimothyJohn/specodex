@@ -23,7 +23,7 @@
  * pointer-down on the track promotes it into a real filter.
  */
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AttributeMetadata,
   ComparisonOperator,
@@ -106,7 +106,7 @@ const sniffUnit = (val: unknown): string | null => {
   return null;
 };
 
-export default function ColumnHeader({
+function ColumnHeader({
   attribute,
   label,
   products,
@@ -901,3 +901,60 @@ export default function ColumnHeader({
     </div>
   );
 }
+
+/* Slider responsiveness — React.memo so columns NOT being dragged
+ * skip re-rendering during a slider drag.
+ *
+ * The catalog page has 20+ columns. Pre-memo, every drag tick
+ * (60Hz pointer events) re-rendered ALL of them — even though only
+ * the dragged column's `filter` prop actually changes. The other
+ * columns' filter prop reference is preserved by parent's
+ * `filters.map(f => f === filter ? updated : f)`, but they
+ * re-rendered anyway because `allFilters` (the whole array) gets a
+ * new reference on every setFilters call.
+ *
+ * Custom comparator below ignores:
+ *
+ *   - `allFilters` for slider columns (their multiSelectOptions
+ *     short-circuits to [] without reading the array)
+ *   - `products` (histogram is anchored against allProducts since
+ *     PR #179 — filtered products don't affect render for columns
+ *     not being dragged)
+ *   - Callback refs (onFilterChange/onSort/onRemove/onUnitToggle/
+ *     onResizeStart) — these are inline arrow functions in the
+ *     parent so they change identity every render; checking them
+ *     would defeat the memo. Their closures capture the same
+ *     parent state, so the behaviour is stable across re-renders
+ *     even though the function reference isn't.
+ *
+ * For non-slider columns (string/array filters with multi-select
+ * popovers), `allFilters` IS load-bearing — the popover's option
+ * list depends on what other filters are active to narrow valid
+ * combinations. Those columns fall through to the
+ * allFilters-reference check and re-render on every drag tick.
+ * Acceptable: there are few non-slider columns in a typical
+ * catalog view, and they don't carry the heavy
+ * histogram/distribution work that drives the lag.
+ */
+function arePropsEqual(
+  prev: ColumnHeaderProps,
+  next: ColumnHeaderProps,
+): boolean {
+  if (prev.filter !== next.filter) return false;
+  if (prev.attribute !== next.attribute) return false;
+  if (prev.label !== next.label) return false;
+  if (prev.allProducts !== next.allProducts) return false;
+  if (prev.sortConfig !== next.sortConfig) return false;
+  if (prev.sortIndex !== next.sortIndex) return false;
+  if (prev.totalSorts !== next.totalSorts) return false;
+  if (prev.width !== next.width) return false;
+  if (prev.unitSystem !== next.unitSystem) return false;
+
+  const isSlider =
+    next.attribute.type === 'object' || next.attribute.type === 'range';
+  if (!isSlider && prev.allFilters !== next.allFilters) return false;
+
+  return true;
+}
+
+export default memo(ColumnHeader, arePropsEqual);
