@@ -1,10 +1,16 @@
 name: CI/CD Pipeline
 
+# Two deploy branches:
+# - `dev`    → tests → deploy-staging → smoke-staging (stops here, no prod).
+#              Push to dev to preview a change on the staging CloudFront URL.
+# - `master` → tests → deploy-staging → smoke-staging → [environment: production
+#              approval] → deploy-prod → smoke-prod.
+# PRs into either branch fire tests but no deploys.
 on:
   push:
-    branches: [master]
+    branches: [master, dev]
   pull_request:
-    branches: [master]
+    branches: [master, dev]
   workflow_dispatch:
 
 env:
@@ -17,12 +23,12 @@ permissions:
   contents: read
   id-token: write
 
-# Cancel redundant in-progress runs on the same ref. Master + production
-# deploys keep cancel-in-progress=false so a deploy chain isn't aborted
-# mid-flight by a follow-up commit.
+# Cancel redundant in-progress runs on the same ref. Deploy chains on
+# master/dev keep cancel-in-progress=false so a deploy isn't aborted
+# mid-flight by a follow-up commit; PR runs are cancellable.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/master' }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/master' && github.ref != 'refs/heads/dev' }}
 
 jobs:
   # ── Stage 1a: Python unit tests ─────────────────────────────────
@@ -269,14 +275,24 @@ jobs:
           fi
 
   # ── Stage 2: Deploy to staging ─────────────────────────────────
+  # Fires on push to master OR dev. PR runs are excluded — `ref` for a
+  # PR is `refs/pull/N/merge`, which doesn't match either branch.
   # Deploy delegates to ./Quickstart deploy --stage staging so the
   # CI flow matches the local flow exactly (single source of truth).
   # SSM params are stage-scoped: /datasheetminer/staging/*.
+  #
+  # The cross-branch concurrency group serializes staging deploys so a
+  # near-simultaneous push to dev and master can't trample the same
+  # staging stack mid-deploy. cancel-in-progress=false keeps a queued
+  # deploy waiting rather than dropping it.
   deploy-staging:
     name: Deploy Staging
     runs-on: ubuntu-latest
     needs: [test-python, test-integration, test-backend, test-frontend, test-codegen]
-    if: github.ref == 'refs/heads/master'
+    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/dev'
+    concurrency:
+      group: deploy-staging
+      cancel-in-progress: false
     environment: staging
     outputs:
       url: ${{ steps.extract.outputs.url }}
@@ -403,11 +419,14 @@ jobs:
         run: uv run pytest tests/post_deploy/ -v
 
   # ── Stage 4: Deploy to production ──────────────────────────────
-  # Gated on smoke-staging success + environment approval.
+  # Gated on smoke-staging success + environment approval. Master-only:
+  # dev pushes stop after smoke-staging so the staging URL can be
+  # visually verified before merging dev → master.
   deploy-prod:
     name: Deploy Prod
     runs-on: ubuntu-latest
     needs: [smoke-staging]
+    if: github.ref == 'refs/heads/master'
     environment: production
     outputs:
       url: ${{ steps.extract.outputs.url }}
@@ -528,6 +547,7 @@ jobs:
     name: Smoke Prod
     runs-on: ubuntu-latest
     needs: [deploy-prod]
+    if: github.ref == 'refs/heads/master'
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
