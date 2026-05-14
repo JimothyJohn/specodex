@@ -97,11 +97,13 @@ the GitHub board. Outputs to stdout. Does not post anywhere.</p>
   200 with the expected shape.</li>
 <li><code>./Quickstart bench</code> — offline quality run; flag any
   precision/recall regression vs <code>outputs/benchmarks/latest.json</code>.</li>
-<li><code>gh project item-list 1 --owner JimothyJohn</code> — flag any P0 card
-  in <code>In progress</code> / <code>In review</code> / <code>Backlog</code> status.</li>
 <li>Git state — flag any uncommitted changes on master, or master not
   matching origin.</li>
 </ul>
+<p>(A GitHub Project P0-card check used to live here; the project was
+deleted 2026-05-13, so the stage was dropped from <code>cli/growth.py</code>.
+If you want a "queue check" again, grep <code>todo/README.md</code>'s churn
+plan for 🔴 sign-off rows.)</p>
 <p>Output is one of:</p>
 <pre><code>GROWTH PREFLIGHT — READY
 ✓ smoke: 5/5 endpoints healthy
