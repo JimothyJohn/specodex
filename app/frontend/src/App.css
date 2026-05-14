@@ -2842,18 +2842,20 @@ button.secondary:hover {
   box-shadow: inset -3px 0 0 0 var(--accent-primary);
 }
 
-/* Beats the global `button` rule (App.css ~3732) that uses !important
- * to paint every <button> in the accent yellow. The X overlay needs
- * to be a flat pink glyph in both themes, so we !important it back. */
+/* Bauhaus phase 7a: dropped 8 `!important` defenses. The upstream
+ * broad rules (`button, .button` at L4173 + the multi-selector
+ * border rule at L4115) were wrapped in `:where()` in the same PR,
+ * which gives them zero specificity — `.column-remove-btn` (class
+ * specificity 10) wins automatically. */
 .column-remove-btn {
   position: absolute;
   top: 2px;
   right: 2px;
   width: 17px;
   height: 17px;
-  border: none !important;
-  background: transparent !important;
-  color: #d96b85 !important;
+  border: none;
+  background: transparent;
+  color: #d96b85;
   font-size: 17px;
   font-weight: 800;
   line-height: 17px;
@@ -2861,16 +2863,16 @@ button.secondary:hover {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0 !important;
-  box-shadow: none !important;
+  padding: 0;
+  box-shadow: none;
   transition: color 0.15s, transform 0.15s;
 }
 
 .column-remove-btn:hover {
-  background: transparent !important;
-  color: #c25072 !important;
+  background: transparent;
+  color: #c25072;
   transform: scale(1.2);
-  box-shadow: none !important;
+  box-shadow: none;
 }
 
 .add-column-btn {
@@ -4112,18 +4114,15 @@ code, pre, .monospace {
   letter-spacing: 0.02em;
 }
 
-/* Subtle borders */
-.product-card,
-.card,
-.modal-content,
-.filter-chip,
-.button,
-button,
-input,
-select,
-textarea {
-  border: 1px solid var(--border-color) !important;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08) !important;
+/* Bauhaus phase 7a: wrapped in `:where()` so the rule has zero
+ * specificity. Bare `<button>` and unclassed `.product-card` etc.
+ * still pick up these defaults, but any class with its own
+ * `border` / `box-shadow` declaration wins naturally — no need to
+ * !important-fight the way every Bauhaus button override had to
+ * before this. */
+:where(.product-card, .card, .modal-content, .filter-chip, .button, button, input, select, textarea) {
+  border: 1px solid var(--border-color);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
 }
 
 /* Terminal screen effect - subtle CRT scan lines */
@@ -4170,29 +4169,36 @@ textarea {
   content: '▸ ';
 }
 
-/* Button styling */
-button,
-.button {
+/* Button styling — Bauhaus phase 7a wraps these in `:where()` so the
+ * default "accent-yellow stamp" treatment is a zero-specificity
+ * baseline rather than an !important wall. Any classed button
+ * (.confirm-dialog-cancel, .btn-add-filter, .page-toolbar-clear,
+ * .filter-operator, .feedback-trigger, every other Bauhaus button
+ * the recent ports added) wins on specificity automatically.
+ *
+ * Bare <button> elements with no class still get the accent fill
+ * + mono font + the press-affordance shadow stack — same as before,
+ * just without the !important. */
+:where(button, .button) {
   font-family: var(--font-mono);
   font-weight: 500;
   letter-spacing: 0;
-  padding: 0.35rem 0.8rem !important;
-  border: none !important;
-  background: var(--accent-primary) !important;
-  color: var(--bg-primary) !important;
+  padding: 0.35rem 0.8rem;
+  border: none;
+  background: var(--accent-primary);
+  color: var(--bg-primary);
   position: relative;
   box-shadow:
     1px 1px 0 rgba(0, 0, 0, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
-button:hover,
-.button:hover {
-  background: var(--accent-secondary) !important;
-  color: var(--bg-primary) !important;
+:where(button:hover, .button:hover) {
+  background: var(--accent-secondary);
+  color: var(--bg-primary);
   box-shadow:
     1px 2px 0 rgba(0, 0, 0, 0.16),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 /* Removed decorative squares on all buttons for cleaner appearance */
@@ -6778,24 +6784,30 @@ input.transmission-param-input {
 }
 
 /* When the X lives inside .column-header-top we override the absolute
- * positioning from the global rule (~line 2643) so it flows inline. The
+ * positioning from the global rule (~line 2843) so it flows inline. The
  * inline X also gets bumped slightly bigger and a hover background so
  * users notice it on chips that are otherwise empty (non-slider columns
- * without a histogram or value box, which used to look uneditable). */
+ * without a histogram or value box, which used to look uneditable).
+ *
+ * Bauhaus phase 7a: dropped 6 `!important`s. The descendant selector
+ * `.column-header-top .column-remove-btn` (specificity 20) wins over
+ * `.column-remove-btn` (specificity 10) on its own — `!important` was
+ * never needed here, just defensive crust from when the upstream
+ * cascade was fully !important-fighting. */
 .column-header-top .column-remove-btn {
-  position: static !important;
+  position: static;
   top: auto;
   right: auto;
   flex: 0 0 22px;
-  width: 22px !important;
-  height: 22px !important;
-  font-size: 14px !important;
-  border-radius: 4px !important;
+  width: 22px;
+  height: 22px;
+  font-size: 14px;
+  border-radius: 4px;
   opacity: 0.85;
 }
 .column-header-top .column-remove-btn:hover {
   opacity: 1;
-  background: color-mix(in srgb, #d96b85 20%, transparent) !important;
+  background: color-mix(in srgb, #d96b85 20%, transparent);
   transform: none;
 }
 .column-header-top .column-remove-btn svg {
