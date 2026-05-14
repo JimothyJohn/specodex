@@ -1,3 +1,14 @@
+/* AdminPanel — admin overview for blacklist, data movement, purge.
+ *
+ * Bauhaus phase 10b port: same vocabulary as the catalog/modals/
+ * BuildPage/ProductManagement. Hard ink frames, stencil-label
+ * tracking, Oswald headlines, squared corners, ink-on-paper button
+ * hovers. Action buttons inherit their semantic color (brass for
+ * safe/preview, stamp-red for destructive) but as hard-bordered
+ * cells, not soft pills.
+ *
+ * Per-component CSS sibling to AdminPanel.tsx. */
+
 .admin-panel {
   padding: 2rem;
   max-width: 1100px;
@@ -5,34 +16,47 @@
 }
 
 .admin-panel h2 {
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.3rem;
+  font-family: var(--font-headline);
+  font-size: 1.35rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-primary);
 }
 
 .admin-panel .page-intro {
   color: var(--text-secondary);
-  margin-bottom: 2rem;
+  margin-bottom: 1.75rem;
   line-height: 1.5;
   max-width: 700px;
 }
 
+/* Section card: 1px ink frame, squared, no shadow. Matches the
+ * pane vocabulary across the port. */
 .admin-panel .admin-section {
-  background: var(--bg-card);
-  border-radius: 12px;
-  padding: 1.75rem;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  border: 1px solid var(--border-color);
-  margin-bottom: 1.5rem;
+  background: var(--bg-secondary);
+  border-radius: 0;
+  padding: 1.5rem 1.75rem;
+  box-shadow: none;
+  border: 1px solid var(--text-primary);
+  margin-bottom: 1.25rem;
 }
 
 .admin-panel .admin-section h3 {
-  margin: 0 0 0.25rem 0;
-  font-size: 1.15rem;
+  margin: 0 0 0.2rem 0;
+  font-family: var(--font-headline);
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-primary);
 }
 
 .admin-panel .admin-section .section-help {
   color: var(--text-secondary);
   font-size: 0.9rem;
-  margin-bottom: 1.25rem;
+  margin-bottom: 1.1rem;
   line-height: 1.45;
 }
 
@@ -51,174 +75,220 @@
 }
 
 .admin-form label {
-  font-size: 0.85rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--text-secondary);
+  font-family: var(--font-headline);
+  font-size: 0.72rem;
   font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--text-secondary);
 }
 
 .admin-form input,
 .admin-form select {
-  padding: 0.6rem 0.7rem;
-  border-radius: 6px;
-  border: 1px solid var(--border-color);
-  background: var(--bg-input, var(--bg-secondary));
+  padding: 0.55rem 0.7rem;
+  border-radius: 0;
+  border: 1px solid var(--text-primary);
+  background: var(--bg-primary);
   color: var(--text-primary);
-  font-size: 0.95rem;
+  font-size: 0.92rem;
+  font-family: var(--font-mono);
+  transition: border-color 0.15s linear;
 }
 
 .admin-form input:focus,
 .admin-form select:focus {
   outline: none;
-  border-color: var(--primary-color);
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 1px var(--accent-primary);
 }
 
 .admin-actions {
   display: flex;
-  gap: 0.75rem;
+  gap: 0;
   flex-wrap: wrap;
   margin-top: 0.5rem;
 }
 
+/* Action buttons: joined hard-bordered cells. Each carries its
+ * semantic color in the text, but the frame is consistent — same
+ * pattern as the modal action-bar from PR #164. */
 .btn-dry-run {
-  background-color: #3b82f6;
-  color: white;
-  padding: 0.65rem 1.25rem;
-  border: none;
-  border-radius: 6px;
+  background: transparent;
+  color: var(--accent-primary);
+  padding: 0.55rem 1.1rem;
+  border: 1px solid var(--text-primary);
+  border-radius: 0;
+  font-family: var(--font-headline);
+  font-size: 0.78rem;
   font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
   cursor: pointer;
+  margin-left: -1px;
+  transition: background-color 0.15s linear, color 0.15s linear, border-color 0.15s linear;
+}
+
+.btn-dry-run:first-child {
+  margin-left: 0;
 }
 
 .btn-dry-run:hover:not(:disabled) {
-  background-color: #2563eb;
+  background: var(--accent-primary);
+  color: var(--bg-primary);
 }
 
 .btn-apply {
-  background-color: #16a34a;
-  color: white;
-  padding: 0.65rem 1.25rem;
-  border: none;
-  border-radius: 6px;
+  background: var(--accent-primary);
+  color: var(--text-primary);
+  padding: 0.55rem 1.1rem;
+  border: 1px solid var(--text-primary);
+  border-radius: 0;
+  font-family: var(--font-headline);
+  font-size: 0.78rem;
   font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
   cursor: pointer;
+  margin-left: -1px;
+  transition: background-color 0.15s linear, color 0.15s linear;
 }
 
 .btn-apply:hover:not(:disabled) {
-  background-color: #15803d;
+  background: var(--text-primary);
+  color: var(--bg-primary);
 }
 
 .btn-apply.danger {
-  background-color: #ef4444;
+  background: transparent;
+  color: var(--danger);
+  border-color: var(--text-primary);
 }
 
 .btn-apply.danger:hover:not(:disabled) {
-  background-color: #dc2626;
+  background: var(--danger);
+  color: var(--bg-primary);
+  border-color: var(--danger);
 }
 
 .btn-dry-run:disabled,
 .btn-apply:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
+/* Result card: hairline frame, mono numerals, brass/ink labels. */
 .result-card {
   margin-top: 1rem;
-  padding: 1rem 1.2rem;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
+  padding: 0.85rem 1.1rem;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color-light);
+  border-radius: 0;
   font-size: 0.92rem;
 }
 
 .result-card .result-mode {
   display: inline-block;
-  font-size: 0.85rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  padding: 0.15rem 0.55rem;
-  border-radius: 4px;
+  font-family: var(--font-headline);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  padding: 0.18rem 0.5rem;
+  border-radius: 0;
   margin-right: 0.5rem;
   text-transform: uppercase;
+  border: 1px solid var(--text-primary);
 }
 
 .result-card .result-mode.dry {
-  background: rgba(59, 130, 246, 0.15);
-  color: #2563eb;
+  background: transparent;
+  color: var(--accent-primary);
 }
 
 .result-card .result-mode.applied {
-  background: rgba(22, 163, 74, 0.15);
-  color: #15803d;
+  background: var(--accent-primary);
+  color: var(--text-primary);
 }
 
 .result-card .result-row {
   display: flex;
   justify-content: space-between;
   padding: 0.2rem 0;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
 }
 
 .result-card .result-row strong {
+  font-family: var(--font-headline);
   color: var(--text-primary);
 }
 
 .id-list {
-  margin-top: 0.5rem;
+  margin-top: 0.6rem;
   max-height: 200px;
   overflow-y: auto;
-  padding: 0.5rem;
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  font-family: ui-monospace, Menlo, Monaco, monospace;
-  font-size: 0.85rem;
+  padding: 0.5rem 0.7rem;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color-light);
+  border-radius: 0;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
   color: var(--text-secondary);
 }
 
 .id-list .id-row {
-  padding: 0.1rem 0;
+  padding: 0.08rem 0;
 }
 
-/* Blacklist chips */
+/* Blacklist chips: squared, hard ink border + stamp-red text.
+ * Replaces the round pill (border-radius: 999px) with brand-style
+ * tag chip matching the Bauhaus vocabulary. */
 .blacklist-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 0.4rem;
   margin-bottom: 1rem;
   min-height: 2rem;
 }
 
 .blacklist-chip {
   display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  background: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  padding: 0.3rem 0.6rem 0.3rem 0.75rem;
-  border-radius: 999px;
-  font-size: 0.85rem;
+  align-items: stretch;
+  gap: 0;
+  background: transparent;
+  color: var(--text-primary);
+  border: 1px solid var(--text-primary);
+  padding: 0 0 0 0.65rem;
+  border-radius: 0;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
   font-weight: 500;
 }
 
+.blacklist-chip > span,
+.blacklist-chip > * {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* Close cell on the chip — hard-divided cell, stamp-red bg + paper
+ * text on hover. Mirrors .filter-remove from PR #161. */
 .blacklist-chip button {
-  background: none;
-  border: none;
-  color: var(--danger);
-  opacity: 0.75;
+  background: transparent;
+  border: 0;
+  border-left: 1px solid var(--text-primary);
+  border-radius: 0;
+  color: var(--text-primary);
   cursor: pointer;
-  font-size: 1rem;
+  font-size: 0.95rem;
   line-height: 1;
-  padding: 0 0.15rem;
-  border-radius: 2px;
-  transition: opacity 0.15s, background 0.15s;
+  padding: 0.3rem 0.5rem;
+  margin-left: 0.4rem;
+  transition: background-color 0.15s linear, color 0.15s linear;
 }
 
 .blacklist-chip button:hover {
-  color: var(--danger);
-  opacity: 1;
-  background: color-mix(in srgb, var(--danger) 18%, transparent);
+  background: var(--danger);
+  color: var(--bg-primary);
 }
 
 .blacklist-empty {
@@ -227,20 +297,25 @@
 }
 
 .confirm-hint {
-  font-family: ui-monospace, Menlo, Monaco, monospace;
+  font-family: var(--font-mono);
   font-size: 0.85rem;
-  background: var(--bg-secondary);
-  padding: 0.4rem 0.6rem;
-  border-radius: 4px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color-light);
+  padding: 0.35rem 0.6rem;
+  border-radius: 0;
   display: inline-block;
-  margin-top: 0.25rem;
+  margin-top: 0.3rem;
+  color: var(--text-primary);
 }
 
+/* Danger notice: stamp-red left bar, ink frame. Same vocabulary as
+ * the .build-page__slot-error pattern from Phase 9. */
 .danger-notice {
-  background: rgba(239, 68, 68, 0.08);
-  border-left: 3px solid #ef4444;
-  padding: 0.75rem 1rem;
-  border-radius: 4px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--text-primary);
+  border-left: 3px solid var(--danger);
+  padding: 0.7rem 0.95rem;
+  border-radius: 0;
   color: var(--text-primary);
   font-size: 0.88rem;
   margin-bottom: 1rem;
