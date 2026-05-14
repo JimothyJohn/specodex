@@ -52,7 +52,14 @@ import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    # Imported under TYPE_CHECKING so the runtime cost of pulling in
+    # boto3 + the Gemini client only happens inside _run_one when an
+    # actual run starts. The string forward-ref at the function
+    # signature picks up this import for type-checkers + ruff.
+    from specodex.db.dynamo import DynamoDBClient
 
 log = logging.getLogger("batch_servo_drives")
 
@@ -97,7 +104,7 @@ def _filter(
 
 
 def _run_one(
-    client: "DynamoDBClient",  # type: ignore[name-defined]  # forward-ref, imported lazily
+    client: DynamoDBClient,
     api_key: str,
     target: dict[str, Any],
     *,
@@ -143,7 +150,15 @@ def _run_one(
     return record
 
 
-def _ensure_env() -> tuple[str, str]:
+def _ensure_api_key() -> str:
+    """Read GEMINI_API_KEY from env or exit with an error.
+
+    Kept separate from _get_table_name so CodeQL's flow analysis
+    doesn't taint the table name as sensitive-data-from-env-key. A
+    prior shared `_ensure_env() -> tuple[str, str]` raised 3 false-
+    positive 'clear-text logging of sensitive information' alerts on
+    code that only logged the table name.
+    """
     api_key = os.environ.get("GEMINI_API_KEY", "")
     if not api_key:
         print(
@@ -151,9 +166,14 @@ def _ensure_env() -> tuple[str, str]:
             file=sys.stderr,
         )
         sys.exit(2)
+    return api_key
+
+
+def _get_table_name() -> str:
+    """Return the configured DynamoDB table. Non-sensitive."""
     from specodex.config import TABLE_NAME  # local — config reads .env on import
 
-    return api_key, TABLE_NAME
+    return TABLE_NAME
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -226,7 +246,8 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  {t['slug']:40s} {t['_manufacturer']:20s} {t['url']}")
         return 0
 
-    api_key, table = _ensure_env()
+    api_key = _ensure_api_key()
+    table = _get_table_name()
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     REPORT_PATH.parent.mkdir(parents=True, exist_ok=True)
 
