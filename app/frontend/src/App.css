@@ -1398,10 +1398,13 @@ button.secondary:hover {
 }
 
 /* The inline DistributionChart sits inside .filter-row; tighten its
- * top spacing because the chip already provides the visual border. */
+ * top spacing because the chip already provides the visual border.
+ * Bauhaus phase 7f: dropped 2 `!important`s. Selector specificity
+ * (~31 from .filter-row > div:last-child:not(.filter-chip-minimal))
+ * beats anything generic. */
 .filter-row > div:last-child:not(.filter-chip-minimal) {
-  margin-top: 0.3rem !important;
-  padding-top: 0.3rem !important;
+  margin-top: 0.3rem;
+  padding-top: 0.3rem;
 }
 
 /* Action stack — Add Filter is the primary CTA. It owns the full width
@@ -1420,17 +1423,19 @@ button.secondary:hover {
  * destructive-ish counterpart to the gold "+ Add Spec" primary; warm
  * dusty rose plays nicely with the manila/sepia palette and reads as
  * distinct from the red --danger reserved for true destructive cues. */
+/* Bauhaus phase 7f: dropped 6 `!important`s from .btn-clear + :hover.
+ * Class specificity 10 wins over the now-:where()'d broad button rule. */
 .btn-clear {
   align-self: flex-end;
   padding: 0.1rem 0.35rem;
-  background: rgba(199, 84, 127, 0.08) !important;
-  border: 1px solid rgba(199, 84, 127, 0.35) !important;
+  background: rgba(199, 84, 127, 0.08);
+  border: 1px solid rgba(199, 84, 127, 0.35);
   border-radius: 2px;
   font-family: var(--font-mono);
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  color: #c7547f !important;
+  color: #c7547f;
   cursor: pointer;
   transition: color 0.15s linear, background 0.15s linear, border-color 0.15s linear;
   font-weight: 600;
@@ -1440,9 +1445,9 @@ button.secondary:hover {
 }
 
 .btn-clear:hover {
-  color: #ffe4ee !important;
-  background: #b85674 !important;
-  border-color: #b85674 !important;
+  color: #ffe4ee;
+  background: #b85674;
+  border-color: #b85674;
 }
 
 /* Filter chips container — two-column grid on desktop so chips read
@@ -7051,13 +7056,16 @@ input.transmission-param-input {
   outline-offset: -2px;
 }
 
+/* Bauhaus phase 7f: dropped 5 `!important`s. Descendant selector
+ * (.compact-column-header + .compact-column-remove-btn = specificity
+ * 20) beats the base .column-remove-btn (10) naturally. */
 .compact-column-header .compact-column-remove-btn {
   flex: 0 0 16px;
-  width: 16px !important;
-  height: 16px !important;
-  position: static !important;
-  font-size: 12px !important;
-  border-radius: 2px !important;
+  width: 16px;
+  height: 16px;
+  position: static;
+  font-size: 12px;
+  border-radius: 2px;
   padding: 0;
   margin-left: 0.1rem;
   top: auto;
@@ -7222,12 +7230,15 @@ input.transmission-param-input {
   box-sizing: border-box;
 }
 
-/* Theme/density toggle — the !important block above pinned 36×36; we
- * override to the unified 32px square so the whole strip aligns. */
+/* Theme/density toggle — earlier .theme-toggle rule (now de-!important'd
+ * in PR #196) had 36×36; this rule unifies to a 32px square so the
+ * whole top-bar strip aligns. Bauhaus phase 7f: dropped the padding
+ * `!important` — by source order alone this rule wins (it's later
+ * than the earlier .theme-toggle definition). */
 .theme-toggle,
 .density-toggle {
   width: var(--control-h);
-  padding: 0 !important;
+  padding: 0;
 }
 
 /* Dropdown trigger uses inline-flex; centering its label vertically with
@@ -7242,10 +7253,13 @@ input.transmission-param-input {
 /* Sign-in button: the default styling reads as a thin outline pill;
  * give it the same height + radius and pad horizontally enough to match
  * the dropdown's visual weight. Don't fight the global button rule on
- * background — leave its accent fill alone. */
+ * background — leave its accent fill alone.
+ *
+ * Bauhaus phase 7f: dropped 2 `!important`s. Class specificity 10
+ * wins over the now-:where()'d broad rule. */
 .account-menu-signin {
-  padding-top: 0 !important;
-  padding-bottom: 0 !important;
+  padding-top: 0;
+  padding-bottom: 0;
   display: inline-flex;
   align-items: center;
 }
@@ -7594,10 +7608,12 @@ input.transmission-param-input {
     width: 32px; height: 32px; min-height: 32px;
   }
 
-  /* Sign-in label must stay on one line; the global button rule pads it
-   * generously and the label wraps below ~370px otherwise. */
+  /* Sign-in label must stay on one line; the broad button rule used to
+   * pad it generously and the label wrapped below ~370px otherwise.
+   * Bauhaus phase 7f: dropped `!important` — broad rule is now
+   * :where()'d, this class+media-query selector wins naturally. */
   .account-menu-signin {
-    padding: 0 0.6rem !important;
+    padding: 0 0.6rem;
     font-size: 0.75rem;
     white-space: nowrap;
   }
@@ -7698,11 +7714,12 @@ input.transmission-param-input {
  *     viewport on first load.
  * ========================================================================= */
 @media (max-width: 768px) {
-  /* Hero pulse trigger — :important padding above must be matched. The
-   * pulse stays (it's the first-run nudge); we just stop it being a
-   * 50px box. */
+  /* Hero pulse trigger — earlier .filter-controls-top rule (now
+   * de-!important'd in PR #195) had a larger padding; this media query
+   * shrinks to 0.4rem 0.6rem on mobile. Bauhaus phase 7f: dropped
+   * `!important` since the upstream rule no longer fights. */
   .filter-controls-top .custom-dropdown-trigger[data-placeholder='true'] {
-    padding: 0.4rem 0.6rem !important;
+    padding: 0.4rem 0.6rem;
     font-size: 0.85rem;
   }
   .filter-controls-top .custom-dropdown-trigger[data-placeholder='true'] .custom-dropdown-trigger-label {
