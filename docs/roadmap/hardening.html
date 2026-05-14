@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Audit date: 2026-05-09 Status (post-2026-05-10 sprint): 10 of 14 findings shipped; 4 remain.">
+    <meta name="theme-color" content="#3A2C1C">
+    <title>Specodex — HARDENING — adversarial-by-default testing posture</title>
+    <link rel="icon" type="image/svg+xml" href="../logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-issue="HARDENING — ADVERSARIAL-">
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="band">
+        <div class="band-inner">
+            <a class="band-brand" href="../index.html">
+                <svg class="band-mark" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <rect width="120" height="120" fill="#E8E2C9"/>
+                    <rect x="14" y="14" width="92" height="92" fill="none" stroke="#1A1A14" stroke-width="3"/>
+                    <rect x="14" y="14" width="92" height="22" fill="#3A2C1C"/>
+                    <rect x="62" y="60" width="40" height="10" fill="#A88A1C"/>
+                    <line x1="14" y1="56" x2="106" y2="56" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="74" x2="106" y2="74" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="92" x2="106" y2="92" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="60" y1="36" x2="60" y2="106" stroke="#1A1A14" stroke-width="2"/>
+                </svg>
+                <span class="wordmark">SPECODEX</span>
+            </a>
+            <nav class="band-nav" aria-label="Section">
+                <a href="../index.html">Catalog</a>
+                <a href="../roadmap.html">Roadmap</a>
+                <a href="https://github.com/JimothyJohn/specodex/blob/master/todo/HARDENING.md" rel="noreferrer">Source</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="doc-hero">
+            <div class="hero-tag">▮▮▮ HARDENING ▮▮▮</div>
+            <h1 class="hero-title">HARDENING — adversarial-by-default testing posture</h1>
+            <div class="doc-meta">
+                <span class="status-chip status-ready">🟡 READY TO PR</span>
+                <span class="doc-source"><code>todo/HARDENING.md</code></span>
+            </div>
+        </section>
+
+        <article class="doc-body">
+<h1 id="hardening-adversarial-by-default-testing-posture">HARDENING — adversarial-by-default testing posture</h1>
+<p><strong>Audit date:</strong> 2026-05-09
+<strong>Status (post-2026-05-10 sprint):</strong> 10 of 14 findings shipped; 4 remain.</p>
+<table>
+<thead>
+<tr>
+<th>Phase</th>
+<th>Status</th>
+<th>Shipping PRs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1.1 Activate <code>_test_security.py</code></td>
+<td>✅ shipped</td>
+<td>#95</td>
+</tr>
+<tr>
+<td>1.2 <code>uv sync --locked</code> CI sweep</td>
+<td>⚪ open</td>
+<td>needs human PR (touches <code>.github/workflows/</code>)</td>
+</tr>
+<tr>
+<td>1.3 Regression tests for log-injection #82/#83/#84</td>
+<td>✅ shipped</td>
+<td>#97</td>
+</tr>
+<tr>
+<td>2.1 SSRF defense for URL-fetching paths</td>
+<td>✅ shipped</td>
+<td>#98</td>
+</tr>
+<tr>
+<td>2.2 Backend integration tests against real DAL (L)</td>
+<td>⚪ open</td>
+<td>next-sprint queue</td>
+</tr>
+<tr>
+<td>2.3 IDOR + cross-tenant auth tests</td>
+<td>✅ shipped</td>
+<td>#100</td>
+</tr>
+<tr>
+<td>2.4 Stripe webhook signature + replay tests</td>
+<td>✅ shipped</td>
+<td>#101</td>
+</tr>
+<tr>
+<td>3.1 Hypothesis property tests for parsers (3 targets)</td>
+<td>✅ shipped</td>
+<td>#111, #112, #113 — plus #116, #118, #120, #122, #123 extensions</td>
+</tr>
+<tr>
+<td>3.2 Atheris fuzz target for PDF intake</td>
+<td>⚪ open</td>
+<td>heavier dep (LLVM/clang); st.binary in #113 covers the basic shape</td>
+</tr>
+<tr>
+<td>3.3 Schema forward/backward compat tests</td>
+<td>✅ shipped</td>
+<td>#107</td>
+</tr>
+<tr>
+<td>3.4 Concurrent-write stress test</td>
+<td>✅ shipped</td>
+<td>#110</td>
+</tr>
+<tr>
+<td>4.1 Dev-deps for adversarial testing (mutmut + pytest-randomly + freezegun)</td>
+<td>✅ shipped</td>
+<td>#103</td>
+</tr>
+<tr>
+<td>4.2 Lockfile-drift gate post-install</td>
+<td>⚪ open</td>
+<td>needs human PR (touches <code>.github/workflows/</code>)</td>
+</tr>
+<tr>
+<td>4.3 Log secret-leak assertion tests</td>
+<td>✅ shipped</td>
+<td>#102</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Three real bugs caught by the Phase 3.1 work</strong> (each docstring vs.
+implementation disagreement, surfaced by Hypothesis): <code>_coerce_ip_rating</code>
+(#112), <code>_coerce_protocol_list</code> (#116), <code>Gearhead.coerce_string_fields</code>
+(#118).</p>
+<p><strong>Companion:</strong> <code>~/.claude/CLAUDE.md</code> "Property testing — adversarial by
+default" section (added in PR #124) documents the established pattern
+for new property tests and lists 4 untested adversarial surfaces as the
+next-sprint queue: <code>cli/processor.py</code>, <code>specodex/integration/compat.py</code>,
+<code>specodex/spec_rules.py</code>, <code>specodex/quality.py</code>.</p>
+<p><strong>Trigger:</strong> any new endpoint, parser, deserializer, IAM policy, log statement, or external integration.</p>
+<h2 id="first-hour-three-immediate-wins-ship-tonight">First hour — three immediate wins (ship tonight)</h2>
+<p>If you only have ~90 minutes, ship these three. Each is independent and closes a real hole.</p>
+<ol>
+<li><strong>Rename <code>_test_security.py</code></strong> (30 seconds, <a href="#11-activate-_test_securitypy-xs-p1">card 1.1</a>) — activates 376 lines of dormant pytest security tests.</li>
+<li><strong><code>uv sync --locked</code> sweep across CI workflows</strong> (10 minutes, <a href="#12-uv-sync---locked-across-ci-workflows-xs-p1">card 1.2</a>) — closes the supply-chain drift gap.</li>
+<li><strong>Regression tests for log-injection PRs #82/#83/#84</strong> (~1 hour, <a href="#13-regression-tests-for-log-injection-prs-828384-s-p0">card 1.3</a>) — guards the freshly-shipped CodeQL fixes against future regression.</li>
+</ol>
+<p>After those, pick from Phase 2 by impact. SSRF first if you have time for one HIGH; otherwise queue.</p>
+<h2 id="phase-1-immediate-wins">Phase 1 — Immediate wins</h2>
+<h3 id="11-activate-_test_securitypy-xs-p1">1.1 Activate <code>_test_security.py</code> (XS, P1)</h3>
+<p><code>tests/integration/_test_security.py</code> is collection-skipped by pytest (leading underscore). 376 lines of injection / oversized-payload tests never run. The <code>from tests.integration.test_api_gateway import TestApiGateway</code> import is broken (no such module).</p>
+<p><strong>Steps:</strong>
+1. <code>git mv tests/integration/_test_security.py tests/integration/test_security.py</code>
+2. Fix the broken import — either remove the inheritance trick or point at a real fixture base.
+3. <code>./Quickstart test --filter test_security</code> and triage anything newly-failing.
+4. If genuine bugs surface, file each as a follow-up HARDENING card on the board.</p>
+<p><strong>Definition of done:</strong> pytest collects + runs <code>test_security.py</code>, CI green or each failure has its own follow-up card.</p>
+<h3 id="12-uv-sync-locked-across-ci-workflows-xs-p1">1.2 <code>uv sync --locked</code> across CI workflows (XS, P1)</h3>
+<p>CI runs <code>uv sync --quiet</code> (unlocked) on every job. Lockfile drift or hostile transitive bumps land silently. The new "Supply chain integrity in CI" rule mandates <code>--locked</code>.</p>
+<p><strong>Files (audit found):</strong>
+- <code>.github/workflows/ci.yml</code> lines 46, 123, 258, 390, 542
+- <code>.github/workflows/staging.yml:34</code>
+- <code>.github/workflows/security.yml:37</code>
+- <code>.github/workflows/bench.yml</code>
+- <code>cli/quickstart.py</code> <code>cmd_verify</code></p>
+<p><strong>Steps:</strong>
+1. <code>grep -rn "uv sync --quiet" .github/workflows/ cli/</code> to confirm the audit list.
+2. Replace each <code>uv sync --quiet</code> with <code>uv sync --locked --quiet</code>.
+3. <code>./Quickstart verify</code> locally — no drift expected since the lockfile is committed.</p>
+<p><strong>Note:</strong> Touches <code>.github/workflows/</code>, so the daily orchestrator will skip this. Nick ships manually.</p>
+<p><strong>Definition of done:</strong> every <code>uv sync</code> in the repo uses <code>--locked</code>; CI re-runs green on the PR.</p>
+<h3 id="13-regression-tests-for-log-injection-prs-828384-s-p0">1.3 Regression tests for log-injection PRs #82/#83/#84 (S, P0)</h3>
+<p>PRs #82 (inline <code>safeLog</code>), #83 (codeql-loginjection-inline), #84 (codeql-loginjection-audit) shipped fixes without regression tests. The next refactor through the log path could undo them silently.</p>
+<p><strong>Files:</strong>
+- <code>app/backend/src/util/log.ts</code> (the <code>safeLog</code> helper — currently has zero tests)
+- <code>app/backend/src/index.ts:38</code> (inline CR/LF stripper)</p>
+<p><strong>Steps:</strong>
+1. Create <code>app/backend/tests/log.test.ts</code>.
+2. Test 1: <code>safeLog('a\r\nINJECT')</code> does NOT contain <code>\n</code> or <code>\r</code>.
+3. Test 2: 1000-character input truncates per the existing rule.
+4. Test 3: ANSI escapes (<code>\x1b[31m</code>) get stripped.
+5. Test 4 (integration): hit a real route with a <code>\r\n</code>-laced query param, assert captured log is single-line.
+6. Confirm each test FAILS without the existing fix (temporarily revert per-test, run, revert the revert).</p>
+<p><strong>Definition of done:</strong> four passing tests. Each one verified to fail when its corresponding fix is removed.</p>
+<h2 id="phase-2-real-attacker-surface">Phase 2 — Real attacker surface</h2>
+<h3 id="21-ssrf-defense-for-url-fetching-paths-m-p0">2.1 SSRF defense for URL-fetching paths (M, P0)</h3>
+<p><code>specodex/web_scraper.py</code>, <code>specodex/browser.py</code>, <code>specodex/pricing/extract.py</code> accept user-supplied URLs and fetch them via Playwright/httpx. No allowlist, no DNS validation. <code>169.254.169.254</code> (AWS metadata), <code>localhost</code>, <code>file://</code>, internal hostnames — all reachable server-side.</p>
+<p><strong>Steps:</strong>
+1. Create <code>specodex/url_safety.py</code> exposing <code>validate_url(url: str) -&gt; str</code> (raises on unsafe).
+   - HTTPS only — reject <code>http://</code>, <code>file://</code>, <code>ftp://</code>, <code>gopher://</code>, etc.
+   - Resolve hostname → reject RFC1918 (<code>10.0.0.0/8</code>, <code>172.16.0.0/12</code>, <code>192.168.0.0/16</code>), link-local (<code>169.254.0.0/16</code>), loopback (<code>127.0.0.0/8</code>), and IPv6 equivalents (<code>fc00::/7</code>, <code>fe80::/10</code>, <code>::1</code>).
+   - Re-resolve immediately before connecting (TOCTOU defense against DNS-rebinding).
+2. Wire <code>validate_url</code> into <code>web_scraper.fetch_page</code>, <code>browser.navigate</code>, and the URL paths in <code>pricing/extract</code>.
+3. Create <code>tests/unit/test_url_safety.py</code> covering: metadata IPs (<code>169.254.169.254</code>, IPv6 variants <code>fd00:ec2::254</code>), <code>localhost</code>, <code>[::1]</code>, <code>metadata.google.internal</code>, percent-encoded <code>%6c%6f%63%61%6c%68%6f%73%74</code>, double-encoded variants, redirects to internal IPs, DNS-rebinding via short-TTL records.</p>
+<p><strong>Definition of done:</strong> 100% of URL-fetching paths route through <code>validate_url</code>; test suite covers all the listed attacks; existing scraper tests still pass.</p>
+<h3 id="22-backend-integration-tests-against-real-dal-l-p1">2.2 Backend integration tests against real DAL (L, P1)</h3>
+<p>All 16 <code>app/backend/tests/*.test.ts</code> files do <code>jest.mock('../src/db/dynamodb')</code>. Refactors that break the real DAL pass green.</p>
+<p><strong>Steps:</strong>
+1. Add either <code>aws-sdk-client-mock</code> (light) or DynamoDB Local via jest globalSetup (heavier but exercises real client→server protocol). Pick DynamoDB Local — it's the one that matches the integration-test rule.
+2. Pick the 3 highest-value tests to migrate first: <code>db.test.ts</code>, <code>search.contract.test.ts</code>, <code>routes.test.ts</code>. Don't touch the other 13 in this card.
+3. Replace <code>jest.mock('../src/db/dynamodb')</code> with the real <code>DynamoDBService</code> pointed at <code>localhost:8000</code>.
+4. Add a contract test: returned items round-trip through the Pydantic-generated <code>generated.ts</code> types without coercion.
+5. File a follow-up HARDENING card: "migrate the remaining 13 mocked backend tests to real DAL."</p>
+<p><strong>Definition of done:</strong> three tests run against DynamoDB Local in CI and pass; jest globalSetup boots/teardowns the local instance; follow-up card exists.</p>
+<h3 id="23-idor-cross-tenant-auth-tests-m-p1">2.3 IDOR + cross-tenant auth tests (M, P1)</h3>
+<p>Existing tests cover happy-path 200s and 401-on-no-token. None covers "user A's token requesting user B's data."</p>
+<p><strong>Steps:</strong>
+1. Create <code>app/backend/tests/projects.idor.test.ts</code>.
+2. Build two distinct mock JWTs (different <code>sub</code>, different <code>userId</code>) using the same signer.
+3. For each protected endpoint:
+   - User A creates a resource (project, upload, etc.).
+   - User B's token requests user A's resource ID. Assert 403 or 404 (never 200 with A's data).
+   - User B's token attempts write/delete on user A's resource. Assert 403 or 404.
+4. Cover at minimum: <code>/api/projects/:id</code> (GET, PATCH, DELETE), <code>/api/projects/:id/items</code> (POST), any other resource-scoped endpoint.</p>
+<p><strong>Definition of done:</strong> every resource-scoped endpoint has at least one IDOR test; the test would fail if the route's auth check were removed.</p>
+<h3 id="24-stripe-webhook-signature-replay-tests-m-p1">2.4 Stripe webhook signature + replay tests (M, P1)</h3>
+<p><code>app/backend/tests/subscription.test.ts</code> uses a hardcoded fake URL. No signature-verification negative tests, no replay/idempotency tests.</p>
+<p><strong>Steps:</strong>
+1. Add <code>stripe-mock</code> as a test fixture (or use Stripe CLI's local webhook forwarding).
+2. Test 1 (signature tamper): valid event body signed with wrong secret → webhook returns 400, no DB write.
+3. Test 2 (replay): post the same <code>event.id</code> twice → second is a no-op (no DB write, no Stripe API call).
+4. Test 3 (clock skew): event signed &gt;5min ago → rejected.</p>
+<p><strong>Definition of done:</strong> three failing-without-the-defense tests, each one confirmed to fail when its specific check is bypassed.</p>
+<h2 id="phase-3-adversarial-input-coverage">Phase 3 — Adversarial input coverage</h2>
+<h3 id="31-hypothesis-property-tests-for-parsers-m-p2">3.1 Hypothesis property tests for parsers (M, P2)</h3>
+<p>Property tests today cover only <code>ValueUnit</code>/<code>MinMaxUnit</code>. Higher-risk parsers eat untrusted bytes with no <code>@given</code> coverage.</p>
+<p><strong>Targets:</strong>
+- <code>parse_gemini_response</code> (<code>specodex/utils.py</code>) — eats LLM JSON
+- <code>find_spec_pages_by_text</code> (<code>specodex/page_finder.py</code>) — reads PDF text
+- BeforeValidators in <code>specodex/models/common.py</code></p>
+<p><strong>Steps:</strong>
+1. Confirm <code>hypothesis</code> in <code>[dependency-groups].dev</code>; add if missing.
+2. Create <code>tests/unit/test_parse_gemini_property.py</code> with <code>@given(st.recursive(...))</code> strategies for malformed/empty/unicode-laced JSON. Assert: never raises uncaught; never returns half-validated objects.
+3. Same pattern for <code>page_finder</code> (text fuzz) and the BeforeValidators.</p>
+<p><strong>Definition of done:</strong> property tests on all three targets, each running ≥100 examples in CI.</p>
+<h3 id="32-atheris-fuzz-target-for-pdf-intake-m-p2">3.2 Atheris fuzz target for PDF intake (M, P2)</h3>
+<p><code>specodex/page_finder.py</code> parses arbitrary PDFs via PyMuPDF/PyPDF2. Classic untrusted-bytes parser — atheris's wheelhouse.</p>
+<p><strong>Steps:</strong>
+1. Add <code>atheris</code> to dev-deps.
+2. Create <code>tests/fuzz/fuzz_page_finder.py</code> with <code>atheris.Setup(sys.argv, TestOnePDF)</code> against <code>find_spec_pages_by_text(pdf_bytes)</code>.
+3. Gate behind <code>pytest -m fuzz</code>. Don't block CI; run as a nightly job in <code>.github/workflows/bench.yml</code>.
+4. On crash, save corpus minimum to <code>tests/fuzz/corpus/</code>; commit.</p>
+<p><strong>Definition of done:</strong> fuzz target runs locally for ≥10min without crashing; nightly bench.yml job invokes it.</p>
+<h3 id="33-schema-forwardbackward-compat-tests-s-p2">3.3 Schema forward/backward compat tests (S, P2)</h3>
+<p><code>tests/unit/test_models_roundtrip.py</code> covers same-version roundtrip only. Nothing tests forward/backward compat across <code>ProductType</code> literal additions or model field changes.</p>
+<p><strong>Steps:</strong>
+1. Create <code>tests/integration/test_schema_compat.py</code>.
+2. Frozen fixtures: snapshot of one product row per <code>ProductType</code> from current dev DB (commit to <code>tests/integration/fixtures/schema_snapshots/</code>).
+3. Test 1 (forward compat): each snapshot loads under current code via <code>&lt;Model&gt;.model_validate</code>.
+4. Test 2 (rollback safety): when adding a model field, the previous version's <code>model_validate</code> accepts new data (extra fields ignored).
+5. Refresh snapshots when a new <code>ProductType</code> ships.</p>
+<p><strong>Definition of done:</strong> snapshot fixtures committed; both compatibility directions covered; documentation in CLAUDE.md "Adding a new product type" mentions the snapshot refresh step.</p>
+<h3 id="34-concurrent-write-stress-test-s-p2">3.4 Concurrent-write stress test (S, P2)</h3>
+<p><code>scraper.batch_create</code> and <code>process_datasheet</code> write shared DynamoDB state. No test exercises concurrent writes with overlapping <code>product_id</code>s.</p>
+<p><strong>Steps:</strong>
+1. Create <code>tests/integration/test_concurrent_writes.py</code>.
+2. Use <code>moto</code> or DynamoDB Local. Spawn 20 parallel <code>batch_create</code> calls with deliberately overlapping IDs.
+3. Assert: final state matches one of the writers (no torn rows, no field-by-field mixing).
+4. Use <code>concurrent.futures.ThreadPoolExecutor</code>; seed timing with deliberate sleeps to trigger races.</p>
+<p><strong>Definition of done:</strong> test reliably catches a torn-write regression if optimistic concurrency control is removed; passes deterministically when CC is in place.</p>
+<h2 id="phase-4-hygiene-observability">Phase 4 — Hygiene + observability</h2>
+<h3 id="41-dev-deps-for-adversarial-testing-xs-p2">4.1 Dev-deps for adversarial testing (XS, P2)</h3>
+<p>Add to <code>pyproject.toml [dependency-groups].dev</code>:
+- <code>mutmut</code> — mutation testing
+- <code>pytest-randomly</code> — random test order
+- <code>freezegun</code> — time mocking</p>
+<p>Wire <code>pytest-randomly</code> via auto-load (it auto-loads when installed); pin its seed in CI for reproducibility.
+Wire <code>mutmut run --paths-to-mutate specodex/quality.py</code> as a weekly job in <code>.github/workflows/bench.yml</code>. Don't gate CI on mutation-catch rate yet — establish a baseline first.</p>
+<p><strong>Definition of done:</strong> deps installed; <code>pytest --randomly-seed=42</code> runs the suite in random order; mutmut weekly job exists.</p>
+<h3 id="42-lockfile-drift-gate-post-install-xs-p2">4.2 Lockfile-drift gate post-install (XS, P2)</h3>
+<p>After <code>npm ci</code> / <code>uv sync --locked</code>, run <code>git diff --exit-code &lt;lockfile&gt;</code> and fail the build if the lockfile mutated. Drift on a <code>--locked</code> install means something hostile or buggy.</p>
+<p><strong>Files to edit:</strong>
+- <code>cli/quickstart.py:cmd_verify</code> — add the drift check after each install
+- <code>.github/workflows/ci.yml</code> — same</p>
+<p><strong>Definition of done:</strong> local <code>./Quickstart verify</code> exits non-zero if <code>package-lock.json</code> or <code>uv.lock</code> mutates during install; CI mirrors.</p>
+<h3 id="43-log-secret-leak-assertion-tests-s-p2">4.3 Log secret-leak assertion tests (S, P2)</h3>
+<p>No tests assert that secrets, tokens, JWTs, or full Stripe IDs never appear in logs at any level. The cloud-security rule "Logs are an attack surface AND a forensic tool" is a policy; this card makes it enforced.</p>
+<p><strong>Steps:</strong>
+1. Create <code>app/backend/tests/log-leak.test.ts</code>.
+2. In <code>beforeEach</code>, seed env with sentinel values for <code>GEMINI_API_KEY</code>, <code>AWS_SECRET_ACCESS_KEY</code>, etc.
+3. Spy on <code>console.error</code>, <code>console.warn</code>, <code>console.log</code>.
+4. Trigger error paths: bad JWT, malformed Stripe webhook, oversized upload, DB error.
+5. After each, assert no captured string contains any sentinel value.
+6. Mirror in Python (<code>tests/integration/test_log_leaks.py</code>) using pytest's <code>caplog</code>.</p>
+<p><strong>Definition of done:</strong> TS + Python log-leak tests run in CI; both fail loudly if a known-leaking line is reintroduced.</p>
+<h2 id="dependencies">Dependencies</h2>
+<p><strong>No hard blockers.</strong> Most cards are independent of each other and of the rest of the backlog (CATAGORIES, SCHEMA, STRIPE, SEO, PYTHON_BACKEND, STYLE, API, CONFIGURATION).</p>
+<p><strong>Soft sequencing:</strong>
+- Phase 1.2 (<code>uv sync --locked</code>) before Phase 4.2 (lockfile-drift gate) — drift gate assumes locked installs.
+- Phase 4.1 (dev-deps) before Phase 3.1 (<code>hypothesis</code>) and 3.2 (<code>atheris</code>) — those tests need the deps.
+- Phase 2.2 (real DAL tests) before any "rewrite all 16 mocked tests" follow-up card.</p>
+<p><strong>Truly independent (run in any order, any spare slot):</strong>
+- Phase 1.1 (rename <code>_test_security.py</code>)
+- Phase 1.3 (log-injection regressions)
+- Phase 2.1 (SSRF defense)
+- Phase 2.3 (IDOR tests)
+- Phase 2.4 (Stripe webhook tests)
+- Phase 3.3 (schema compat)
+- Phase 3.4 (concurrent stress)
+- Phase 4.3 (log secret-leak)</p>
+<h2 id="triggers">Triggers</h2>
+<p>When working on any of these surfaces, surface this doc:</p>
+<ul>
+<li>New HTTP endpoint, middleware, or auth refactor in <code>app/backend/src/routes/</code> → Phase 2.3 (IDOR coverage).</li>
+<li>New URL-fetching path in <code>specodex/</code> (scraping, pricing, etc.) → Phase 2.1 (SSRF).</li>
+<li>New parser, deserializer, or <code>BeforeValidator</code> → Phase 3.1, 3.2.</li>
+<li>Change to <code>app/backend/src/util/log.ts</code> or new logging code path; CodeQL log-injection finding → Phase 1.3, 4.3.</li>
+<li>New external integration (Stripe webhooks, third-party API) → Phase 2.4.</li>
+<li>Adding a new <code>ProductType</code> or model field → Phase 3.3 (schema compat snapshot refresh).</li>
+</ul>
+        </article>
+    </main>
+
+    <footer>
+        <div class="footer-inner">
+            <a class="footer-link" href="../roadmap.html">← Back to roadmap</a>
+            <span class="footer-rule" aria-hidden="true"></span>
+            <a class="footer-link" href="https://github.com/JimothyJohn/specodex/blob/master/todo/HARDENING.md" rel="noreferrer">Edit on GitHub</a>
+        </div>
+    </footer>
+</body>
+</html>

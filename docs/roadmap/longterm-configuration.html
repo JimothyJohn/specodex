@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="The MVP works. It also has six structural limits that will hurt within the next ten templates. This doc names them and proposes the next architecture so we don'">
+    <meta name="theme-color" content="#3A2C1C">
+    <title>Specodex — CONFIGURATION — rethinking the configurator architecture</title>
+    <link rel="icon" type="image/svg+xml" href="../logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-issue="CONFIGURATION — RETHINKI">
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="band">
+        <div class="band-inner">
+            <a class="band-brand" href="../index.html">
+                <svg class="band-mark" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <rect width="120" height="120" fill="#E8E2C9"/>
+                    <rect x="14" y="14" width="92" height="92" fill="none" stroke="#1A1A14" stroke-width="3"/>
+                    <rect x="14" y="14" width="92" height="22" fill="#3A2C1C"/>
+                    <rect x="62" y="60" width="40" height="10" fill="#A88A1C"/>
+                    <line x1="14" y1="56" x2="106" y2="56" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="74" x2="106" y2="74" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="92" x2="106" y2="92" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="60" y1="36" x2="60" y2="106" stroke="#1A1A14" stroke-width="2"/>
+                </svg>
+                <span class="wordmark">SPECODEX</span>
+            </a>
+            <nav class="band-nav" aria-label="Section">
+                <a href="../index.html">Catalog</a>
+                <a href="../roadmap.html">Roadmap</a>
+                <a href="https://github.com/JimothyJohn/specodex/blob/master/todo/longterm/CONFIGURATION.md" rel="noreferrer">Source</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="doc-hero">
+            <div class="hero-tag">▮▮▮ LONGTERM CONFIGURATION ▮▮▮</div>
+            <h1 class="hero-title">CONFIGURATION — rethinking the configurator architecture</h1>
+            <div class="doc-meta">
+                <span class="status-chip status-deferred">DEFERRED (LONGTERM/)</span>
+                <span class="doc-source"><code>todo/longterm/CONFIGURATION.md</code></span>
+            </div>
+        </section>
+
+        <article class="doc-body">
+<h1 id="configuration-rethinking-the-configurator-architecture">CONFIGURATION — rethinking the configurator architecture</h1>
+<blockquote>
+<p>Companion to <code>todo/CATAGORIES.md</code>. CATAGORIES.md is the <em>MVP</em> — what
+shipped on <code>feat-actuators-mvp-20260508</code>. This doc is the <em>rethink</em>
+after building the MVP and learning what scales and what doesn't.</p>
+</blockquote>
+<p>The MVP works. It also has six structural limits that will hurt
+within the next ten templates. This doc names them and proposes the
+next architecture so we don't paint ourselves into a corner.</p>
+<h2 id="status">Status</h2>
+<p>Not in flight. Discovery + design only. Pick up after the MVP soaks
+for a couple weeks and we have ≥ 3 user-visible feedback signals
+("the configurator missed my Lintech 100 family"; "I need to verify
+that motor against my drive"; "the speed estimate is wildly off
+because my application is short-stroke").</p>
+<h2 id="what-the-mvp-got-right-keep-these">What the MVP got right (keep these)</h2>
+<ol>
+<li><strong>Two-level taxonomy</strong> (supercategory → product_type → family).
+   Models how users actually shop: "I need linear motion" → "rod-style
+   or rodless" → "which family".</li>
+<li><strong>Bidirectional sync</strong> (synthesise + parse, with round-trip tests
+   pinning the contract). Click a record → configurator pre-fills.
+   This is the integration win the user named, and it generalises
+   beyond actuators (drives, motors, anything with encoded SKUs).</li>
+<li><strong><code>(manufacturer, series)</code> lookup with aliases.</strong> Real records
+   have heterogeneous spellings of the family field; alias lists
+   absorb the variance without breaking the match.</li>
+<li><strong>Frontend-only fixtures for MVP storage.</strong> No DB migration
+   required, no LLM call required, fast iteration. Right scope for
+   the MVP.</li>
+<li><strong>Schema fit-check before claiming vendor coverage.</strong> Found that
+   the original hand-authored Lintech template didn't match a single
+   real Lintech part number — caught before any user saw the demo.</li>
+<li><strong>Word-boundary motor matching</strong> (after the smoke-test caught
+   "Ø230" matching "NEMA 23"). Heuristics need to fail loudly, not
+   silently.</li>
+</ol>
+<h2 id="what-the-mvp-got-wrong-or-barely-got-away-with">What the MVP got wrong (or barely got away with)</h2>
+<h3 id="1-templates-as-imperative-typescript-fixtures-dont-scale">1. Templates as imperative TypeScript fixtures don't scale</h3>
+<p>Each template is a TS object with <code>segments: [...]</code>, a hand-written
+<code>parseRegex</code>, and a hand-written <code>derive(choices)</code> function. Six
+templates is fine. Sixty would be a maintenance burden, and the
+artifact is dev-coupled — a vendor can't write one without learning
+TypeScript and React build tools.</p>
+<p>The right shape is <strong>declarative configuration</strong> — YAML or JSON,
+authored once per family, parsed at build time into both the
+TypeScript objects the UI needs AND a Python equivalent the backend
+can use.</p>
+<pre><code>specodex/configurators/
+├── tolomatic/
+│   ├── trs.yaml
+│   ├── bcs.yaml
+│   └── erd.yaml
+├── lintech/
+│   ├── 200_series.yaml
+│   └── 150_series.yaml
+└── parker/
+    └── hd_series.yaml
+</code></pre>
+<p><code>./Quickstart gen-types</code> extends to also generate
+<code>app/frontend/src/types/generatedConfigurators.ts</code> from these YAMLs,
+the same way it currently generates Pydantic-derived TS.</p>
+<h3 id="2-the-regex-twin-parser-is-fragile">2. The regex-twin parser is fragile</h3>
+<p>Today: <code>template: "TRS{frame}-{drive}{lead}"</code> PLUS
+<code>parseRegex: /^TRS(?&lt;frame&gt;\d+)-(?&lt;drive&gt;BNM|BNL|...)(?&lt;lead&gt;\d+)/</code>.
+Two pieces in lockstep. Editing the template without updating the
+regex (or vice versa) is a silent break — round-trip tests catch it
+in CI but only because we pinned every legal combination.</p>
+<p><strong>Use a grammar.</strong> A single spec that compiles to BOTH the encoder
+and the decoder. Two viable approaches:</p>
+<ul>
+<li><strong>PEG grammar</strong> (via <code>peggy</code> or hand-rolled). Each segment is a
+  rule; the grammar emits a parser, and the same rules drive the
+  template formatter.</li>
+<li><strong>Tagged template DSL.</strong> Less power than PEG but enough for the
+  vendor part numbers we've seen. Looks like:</li>
+</ul>
+<p><code>yaml
+  pattern:
+    - lit: "TRS"
+    - field: frame
+      kind: enum
+      options: [165, 235, 305]
+    - lit: "-"
+    - field: drive
+      kind: enum
+      options:
+        BNM: { lead_units: mm,  rpm: 3000, label: "Ball, Normal, Metric" }
+        BNL: { lead_units: in,  rpm: 3000, label: "Ball, Normal, English" }
+        BSM: { lead_units: mm,  rpm: 3000, label: "Ball, Short, Metric" }
+        BSL: { lead_units: in,  rpm: 3000, label: "Ball, Short, English" }
+    - field: lead
+      kind: int
+      width: 2
+      pad: zero
+    - opt:
+        - lit: "-"
+        - field: trailing
+          kind: rest</code></p>
+<p>The DSL has primitives: <code>lit</code>, <code>field</code>, <code>opt</code>, <code>alt</code>, <code>rep</code>. Enough
+  to express every part number we've encountered. From this single
+  spec the codegen produces:
+  - the encoder (string template)
+  - the decoder (regex or recursive descent)
+  - the TypeScript <code>ChoiceMap</code> type
+  - the form schema for the UI (radio/select/range)
+  - the markdown ADR (auto-generated, edited by hand)</p>
+<h3 id="3-performance-derivation-is-shallow-and-ad-hoc">3. Performance derivation is shallow and ad-hoc</h3>
+<p>Today each template has a <code>derive(choices)</code> function that returns
+<code>{lead_mm, max_speed_mm_s, suggested_motor_frame}</code>. Tolomatic TRS,
+BCS, and ERD all duplicate the same lead-from-drive-suffix logic
+because there's no shared library.</p>
+<p><strong>Replace with a derivation graph.</strong> Each segment's option carries
+metadata (e.g. drive=BNM has <code>lead_units: mm, rpm_class: high</code>).
+A small expression language composes those into derived facts:</p>
+<pre><code class="language-yaml">derives:
+  - field: lead_mm
+    expr: &quot;lead * (drive.lead_units == 'in' ? 2.54 : 1)&quot;
+  - field: max_speed_mm_s
+    expr: &quot;lead_mm * assumed_rpm / 60&quot;
+    depends: [lead_mm, assumed_rpm]
+  - field: assumed_rpm
+    expr: &quot;drive.kind == 'lead_screw' ? 1800 : 3000&quot;
+  - field: continuous_force_n
+    expr: &quot;lookup('frame_size_force', frame)&quot;  # vendor table
+</code></pre>
+<p>Two important properties:</p>
+<ul>
+<li><strong>Composable.</strong> "Speed at rated load" depends on "lead_mm" and
+  "rpm class"; both are independently derived. A single change
+  (e.g. updating the vendor's rated RPM) ripples cleanly.</li>
+<li><strong>Vendor-overridable.</strong> Most actuator families share the same
+  <code>lead_mm × rpm / 60</code> formula. Vendor-specific quirks (Tolomatic
+  uses a different efficiency factor; SMC publishes "speed at
+  rated load" not "max speed") get expressed as overrides on the
+  base formula, not bespoke <code>derive()</code> functions.</li>
+</ul>
+<h3 id="4-cross-device-matching-is-heuristic-not-strict">4. Cross-device matching is heuristic, not strict</h3>
+<p>Today: word-boundary substring match on <code>frame_size</code>. Catches
+"NEMA 23" → "Size 23"; misses everything else. No check that the
+motor's voltage range fits the drive's supply, that the motor's
+shaft diameter matches the actuator's coupling bore, or that the
+motor's torque clears the application's continuous force demand.</p>
+<p>The existing <code>app/frontend/src/utils/compat.ts</code> already implements
+strict checks (ok/partial/fail) for drive↔motor↔gearhead pairs.
+<strong>Extend it to actuator↔motor and actuator↔drive.</strong></p>
+<table>
+<thead>
+<tr>
+<th>Pair</th>
+<th>Checks</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>actuator + motor</td>
+<td>shaft_diameter fit · mounting_pattern match · voltage range · continuous force ≥ demand · inertia ratio (motor:load) · max RPM ≥ derived spec</td>
+</tr>
+<tr>
+<td>actuator + drive</td>
+<td>voltage compatibility · current capacity · control mode (servo/stepper) · feedback type · brake support</td>
+</tr>
+<tr>
+<td>motor + drive</td>
+<td>(already implemented in compat.ts)</td>
+</tr>
+<tr>
+<td>system: actuator + motor + drive</td>
+<td>all-pairs ok + duty cycle thermals</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Build a "system" view</strong> — the existing <code>BuildTray</code> infrastructure
+already concatenates compatible drive/motor/gearhead picks; extend
+to a 4-slot tray (actuator + motor + drive + power supply).</p>
+<h3 id="5-no-vendor-authoring-path">5. No vendor-authoring path</h3>
+<p>A developer with a vendor's catalog page authors a configurator
+template by hand. Takes ~1 hour per family. <strong>Auto-generate
+configurator templates the same way <code>cli/schemagen.py</code> proposes
+Pydantic models.</strong></p>
+<pre><code>./Quickstart configgen &lt;pdf&gt; --type linear_actuator --vendor Lintech --family &quot;200 Series&quot;
+</code></pre>
+<p>Internally:
+1. <code>page_finder</code> narrows to the "ordering information" + spec pages.
+2. Gemini extracts the part-number grammar (treat the "How to
+   order" table as the source of truth — vendors usually publish
+   it explicitly).
+3. Emit YAML to <code>specodex/configurators/lintech/200_series.yaml</code>
+   plus a markdown ADR like the existing <code>&lt;type&gt;.md</code> reasoning docs.
+4. Round-trip the proposal: synthesise → parse → check against
+   sample part numbers from the same catalog. Reject the proposal
+   if round-trip fails on &gt; 5% of samples.</p>
+<p>Cost per family: ~$0.01–0.05 (one Gemini call). Saves the hand-
+authoring hour and removes the dev-only ergonomics.</p>
+<h3 id="6-no-reverse-cross-vendor-search">6. No reverse cross-vendor search</h3>
+<p>User says: "I need 1m travel, 50 kg load, ball-screw, NEMA 23 mount,
+under $5k". Today they have to pick a vendor first. The configurator
+is family-first; should be <strong>need-first</strong>.</p>
+<p>Build <code>/actuators/design</code>: a form that takes the application
+constraints and surfaces every vendor family whose configuration
+space contains a feasible point. Click a candidate → configurator
+opens pre-filled to the closest legal configuration.</p>
+<p>This is the inverse of synthesise: instead of <code>(template, choices) →
+part_number</code>, it's <code>(application_spec) → list[(template, candidate
+choices, fit score)]</code>. Surfaces cross-vendor comparison naturally.</p>
+<h3 id="7-no-version-awareness">7. No version awareness</h3>
+<p>When a vendor revises their catalog and changes the encoding, every
+record ingested under the old encoding silently fails to parse.
+There's no signal that an old template no longer matches today's
+records.</p>
+<p>Templates carry <code>valid_from</code> / <code>valid_to</code> dates. Records carry an
+ingestion date (already in DB via <code>created_at</code> if we add it).
+Lookup combines both; a stale template gets flagged in the UI as
+"this part number was authored under a deprecated encoding —
+verify with the vendor".</p>
+<h3 id="8-templates-are-frontend-only">8. Templates are frontend-only</h3>
+<p>Backend can't:</p>
+<ul>
+<li>Validate part numbers passed to <code>/api/v1/search?part_number=...</code></li>
+<li>Auto-suggest a part number during catalog ingest when Gemini
+  emits a partial spec</li>
+<li>Surface "this catalogued record's part number is malformed
+  per its declared family"</li>
+</ul>
+<p>Moving templates to YAML at the repo root with a Python loader
+(parallel to the existing TS loader, both reading the same source)
+unlocks all three.</p>
+<h2 id="migration-path-mvp-full">Migration path (MVP → full)</h2>
+<p>Six steps, none of them blocking. Order matters: each step
+preserves the previous step's behavior end-to-end.</p>
+<h3 id="phase-1-lift-templates-to-yaml-mechanical-refactor">Phase 1 — Lift templates to YAML (mechanical refactor)</h3>
+<ul>
+<li>Move the 6 MVP templates from <code>configuratorTemplates.ts</code> to
+  <code>specodex/configurators/&lt;vendor&gt;/&lt;family&gt;.yaml</code>.</li>
+<li>Write a generator at <code>scripts/gen_configurators.py</code> that emits
+  <code>app/frontend/src/types/generatedConfigurators.ts</code> (twin of the
+  existing <code>gen_types.py</code>).</li>
+<li>Wire into <code>./Quickstart gen-types</code> and the <code>test-codegen</code> CI gate.</li>
+<li>The TS shape stays identical — same <code>ConfiguratorTemplate</code>
+  interface, same <code>synthesise</code> / <code>parsePartNumber</code> / <code>findTemplate</code>
+  exports.</li>
+</ul>
+<p>Backwards-compatible. CI catches drift. Templates can now be
+edited by anyone who can edit YAML.</p>
+<h3 id="phase-2-replace-regex-twin-with-declarative-grammar">Phase 2 — Replace regex-twin with declarative grammar</h3>
+<ul>
+<li>Define the grammar DSL (<code>lit</code>, <code>field</code>, <code>opt</code>, <code>alt</code>, <code>rep</code>).</li>
+<li>Write the codegen: YAML grammar → encoder + decoder.</li>
+<li>Migrate the 6 templates one at a time, with round-trip CI gating
+  each migration.</li>
+</ul>
+<p>After this phase, <code>parseRegex</code> is no longer hand-authored — it's
+emitted from the same source as <code>template</code>.</p>
+<h3 id="phase-3-performance-derivation-graph">Phase 3 — Performance derivation graph</h3>
+<ul>
+<li>Replace per-template <code>derive()</code> functions with a small expression
+  language (a <code>?:</code> ternary + <code>lookup()</code> calls is enough for the
+  patterns we have).</li>
+<li>Move common formulas (lead_mm, max_speed_mm_s, force_n) into a
+  shared library; vendor-specific quirks override.</li>
+<li>Surface the derivation chain in the UI (click a derived value →
+  see the formula and the inputs that produced it).</li>
+</ul>
+<h3 id="phase-4-quickstart-configgen">Phase 4 — <code>./Quickstart configgen</code></h3>
+<ul>
+<li>Mirror <code>cli/schemagen.py</code> for configurator templates.</li>
+<li>Pre-filter PDFs through <code>page_finder</code> (spec + ordering pages).</li>
+<li>Round-trip validation on the proposal: reject if synth/parse
+  fails on &gt; 5% of sample part numbers from the same catalog.</li>
+</ul>
+<h3 id="phase-5-strict-cross-device-compat">Phase 5 — Strict cross-device compat</h3>
+<ul>
+<li>Extend <code>app/frontend/src/utils/compat.ts</code> with <code>actuator+motor</code>
+  and <code>actuator+drive</code> checks.</li>
+<li>Replace the heuristic <code>MotorSuggestions</code> panel with a real
+  strict-status surface (ok/partial/fail per check) — same
+  contract <code>BuildTray</code> already uses.</li>
+<li>Add <code>actuator</code> to <code>BUILD_SLOTS</code>. The 4-slot system tray
+  (actuator + motor + drive + power supply) becomes the buildable
+  unit.</li>
+</ul>
+<h3 id="phase-6-need-first-design-surface">Phase 6 — Need-first design surface</h3>
+<ul>
+<li><code>/actuators/design</code>: form-driven application input
+  (travel, payload, speed, mount, budget).</li>
+<li>Solver: enumerate every template's configuration space, score
+  feasible candidates by application fit + price + lead time.</li>
+<li>Click candidate → configurator opens pre-filled to the closest
+  legal configuration.</li>
+</ul>
+<h2 id="open-questions">Open questions</h2>
+<ol>
+<li>
+<p><strong>Grammar DSL: bespoke or borrow?</strong> PEG.js / peggy is mature but
+   adds a build dependency. A bespoke 200-line DSL covers everything
+   we've seen. Lean toward bespoke for now; revisit if we hit
+   context-sensitive parts (e.g. "if drive=BSL then lead is in
+   tenths-of-an-inch" — the <em>valid options</em> depend on a prior
+   choice).</p>
+</li>
+<li>
+<p><strong>Where does the expression language for <code>derives</code> come from?</strong>
+   Options: write a 50-line interpreter (cheap, tailored, no deps),
+   embed <code>expr-eval</code> (JS expr lib, small), or use CEL via WASM
+   (overkill). MVP: bespoke. CEL if we ever need WASM-backed
+   sandboxing.</p>
+</li>
+<li>
+<p><strong>Do configurator templates belong with Pydantic models?</strong> Same
+   directory, different filename: <code>specodex/models/linear_actuator.py</code>
+   plus <code>specodex/models/linear_actuator/&lt;vendor&gt;/&lt;family&gt;.yaml</code>?
+   Or sibling: <code>specodex/configurators/&lt;vendor&gt;/&lt;family&gt;.yaml</code>
+   referenced by a <code>product_type</code> field?
+   Sibling is cleaner — configurator data is vendor-keyed, not
+   product-type-keyed (you can have a configurator for any product
+   type once we have non-actuator examples).</p>
+</li>
+<li>
+<p><strong>What's the test pyramid for this?</strong> The MVP has unit tests
+   per template + a Playwright smoke. After the lift to YAML +
+   grammar:
+   - Unit: synth/parse/derive per template
+   - Property-based (fast-check?): for every YAML-grammar legal
+     combination, round-trip preserves identity
+   - Integration: the configgen pipeline against fixture PDFs
+   - Smoke: still Playwright, end-to-end click flows
+   Property-based is the new addition that catches what unit tests
+   miss when we have 60 templates.</p>
+</li>
+<li>
+<p><strong>What's the rollback story?</strong> If a YAML template is broken,
+   the codegen step fails CI; we don't ship a broken template. If a
+   <code>configgen</code> proposal is wrong, the round-trip validation catches
+   it before commit. If a template silently misparses an old
+   record at runtime (because of catalog version drift) — the UI
+   shows the "deprecated encoding" badge and surfaces a verify-
+   with-vendor CTA.</p>
+</li>
+</ol>
+<h2 id="triggers-when-to-surface-this-doc">Triggers — when to surface this doc</h2>
+<table>
+<thead>
+<tr>
+<th>Trigger</th>
+<th>Surface</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Adding a 7th configurator template (MVP+1)</td>
+<td>This doc — Phase 1 (lift to YAML) gets cheaper as templates accumulate</td>
+</tr>
+<tr>
+<td>User asks "does this motor fit this actuator?" beyond frame substring</td>
+<td>Phase 5 (strict compat)</td>
+</tr>
+<tr>
+<td>Catalog ingest produces records with malformed part numbers per their declared family</td>
+<td>Phase 7 (version awareness — not yet detailed)</td>
+</tr>
+<tr>
+<td>User asks "what actuator families fit my application?" / cross-vendor design search</td>
+<td>Phase 6 (need-first surface)</td>
+</tr>
+<tr>
+<td>Developer touches <code>app/frontend/src/types/configuratorTemplates.ts</code></td>
+<td>This doc — first read it, then act</td>
+</tr>
+</tbody>
+</table>
+<h2 id="what-not-to-do">What NOT to do</h2>
+<p>A non-exhaustive list of detours that look attractive but aren't:</p>
+<ul>
+<li><strong>Don't ingest random vendor PDFs to find more configurators.</strong>
+  The catalog ingest pipeline is for spec records, not
+  configurators. <code>configgen</code> is the right tool, against the
+  vendor's "ordering information" page specifically.</li>
+<li><strong>Don't try to support every configurator option in the UI.</strong>
+  Form/fit/function: stroke, payload, drive, mount. Trailing
+  accessory codes (cable carriers, wiper kits, etc.) stay as
+  free-text "trailing" segments forever.</li>
+<li><strong>Don't validate against vendor catalog systems online.</strong> Live
+  validation against vendor APIs would be valuable but each
+  vendor is bespoke; the configurator is starting-point-for-quote,
+  not order-confirmation.</li>
+<li><strong>Don't move configurator data into DynamoDB.</strong> Templates are
+  authored, slow-changing artifacts. Source-of-truth is git.
+  DynamoDB stores the records that match the templates.</li>
+<li><strong>Don't unify configurators with Pydantic models prematurely.</strong>
+  Pydantic models describe the <em>extracted</em> spec shape; configurators
+  describe the <em>vendor's encoding</em>. Same product type can have
+  multiple configurators (one per family); same configurator only
+  ever applies to one product type. The relationship is
+  product_type ↔ N configurators, not 1↔1.</li>
+</ul>
+        </article>
+    </main>
+
+    <footer>
+        <div class="footer-inner">
+            <a class="footer-link" href="../roadmap.html">← Back to roadmap</a>
+            <span class="footer-rule" aria-hidden="true"></span>
+            <a class="footer-link" href="https://github.com/JimothyJohn/specodex/blob/master/todo/longterm/CONFIGURATION.md" rel="noreferrer">Edit on GitHub</a>
+        </div>
+    </footer>
+</body>
+</html>

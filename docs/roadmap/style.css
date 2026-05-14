@@ -1,0 +1,527 @@
+/* Specodex roadmap — manila / engineering-paper field manual.
+ * Shared by docs/roadmap.html (kanban index) and docs/roadmap/<slug>.html
+ * (per-todo rendered pages). Mirrors docs/index.html palette + type.
+ */
+
+:root {
+    --paper: #E8E2C9;
+    --paper-shade: #DDD5B6;
+    --od: #3A2C1C;
+    --od-deep: #2A1F12;
+    --ink: #1A1A14;
+    --ink-soft: #3A3A2E;
+    --stencil: #A88A1C;
+    --stamp: #7A1F1F;
+    --grid: #B8AC85;
+
+    --font-headline: 'Oswald', 'Roboto Condensed', 'Arial Narrow', sans-serif;
+    --font-body: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+    background-color: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.55;
+    font-variant-numeric: tabular-nums;
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+.grain {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.06;
+    mix-blend-mode: multiply;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='280' height='280'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.10  0 0 0 0 0.10  0 0 0 0 0.08  0 0 0 0.6 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+}
+
+body > *:not(.grain) {
+    position: relative;
+    z-index: 1;
+}
+
+/* ===== Top band ===== */
+.band {
+    background-color: var(--od);
+    color: var(--paper);
+    border-bottom: 2px solid var(--ink);
+    padding: 0.55rem 1.5rem;
+}
+
+.band-inner {
+    max-width: 1300px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.band-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    text-decoration: none;
+    color: var(--paper);
+}
+
+.band-mark {
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--paper);
+    background-color: var(--paper);
+    display: block;
+    flex-shrink: 0;
+}
+
+.wordmark {
+    font-family: var(--font-headline);
+    font-weight: 700;
+    font-size: 1.6rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+}
+
+.band-nav {
+    display: flex;
+    align-items: center;
+    gap: 1.2rem;
+    font-family: var(--font-headline);
+    font-size: 0.75rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+}
+
+.band-nav a {
+    color: var(--paper);
+    text-decoration: none;
+    opacity: 0.78;
+    border-bottom: 1px solid transparent;
+    padding-bottom: 1px;
+    transition: opacity 0.12s linear, border-color 0.12s linear, color 0.12s linear;
+}
+
+.band-nav a:hover,
+.band-nav a:focus-visible,
+.band-nav a.active {
+    color: var(--stencil);
+    border-bottom-color: var(--stencil);
+    opacity: 1;
+    outline: none;
+}
+
+/* ===== Main shell ===== */
+main {
+    max-width: 1300px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem 3.5rem;
+}
+
+body[data-issue]::before {
+    content: attr(data-issue);
+    position: fixed;
+    top: 6.5rem;
+    right: 2rem;
+    font-family: var(--font-headline);
+    font-size: 5rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--stamp);
+    opacity: 0.06;
+    transform: rotate(-3deg);
+    pointer-events: none;
+    white-space: nowrap;
+    z-index: 0;
+}
+
+/* ===== Hero (kanban index) ===== */
+.hero {
+    padding: 0.5rem 0 2.4rem;
+    border-bottom: 1px solid var(--ink);
+    margin-bottom: 2.4rem;
+}
+
+.hero-tag {
+    font-family: var(--font-headline);
+    font-size: 0.8rem;
+    letter-spacing: 0.3em;
+    color: var(--od);
+    text-transform: uppercase;
+    margin-bottom: 0.9rem;
+    font-weight: 500;
+}
+
+.hero-title {
+    font-family: var(--font-headline);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    font-size: clamp(2rem, 4vw, 3rem);
+    line-height: 1.05;
+    color: var(--ink);
+    margin: 0 0 1rem;
+    max-width: 24ch;
+}
+
+.hero-sub {
+    max-width: 64ch;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: var(--ink-soft);
+}
+
+.hero-sub a {
+    color: var(--ink);
+    border-bottom: 1px solid var(--ink);
+    text-decoration: none;
+}
+.hero-sub a:hover { color: var(--stencil); border-bottom-color: var(--stencil); }
+
+/* ===== Kanban ===== */
+.kanban-column {
+    border-top: 2px solid var(--ink);
+    padding: 1.4rem 0 2.4rem;
+    background: linear-gradient(180deg, rgba(232, 226, 201, 0.55), transparent 200px);
+}
+
+.kanban-column + .kanban-column {
+    margin-top: 0;
+}
+
+.column-head {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    grid-template-rows: auto auto;
+    grid-template-areas:
+        "code title count"
+        "code blurb count";
+    column-gap: 0.9rem;
+    align-items: baseline;
+    margin-bottom: 1.4rem;
+}
+
+.column-code {
+    grid-area: code;
+    font-family: var(--font-headline);
+    font-size: 0.72rem;
+    letter-spacing: 0.22em;
+    background-color: var(--od);
+    color: var(--paper);
+    padding: 0.22rem 0.55rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    align-self: center;
+}
+
+.column-title {
+    grid-area: title;
+    font-family: var(--font-headline);
+    font-weight: 700;
+    font-size: 1.4rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--ink);
+}
+
+.column-blurb {
+    grid-area: blurb;
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+    margin-top: 0.15rem;
+}
+
+.column-count {
+    grid-area: count;
+    font-family: var(--font-headline);
+    font-size: 1.4rem;
+    color: var(--stencil);
+    font-weight: 700;
+    align-self: center;
+}
+
+.kanban-stack {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 0.9rem;
+}
+
+.kanban-stack .empty {
+    color: var(--ink-soft);
+    font-style: italic;
+    padding: 0.6rem 0;
+}
+
+.kanban-card {
+    display: block;
+    text-decoration: none;
+    color: var(--ink);
+    background-color: rgba(232, 226, 201, 0.45);
+    border: 1.5px solid var(--ink);
+    padding: 0.9rem 1rem 1rem;
+    transition: background-color 0.12s linear, transform 0.12s linear, border-color 0.12s linear;
+}
+
+.kanban-card:hover,
+.kanban-card:focus-visible {
+    background-color: var(--paper-shade);
+    border-color: var(--stencil);
+    outline: none;
+    transform: translateY(-1px);
+}
+
+.card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    margin-bottom: 0.55rem;
+}
+
+.card-source {
+    font-family: var(--font-body);
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    color: var(--ink-soft);
+    background-color: rgba(168, 138, 28, 0.14);
+    padding: 0.1em 0.4em;
+    border: 1px solid rgba(26, 26, 20, 0.18);
+}
+
+.card-title {
+    font-family: var(--font-headline);
+    font-weight: 600;
+    font-size: 1.05rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    margin: 0 0 0.5rem;
+    line-height: 1.2;
+}
+
+.card-summary {
+    font-size: 0.9rem;
+    color: var(--ink-soft);
+    line-height: 1.55;
+}
+
+/* ===== Status chip ===== */
+.status-chip {
+    font-family: var(--font-headline);
+    font-size: 0.66rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    padding: 0.15rem 0.5rem;
+    border: 1.5px solid var(--ink);
+    background-color: var(--paper);
+    white-space: nowrap;
+}
+
+.status-chip.status-ready    { background-color: var(--stencil); color: var(--paper); border-color: var(--ink); }
+.status-chip.status-inflight { background-color: #C97A2B;        color: var(--paper); border-color: var(--ink); }
+.status-chip.status-signoff  { background-color: var(--stamp);    color: var(--paper); border-color: var(--ink); }
+.status-chip.status-backlog  { background-color: var(--paper);    color: var(--ink); }
+.status-chip.status-deferred { background-color: var(--paper-shade); color: var(--ink-soft); }
+
+/* ===== Per-doc page hero ===== */
+.doc-hero {
+    padding: 0.5rem 0 1.8rem;
+    border-bottom: 1px solid var(--ink);
+    margin-bottom: 1.8rem;
+}
+
+.doc-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-top: 0.6rem;
+}
+
+.doc-source code {
+    font-family: var(--font-body);
+    font-size: 0.85rem;
+    background-color: rgba(168, 138, 28, 0.14);
+    padding: 0.1em 0.4em;
+    border: 1px solid rgba(26, 26, 20, 0.18);
+}
+
+/* ===== Rendered markdown body ===== */
+.doc-body {
+    max-width: 75ch;
+    color: var(--ink);
+}
+
+.doc-body h1,
+.doc-body h2,
+.doc-body h3,
+.doc-body h4 {
+    font-family: var(--font-headline);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--ink);
+    margin: 2.2rem 0 0.6rem;
+    font-weight: 600;
+}
+
+.doc-body h1 { font-size: 1.7rem; margin-top: 1rem; }
+.doc-body h2 { font-size: 1.3rem; border-bottom: 1px solid rgba(26,26,20,0.3); padding-bottom: 0.25rem; }
+.doc-body h3 { font-size: 1.05rem; }
+.doc-body h4 { font-size: 0.9rem; letter-spacing: 0.06em; }
+
+.doc-body p,
+.doc-body ul,
+.doc-body ol,
+.doc-body blockquote {
+    margin-bottom: 1rem;
+}
+
+.doc-body ul,
+.doc-body ol {
+    padding-left: 1.6rem;
+}
+
+.doc-body li { margin-bottom: 0.25rem; }
+
+.doc-body blockquote {
+    border-left: 3px solid var(--stencil);
+    padding: 0.4rem 0.9rem;
+    background-color: rgba(168, 138, 28, 0.08);
+    color: var(--ink-soft);
+}
+
+.doc-body code {
+    font-family: var(--font-body);
+    background-color: rgba(168, 138, 28, 0.14);
+    padding: 0.05em 0.35em;
+    font-size: 0.92em;
+    border: 1px solid rgba(26, 26, 20, 0.18);
+}
+
+.doc-body pre {
+    background-color: var(--ink);
+    color: var(--paper);
+    padding: 1rem 1.2rem;
+    overflow-x: auto;
+    margin-bottom: 1rem;
+    border: 1.5px solid var(--ink);
+}
+
+.doc-body pre code {
+    background: none;
+    border: none;
+    padding: 0;
+    color: inherit;
+    font-size: 0.86rem;
+    line-height: 1.6;
+}
+
+.doc-body a {
+    color: var(--ink);
+    border-bottom: 1px solid var(--ink);
+    text-decoration: none;
+}
+
+.doc-body a:hover,
+.doc-body a:focus-visible {
+    color: var(--stencil);
+    border-bottom-color: var(--stencil);
+    outline: none;
+}
+
+.doc-body table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+    margin-bottom: 1.2rem;
+}
+
+.doc-body th,
+.doc-body td {
+    border: 1px solid rgba(26, 26, 20, 0.35);
+    padding: 0.5rem 0.7rem;
+    text-align: left;
+    vertical-align: top;
+}
+
+.doc-body th {
+    background-color: var(--paper-shade);
+    font-family: var(--font-headline);
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+}
+
+.doc-body hr {
+    border: none;
+    border-top: 1px solid var(--ink);
+    margin: 1.8rem 0;
+    opacity: 0.6;
+}
+
+/* ===== Footer ===== */
+footer {
+    border-top: 2px solid var(--ink);
+    background-color: var(--paper-shade);
+    padding: 1.2rem 1.5rem;
+    margin-top: 3.5rem;
+}
+
+.footer-inner {
+    max-width: 1300px;
+    margin: 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.9rem;
+    font-size: 0.78rem;
+    letter-spacing: 0.04em;
+    color: var(--ink-soft);
+}
+
+.footer-rule {
+    flex: 1;
+    height: 1px;
+    background-color: var(--ink);
+    opacity: 0.4;
+    min-width: 1.5rem;
+}
+
+.footer-link {
+    font-family: var(--font-headline);
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--ink);
+    text-decoration: none;
+    border-bottom: 1px solid var(--ink);
+    padding-bottom: 1px;
+}
+
+.footer-link:hover,
+.footer-link:focus-visible {
+    color: var(--stencil);
+    border-bottom-color: var(--stencil);
+    outline: none;
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 720px) {
+    .band { padding: 0.5rem 1rem; }
+    .wordmark { font-size: 1.3rem; letter-spacing: 0.14em; }
+    .band-nav { gap: 0.7rem; font-size: 0.65rem; }
+    main { padding: 2rem 1rem 2.4rem; }
+    .hero-title { font-size: 1.8rem; }
+    body[data-issue]::before { font-size: 2.6rem; right: 0.5rem; top: 5rem; }
+    .kanban-stack { grid-template-columns: 1fr; }
+    .column-head {
+        grid-template-columns: auto 1fr auto;
+        column-gap: 0.7rem;
+    }
+}

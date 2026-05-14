@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="First reaction: &quot;Oh, this is for me. Finally.&quot;">
+    <meta name="theme-color" content="#3A2C1C">
+    <title>Specodex — Board review — Specodex / Datasheetminer</title>
+    <link rel="icon" type="image/svg+xml" href="../logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-issue="BOARD REVIEW — SPECODEX ">
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="band">
+        <div class="band-inner">
+            <a class="band-brand" href="../index.html">
+                <svg class="band-mark" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <rect width="120" height="120" fill="#E8E2C9"/>
+                    <rect x="14" y="14" width="92" height="92" fill="none" stroke="#1A1A14" stroke-width="3"/>
+                    <rect x="14" y="14" width="92" height="22" fill="#3A2C1C"/>
+                    <rect x="62" y="60" width="40" height="10" fill="#A88A1C"/>
+                    <line x1="14" y1="56" x2="106" y2="56" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="74" x2="106" y2="74" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="92" x2="106" y2="92" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="60" y1="36" x2="60" y2="106" stroke="#1A1A14" stroke-width="2"/>
+                </svg>
+                <span class="wordmark">SPECODEX</span>
+            </a>
+            <nav class="band-nav" aria-label="Section">
+                <a href="../index.html">Catalog</a>
+                <a href="../roadmap.html">Roadmap</a>
+                <a href="https://github.com/JimothyJohn/specodex/blob/master/todo/longterm/BOARD.md" rel="noreferrer">Source</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="doc-hero">
+            <div class="hero-tag">▮▮▮ LONGTERM BOARD ▮▮▮</div>
+            <h1 class="hero-title">Board review — Specodex / Datasheetminer</h1>
+            <div class="doc-meta">
+                <span class="status-chip status-deferred">DEFERRED (LONGTERM/)</span>
+                <span class="doc-source"><code>todo/longterm/BOARD.md</code></span>
+            </div>
+        </section>
+
+        <article class="doc-body">
+<h1 id="board-review-specodex-datasheetminer">Board review — Specodex / Datasheetminer</h1>
+<blockquote>
+<p>A simulated five-person tech-board reaction to specodex.com /
+specodex.com, written for a solo founder bootstrapping the
+company out of his own pocket. Five voices with different industry
+backgrounds, treating themselves as potential customers or partners
+seeing the product for the first time. Honest, specific, no
+cheerleading.</p>
+</blockquote>
+<hr>
+<h2 id="the-five-voices">The five voices</h2>
+<ol>
+<li><strong>Maya — senior controls engineer, mid-size packaging-machinery OEM (~120 staff, ~$30M ARR).</strong> 18 years building motion systems for food &amp; beverage lines. Lives in vendor PDFs and Excel.</li>
+<li><strong>Diego — co-founder / head of mech eng, Series-A robotics startup (~25 people).</strong> Spec'ing parts for a mobile manipulator. Buys what works, fast, in bulk-of-30 quantities.</li>
+<li><strong>Priya — strategic sourcing manager, Tier-2 automotive supplier ($400M revenue).</strong> Owns a $90M annual spend on automation components. Reports to a CFO who reads dashboards.</li>
+<li><strong>Hank — VP product at a regional motion-control distributor (Allied / Galco class).</strong> Sells across vendor lines. Looking at this as a possible channel partner or competitive threat.</li>
+<li><strong>Ron — 30-year mechatronics consultant who's started two companies, sold one, watched another fail.</strong> No skin in the game; saying what nobody else will.</li>
+</ol>
+<hr>
+<h2 id="maya-controls-engineer-oem">Maya — controls engineer, OEM</h2>
+<p><strong>First reaction:</strong> "Oh, this is for me. Finally."</p>
+<p><strong>What grabs her:</strong></p>
+<ul>
+<li>The tagline ("only an engineer could love") is the rare B2B copy that <em>signals correctly</em>. She'd open it on her phone in the parking lot just to see what it actually is.</li>
+<li>No "Request a Quote" buttons on row hover. No "Contact Sales" on the spec table. She has been bitten by this exact UX every week for a decade.</li>
+<li>Datasheet links straight on the row. Provenance she trusts.</li>
+<li>The metric/imperial toggle. Small thing, but signals the team has actually used a spec sheet at 4pm.</li>
+</ul>
+<p><strong>What worries her:</strong></p>
+<ul>
+<li><strong>Catalog depth is the whole game and she can't tell yet.</strong> If she searches for the Mitsubishi MR-J5 family or the Schneider Lexium 32 and gets thin coverage, the tab closes and never reopens. The promise of cross-vendor compare <em>is</em> the catalog.</li>
+<li><strong>One wrong torque number ends the relationship.</strong> If she specs a $40K servo motor based on a number that turns out to be transcription error, she's the one in the meeting explaining it. She needs to see <em>date-of-extraction</em> and <em>source PDF page</em> on every numeric, not buried in a tooltip.</li>
+<li><strong>She doesn't trust LLM-extracted specs without an audit trail.</strong> "AI-generated" in this context reads as "potentially wrong." Show me the hash/version of the model that produced this row, the date, the verifying human (if any).</li>
+<li><strong>The aesthetic is going to make some people miss the point.</strong> Her boss will look at the field-manual look and say "this looks like a hobby project." She'll defend it; she shouldn't have to.</li>
+</ul>
+<p><strong>What she'd pay for:</strong></p>
+<ul>
+<li>A "Project" view that survives across machines (she works from three computers — work desktop, laptop on the floor, home).</li>
+<li>A BOM export that imports cleanly into her PLM (Aras, Teamcenter, Arena). Right now she pastes between spreadsheet tabs.</li>
+<li>An alert: "The datasheet you cited 4 months ago has been updated by the manufacturer." Goldmine if it works.</li>
+</ul>
+<p><strong>The one thing she'd ask:</strong> "How fresh is your data on a typical row, and how do I know?"</p>
+<hr>
+<h2 id="diego-robotics-startup-head-of-mech-eng">Diego — robotics startup, head of mech eng</h2>
+<p><strong>First reaction:</strong> "Wait, this exists? Send me the link."</p>
+<p><strong>What grabs him:</strong></p>
+<ul>
+<li>His team currently maintains an internal Notion table of vendor specs because nothing on the open internet lets them filter on <code>payload &gt;= 5kg AND reach &gt;= 800mm AND repeatability &lt; 0.05mm</code>. This is that.</li>
+<li>The "Build" feature — pairing motor + gearhead + drive with junction validation — is exactly the spreadsheet-cell hell his team is in.</li>
+<li>Open source on the github badge. He instantly trusts the team more. Will probably file an issue about a vendor he wants added.</li>
+<li>He'd happily pay $19–49/mo per seat for 5 seats if it actually saves him from the Notion table.</li>
+</ul>
+<p><strong>What worries him:</strong></p>
+<ul>
+<li><strong>Coverage of the long tail.</strong> His designs use parts from JVL, Maxon, Nanotec, Harmonic Drive, Spinea, Apex Dynamics. Not Siemens or Allen-Bradley. If the catalog is dominated by the big-name PLC vendors he's not the target.</li>
+<li><strong>The compatibility logic is the only thing that matters to him, and it's hard.</strong> Bolt patterns, shaft diameter tolerances, encoder protocols, sizing curves. If "compatible" means "voltage matches" he'll churn in a week. If it means "I can actually build this," he'll evangelize it.</li>
+<li><strong>He needs an API.</strong> His team's design tooling is custom. He'll pull data into a local config-as-code workflow. If the data is only accessible through the web UI, he'll scrape it himself within a month.</li>
+<li><strong>Trust over time.</strong> He'll happily early-adopt; he won't bet a $2M product launch on a tool that might disappear when its founder gets a job offer.</li>
+</ul>
+<p><strong>What he'd pay for:</strong></p>
+<ul>
+<li>API access, $99–199/mo, generous-enough rate limits to support a small mech team's design cycles.</li>
+<li>Custom field requests ("can you index the encoder protocol — Hiperface DSL, EnDat, BiSS-C — as a structured field?"). He'd pay $500 for one if it shipped in a week.</li>
+<li>Compatibility-graph access. The "what motor + gearhead combos exist on the market" answer is an asset.</li>
+</ul>
+<p><strong>The one thing he'd ask:</strong> "Will you still be here in 24 months?"</p>
+<hr>
+<h2 id="priya-strategic-sourcing-automotive-tier-2">Priya — strategic sourcing, automotive Tier-2</h2>
+<p><strong>First reaction:</strong> "Hmm. What is this?"</p>
+<p><strong>What grabs her:</strong></p>
+<ul>
+<li>The cross-vendor apples-to-apples is real value if her engineers are honest about what's spec-equivalent.</li>
+<li>A standardized export means she can finally enforce "show me the three vendors you compared" on every requisition over $5K, instead of taking the engineer's word for it.</li>
+<li>A neutral data source she can wave at vendors during quarterly business reviews — "your competitor's torque density per dollar is X, here's the source."</li>
+</ul>
+<p><strong>What worries her — bluntly:</strong></p>
+<ul>
+<li><strong>The aesthetic is a hard sell to her stakeholders.</strong> She presents to a CFO and a VP Operations who use Coupa, Ariba, SAP. The "field manual" look reads as unprofessional in that context. A serious procurement tool is, for better or worse, slick and corporate-blue. She'd hesitate to send the link in an email to the CFO.</li>
+<li><strong>No SSO, no SCIM, no audit log, no SOC 2.</strong> Anything she'd put on a procurement workflow needs to ride on her IdP and produce evidence for her annual SOX-adjacent audit. None of that is here today.</li>
+<li><strong>The "no quote gates" pitch undercuts what she actually values from vendors — relationships.</strong> Her sourcing decisions live and die on lead-time guarantees and stock allocation, not list price. A spec database that ignores commercial reality has a ceiling for her.</li>
+<li><strong>Single-founder OSS project.</strong> She can't put a $90M spend behind a tool with a bus factor of 1.</li>
+</ul>
+<p><strong>What she'd pay for (eventually):</strong></p>
+<ul>
+<li>Tier-2 corporate seat licenses ($1–5K/year per company) once SSO + audit log + uptime SLA exist.</li>
+<li>Custom data ingest of her <em>internal</em> approved vendor list, with the same compare UI. That's a $20–50K consulting engagement if anyone delivers it.</li>
+</ul>
+<p><strong>The one thing she'd ask:</strong> "What does your data refresh SLA look like in writing?"</p>
+<p><strong>Founder-takeaway (Priya is the warning, not the goal yet):</strong> Don't chase her right now. She represents the eventual top of the pricing pyramid, but selling to her costs sales-cycle months you don't have. Note her requirements; don't optimize for her until you have 50 paying Mayas and Diegos.</p>
+<hr>
+<h2 id="hank-vp-product-motion-control-distributor">Hank — VP product, motion-control distributor</h2>
+<p><strong>First reaction:</strong> "Is this an asset, a partner, or a threat?"</p>
+<p><strong>What grabs him:</strong></p>
+<ul>
+<li>The catalog is exactly what his website's product-detail pages should look like. His current site is a 2009-era SAP Hybris template; he's fought to modernize it for four years and lost.</li>
+<li>A neutral aggregator with deep specs is something his sales engineers would actually use when a customer asks "what else fits?"</li>
+<li>Open source means he could in principle fork-and-rebrand the frontend. (He won't, but the optionality is comforting to a procurement-shop mindset.)</li>
+</ul>
+<p><strong>What worries him:</strong></p>
+<ul>
+<li><strong>He wonders whose side this is on.</strong> If Specodex eventually has a "buy now" link that goes to manufacturer or to a competing distributor, his team isn't recommending it.</li>
+<li><strong>The data could be wrong.</strong> His ESI-grade catalog data is hand-curated (and stale, but accurate). LLM-extracted data of unknown freshness is a liability his sales team can't put a name on.</li>
+<li><strong>No commercial layer.</strong> He'd want stock, lead-time, quote-eligibility flags. None of that is here, and adding it changes the founder's positioning.</li>
+</ul>
+<p><strong>Where the partnership could go (if Hank has imagination):</strong></p>
+<ul>
+<li>License Specodex's data feed into his customer-facing catalog. $2–8K/month flat, multi-year. Solves his data-modernization problem and pays Specodex's runway. The deal kills the "engineer-to-engineer, no marketing copy" ethos, though.</li>
+<li>Co-branded "Specodex × <distributor>" data subset for his sales team. Smaller deal, less brand cost, real revenue.</li>
+<li>Investment / acquisition conversation in 24+ months if the catalog gets to interesting depth.</li>
+</ul>
+<p><strong>What he'd pay for:</strong> see above — $2–8K/month for a private data feed if data quality earns it.</p>
+<p><strong>The one thing he'd ask:</strong> "If a manufacturer asks you to delist their products, what do you do?"</p>
+<p><strong>Founder-takeaway:</strong> Distributor partnerships are the highest-revenue-per-conversation channel available — but each conversation costs months and threatens the consumer-facing brand. A clean choice point is coming: stay engineer-direct (tight scope, slow growth, defensible brand) or become a B2B2C data layer for distributors (faster revenue, dilutes the niche signal).</p>
+<hr>
+<h2 id="ron-30-year-mechatronics-consultant-two-time-founder">Ron — 30-year mechatronics consultant, two-time founder</h2>
+<p><strong>First reaction:</strong> "Okay. The taste is real. Most of what's going to kill this is not in the product."</p>
+<p><strong>The honest read on the product:</strong></p>
+<ul>
+<li>Engineering taste is several standard deviations above the median bootstrap project. The typography, the no-native-chrome rule, the type-safe Pydantic-to-TypeScript pipeline, the public roadmap — this is a person who <em>knows what good looks like</em>.</li>
+<li>The tagline is one of the best B2B taglines he's seen this year. Don't soften it. Ever.</li>
+<li>The product is not yet <em>useful enough on its own</em> to justify a paid tier. The catalog depth isn't there, the compatibility graph is shallow, the API isn't public. That's a 6–12 month gap, not a fundamental problem.</li>
+</ul>
+<p><strong>The ten things Ron would say to the founder over a beer:</strong></p>
+<ol>
+<li>
+<p><strong>Brand split is bleeding you.</strong> Datasheetminer (the pipeline) and Specodex (the app) are two names for one product, from a customer's perspective. Pick one. Datasheetminer is the internal tool name; only Specodex should ever appear to a user. Retire the dual identity in your README and your social.</p>
+</li>
+<li>
+<p><strong>The catalog is the product. The pipeline is plumbing.</strong> You're spending engineering effort on plumbing because plumbing has clear definition-of-done and customer conversations don't. Watch this. Catalog depth, not pipeline elegance, is what wins.</p>
+</li>
+<li>
+<p><strong>Pick one product type and own it for six months.</strong> "Cross-vendor industrial spec database" is too broad to be findable on Google. "The motor-spec compare tool every robotics startup uses" is findable. After you own one slice, expand. The motor-or-drive question is your first strategic decision; the rest follow from it.</p>
+</li>
+<li>
+<p><strong>Manufacturer relations is a pre-mortem item.</strong> At some scale, one vendor's lawyer will send a cease-and-desist about scraped specs and competitive language. You need (a) a clear, documented "remove on request" policy, (b) two manufacturers who've actively opted in as references, (c) ideally one written agreement that the data is OK to publish. Get those before you have meaningful traffic, not after.</p>
+</li>
+<li>
+<p><strong>The legal moat is real-world copyright fair-use law on facts vs. presentation.</strong> Spec numbers are facts and not copyrightable. Verbatim datasheet text <em>is</em>. Display structured data, link to the original PDF, never reproduce manufacturer marketing copy. You're already doing this; document the policy publicly.</p>
+</li>
+<li>
+<p><strong>The bus-factor problem is your biggest single risk.</strong> Solo, bootstrapped, full-time. If you get sick or distracted for 60 days the product effectively dies. Two structural mitigations cost almost nothing: (a) a public PUBLIC.md saying "if I'm out of contact for 60 days, here's how to keep this running" with deploy keys in a sealed envelope to one trusted person, (b) a 30-min biweekly call with one outside advisor (industry vet, technical mentor, even another bootstrapper). Both <em>also</em> hedge the founder-isolation failure mode, which is what actually kills most solo bootstraps.</p>
+</li>
+<li>
+<p><strong>Customer conversations / coding hours.</strong> Track the ratio. A bootstrapped founder who's coding 40 hours a week and talking to customers 2 hours a week is in a death spiral disguised as productivity. Aim for 8–12 customer-conversation hours per week minimum. Feels uncomfortable. Is the job.</p>
+</li>
+<li>
+<p><strong>Don't take corporate-tier deals before product-market fit.</strong> Priya represents real money on paper; closing one Priya costs 9 months and bends the product into Coupa-shaped curves. Ship for Maya and Diego first, reach $5K MRR, then talk to Priya.</p>
+</li>
+<li>
+<p><strong>Free → individual paid → API/business is the right pricing ladder for this product.</strong> Resist the temptation to go straight to corporate. Resist also the temptation to stay free forever. The first paid tier ($9–19/mo, individual, "Pro") teaches you who actually values the product enough to pay. That signal matters more than any survey.</p>
+</li>
+<li>
+<p><strong>Burn the worry pile early.</strong> SOC 2, SSO, SLAs, GDPR DPAs — these are 6–18 month items, in that order, gated on revenue. Don't start them now. Don't even think about them now. You'll know you need them when a customer says "I can't buy this without X" and three more customers say the same X within a month.</p>
+</li>
+</ol>
+<p><strong>The two things Ron is bullish on:</strong></p>
+<ul>
+<li>The audience exists, is reachable, and is actively underserved. Every mechatronics engineer has the "stack of vendor PDFs at 4pm Wednesday" problem the marketing doc names. That's a market.</li>
+<li>The aesthetic / positioning is the rare B2B brand decision that <em>will compound over years</em>. It earns shares on Eng-Tips, gets quoted on r/PLC, makes the open-source repo a recruiting magnet. Bootstrapped products live or die on this kind of compounding.</li>
+</ul>
+<p><strong>The two things Ron is most worried about:</strong></p>
+<ul>
+<li>Catalog depth. If breadth across the named product types isn't credible by month 12, the thesis caves. Fastest path: pick one product type, get to 5K SKUs, <em>then</em> widen.</li>
+<li>Founder sustainability. Solo bootstraps that last 24+ months almost universally have a partner, advisor, or community providing emotional and strategic backstop. Don't try to do this in a vacuum.</li>
+</ul>
+<hr>
+<h2 id="cross-board-patterns">Cross-board patterns</h2>
+<p>What multiple voices flagged independently (these are the signals worth weighting):</p>
+<table>
+<thead>
+<tr>
+<th>Pattern</th>
+<th>Voices</th>
+<th>Why it matters</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Catalog depth = the product</strong></td>
+<td>Maya, Diego, Hank, Ron</td>
+<td>If breadth and freshness aren't credible by month 12, the "cross-vendor compare" thesis collapses regardless of UX polish.</td>
+</tr>
+<tr>
+<td><strong>Trust / data provenance is non-negotiable</strong></td>
+<td>Maya, Diego, Hank</td>
+<td>One wrong torque value = career risk for the user. "Last verified, source page X, model version Y" needs to be visible, not buried.</td>
+</tr>
+<tr>
+<td><strong>Bus factor / "will you be here in 24 months?"</strong></td>
+<td>Diego, Priya, Ron</td>
+<td>Solo founder is the elephant. Public mitigation plan + advisor + emotional sustainability buy you credibility for free.</td>
+</tr>
+<tr>
+<td><strong>Pick a beachhead, don't be everything</strong></td>
+<td>Diego (long-tail vendors), Ron (one product type)</td>
+<td>The current 7-product-type pitch is too broad to win SEO or word-of-mouth. One slice owned beats seven slices barely reached.</td>
+</tr>
+<tr>
+<td><strong>API is more valuable than UI for the early-paying segment</strong></td>
+<td>Diego, Hank</td>
+<td>Robotics teams + distributors will pay 5–10× UI prices for clean API access. Build the API as a product, not as a side door.</td>
+</tr>
+<tr>
+<td><strong>Brand split (Datasheetminer / Specodex) is friction</strong></td>
+<td>Maya, Hank, Ron</td>
+<td>Pick one user-facing name. The dual identity costs you nothing to fix and confuses every first-time visitor.</td>
+</tr>
+<tr>
+<td><strong>Manufacturer relations are a pre-mortem item</strong></td>
+<td>Hank, Ron</td>
+<td>Get 1–2 vendors on the record (opt-in, written) <em>before</em> a hostile vendor's lawyer writes the first cease-and-desist.</td>
+</tr>
+<tr>
+<td><strong>Compatibility graph is the real moat</strong></td>
+<td>Diego, Ron</td>
+<td>The catalog is replicable; the "what fits with what, validated" graph is not. Disproportionate investment here.</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="highest-leverage-moves-next-90-days">Highest-leverage moves — next 90 days</h2>
+<p>Ranked by expected-value × time-to-execute, biased toward the bootstrapped solo founder reality. Don't try to do all of these. Pick the top three.</p>
+<h3 id="1-pick-one-product-type-and-saturate-it-the-beachhead-bet">1. Pick one product type and saturate it (the beachhead bet)</h3>
+<p><strong>Action:</strong> choose one of motor / drive / robot arm / electric cylinder. Get to <strong>5,000 SKUs minimum</strong> in that category. Make Specodex the single best place on the open web to compare that one thing.</p>
+<p><strong>Why:</strong> The "cross-vendor industrial spec compare" pitch is too broad to win SEO. "The motor compare tool" wins because it's <em>findable</em>. Once one slice is owned, you have a real anchor for word-of-mouth and a real story for Diego (who otherwise can't tell if the tool is for him).</p>
+<p><strong>Cost:</strong> maybe 30–60 hours of focused ingestion work + some manual QA per category, depending on how stable the schema is. The Gemini extraction pipeline can scale once you stop polishing it.</p>
+<p><strong>Risk:</strong> wrong choice of beachhead. <strong>Mitigation:</strong> pick the type your warm leads are using <em>today</em>. If you don't know what your warm leads are using, that's the bigger problem.</p>
+<h3 id="2-ship-one-piece-of-public-manufacturer-relations-infrastructure">2. Ship one piece of public manufacturer-relations infrastructure</h3>
+<p><strong>Action:</strong> publish <code>/policies/data</code> (or a section on the landing page footer) with: source policy, takedown contact, opt-in process for enhanced listings, copyright stance. Then proactively email 5 manufacturers introducing the project and offering opt-in.</p>
+<p><strong>Why:</strong> Cheap insurance against a future hostile vendor. Two written opt-ins are worth ten user testimonials when investors / partners / future hires / future hostile lawyers come around.</p>
+<p><strong>Cost:</strong> half a day. Ongoing email work over weeks.</p>
+<h3 id="3-define-the-single-first-paid-tier-and-put-it-on-the-page">3. Define the single first paid tier and put it on the page</h3>
+<p><strong>Action:</strong> pick a price ($9 or $19/mo, individual). Pick three features behind the gate (e.g., projects, BOM export, alerts). Ship a Stripe-checkout flow. Don't hide the pricing. Don't write "Contact Sales."</p>
+<p><strong>Why:</strong> The signal you get from the <em>first</em> paying user is more valuable than any survey. You learn (a) who pays, (b) what they expect, (c) whether the price is right. Without this signal you're optimizing in a vacuum.</p>
+<p><strong>Cost:</strong> PYTHON_STRIPE.md is already scaffolded. The hard part is psychological, not technical: <em>charging at all</em>.</p>
+<h3 id="4-start-the-customer-conversation-discipline">4. Start the customer-conversation discipline</h3>
+<p><strong>Action:</strong> schedule 5 30-minute calls per week with people in your named segments (mechatronics engineer, robotics, sourcing, distributor, OEM). Use the warm network first, then cold-email second. Track what they say in a public-to-yourself doc.</p>
+<p><strong>Why:</strong> This is the highest-leverage activity for a bootstrapped solo founder and the one most reliably skipped. Calling customers is uncomfortable; coding is comfortable. The product roadmap should be 80% sourced from these calls within 60 days.</p>
+<p><strong>Cost:</strong> 2.5 hours of scheduled call time + ~3 hours of follow-up per week. Replaces about a third of your shipping velocity, on purpose.</p>
+<h3 id="5-resolve-the-brand-split">5. Resolve the brand split</h3>
+<p><strong>Action:</strong> decide — Specodex or Datasheetminer? Update README, social bios, the docs landing page, and any user-facing string in 1 PR. Keep the unused name as an alias for SEO redirects.</p>
+<p><strong>Why:</strong> Free improvement. Every first-time visitor is currently doing pattern-matching to figure out the relationship. Pure friction.</p>
+<p><strong>Cost:</strong> half a day.</p>
+<h3 id="what-not-to-do-in-the-first-90-days">What NOT to do in the first 90 days</h3>
+<ul>
+<li>Don't build SOC 2, SSO, SAML, audit log, SLA pages, enterprise contracts, or anything Priya wants. She's not buying yet, and won't for 18 months.</li>
+<li>Don't build more product types. Catalog depth in fewer categories beats catalog breadth in many.</li>
+<li>Don't ship a marketing site that's any "slicker." The current aesthetic is your moat.</li>
+<li>Don't add features Maya and Diego haven't explicitly asked for. Every speculative feature is one less customer call.</li>
+<li>Don't keep polishing dev infrastructure. The CI/CD chain and dev tooling are well past good-enough. (This is the founder-trap signal: clean engineering is a dopamine hit; customer-facing throughput is the actual job.)</li>
+</ul>
+<hr>
+<h2 id="strategic-decisions-for-months-618">Strategic decisions for months 6–18</h2>
+<p>These are the bets where the wrong answer compounds for years. Don't make them quickly.</p>
+<h3 id="decision-a-engineer-direct-or-b2b2c-data-layer">Decision A — engineer-direct or B2B2C data layer</h3>
+<p>Two compatible-on-paper paths that diverge sharply over 12 months:</p>
+<ul>
+<li><strong>Engineer-direct (the current thesis).</strong> Specodex stays an opinionated, ad-free, "for the engineer" product. Pricing tops out at $30–50/seat/month. Revenue grows linearly with users. The brand compounds. Hank's distributor deal is <em>off the table</em> because it bends the product.</li>
+<li><strong>B2B2C data layer.</strong> Specodex becomes the data infrastructure inside larger players' catalogs. Distributors, marketplaces, ERP plug-ins. Pricing is $2–10K/month per partner. Revenue grows step-wise with deals. The consumer brand commoditises.</li>
+</ul>
+<p>You probably can't be both. Pick which one is in the founder's pitch deck, and instrument the other path to politely close.</p>
+<h3 id="decision-b-open-source-extent">Decision B — open-source extent</h3>
+<p>Currently MIT. Every line of business logic is public. This is a brand asset (Diego trusts it more) and a recruiting tool (a future hire reads it before applying). It is <em>not</em> a moat — anyone can fork it tomorrow. Real questions:</p>
+<ul>
+<li>Is the <em>data</em> open (CC-BY for the dataset) or proprietary?</li>
+<li>Will the API be open-spec-but-paid, or locked?</li>
+<li>If a competitor forks the codebase and rebrands it, is your response "good, more competition for the manufacturers" or "we sue"?</li>
+</ul>
+<p>Decide before someone else decides for you.</p>
+<h3 id="decision-c-the-single-hire">Decision C — the single hire</h3>
+<p>At ~$5K MRR you can afford a contractor; at ~$15K MRR you can afford a part-time hire. The first non-founder role determines a year of trajectory:</p>
+<ul>
+<li><strong>Catalog operations / data quality.</strong> Hires depth into the product itself. Highest leverage if data quality is the bottleneck.</li>
+<li><strong>Developer relations / community.</strong> Hires distribution into the brand. Highest leverage if growth is the bottleneck.</li>
+<li><strong>Sales engineer / partnerships.</strong> Hires revenue into the company. Highest leverage if you've gone B2B2C in Decision A.</li>
+</ul>
+<p>Don't hire a generalist. Don't hire a frontend engineer (you are one). Don't hire to make yourself feel less alone — that's what the advisor calls are for.</p>
+<h3 id="decision-d-the-runway-vs-product-quality-tradeoff">Decision D — the runway-vs-product-quality tradeoff</h3>
+<p>Every month you spend without revenue is a month closer to the cliff. Every shortcut in data quality is a credibility debt that compounds.</p>
+<p>The founder's job in months 6–12 is to find the fastest path to $1K MRR that doesn't compromise the data trust that makes the product worth paying for. That's a <em>positioning</em> question, not an engineering one.</p>
+<hr>
+<h2 id="solo-founder-specific-notes-the-part-nobody-else-writes">Solo-founder-specific notes (the part nobody else writes)</h2>
+<p>The product fundamentals are strong enough that the technical risks are minor compared to the founder risks. Five honest observations:</p>
+<ol>
+<li>
+<p><strong>You are not at risk of failing because the code is bad.</strong> You are at risk of failing because the founder runs out of money, energy, or feedback loops. Allocate accordingly.</p>
+</li>
+<li>
+<p><strong>Calendars get filled with what you choose to do, and choosing to ship is easier than choosing to call.</strong> The pattern across failed bootstrapped founders is rarely "didn't ship enough." It's "shipped too much, sold too little." Symptom: more PRs than customer conversations in a given week. (Look at this repo's recent activity. Apply the test honestly.)</p>
+</li>
+<li>
+<p><strong>Bootstrapped solo for 24 months without a partner / advisor / community is the default failure mode.</strong> Not because the founder is weak — because the <em>signal</em> you get from talking only to yourself drifts in subtle and compounding ways. A 30-minute biweekly call with one industry veteran corrects more drift than three weeks of dogfooding.</p>
+</li>
+<li>
+<p><strong>The runway is not just dollars.</strong> It's also energy and family/relationship capital and physical health. Burnout is a runway event. Track it. The signs (sleep, exercise, weekend work creep) are obvious in retrospect and invisible in the moment.</p>
+</li>
+<li>
+<p><strong>The money-from-customers feedback loop changes the founder, not just the company.</strong> Going from $0 MRR to $500 MRR is more psychologically significant than going from $500 to $50K MRR. Get to the first dollar fast — not for the dollar, for what it teaches you about who buys.</p>
+</li>
+</ol>
+<hr>
+<h2 id="what-the-board-would-say-if-it-had-to-vote-today">What the board would say if it had to vote today</h2>
+<table>
+<thead>
+<tr>
+<th>Voice</th>
+<th>Excited?</th>
+<th>Would buy / partner today?</th>
+<th>Verdict</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Maya</td>
+<td>Yes — qualified</td>
+<td>Free tier yes; paid not yet (catalog gaps)</td>
+<td>Wait list me, ping me when motor coverage is real</td>
+</tr>
+<tr>
+<td>Diego</td>
+<td>Yes — strongly</td>
+<td>Yes, $99/mo for API + projects, today</td>
+<td>Take my email; I'll be your second customer</td>
+</tr>
+<tr>
+<td>Priya</td>
+<td>Mild interest</td>
+<td>Not yet — 18 months out</td>
+<td>Useful eventually; not in this fiscal year</td>
+</tr>
+<tr>
+<td>Hank</td>
+<td>Curious — strategic</td>
+<td>Not yet, but in 12 months a real conversation</td>
+<td>Stay in touch; be careful what brand decisions you make</td>
+</tr>
+<tr>
+<td>Ron</td>
+<td>Bullish on substrate, worried about runway</td>
+<td>N/A — observer</td>
+<td>Keep going; fix the founder risks before the product ones</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="final-word">Final word</h2>
+<p>This is one of the rare bootstrapped products where the <em>brand and engineering taste</em> are far ahead of where the <em>catalog and distribution</em> are. That's the right direction of imbalance — taste compounds over years; catalog depth and distribution are catchable in months with focus. The work the founder is doing is real and the audience exists. The two things that will most determine survival are: (a) whether catalog depth in <em>one</em> product type is credible within 12 months, and (b) whether the founder builds enough of a feedback loop — customers, advisors, community — to stay calibrated over the long pre-revenue stretch.</p>
+<p>Neither is a code problem.</p>
+        </article>
+    </main>
+
+    <footer>
+        <div class="footer-inner">
+            <a class="footer-link" href="../roadmap.html">← Back to roadmap</a>
+            <span class="footer-rule" aria-hidden="true"></span>
+            <a class="footer-link" href="https://github.com/JimothyJohn/specodex/blob/master/todo/longterm/BOARD.md" rel="noreferrer">Edit on GitHub</a>
+        </div>
+    </footer>
+</body>
+</html>

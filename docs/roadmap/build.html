@@ -1,0 +1,1968 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="The third page in Specodex's user-facing hierarchy, and the one the rest of the application is meant to point at. Today the catalog has two surfaces: Selection ">
+    <meta name="theme-color" content="#3A2C1C">
+    <title>Specodex — BUILD — requirements-first system assembler</title>
+    <link rel="icon" type="image/svg+xml" href="../logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-issue="BUILD — REQUIREMENTS-FIR">
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="band">
+        <div class="band-inner">
+            <a class="band-brand" href="../index.html">
+                <svg class="band-mark" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <rect width="120" height="120" fill="#E8E2C9"/>
+                    <rect x="14" y="14" width="92" height="92" fill="none" stroke="#1A1A14" stroke-width="3"/>
+                    <rect x="14" y="14" width="92" height="22" fill="#3A2C1C"/>
+                    <rect x="62" y="60" width="40" height="10" fill="#A88A1C"/>
+                    <line x1="14" y1="56" x2="106" y2="56" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="74" x2="106" y2="74" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="92" x2="106" y2="92" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="60" y1="36" x2="60" y2="106" stroke="#1A1A14" stroke-width="2"/>
+                </svg>
+                <span class="wordmark">SPECODEX</span>
+            </a>
+            <nav class="band-nav" aria-label="Section">
+                <a href="../index.html">Catalog</a>
+                <a href="../roadmap.html">Roadmap</a>
+                <a href="https://github.com/JimothyJohn/specodex/blob/master/todo/BUILD.md" rel="noreferrer">Source</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="doc-hero">
+            <div class="hero-tag">▮▮▮ BUILD ▮▮▮</div>
+            <h1 class="hero-title">BUILD — requirements-first system assembler</h1>
+            <div class="doc-meta">
+                <span class="status-chip status-backlog">⚪ QUEUED (INDEPENDENT, USER-FACING)</span>
+                <span class="doc-source"><code>todo/BUILD.md</code></span>
+            </div>
+        </section>
+
+        <article class="doc-body">
+<h1 id="build-requirements-first-system-assembler">BUILD — requirements-first system assembler</h1>
+<p>The third page in Specodex's user-facing hierarchy, and the one the
+rest of the application is meant to point at. Today the catalog has
+two surfaces: <strong>Selection</strong> (<code>/</code>, the filterable component browser)
+and <strong>Actuators</strong> (<code>/actuators</code>, a Linear-Motion supercategory landing
+with a procedural part-number configurator). Build replaces and
+generalises the Actuators page into the <strong>first page a non-expert
+should see</strong> — the one that takes engineering requirements
+(motion class, stroke, speed, payload, orientation) and assembles a
+candidate motion system from the catalog.</p>
+<p>The end-state hierarchy:</p>
+<ul>
+<li><strong>Wizard</strong> (future, top of funnel) — natural-language problem
+  description; an LLM derives requirements and hands off a <em>draft</em>
+  Build state.</li>
+<li><strong>Build</strong> (this doc, the core) — explicit requirements form; user
+  reviews / edits; output is a list of vendor part numbers per system
+  slot (actuator + motor + drive ± gearhead).</li>
+<li><strong>Selection</strong> (existing, expert mode) — raw catalog browse, used
+  when Build's recommendations need to be cross-checked, compared,
+  or extended.</li>
+</ul>
+<p>This doc covers Build only. Wizard appears as forward context where
+the seam between them needs to be locked early (the requirement
+schema in Part 2 must be JSON-serialisable so Wizard can hand it
+off as URL state or a saved draft).</p>
+<hr>
+<h2 id="part-1-the-three-page-model">Part 1 — The three-page model</h2>
+<p>Specodex's user-facing surface is three pages, each at a different
+<strong>altitude of abstraction</strong>. They are not parallel; they form a
+funnel from "I have a vague problem in my head" down to "I have
+the exact part numbers I need to order."</p>
+<pre><code>            altitude (vague → specific)
+            ────────────────────────────
+            ↑
+            │   Wizard       &quot;I need to lift a heavy thing
+            │   /wizard       quickly.&quot;  → LLM derives requirements
+            │                 → hands off to Build with a draft
+            │
+            │   Build        &quot;5 kg vertical, 200 mm in 200 ms,
+            │   /build        2 s dwell.&quot;  → relations API returns
+            │                 candidates per slot → user picks →
+            │                 Copy BOM
+            │
+            │   Selection    &quot;Show me every Yaskawa servo motor
+            │   /             with rated torque ≥ 2 N·m, sorted
+            │                 by inertia.&quot;  → raw catalogue browse
+            ↓
+            (most concrete — power-user / library mode)
+</code></pre>
+<h3 id="what-each-page-is-for">What each page is for</h3>
+<p><strong>Wizard (<code>/wizard</code>, future)</strong> — the natural-language front door.
+The user types or speaks a description of their motion problem;
+an LLM extracts a <code>BuildRequirements</code> blob (Part 2's schema) and
+hands off to Build with the requirements pre-populated. Wizard
+covers the gap between "I know I need to move stuff" and "I know
+my stroke + speed + payload." It is the right entry for users who
+don't already think in motion-system terms.</p>
+<p><strong>Build (<code>/build</code>, this doc)</strong> — the requirements-first system
+assembler. The user describes their motion application as
+engineering inputs (motion class, orientation, stroke, move
+time, dwell, payload mass), and Build narrows the catalogue per
+slot (actuator → motor → drive → optional gearhead) using the
+relations API. Output is a copy-able BOM of vendor part numbers.
+Build is the right entry for users who <em>do</em> think in motion-system
+terms but don't want to manually filter four product types and
+cross-check compatibility by hand.</p>
+<p><strong>Selection (<code>/</code>, existing)</strong> — the raw catalogue browser. Filter
+chips, sort, column resize, per-column unit toggles. No motion
+system context, no compatibility narrowing, no slot-fill
+sequence. Selection is the right entry for users who already
+know which product type they want, who want to compare across
+vendors regardless of any specific Build, who want to filter by
+attributes Build's form deliberately doesn't surface (release
+year, certification, manufacturer), or who want to browse
+product types Build doesn't model (contactors, robot arms,
+datasheets).</p>
+<h3 id="where-users-land">Where users land</h3>
+<p>After Build ships, <strong>Build is the default entry point.</strong> Welcome's
+"Make Your Selection" CTA rewrites to "Build a motion system" →
+<code>/build</code>. The header nav reorders to put Build first. The catalog
+itself still loads at <code>/</code> for direct-navigation users who already
+have Selection bookmarked.</p>
+<p>The funnel is intentionally <strong>bidirectional at every level</strong>:</p>
+<ul>
+<li>A user on Wizard can opt out at any point ("just take me to
+  Build" → opens <code>/build</code> empty for manual entry).</li>
+<li>A user on Build can drill down to Selection ("View this motor
+  in the catalogue" → opens <code>/?type=motor&amp;filter=&lt;f&gt;</code> per Phase
+  2's deep-link, with all of Selection's filtering primitives
+  available).</li>
+<li>A user on Selection can promote up to Build ("Use this motor
+  in a Build" → opens <code>/build</code> with the motor pre-selected for
+  its slot, requirements form blank for back-derivation).</li>
+</ul>
+<p>The promote-from-Selection direction (Selection → Build) is in
+scope for Phase 2; the drill-from-Build direction (Build →
+Selection) is also Phase 2. Phase 1 ships the funnel one-way:
+Wizard → Build → Copy BOM, with Selection accessible from the
+nav but not deeply integrated.</p>
+<h3 id="how-they-relate-operationally">How they relate operationally</h3>
+<table>
+<thead>
+<tr>
+<th>Concern</th>
+<th>Wizard</th>
+<th>Build</th>
+<th>Selection</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Input shape</td>
+<td>Natural language</td>
+<td><code>BuildRequirements</code> (form / URL params)</td>
+<td>Filter chip set</td>
+</tr>
+<tr>
+<td>Output shape</td>
+<td>Build URL with <code>?wizard=1</code></td>
+<td>Copy-able BOM (slot picks)</td>
+<td>None — read-only browse</td>
+</tr>
+<tr>
+<td>Relations API usage</td>
+<td>None — produces requirements only</td>
+<td>Heavy — every slot's narrowing</td>
+<td>None</td>
+</tr>
+<tr>
+<td>Compat checks</td>
+<td>None</td>
+<td><code>compat.ts</code> per junction</td>
+<td>None (banner removed Phase 1)</td>
+</tr>
+<tr>
+<td>Cross-supercategory</td>
+<td>No (single application)</td>
+<td>No (single application)</td>
+<td>Yes — comparison surface</td>
+</tr>
+<tr>
+<td>State persistence</td>
+<td>Wizard session history (Wizard's problem)</td>
+<td>URL state + localStorage + Project save (Phase 2)</td>
+<td>localStorage column prefs only</td>
+</tr>
+<tr>
+<td>Auth required</td>
+<td>TBD by Wizard's spec</td>
+<td>No (read-only API consumption)</td>
+<td>No</td>
+</tr>
+</tbody>
+</table>
+<p>The same <code>BuildRequirements</code> JSON shape is the <strong>shared currency</strong>:
+Wizard produces it, Build accepts it, Project save persists it.
+Selection doesn't speak this currency — it operates one level
+below, on individual product records. This asymmetry is by
+design: Build is where motion-system thinking lives; Selection
+is where catalogue thinking lives; Wizard is where natural-
+language thinking lives.</p>
+<h3 id="why-build-is-the-essence">Why Build is the essence</h3>
+<p>Per Nick's framing — "this is the essence of this application."
+Every distributor has a filterable catalogue; Specodex's
+differentiator is that the catalogue is <strong>wired to compatibility
+relations</strong>, so describing a motion application returns a viable
+system. The rest of this doc treats Build as the noun; Wizard and
+Selection are the supporting cast.</p>
+<hr>
+<h2 id="part-2-builds-requirement-vocabulary">Part 2 — Build's requirement vocabulary</h2>
+<p>The single load-bearing schema for the entire Build experience. Form
+inputs, URL state, localStorage saves, and the Wizard handoff target
+all bind to the same shape. Lock this first; everything downstream
+(UI, relations API integration, Wizard contract, phasing) references
+it concretely.</p>
+<h3 id="top-level-shape">Top-level shape</h3>
+<pre><code class="language-ts">// app/frontend/src/types/buildRequirements.ts
+//
+// Single source of truth for Build's input form, URL serialiser,
+// localStorage save, and Wizard handoff target. Validated by Zod at
+// the form boundary; never sent to the relations API directly — the
+// derivation engine (below) translates this into the numeric
+// constraints the API consumes.
+
+export type MotionClass = &quot;linear&quot; | &quot;rotary&quot;;
+export type LinearOrientation = &quot;horizontal&quot; | &quot;vertical&quot;;
+export type UnitsPreference = &quot;metric&quot; | &quot;imperial&quot;;
+
+/**
+ * One discrete move + its trailing dwell. Day 1 ships with exactly
+ * one entry; the schema is a list from the start so the future
+ * &quot;stack profiles to compute cumulative duty cycle&quot; feature is
+ * additive rather than a re-shape.
+ */
+export interface MotionProfile {
+  /** Distance the carriage must travel in this move. */
+  stroke: ValueUnit;          // canonical unit: mm
+  /** How long the move takes (start of motion → end of motion). */
+  move_time: ValueUnit;       // canonical unit: s
+  /** Idle time between this move and the next. */
+  dwell_time: ValueUnit;      // canonical unit: s
+}
+
+export interface BuildRequirements {
+  motion_class: MotionClass | null;       // null = user hasn't picked yet
+  /** Linear-only. null when motion_class !== &quot;linear&quot;. */
+  orientation: LinearOrientation | null;
+  /** Strongly suggested for linear (not enforced). Form labels it
+   *  required; validator allows null. 0 emits the warning below. */
+  payload_mass: ValueUnit | null;         // canonical unit: kg
+  motion_profiles: MotionProfile[];       // Day 1: length 1 enforced
+  /** Display-only; persisted in localStorage. Default &quot;metric&quot;. */
+  units_preference: UnitsPreference;
+}
+</code></pre>
+<p><code>ValueUnit</code> is the existing <code>specodex/models/common.py</code> shape
+(re-exported in <code>generated.ts</code>): <code>{ value: number, unit: string }</code>.
+Unit conversions go through <code>app/frontend/src/utils/unitConversion.ts</code>,
+the same path the catalog uses. Imperial display ⟶ metric storage
+under the hood; the <code>units_preference</code> toggle never mutates the
+canonical numbers.</p>
+<h3 id="field-by-field">Field-by-field</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Required for Day 1</th>
+<th>Default</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>motion_class</code></td>
+<td>yes</td>
+<td><code>null</code></td>
+<td>Day 1 only <code>"linear"</code> is interactive; selecting <code>"rotary"</code> shows a placeholder ("rotary requirements not yet wired — pick a motor + gearhead via Selection").</td>
+</tr>
+<tr>
+<td><code>orientation</code></td>
+<td>yes (when linear)</td>
+<td><code>null</code></td>
+<td>Drives whether gravity enters the force calculation. Side-mount deferred until centre-of-gravity work lands.</td>
+</tr>
+<tr>
+<td><code>payload_mass</code></td>
+<td><strong>strongly suggested</strong></td>
+<td><code>null</code></td>
+<td>Form labels it required (asterisk, copy below); the validator does NOT block submission on blank. Blank = "no force filter applied" banner; 0 = the warning copy below. The strong-suggestion framing pushes users to enter a real value without trapping the ones who genuinely don't know.</td>
+</tr>
+<tr>
+<td><code>motion_profiles[0].stroke</code></td>
+<td>yes</td>
+<td><code>null</code></td>
+<td>The distance the carriage must travel. If you have a range, enter the maximum.</td>
+</tr>
+<tr>
+<td><code>motion_profiles[0].move_time</code></td>
+<td>yes</td>
+<td><code>null</code></td>
+<td>Total time for one move (start → end).</td>
+</tr>
+<tr>
+<td><code>motion_profiles[0].dwell_time</code></td>
+<td>yes</td>
+<td><code>null</code></td>
+<td>Idle time between this move and the next. Drives duty-cycle derivation.</td>
+</tr>
+<tr>
+<td><code>units_preference</code></td>
+<td>no</td>
+<td><code>"metric"</code></td>
+<td>Display-only. Persisted in localStorage so it survives reloads.</td>
+</tr>
+</tbody>
+</table>
+<p>Every field except <code>units_preference</code> starts <code>null</code>. <strong>Blank = no
+constraint applied</strong> (per the progressive-narrowing rule below). The
+form does not block submission on partial input; it just narrows the
+candidate set proportionally.</p>
+<h3 id="the-derivation-engine">The derivation engine</h3>
+<p>The user inputs are physically intuitive ("100 mm in 200 ms") rather
+than the numeric constraints the relations API needs ("peak force ≥
+N", "peak velocity ≥ mm/s"). A small derivation engine in
+<code>app/frontend/src/utils/buildDerivation.ts</code> translates between them.</p>
+<p><strong>Assumed motion profile: S-curve 1/3 trapezoidal.</strong> One-third of
+<code>move_time</code> is acceleration (0 → peak velocity), one-third is cruise
+at peak velocity, one-third is deceleration (peak → 0). The S-curve
+smooths the corners between phases — at this fidelity it doesn't
+change the peak numbers, just the jerk. Day 1 ignores jerk; Phase 2+
+revisits if motor sizing surfaces it as a gap.</p>
+<p>Derived quantities (computed live as the form is filled):</p>
+<pre><code>avg_velocity     = stroke / move_time
+peak_velocity    = 1.5 × avg_velocity
+peak_acceleration = peak_velocity / (move_time / 3)
+                 = 4.5 × stroke / move_time²
+
+g_factor         = 9.81 m/s²   if orientation === &quot;vertical&quot;
+                 = 0           if orientation === &quot;horizontal&quot;
+                 (friction estimate folded in later)
+
+peak_force       = payload_mass × (peak_acceleration + g_factor)
+duty_cycle       = move_time / (move_time + dwell_time)
+</code></pre>
+<p><strong>Vertical sizing rule.</strong> Per Nick's "the actuator will always have
+to move in both directions" — <code>peak_force</code> sizes for the lifting
+half of the bidirectional cycle (gravity adds to required thrust).
+The lowering half (gravity subtracts) is the motor's regen problem,
+not the actuator's force-rating problem; it surfaces in Phase 2+ when
+drive selection cares about regen capability.</p>
+<p><strong>Future-extension hook.</strong> When <code>motion_profiles</code> grows past length
+1, <code>duty_cycle</code> becomes a sum-over-profiles weighted by RMS torque
+contribution, not a single ratio. The shape of the schema (list
+from day one) supports this; the math swaps to a more honest formula
+when the second profile lands.</p>
+<p>The derived block surfaces in the UI as a <strong>"What you're asking
+for"</strong> panel beside the form — peak velocity, peak acceleration,
+peak force, duty cycle — so the user sees the implication of their
+choices before they read which actuators meet them. (See Part 3 for
+layout.)</p>
+<h3 id="what-the-relations-api-consumes">What the relations API consumes</h3>
+<p>Build sends <strong>derived numbers</strong>, not raw <code>BuildRequirements</code>. The
+relations API doesn't need to know about S-curve profiles or
+imperial display toggles — clean separation between requirement
+authoring (frontend) and candidate matching (backend).</p>
+<p>The request shape against <code>/api/v1/relations/actuators</code> (see
+<code>todo/SCHEMA.md</code> Phase 3):</p>
+<pre><code class="language-ts">interface ActuatorQuery {
+  min_stroke_mm: number;
+  min_peak_force_n: number;
+  min_peak_velocity_mm_s: number;
+  min_duty_cycle: number;        // 0..1
+  orientation?: &quot;horizontal&quot; | &quot;vertical&quot;;  // hint for derating
+}
+</code></pre>
+<p>This keeps the relations API stable as the requirement schema
+evolves: add <code>repeatability</code> to <code>BuildRequirements</code> later, and the
+API only needs to accept a new optional <code>max_repeatability_um</code>
+parameter. The two schemas are coupled only at the derivation
+function in the frontend.</p>
+<h3 id="narrowing-semantics">Narrowing semantics</h3>
+<p><strong>Progressive narrowing.</strong> Build always renders <em>all</em> candidate
+actuators with a count badge, narrowing as fields fill in. Empty
+form on first load → "147 actuators in catalogue." Pick <code>vertical</code>
+→ no change (orientation is a hint, not a hard filter — actuators
+work either way). Enter <code>5 kg</code> mass → "147 actuators (no force
+filter — set move time to compute peak force)." Enter <code>200 mm</code>
+stroke → "84 actuators with stroke ≥ 200 mm." Enter <code>0.2 s</code> move
+time → "12 actuators with peak force ≥ 175 N at this duty cycle."
+The user always sees the candidate count, so they can tell which
+input just narrowed and by how much.</p>
+<p><strong>Blank = no constraint applied.</strong> Every field is optional in the
+sense of "unfilled fields don't filter." The mandatory marker on
+<code>payload_mass</code> means the <em>form</em> asks for it (with copy explaining
+why), but the user can still leave it blank and Build will surface
+candidates without applying a force filter — they'll just see "no
+force filter applied" in the active-constraints summary.</p>
+<p><strong>The "extremely clear available products" surface.</strong> Each input
+field gets a live distribution panel beside it — a horizontal
+histogram showing where the user's input lands in the catalogue.
+Stroke slider shows "X actuators support this stroke or longer";
+move time shows the speed-cluster the input falls into. This is the
+mechanism by which a user notices their requirement is pushing
+toward rare/expensive territory before they hit "no candidates
+match." Same primitive the column-header sliders use in
+<code>ProductList</code>; reuses <code>ColumnHeader.tsx</code>'s sparkline logic.</p>
+<p><strong>Standardization hints.</strong> When the user's input falls between two
+common catalogue clusters (e.g. asking for 175 mm stroke when 150
+mm and 200 mm are the popular sizes), surface a soft suggestion:
+<em>"200 mm is a more standard size — 18 actuators vs 3 at 175 mm.
+Designing to a standard size lowers cost and lead time."</em> Optional
+toggle ("standard sizes only") for engineers who already know they
+need exact-fit. Drives Nick's "design your system to fit common
+products" framing — economy of scale comes from picking from the
+fat part of the distribution, not the long tail.</p>
+<h3 id="schema-location-serialisation">Schema location &amp; serialisation</h3>
+<p><strong>Source file:</strong> <code>app/frontend/src/types/buildRequirements.ts</code>.
+TypeScript interface + Zod (or equivalent — match the existing
+project pattern in <code>app/backend/src/schemas/</code>) validator. Single
+source of truth.</p>
+<p><strong>URL serialisation.</strong> Build's full state encodes into the URL so
+configurations are bookmarkable and shareable:</p>
+<pre><code>/build
+  ?ml=linear           # motion_class
+  &amp;or=vertical         # orientation
+  &amp;pm=5kg              # payload_mass — value+unit
+  &amp;st=200mm            # stroke
+  &amp;mt=0.2s             # move_time
+  &amp;dw=2s               # dwell_time
+  &amp;up=metric           # units_preference (display only)
+</code></pre>
+<p>Compact-but-legible. ValueUnit fields encode as <code>&lt;number&gt;&lt;unit&gt;</code>
+with no separator (<code>5kg</code>, <code>200mm</code>, <code>0.2s</code>). Wizard's handoff is then
+just a redirect to a <code>/build?...</code> URL with the LLM's derived params
+pre-populated; no separate handoff API needed.</p>
+<p><strong>localStorage save.</strong> Same JSON shape, keyed under <code>buildRequirements</code>.
+On Build mount, hydrate from URL first, fall back to localStorage,
+fall back to the empty-form defaults. URL wins so a shared link
+overrides a stale local draft.</p>
+<p><strong>No Pydantic mirror on Day 1.</strong> Build's requirements stay frontend-
+only. The relations API accepts the <em>derived</em> numeric constraints
+(force, velocity, stroke, duty cycle), not the raw input shape, so
+there's nothing for the backend to validate against. When Phase 3
+"save Build state to a Project" lands, mirror the shape into a
+Pydantic model in <code>specodex/models/build_requirements.py</code>; not
+before. Premature server-side modelling drags every requirement-
+schema iteration through <code>gen-types</code> regen + DB-write paths the
+feature doesn't actually need.</p>
+<h3 id="forward-compat-hooks">Forward-compat hooks</h3>
+<p>Documented now so future-you doesn't have to re-derive them when the
+trigger arrives:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Triggers</th>
+<th>Fits where</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>motion_profiles[1+]</code></td>
+<td>"stack multiple moves to compute cumulative duty cycle"</td>
+<td>Already a list — extend with a "+ Add another move" button.</td>
+</tr>
+<tr>
+<td><code>repeatability: ValueUnit</code></td>
+<td>first user asks "I need ±10 µm positioning"</td>
+<td>Add to <code>BuildRequirements</code>; relations API gains <code>max_repeatability_um?</code>.</td>
+</tr>
+<tr>
+<td><code>temperature_range: MinMaxUnit</code></td>
+<td>first cold-storage / outdoor application</td>
+<td>Same shape pattern; environmental block.</td>
+</tr>
+<tr>
+<td><code>ip_rating: string</code></td>
+<td>first wash-down / dusty environment</td>
+<td>Same.</td>
+</tr>
+<tr>
+<td><code>cleanroom_class: string</code></td>
+<td>first semicon / pharma application</td>
+<td>Same.</td>
+</tr>
+<tr>
+<td><code>fieldbus: CommunicationProtocol[]</code></td>
+<td>confirmed Phase ≥ 3; "way later" per Nick</td>
+<td>Lives on the Drive selection step, not the requirement form.</td>
+</tr>
+<tr>
+<td><code>encoder_feedback_support: string[]</code></td>
+<td>when servo selection gets opinionated</td>
+<td>Same — Drive step, not requirements.</td>
+</tr>
+<tr>
+<td><code>centre_of_gravity: { x, y, z }</code></td>
+<td>when bearing-moment checks land</td>
+<td>New <code>LinearOrientation</code> value <code>"side_mount"</code> becomes meaningful at this point.</td>
+</tr>
+<tr>
+<td><code>friction_coefficient: number</code></td>
+<td>when horizontal-motor sizing drifts low</td>
+<td>Currently <code>0</code> for horizontal; surface as advanced field.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="adding-a-new-requirement-field-propagation-checklist">Adding a new requirement field — propagation checklist</h3>
+<p>When a new field lands (per Part 2's forward-compat hooks table —
+<code>repeatability</code>, <code>temperature_range</code>, etc.), the following touch
+list keeps the schema, form, URL, derivation, API, and copy in
+sync. Walk the list top-to-bottom; CI catches the codegen step,
+the rest is on the implementer.</p>
+<ol>
+<li><strong>Schema.</strong> Add the field to <code>BuildRequirements</code> in
+   <code>app/frontend/src/types/buildRequirements.ts</code>. Always optional
+   (per Part 6's "new fields are always optional" rule).</li>
+<li><strong>URL serialiser.</strong> Add the field's encoding to
+   <code>app/frontend/src/utils/buildURLState.ts</code> — both the
+   <code>serialiseBuildRequirementsToURL</code> direction and the
+   <code>parseURLToBuildRequirements</code> inverse. Pick a short param key
+   (2–3 chars, matching the existing pattern: <code>pm</code> / <code>st</code> / <code>mt</code>).</li>
+<li><strong>Form control.</strong> Add the input to <code>&lt;RequirementsForm&gt;</code> with
+   the appropriate primitive (number input, range slider, enum
+   dropdown). Bind to <code>requirements[&lt;field&gt;]</code> and call
+   <code>onRequirementsChange</code>.</li>
+<li><strong>Derivation.</strong> If the new field affects derived numbers
+   (peak_force, peak_velocity, duty_cycle), update
+   <code>app/frontend/src/utils/buildDerivation.ts</code>. If not, skip.</li>
+<li><strong>Relations API param.</strong> Add the corresponding optional query
+   param to the relations endpoint(s) in <code>app/backend/src/routes/relations.ts</code>
+   (and <code>specodex/relations.py</code> once PYTHON_BACKEND lands).</li>
+<li><strong>Wire the param to the API call.</strong> In <code>&lt;BuildPage&gt;</code>'s
+   relations call site, pass the new query param when the field
+   is non-null. The relations API treats absent params as "no
+   constraint applied" (same rule as the schema's optional-by-
+   default).</li>
+<li><strong>Tooltip + warning copy.</strong> Add a row to Part 2's "Field-level
+   copy" table. Implement the tooltip via <code>&lt;Tooltip&gt;</code> and the
+   warning (if any) inline beneath the form control.</li>
+<li><strong>Unit tests.</strong> Add fixtures to <code>RequirementsForm.test.tsx</code>
+   covering the new control's render + callback. Add a relations
+   API test verifying the new param is honoured.</li>
+<li><strong>Phase exit criteria update.</strong> If the field unblocks a Phase
+   2+ feature (e.g. <code>temperature_range</code> enables an environmental
+   filter), update Part 7's phase exit criteria to reference it.</li>
+</ol>
+<p>The codegen pipeline (<code>./Quickstart gen-types</code>) catches drift
+between the Pydantic and TypeScript shapes when SCHEMA work
+sits behind the field — but Build's <code>BuildRequirements</code> is
+frontend-only today (per Part 2's "No Pydantic mirror"), so the
+drift gate doesn't apply yet. When Save-to-Project mirrors the
+shape server-side, this checklist gains a step 2.5: "Update the
+Pydantic mirror in <code>specodex/models/build_requirements.py</code>."</p>
+<h3 id="field-level-copy">Field-level copy</h3>
+<p>The spec pins tooltips and warning copy verbatim so they don't drift
+into vague generic strings during implementation. Per the
+no-native-chrome rule (<code>CLAUDE.md</code> "Frontend UI conventions"), all
+of these render through <code>Tooltip.tsx</code> / <code>&lt;FormField&gt;</code> (when STYLE
+Phase 4 ships), never <code>title=</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Tooltip text</th>
+<th>Inline help / warning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>motion_class</code></td>
+<td>"Is the load translating along an axis (linear) or rotating (rotary)? Most actuator selections start with linear."</td>
+<td>If <code>rotary</code>: "Rotary requirements not yet wired. Pick a motor + gearhead from Selection; this page will support rotary tables in a later release."</td>
+</tr>
+<tr>
+<td><code>orientation</code></td>
+<td>"Horizontal: gravity does no work. Vertical: gravity adds to the lifting force the actuator must provide."</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>payload_mass</code></td>
+<td>"The load the actuator carries. For vertical applications this is the dominant force the actuator must lift."</td>
+<td>If value === 0: "0 kg means no payload — confirm you actually have no load. Most useful Build results need a real mass."</td>
+</tr>
+<tr>
+<td><code>stroke</code></td>
+<td>"The distance the actuator's carriage must travel in one move. If you have a range, enter the maximum."</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>move_time</code></td>
+<td>"How long one full stroke should take, end-to-end. Build assumes an S-curve trapezoidal motion profile (1/3 accelerating, 1/3 cruising, 1/3 decelerating)."</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>dwell_time</code></td>
+<td>"How long the actuator sits idle between moves. Drives motor thermal sizing — the longer the dwell, the cooler the motor."</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>units_preference</code></td>
+<td>"Display preference. Stored values are always metric; this only flips what you see and type."</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="part-3-the-build-page-surface">Part 3 — The Build page surface</h2>
+<p>The page absorbs three pieces of existing UI: the <strong>requirements
+form</strong> (greenfield), the <strong>per-slot candidate lists</strong> (replaces the
+ActuatorPage records table), and the <strong>system summary / BOM
+output</strong> (replaces the sticky <code>BuildTray.tsx</code>). Layout enforces the
+left-to-right reading order Nick framed: <em>describe what you need →
+see candidates → commit a system</em>.</p>
+<h3 id="goal">Goal</h3>
+<blockquote>
+<p>Land on <code>/build</code>, fill three or four fields, see the catalogue
+narrow to a handful of candidates per slot, click to commit each
+slot, copy a four-line BOM. Total time-to-quote-request: under
+two minutes for a routine motion application.</p>
+</blockquote>
+<h3 id="route-entry-point">Route + entry point</h3>
+<ul>
+<li>New route: <code>/build</code> → <code>&lt;BuildPage/&gt;</code> (lazy-loaded, same pattern as
+  <code>Datasheets</code> / <code>Management</code> / the existing <code>ActuatorPage</code>).</li>
+<li>Becomes the <strong>default landing for the nav's primary CTA.</strong> The
+  Welcome page's "Make Your Selection" link rewrites to "Build a
+  motion system" → <code>/build</code>. The existing "Selection" nav item
+  stays in place but loses CTA prominence (see Part 5).</li>
+<li><code>/actuators</code> redirects to <code>/build?ml=linear&amp;or=horizontal</code> once
+  Build ships (preserving the existing route as a deep link to a
+  pre-narrowed Linear-Motion Build, not as its own page).</li>
+</ul>
+<h3 id="layout">Layout</h3>
+<p>Two-pane primary surface with a sticky system summary at the bottom:</p>
+<pre><code>┌────────────────────────────────────────────────────────────────────────┐
+│  Build a motion system                          [Reset]  [Save]  [⋯]   │
+├──────────────────────────┬─────────────────────────────────────────────┤
+│  Requirements            │  Candidates                                 │
+│  ────────────            │  ──────────                                 │
+│                          │                                             │
+│  Motion class            │  ▼ Actuator        47 → 12 candidates       │
+│   ◉ Linear               │     ┌────────────────────────────────────┐  │
+│   ○ Rotary               │     │ Tolomatic ERD15-BNM10-203          │  │
+│                          │     │ stroke 203mm · thrust 220N · ...   │  │
+│  Orientation             │     │ [Pick]  [Details]  [Configurator] │  │
+│   ◉ Horizontal           │     ├────────────────────────────────────┤  │
+│   ○ Vertical             │     │ Tolomatic BCS15-BNL05              │  │
+│                          │     │ stroke 152mm (under 200mm) ⚠       │  │
+│  Stroke      [200] mm    │     │ ...                                │  │
+│  Move time   [0.2] s     │     └────────────────────────────────────┘  │
+│  Dwell       [2  ] s     │                                             │
+│  Mass        [5  ] kg    │  ▼ Motor                — locked            │
+│                          │     Pick an actuator first to surface       │
+│  ━━ What you're asking ━ │     compatible motors.                      │
+│  Peak velocity 1500 mm/s │                                             │
+│  Peak force    297 N     │  ▼ Drive                — locked            │
+│  Duty cycle    9 %       │     ...                                     │
+│                          │                                             │
+│                          │  ▼ Gearhead (optional)  — locked            │
+│                          │     ...                                     │
+│                          │                                             │
+├──────────────────────────┴─────────────────────────────────────────────┤
+│  System: Actuator ✓ · Motor — · Drive — · Gearhead —     [Copy BOM] ✗ │
+└────────────────────────────────────────────────────────────────────────┘
+</code></pre>
+<p>Three regions:</p>
+<ol>
+<li><strong>Left pane — <code>&lt;RequirementsForm&gt;</code>.</strong> The schema from Part 2
+   bound to form controls. Sticky on scroll so the user can fill
+   fields while watching the candidates pane react. Includes the
+   "What you're asking for" derivation panel (peak velocity, peak
+   force, duty cycle) computed live by <code>buildDerivation.ts</code>.</li>
+<li><strong>Right pane — <code>&lt;CandidatesPane&gt;</code>.</strong> Per-slot accordion: Actuator,
+   Motor, Drive, Gearhead. Each section shows the candidate count
+   <em>before vs after</em> the requirement filters apply ("47 → 12"), the
+   list of candidates with their key specs, and per-row actions
+   (Pick / Details / Configurator). Locked sections show why they're
+   locked (waiting for upstream slot pick) instead of an empty list.</li>
+<li><strong>Bottom strip — <code>&lt;SystemSummary&gt;</code>.</strong> The absorbed BuildTray.
+   Always visible; shows slot fill state + a Copy BOM button that
+   activates when at least one slot is filled (matches today's
+   BuildTray behaviour). Goes green-bordered when all required slots
+   are filled and every junction passes <code>compat.check()</code>.</li>
+</ol>
+<h3 id="slot-fill-sequence">Slot-fill sequence</h3>
+<p>Enforced left-to-right slot dependency — Build's narrowing relies
+on each upstream pick to constrain the next slot's candidate set:</p>
+<ol>
+<li><strong>Actuator</strong> unlocks first (no upstream dep). Filters: stroke ≥
+   <code>requirements.stroke</code>, peak force rating ≥ derived <code>peak_force</code>,
+   peak velocity rating ≥ derived <code>peak_velocity</code>, orientation hint.</li>
+<li><strong>Motor</strong> unlocks once Actuator is picked. Filters:
+   <code>motor_mount_pattern ∈ actuator.compatible_motor_mounts</code>, rated
+   torque ≥ (derived peak torque / gear ratio guess), thermal
+   sizing for derived <code>duty_cycle</code>.</li>
+<li><strong>Drive</strong> unlocks once Motor is picked. Filters: voltage envelope
+   covers Motor's rated voltage, current envelope covers Motor's
+   rated current, encoder protocol intersection non-empty.</li>
+<li><strong>Gearhead</strong> is optional. Surfaces ratio suggestions when the
+   Motor's rated torque alone doesn't clear the actuator's required
+   peak — same <code>snapGearUp()</code> heuristic the existing Selection page
+   uses for <code>productType === 'motor'</code> linear-mode.</li>
+</ol>
+<p>Phase 1 <strong>reorders</strong> <code>compat.ts</code>'s <code>BUILD_SLOTS</code> constant from
+<code>['drive', 'motor', 'gearhead']</code> to
+<code>['actuator', 'motor', 'drive', 'gearhead']</code> — both prepending
+<code>'actuator'</code> AND moving <code>'motor'</code> before <code>'drive'</code> to match the
+user-facing fill order. Adjacency rules in <code>compat.ts</code> are
+name-keyed, not index-keyed, so the existing <code>drive↔motor</code> and
+<code>motor↔gearhead</code> rules keep working unchanged. Phase 1 adds one
+new rule: <code>actuator↔motor</code> (validates <code>motor.motor_mount_pattern
+∈ actuator.compatible_motor_mounts</code>). The array reorder DOES
+affect <code>ChainReviewModal.tsx</code>'s <code>adjacentFilledPairs</code> helper,
+which iterates the array and yields adjacent pairs — see Part 7's
+migration risks.</p>
+<h3 id="the-extremely-clear-available-products-surface">The "extremely clear available products" surface</h3>
+<p>The Part 2 standardisation rule (input-side) has a results-side
+twin in this pane:</p>
+<ul>
+<li>Each candidate row shows a <strong>distribution position badge</strong> —
+  e.g. "8th most common stroke in catalogue" or "rare — only 3
+  records at this spec." Reuses the histogram primitive from
+  <code>ColumnHeader.tsx</code>.</li>
+<li><strong>Off-cluster warning</strong> when a candidate is the only match
+  because the user's requirement hit a gap: <em>"Only 3 actuators
+  match exactly. Relaxing stroke to 250mm (next standard size)
+  surfaces 18 candidates."</em> Click-to-relax button writes the
+  suggested value back into the form.</li>
+<li><strong>Standard sizes only</strong> toggle in the form's footer — when on,
+  hides off-cluster candidates entirely so the user sees only the
+  fat part of the distribution.</li>
+</ul>
+<p>This is the mechanism by which Build steers users toward
+high-availability parts without forcing them — the rare-cluster
+candidates stay one click away.</p>
+<h3 id="the-configurators-role-within-build">The configurator's role within Build</h3>
+<p>The existing <code>app/frontend/src/types/configuratorTemplates.ts</code>
+templates (Tolomatic TRS / BCS / ERD, Lintech 200, Toyo Y, Parker
+HD) <strong>do not move to the requirements form</strong>. They surface
+<strong>inside the Actuator slot's row actions</strong> as a "[Configurator]"
+button per matching candidate row.</p>
+<p>Click flow:</p>
+<ol>
+<li>User picks Actuator slot → row action "Configurator" appears
+   on rows whose <code>(manufacturer, series)</code> resolves to a registered
+   template.</li>
+<li>Click → opens <code>&lt;ConfiguratorDrawer&gt;</code> (extracted from
+   <code>ActuatorPage.tsx</code>'s <code>&lt;ConfiguratorPanel&gt;</code> function and the
+   <code>&lt;MotorSuggestions&gt;</code> / <code>&lt;DerivedSpecsRow&gt;</code> / <code>&lt;SegmentControl&gt;</code>
+   helpers it composes) inline beneath the candidate row. The drawer renders the vendor's segments (lead, mount,
+   accessory bundle) with the user's <code>requirements.stroke</code>
+   pre-populated into the stroke segment.</li>
+<li>User adjusts vendor-specific segments → synthesised part number
+   updates live → "Use this part number" button commits the
+   synthesised SKU back into the slot pick.</li>
+</ol>
+<p>Per Nick's "every template will have a way to adjust stroke/length
+/travel" — the <strong>stroke segment is the only segment Build's
+requirements form pre-populates</strong>. Other segments stay vendor-
+specific and the drawer is the right surface for them.</p>
+<h3 id="buildtray-absorption-what-changes-in-apptsx">BuildTray absorption — what changes in <code>App.tsx</code></h3>
+<p>Today: <code>&lt;BuildTray /&gt;</code> is rendered unconditionally inside
+<code>&lt;AppShell&gt;</code> in <code>App.tsx</code> (the <code>{!isLanding &amp;&amp; &lt;BuildTray /&gt;}</code>
+expression after the <code>&lt;/ErrorBoundary&gt;</code> closing tag), sticky at
+the bottom of every non-<code>/welcome</code> page. Users add products to it from the
+<code>&lt;ProductDetailModal&gt;</code>'s "Add to build" button.</p>
+<p>After Build:</p>
+<ul>
+<li><code>&lt;BuildTray /&gt;</code> is <strong>deleted as a separate component.</strong> The
+  3-slot bottom-strip UX moves into <code>&lt;SystemSummary&gt;</code> (the bottom
+  region of the Build page only). It no longer follows the user
+  across pages.</li>
+<li>The <code>&lt;ProductDetailModal&gt;</code>'s "Add to build" button is <strong>removed
+  from non-Build contexts</strong> (Selection, Actuators, Projects). On
+  the Build page only, the button persists with renamed copy
+  ("Pick for [slot]") to disambiguate from the slot-fill flow.</li>
+<li>The <code>build</code> slice in <code>AppContext</code> (drive/motor/gearhead picks)
+  <strong>stays</strong> — Build reads/writes the same state, plus a new
+  <code>actuator</code> slot. Adding <code>actuator</code> to <code>BUILD_SLOTS</code> in
+  <code>compat.ts</code> is the only schema change required.</li>
+<li><code>compat.check()</code> gains an <code>actuator ↔ motor</code> adjacency rule
+  (validates <code>motor_mount_pattern ∈ actuator.compatible_motor_mounts</code>).
+  Today's <code>drive ↔ motor</code> and <code>motor ↔ gearhead</code> rules are
+  unchanged.</li>
+</ul>
+<h3 id="component-contracts">Component contracts</h3>
+<p>The three top-level components have well-defined prop boundaries
+so each can be unit-tested in isolation. <code>&lt;BuildPage&gt;</code> is the
+state-owner; the children are pure-ish renderers with callbacks.</p>
+<pre><code class="language-ts">// app/frontend/src/components/build/RequirementsForm.tsx
+interface RequirementsFormProps {
+  requirements: BuildRequirements;
+  onRequirementsChange: (next: BuildRequirements) =&gt; void;
+  /** Derived block from buildDerivation.ts. RequirementsForm
+   *  renders it but doesn't compute it — that's BuildPage's job. */
+  derived: DerivedSpecs | null;
+}
+
+interface DerivedSpecs {
+  peak_velocity_mm_s: number;
+  peak_acceleration_mm_s2: number;
+  peak_force_n: number;
+  duty_cycle: number;        // 0..1
+}
+
+// app/frontend/src/components/build/CandidatesPane.tsx
+interface CandidatesPaneProps {
+  /** Each slot's candidate list, fetched by BuildPage from the
+   *  relations API. null = locked (upstream slot not picked).
+   *  [] = no candidates match. */
+  actuatorCandidates: ActuatorCandidate[] | null;
+  motorCandidates: MotorCandidate[] | null;
+  driveCandidates: DriveCandidate[] | null;
+  gearheadCandidates: GearheadCandidate[] | null;
+  /** The current picks. null = slot empty. */
+  picks: Partial&lt;Record&lt;BuildSlot, Product&gt;&gt;;
+  /** Which slot is currently loading (shows the row skeleton). */
+  loadingSlot: BuildSlot | null;
+  /** Per-slot error from the relations API (null = no error). */
+  errors: Partial&lt;Record&lt;BuildSlot, string&gt;&gt;;
+  /** Standardisation / off-cluster suggestions surfaced by the
+   *  relations API's _distribution_position blocks. */
+  warnings: Partial&lt;Record&lt;BuildSlot, string&gt;&gt;;
+  /** Wizard-draft markers — slots whose pick was auto-selected
+   *  from the ?wizard=1 handoff and not yet confirmed. */
+  draftSlots: Set&lt;BuildSlot&gt;;
+  onPick: (slot: BuildSlot, product: Product) =&gt; void;
+  onUnpick: (slot: BuildSlot) =&gt; void;
+  /** Click-to-relax handler: writes a suggested value back into
+   *  the requirements form via BuildPage. */
+  onRelaxRequirement: (field: keyof BuildRequirements, value: ValueUnit) =&gt; void;
+}
+
+// app/frontend/src/components/build/SystemSummary.tsx
+interface SystemSummaryProps {
+  picks: Partial&lt;Record&lt;BuildSlot, Product&gt;&gt;;
+  /** Junction status from compat.check() per adjacent pair.
+   *  Same shape BuildTray uses today. */
+  junctions: JunctionInfo[];
+  isComplete: boolean;
+  onCopyBOM: () =&gt; void;
+  /** Disabled in Phase 1 (placeholder); enabled in Phase 2. */
+  onSaveToProject?: () =&gt; void;
+  /** Disabled in Phase 1 (placeholder); enabled in Phase 3. */
+  onOpenInWizard?: () =&gt; void;
+}
+</code></pre>
+<p><code>&lt;BuildPage&gt;</code> owns:
+- <code>BuildRequirements</code> state (hydrated from URL → localStorage →
+  defaults).
+- The relations API call orchestration (per Part 4's fan-out
+  pattern).
+- The <code>picks</code> map (writes to <code>AppContext</code>'s <code>build</code> slice for
+  cross-component access).
+- The Wizard-draft state (<code>Set&lt;BuildSlot&gt;</code> of unconfirmed picks).
+- The URL-state synchroniser (writes <code>BuildRequirements</code> back to
+  the URL on form changes via <code>history.replaceState</code>).</p>
+<p>The three children are renderer-with-callbacks. Their unit tests
+mock the props and verify rendering + callback firing; integration
+tests live at the <code>&lt;BuildPage&gt;</code> level and exercise the full
+form-change → API-call → render-update loop with mocked
+<code>apiClient</code>.</p>
+<h3 id="wizard-derived-initial-state">Wizard-derived initial state</h3>
+<p>Build mounts → reads URL params → hydrates <code>BuildRequirements</code> from
+them → if every required field is present <em>and</em> a <code>?wizard=1</code>
+flag is set, <strong>auto-picks the top candidate per slot</strong> as a draft:</p>
+<ul>
+<li>Each draft pick gets a <code>data-source="wizard-draft"</code> attribute on
+  the row + a small "Wizard pick — click to swap" badge.</li>
+<li>Drafts count as filled for <code>&lt;SystemSummary&gt;</code> slot indicators.</li>
+<li>User clicking a different candidate replaces the draft cleanly;
+  the badge disappears and the slot is now user-confirmed.</li>
+<li>"Reset" clears requirements + drafts together. "Reset picks only"
+  keeps the requirements but clears the drafts (useful when the
+  user wants to re-explore candidates).</li>
+</ul>
+<p>Without <code>?wizard=1</code>, Build never auto-picks — drafts only happen
+on the explicit Wizard handoff path. URL-shared Build configs
+without the flag still pre-populate requirements but leave the
+candidate selection to the user.</p>
+<h3 id="empty-loading-error-states">Empty / loading / error states</h3>
+<table>
+<thead>
+<tr>
+<th>State</th>
+<th>Trigger</th>
+<th>Render</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>First-load empty form</td>
+<td><code>/build</code> with no params</td>
+<td>All slots locked. Left pane shows the form with all fields blank. Right pane shows a single primer line per slot ("Pick motion class to begin"). Bottom strip shows all slots empty, Copy BOM disabled.</td>
+</tr>
+<tr>
+<td>Loading candidates</td>
+<td>After form change, while relations API call is in flight</td>
+<td>The active slot section shows a 3-row skeleton. Other slots stay in their prior state; don't re-skeleton already-rendered data.</td>
+</tr>
+<tr>
+<td>Relations API error</td>
+<td>5xx, timeout, network</td>
+<td>The active slot section shows the error inline (red banner) with a Retry button. Don't fall back to client-side filtering — the relations API is the source of truth, and silent best-effort matches lie to the user about what's actually compatible.</td>
+</tr>
+<tr>
+<td>No candidates</td>
+<td>Filter narrows to zero</td>
+<td>Slot section shows the "off-cluster warning" with the closest standardisation suggestion ("Try relaxing stroke to 250mm — surfaces 18 candidates"). Click-to-relax updates the form.</td>
+</tr>
+<tr>
+<td>Mass = 0</td>
+<td>User explicitly enters 0</td>
+<td>Per Part 2's verbatim copy, inline warning beneath the field. Form still computes derivations (<code>peak_force = 0</code>); candidates pane surfaces all actuators with a "no force filter applied" badge in the active-constraints summary.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="what-does-not-ship-in-phase-1">What does NOT ship in Phase 1</h3>
+<p>Pinned to keep Phase 1 scope honest:</p>
+<ul>
+<li><strong>Rotary path UI.</strong> <code>motion_class === "rotary"</code> selectable in the
+  form but renders the "rotary not yet wired — use Selection"
+  placeholder for the candidates pane. No motor + gearhead Build
+  flow, no rotary tables.</li>
+<li><strong>Multi-axis systems.</strong> A single linear axis only. No Cartesian /
+  gantry / multi-axis robot composition.</li>
+<li><strong>Save to Project.</strong> Button present but disabled with tooltip
+  "Save lands in Phase 1.1." The Projects context already
+  persists per-user collections; wiring Build state in is a small
+  follow-up but it needs the URL-state shape to settle first.</li>
+<li><strong>Open in Wizard.</strong> Button present but disabled with tooltip
+  "Wizard handoff lands in Phase 3." Forward-compat placeholder
+  only.</li>
+<li><strong>Per-candidate "View in Selection" deep-link.</strong> Useful but
+  needs Selection to support a <code>?type=&lt;t&gt;&amp;filter=&lt;f&gt;</code> pre-narrow
+  URL that doesn't exist yet. Punt to Phase 2.</li>
+<li><strong>Inline price totals.</strong> MSRP backfill (<code>DB_CLEANUP</code> Phase 2) is
+  queued but not shipped; without populated <code>msrp</code> fields, the
+  total would mostly read "—". Add when ≥80% of candidate rows
+  have an MSRP.</li>
+</ul>
+<hr>
+<h2 id="part-4-relations-api-integration-schema-phase-3">Part 4 — Relations API integration (SCHEMA Phase 3)</h2>
+<p>Build's candidate lists are <strong>not</strong> filtered client-side. Every
+slot's narrowing is a backend query against <code>/api/v1/relations/*</code>,
+landed by <code>todo/SCHEMA.md</code> Phase 3. Build is <strong>blocked on Phase 3
+shipping first</strong> — see "Why no client-side fallback" below.</p>
+<p>This part defines the contract Build needs from the API. Anything
+the relations module can't yet provide is either stubbed by SCHEMA
+Phase 3's first cut OR explicitly deferred to Build Phase 2+ (with
+a documented landing trigger).</p>
+<h3 id="required-endpoints">Required endpoints</h3>
+<p>Three <code>GET</code> endpoints under <code>/api/v1/relations/</code>. All return the
+same envelope as <code>/api/v1/search</code> (<code>{success: true, data: [...]}</code>),
+so the frontend reuses <code>apiClient.search()</code> plumbing.</p>
+<h4 id="get-apiv1relationsactuators"><code>GET /api/v1/relations/actuators</code></h4>
+<p>The first slot's narrowing query — driven by <code>BuildRequirements</code>
+(translated through the derivation engine, not raw form input):</p>
+<pre><code class="language-ts">interface ActuatorQuery {
+  min_stroke_mm: number;            // requirements.stroke
+  min_peak_force_n: number;         // derived peak_force
+  min_peak_velocity_mm_s: number;   // derived peak_velocity
+  min_duty_cycle: number;           // 0..1, derived
+  orientation?: &quot;horizontal&quot; | &quot;vertical&quot;;  // derating hint
+  /** When true, only return candidates whose stroke is in the top
+   *  3 cluster sizes (drives the &quot;Standard sizes only&quot; toggle). */
+  standard_sizes_only?: boolean;
+}
+
+interface ActuatorCandidate {
+  // Same shape as a LinearActuator record (per generated.ts), plus:
+  _distribution_position?: {
+    spec: &quot;stroke&quot; | &quot;peak_force_rating&quot; | &quot;peak_velocity_rating&quot;;
+    rank: number;       // 1 = most common at this spec
+    cluster_count: number;  // # records in the same cluster
+  };
+}
+</code></pre>
+<p>The <code>_distribution_position</code> block drives Part 3's "8th most common
+stroke in catalogue" badge. Computed once per request from the
+candidate set (not the full catalogue), so the rank is meaningful
+relative to what passed the filter.</p>
+<h4 id="get-apiv1relationsmotors-for-actuator"><code>GET /api/v1/relations/motors-for-actuator</code></h4>
+<pre><code class="language-ts">interface MotorsForActuatorQuery {
+  actuator_id: string;              // UUID from the picked Actuator
+  min_rated_torque_nm?: number;     // derived from peak_force / lead
+  min_rated_speed_rpm?: number;     // derived from peak_velocity / lead
+  /** Duty cycle from BuildRequirements; gates motor thermal sizing. */
+  duty_cycle?: number;
+}
+</code></pre>
+<p>Backend logic:</p>
+<ol>
+<li>Resolve <code>actuator_id</code> → <code>LinearActuator</code> record.</li>
+<li>Read <code>actuator.compatible_motor_mounts</code> (the literal list shipped
+   in SCHEMA Phase 1).</li>
+<li>Filter <code>Motor</code> records where <code>motor_mount_pattern ∈
+   compatible_motor_mounts</code>.</li>
+<li>Apply torque / speed / duty floor.</li>
+<li>Return sorted by "best fit" — closest spec match without massive
+   over-spec. Sort key TBD by SCHEMA Phase 3 implementation; a
+   simple <code>(rated_torque_nm - min_rated_torque_nm)</code> ascending works
+   for the first cut.</li>
+</ol>
+<h4 id="get-apiv1relationsdrives-for-motor"><code>GET /api/v1/relations/drives-for-motor</code></h4>
+<pre><code class="language-ts">interface DrivesForMotorQuery {
+  motor_id: string;
+}
+</code></pre>
+<p>Backend logic per <code>todo/SCHEMA.md</code> Part 3 <code>compatible_drives()</code>:</p>
+<ol>
+<li>Resolve <code>motor_id</code> → <code>Motor</code>.</li>
+<li>Filter <code>Drive</code> records where:
+   - voltage envelope covers <code>motor.rated_voltage</code>,
+   - current envelope covers <code>motor.rated_current</code>,
+   - <code>set(motor.encoder_feedback_support) ∩ set(drive.encoder_feedback_support)</code>
+     is non-empty.</li>
+</ol>
+<p>Day-1 caveat: <code>encoder_feedback_support</code> shape harmonisation is in
+<code>todo/SCHEMA.md</code> Phase 1.1 (BREAKING, deferred for sign-off). Until
+that lands, the encoder-protocol intersection check in this endpoint
+returns "compatible" optimistically (i.e. doesn't filter by encoder)
+and the response includes <code>_warnings: ["encoder protocol check
+disabled until SCHEMA Phase 1.1 ships"]</code> so Build can surface a
+banner on the slot.</p>
+<h4 id="get-apiv1relationsgearheads-for-motor"><code>GET /api/v1/relations/gearheads-for-motor</code></h4>
+<pre><code class="language-ts">interface GearheadsForMotorQuery {
+  motor_id: string;
+  /** Optional — Build sends only when the actuator slot's required
+   *  torque exceeds the motor's rated torque, and a gearhead is
+   *  needed to bridge the gap. */
+  min_torque_multiplier?: number;
+}
+</code></pre>
+<p>Backend logic per <code>todo/SCHEMA.md</code> Part 3 <code>compatible_gearheads()</code>:</p>
+<ol>
+<li>Resolve <code>motor_id</code> → <code>Motor</code>.</li>
+<li>Filter <code>Gearhead</code> records where:
+   - <code>motor.motor_mount_pattern ∈ gearhead.input_motor_mount</code>,
+   - shaft compatibility (<code>_shaft_compatible(motor.shaft_diameter,
+     gearhead.input_shaft_diameter)</code>).</li>
+<li>If <code>min_torque_multiplier</code> is set, additionally filter where
+   <code>gearhead.gear_ratio ≥ min_torque_multiplier</code> (using the
+   <code>snapGearUp()</code> heuristic from <code>ProductList</code>).</li>
+</ol>
+<h3 id="the-frontend-call-pattern">The frontend call pattern</h3>
+<p>Build issues these in a deliberate fan-out order, not all at once:</p>
+<pre><code>            requirements form change
+                    │
+                    ▼
+     ┌────────────────────────────────────┐
+     │ /api/v1/relations/actuators        │  ← every form change
+     │   ?min_stroke_mm=200&amp;...           │
+     └────────────────────────────────────┘
+                    │
+                    ▼ (user picks an Actuator)
+     ┌────────────────────────────────────┐
+     │ /api/v1/relations/motors-for-      │  ← only after actuator pick
+     │   actuator?actuator_id=...         │
+     └────────────────────────────────────┘
+                    │
+                    ▼ (user picks a Motor)
+     ┌────────────────────────────────────┐  ┌────────────────────────────┐
+     │ /api/v1/relations/drives-for-      │  │ /api/v1/relations/         │
+     │   motor?motor_id=...               │  │   gearheads-for-motor?...  │
+     └────────────────────────────────────┘  └────────────────────────────┘
+              (parallel — neither blocks the other)
+</code></pre>
+<p>Every form-field change re-fires the actuators query (after a
+~250ms debounce). Picking a slot fires the next query immediately
+with no debounce.</p>
+<h3 id="caching">Caching</h3>
+<p>Two layers:</p>
+<ol>
+<li><strong>In-memory request cache.</strong> <code>apiClient</code> keyed on the full URL.
+   Identical query within the same Build session returns the cached
+   response. Invalidated on form reset or page unmount.</li>
+<li><strong>No persistent cache.</strong> Build's candidate lists must reflect
+   the current catalogue — a freshly-ingested record should appear
+   on the next form tweak, not after a page reload. Skip
+   <code>localStorage</code> / <code>sessionStorage</code> here; the relations API is
+   already cheap (single DynamoDB query + filter).</li>
+</ol>
+<h3 id="error-handling">Error handling</h3>
+<p>Per Part 3's empty-state table:</p>
+<ul>
+<li><strong>5xx / timeout / network.</strong> Inline red banner in the slot's
+  pane with a Retry button. Other slots' state is preserved.</li>
+<li><strong>400 (validation).</strong> Means Build sent a malformed query — the
+  derivation engine produced a NaN or the URL params were
+  truncated. Log to <code>console.error</code> AND surface via toast (per
+  <code>useToast()</code> once STYLE Phase 3 ships, <code>console.error</code> only
+  for now). Don't show the user a "your input is invalid" banner;
+  the bug is on the frontend, not the user's input.</li>
+<li><strong>Empty <code>data: []</code>.</strong> Not an error — render the off-cluster
+  warning per Part 3 with the standardisation suggestion.</li>
+<li><strong><code>_warnings: [...]</code> in response.</strong> Render as a yellow banner
+  above the candidate list (e.g. the encoder-check-disabled
+  warning until SCHEMA Phase 1.1 lands).</li>
+</ul>
+<h3 id="why-no-client-side-fallback">Why no client-side fallback</h3>
+<p>The temptation is to load all <code>Motor</code> records into the browser
+and filter client-side as a "graceful degradation" when the
+relations API is down. <strong>Reject this.</strong> Three reasons:</p>
+<ol>
+<li><strong>Volume.</strong> 2,100 motors today, scaling toward 10K+. Loading
+   the full table on every Build mount is wasteful at the current
+   size and broken at the projected size.</li>
+<li><strong>Compatibility logic forks.</strong> The relations API encodes
+   subtle pairing rules (<code>motor_mount_pattern</code> set intersection,
+   voltage envelope coverage, encoder protocol intersection). A
+   frontend re-implementation will drift from the backend over
+   time, and the drift will silently mis-recommend pairings. The
+   relations API is the source of truth; Build trusts it
+   absolutely.</li>
+<li><strong>The relations API can't be flaky enough to need a fallback.</strong>
+   It's a single DynamoDB scan + filter. If it fails repeatedly,
+   the right fix is to fix the API, not paper over it on the
+   frontend.</li>
+</ol>
+<p>When the relations API is down, Build shows the error banner per
+Part 3 and waits. The user sees what's wrong instead of getting
+silent best-effort matches that lie about compatibility.</p>
+<h3 id="what-gates-build-on-schema-phase-3">What gates Build on SCHEMA Phase 3</h3>
+<p>Hard prerequisites — Build cannot ship Phase 1 without:</p>
+<ul>
+<li>All three <code>motors-for-actuator</code> / <code>drives-for-motor</code> /
+  <code>gearheads-for-motor</code> endpoints landed and returning the
+  contract shape above.</li>
+<li>The actuators endpoint (<code>/api/v1/relations/actuators</code>) — this
+  one isn't in <code>todo/SCHEMA.md</code> Part 3's three-function design
+  (which assumes the actuator is already chosen). Build needs
+  the symmetric "actuators-for-requirements" entry point.
+  <strong>Action item for SCHEMA.md:</strong> add a fourth function
+  <code>compatible_actuators(requirements: ActuatorQuery, actuator_db)
+  -&gt; list[LinearActuator]</code> to <code>specodex/relations.py</code>'s scope.</li>
+<li><code>_distribution_position</code> block — also a Build-driven addition
+  to SCHEMA Phase 3 scope. Compute server-side from the candidate
+  set; sort/badge logic stays trivial on the frontend.</li>
+</ul>
+<p>Soft prerequisites — nice to have, but Build can ship without:</p>
+<ul>
+<li>SCHEMA Phase 1.1 (encoder protocol harmonisation). Without it,
+  the drive-encoder check is disabled with a banner; not blocking.</li>
+<li>SCHEMA Phase 2 (motor mount backfill). Without it, motor
+  candidates surface with <code>motor_mount_pattern: null</code>, which the
+  relations API treats as "no constraint applied" — broader
+  candidate list than ideal, but not wrong. The backfill closes
+  the gap when it runs.</li>
+<li>SCHEMA Phase 4 (Force kg → kgf → N coercion). Without it,
+  Lintech actuators may misreport their load ratings as Force vs
+  Mass; affects 0% of dev DB today (no Lintech in DB) but lands
+  on first Lintech ingest.</li>
+</ul>
+<hr>
+<h2 id="part-5-selections-diminished-role-the-linear-actuator-bug">Part 5 — Selection's diminished role + the linear-actuator bug</h2>
+<p>Selection (<code>/</code>, the existing <code>&lt;ProductList&gt;</code> page) doesn't go away
+when Build lands — it stays as the <strong>expert / library mode</strong>: a
+raw catalogue browser used when Build's recommendations need to be
+cross-checked, compared across vendors, or extended into product
+types Build doesn't yet model (contactors, robot arms).</p>
+<p>But Selection loses three responsibilities that move to Build, and
+one bug surfaces along the way that has to be fixed before Build
+ships against the same data.</p>
+<h3 id="what-selection-still-does">What Selection still does</h3>
+<ul>
+<li><strong>Browse the raw catalogue</strong> with the full filter chip / column
+  resize / sort / per-column unit toggle / density toggle stack.
+  Every primitive in <code>ProductList.tsx</code> survives; only the entry
+  surface changes.</li>
+<li><strong>Cross-supercategory comparison.</strong> Pick <code>motor</code>, narrow to
+  Yaskawa-vs-Allen-Bradley by manufacturer chip, compare side by
+  side. Build is single-supercategory by design (one motion
+  application at a time); Selection is the comparison surface.</li>
+<li><strong>Power-user filtering.</strong> Selection's filter chips can express
+  things Build's form deliberately doesn't (filter by manufacturer,
+  by certification, by year). Build's form is opinionated for
+  routine selections; Selection is the escape hatch for atypical
+  ones.</li>
+<li><strong>Product-type coverage Build doesn't model.</strong> Contactors, robot
+  arms, datasheets — they stay reachable through the existing
+  Selection dropdown. Build's <code>motion_class</code> enum doesn't cover
+  switching gear or articulated robots.</li>
+</ul>
+<h3 id="what-gets-stripped-from-selection">What gets stripped from Selection</h3>
+<p>Three pieces move to Build (or get deleted):</p>
+<ol>
+<li><strong>The <code>rotary | linear | z-axis</code> transmission-type buttons</strong>
+   (<code>ProductList.tsx</code>'s <code>&lt;div className="page-toolbar-transmission"&gt;</code>
+   block and the surrounding <code>transmission-type-row</code> /
+   <code>transmission-param</code> JSX). Today they appear only when
+   <code>productType === 'motor'</code> and re-skin the motor specs into
+   linear-application units (RPM → mm/s, Nm → N). After Build:
+   - The buttons themselves are <strong>removed</strong> from Selection.
+   - The underlying linear-mode display transform
+     (<code>rpmToLinearSpeed</code>, <code>torqueToThrust</code>,
+     <code>defaultStateForType</code>'s <code>appType / linearTravel / loadMass</code>
+     fields) <strong>moves to Build's Motor slot.</strong> When Build's
+     <code>motion_class === 'linear'</code>, the Motor candidate rows
+     automatically display rated_speed in mm/s and rated_torque in
+     N — same conversion math, automatic from form context, no
+     button-click required.
+   - The <code>linearTravel</code> and <code>loadMass</code> numeric inputs (currently
+     in <code>&lt;div className="page-toolbar-transmission"&gt;</code>) are
+     <strong>deleted from Selection.</strong> Equivalent inputs live in Build's
+     requirements form.</li>
+<li><strong>The "Add to build" button in <code>&lt;ProductDetailModal&gt;</code>.</strong>
+   Removed in non-Build contexts. On the Build page only, the
+   modal renders a "Pick for [slot]" button (per Part 3).</li>
+<li><strong>The <code>&lt;BuildTray&gt;</code> strip at the bottom of the viewport.</strong>
+   Per Part 3, deleted as a separate component; its UX moves into
+   Build's <code>&lt;SystemSummary&gt;</code>. Selection gets the bottom-of-viewport
+   real estate back.</li>
+</ol>
+<p>The <code>compat-filter-banner</code> and the compatibility-narrowed result
+set on Selection (the <code>compatFilterActive</code> and <code>compatNarrowed</code>
+JSX blocks rendered when <code>compatAnchors.length &gt; 0</code>) <strong>also go
+away</strong> — they only
+make sense when there are anchor picks in the global build slice,
+and the global build slice is now Build-page-local. Selection
+returns to "show every record matching your filter chips,
+period."</p>
+<h3 id="why-actuatorpage-doesnt-survive-alongside-build">Why ActuatorPage doesn't survive alongside Build</h3>
+<p>Tempting to keep <code>/actuators</code> as-is and add <code>/build</code> as a separate
+route. Reject this. Three reasons:</p>
+<ol>
+<li><strong>Two surfaces for the same scope split the user's attention.</strong>
+   ActuatorPage is "Linear Motion landing"; Build's Phase 1 scope
+   IS Linear Motion. A user landing on Welcome would have to choose
+   between them with no honest way to explain the difference. The
+   ActuatorPage configurator is genuinely useful, so it migrates
+   into Build's Actuator slot drawer (per Part 3); nothing is lost,
+   and the choice is removed.</li>
+<li><strong>ActuatorPage's record-table-first framing fights the
+   requirements-first flow.</strong> Today ActuatorPage opens with a
+   subtype tab + records table; the configurator and motor
+   suggestions are below. Build inverts this: requirements first,
+   candidates second. Keeping ActuatorPage alive would invite
+   users to skip Build's narrowing and browse a 46-row table —
+   exactly the surface Selection already provides.</li>
+<li><strong>The <code>/actuators</code> URL keeps its semantic value as a deep link.</strong>
+   Phase 1 PR 1D rewrites <code>/actuators</code> to redirect to
+   <code>/build?ml=linear&amp;or=horizontal</code>, so external links into the
+   actuator surface still resolve sensibly — they just land on
+   Build with the linear/horizontal scope pre-picked.</li>
+</ol>
+<p>The ActuatorPage code's value is preserved (the configurator
+extraction); only the standalone-page framing dies.</p>
+<h3 id="re-routing">Re-routing</h3>
+<table>
+<thead>
+<tr>
+<th>Today</th>
+<th>After Build ships</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/</code> → ProductList (default landing)</td>
+<td>Stays — <code>/</code> → ProductList (Selection)</td>
+</tr>
+<tr>
+<td><code>/welcome</code> → Welcome (with "Make Your Selection" CTA → <code>/</code>)</td>
+<td>Welcome's CTA rewrites to "Build a motion system" → <code>/build</code></td>
+</tr>
+<tr>
+<td><code>/actuators</code> → ActuatorPage</td>
+<td><code>/actuators</code> → <code>Navigate to="/build?ml=linear&amp;or=horizontal" replace</code> (preserved as a pre-narrowed deep link)</td>
+</tr>
+<tr>
+<td>Header nav: <code>Selection / Actuators / Projects / ...</code></td>
+<td><code>Build / Selection / Projects / ...</code> (Build first, Selection second; Actuators removed)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="the-linear-actuator-bug">The linear-actuator bug</h3>
+<p><strong>What you reported.</strong> Linear actuators don't appear in Selection
+results in some user path. Build will surface the same
+<code>linear_actuator</code> records via Phase 4's relations API, so the
+underlying issue must be diagnosed before Build ships against the
+same data — a bug that hides records on Selection will hide them
+on Build too.</p>
+<p><strong>What we know (audited 2026-05-09 against dev API).</strong></p>
+<ul>
+<li><code>/api/products/categories</code> returns <code>{type: "linear_actuator",
+  count: 46, display_name: "Linear Actuators"}</code>. Records exist
+  and the categories endpoint exposes them.</li>
+<li>The Selection dropdown is built from <code>categories.map(...)</code> →
+  <code>linear_actuator</code> is therefore selectable from the dropdown.</li>
+<li>The dev DB has 46 <code>linear_actuator</code> records, all Tolomatic
+  (per <code>todo/SCHEMA.md</code> Part 5 audit).</li>
+<li>Picking <code>linear_actuator</code> from the dropdown SHOULD trigger
+  <code>loadProducts('linear_actuator')</code> via <code>useApp()</code>, which calls
+  <code>/api/v1/search?type=linear_actuator&amp;...</code> and renders 46 rows.</li>
+</ul>
+<p><strong>Two likely root causes — investigate both.</strong></p>
+<ol>
+<li><strong>UX trap (most likely).</strong> You picked <code>motor</code> from the
+   dropdown, then clicked the <strong>"Linear"</strong> transmission-type
+   button (the one being deprecated above), and expected
+   <code>linear_actuator</code> records to appear. They didn't, because that
+   button doesn't switch product types — it only re-skins motor
+   specs into linear-application units. The "linear" label
+   conflates two different meanings (linear-application vs
+   linear-actuator product type). Even if this turns out to be
+   the only cause, it argues for the strip-down in this Part 5 —
+   the button is a discoverability landmine.</li>
+<li><strong>Default filter too strict (possible).</strong> <code>buildDefaultFiltersForType</code>
+   in <code>app/frontend/src/types/filters.ts</code> seeds curated default
+   chips per product type. If the linear_actuator default chips
+   are too narrow (e.g. seeded with a numeric floor that all 46
+   Tolomatic records fall below), the user picks <code>linear_actuator</code>
+   from the dropdown, the records load, but every default filter
+   chip immediately hides them. Symptom: dropdown shows
+   "Linear Actuators (46)" but the table shows 0 results.</li>
+</ol>
+<p><strong>Diagnostic recipe (Phase 1 prerequisite).</strong></p>
+<pre><code># Reproduction step 1: confirm the records load.
+1. Open `/` (Selection).
+2. Pick &quot;Linear Actuators&quot; from the type dropdown.
+3. Open browser DevTools → Network tab → filter by `search`.
+4. Expect: GET /api/v1/search?type=linear_actuator returns
+   {success: true, data: [...46 records...]}.
+5. If step 4 succeeds: bug is frontend-side (filter or render).
+   If step 4 fails: bug is backend-side (route, auth, or zod
+   enum).
+
+# Reproduction step 2: check default filter chips.
+6. With Linear Actuators selected, look at the chip strip above
+   the table.
+7. Are any chips pre-populated with numeric values? If so, that's
+   the strict-default bug — fix is to remove the value
+   pre-population from `buildDefaultFiltersForType` for
+   `linear_actuator`.
+
+# Reproduction step 3: confirm the UX trap.
+8. From Selection, pick &quot;Motors&quot; instead.
+9. Click the &quot;Linear&quot; transmission-type button.
+10. The page now shows motor records with RPM displayed as mm/s
+    and Nm as N. Rows are still motors. If your prior reproduction
+    matched this, the bug is the conflated &quot;linear&quot; label.
+</code></pre>
+<p><strong>Fix.</strong> Whichever root cause the recipe surfaces:</p>
+<ul>
+<li><strong>If UX trap:</strong> the strip-down in this Part 5 is the fix —
+  removing the transmission-type buttons removes the conflation.
+  Land Part 5's removal as the first PR of Build Phase 1.</li>
+<li><strong>If strict-default chips:</strong> edit
+  <code>buildDefaultFiltersForType('linear_actuator')</code> to seed chips
+  without values (matching the <code>motor</code> / <code>drive</code> defaults). Same
+  PR as the strip-down — both touch <code>ProductList.tsx</code> and
+  <code>filters.ts</code>.</li>
+<li><strong>If backend route / zod enum:</strong> check
+  <code>app/backend/src/routes/search.ts</code>'s zod schema includes
+  <code>linear_actuator</code>. After the MODELGEN end-to-end work, the
+  enum derives from <code>generated_constants.ts</code> automatically, so
+  this should be impossible — but verify before assuming.</li>
+</ul>
+<p><strong>Why this doesn't gate Build's design.</strong> The bug is a Selection
+issue with a small, localised fix. Build's design is independent —
+even if the Selection fix is deferred, Build's relations API path
+surfaces records correctly because it doesn't go through
+<code>&lt;ProductList&gt;</code>'s filter chips. But shipping Build <em>without</em>
+fixing Selection leaves a UX dead end for users who land on
+Selection first and conclude "the catalogue has no linear
+actuators." Fix Selection in the same PR sequence as Build's
+strip-down to keep the data discoverable on both surfaces.</p>
+<hr>
+<h2 id="part-6-wizard-handoff-forward-context">Part 6 — Wizard handoff (forward context)</h2>
+<p>This part is <strong>not the Wizard design</strong>. Wizard ships in its own
+spec (<code>todo/WIZARD.md</code>, future) and has its own page (<code>/wizard</code>,
+future). What this part locks is the <strong>seam between Wizard and
+Build</strong> — the contract Wizard's output must satisfy and the
+behaviour Build promises when called by Wizard. Locking it now
+keeps Build's Phase 1 schema decisions Wizard-friendly without
+forcing Wizard's design into existence yet.</p>
+<h3 id="the-user-journey">The user journey</h3>
+<pre><code>┌─────────┐        ┌───────────────────┐        ┌─────────┐
+│ Wizard  │ ──→──→ │ /build?&lt;params&gt;   │ ──→──→ │ Quote / │
+│ (NL in) │        │ &amp;wizard=1         │        │  BOM    │
+│         │        │ (form pre-filled, │        │ (output)│
+│         │        │  drafts picked)   │        │         │
+└─────────┘        └───────────────────┘        └─────────┘
+                          │
+                          │ user edits requirements
+                          │ or swaps slot picks
+                          ▼
+                   draft → confirmed
+</code></pre>
+<p>Three phases:</p>
+<ol>
+<li><strong>Wizard collects natural-language input.</strong> "I need to lift a
+   5 kg load 200 mm vertically in under a quarter second, every
+   couple of seconds." The LLM derives a <code>BuildRequirements</code> blob.</li>
+<li><strong>Wizard hands off to Build via URL redirect.</strong> Wizard never
+   directly calls the relations API or renders candidates — those
+   are Build's job. Wizard is a requirements-derivation layer; it
+   doesn't try to be the system assembler.</li>
+<li><strong>Build renders the requirements pre-filled + auto-picks top
+   candidates per slot as drafts.</strong> User reviews / edits / swaps.
+   Once satisfied, the same Copy BOM + (future) Save to Project
+   actions complete the journey.</li>
+</ol>
+<p>This split is deliberate: Wizard's job is to be <em>good at understanding
+loose natural language</em>, Build's job is to be <em>good at rendering
+constrained candidate sets and trusted picks</em>. Mixing them — e.g.
+Wizard producing a full BOM from natural language without showing
+the user what it picked or why — robs the user of the verification
+moment.</p>
+<h3 id="the-contract-what-wizard-must-produce">The contract: what Wizard must produce</h3>
+<p>Wizard's output is <strong>exactly</strong> a <code>BuildRequirements</code> blob (from
+Part 2), URL-encoded into a Build link. No new schema, no
+intermediate handoff format, no wrapper envelope. The same JSON
+that Build accepts from a manually-typed URL is what Wizard
+produces — so any client that can construct a <code>BuildRequirements</code>
+JSON can hand off to Build identically.</p>
+<pre><code class="language-ts">// Wizard's only Build-facing function (lives in Wizard's code,
+// not Build's — sketched here so Build's Phase 1 knows what to
+// promise compatibility with).
+
+import { type BuildRequirements } from '@/types/buildRequirements';
+import { serialiseBuildRequirementsToURL } from '@/utils/buildURLState';
+
+function handoffToBuild(requirements: BuildRequirements): string {
+  const params = serialiseBuildRequirementsToURL(requirements);
+  return `/build?${params}&amp;wizard=1`;
+}
+</code></pre>
+<p><code>serialiseBuildRequirementsToURL</code> is the same helper Build uses
+internally to make its URL bookmarkable (Part 2's URL serialisation
+shape). One function, both directions — so the round-trip is
+guaranteed.</p>
+<h3 id="the-contract-what-build-promises-in-return">The contract: what Build promises in return</h3>
+<p>When Build mounts with <code>?wizard=1</code>:</p>
+<ol>
+<li><strong>Pre-populate the form</strong> with the URL-derived
+   <code>BuildRequirements</code>. Same code path as a manually-typed Build
+   URL — no Wizard-specific branch.</li>
+<li><strong>Auto-pick the top candidate per slot</strong> as a draft. Per Part
+   3's "Wizard-derived initial state":
+   - Each draft pick gets a <code>data-source="wizard-draft"</code> flag.
+   - Drafts render with a "Wizard pick — click to swap" badge.
+   - User clicking a different candidate replaces the draft
+     cleanly; badge disappears, slot becomes user-confirmed.</li>
+<li><strong>Render a top-of-page banner</strong> acknowledging the Wizard
+   handoff: <em>"Wizard derived these requirements from your
+   description. Edit any field to refine, or swap any pick to
+   override."</em> The banner has a "Back to Wizard" link that
+   navigates to <code>/wizard?...</code> with the current requirements
+   re-encoded — so the user can iterate on the natural-language
+   description without losing their edits.</li>
+<li><strong>Honour every user edit normally.</strong> Once the user touches
+   any field or swaps any pick, the <code>?wizard=1</code> flag is
+   dropped from the URL on the next history push (so a copy-paste
+   of the URL after the user customises it doesn't re-trigger
+   auto-picks for the next viewer).</li>
+</ol>
+<p>Build's Phase 1 implements points 1, 2, and 4. Point 3 (the banner
++ "Back to Wizard" link) ships in Build Phase 3 alongside Wizard
+itself — there's no Wizard to back-link to until then. Phase 1
+just tolerates the <code>?wizard=1</code> flag without rendering the banner.</p>
+<h3 id="forward-compat-how-the-schema-can-grow-without-breaking-wizard">Forward-compat: how the schema can grow without breaking Wizard</h3>
+<p>The seam relies on Wizard producing <strong>valid</strong> <code>BuildRequirements</code>
+blobs. As Build's schema grows (new fields land per Part 2's
+forward-compat hooks), Wizard's prompt template needs to stay in
+sync. Two rules to keep them composable:</p>
+<ol>
+<li><strong>New fields are always optional.</strong> Adding <code>repeatability</code> or
+   <code>temperature_range</code> later doesn't invalidate older Wizard
+   outputs — Build treats absent fields as "no constraint." This
+   is already the rule for human-typed URLs and falls out for
+   free for Wizard.</li>
+<li><strong>Field renames are forbidden.</strong> Renaming <code>move_time</code> to
+   <code>cycle_time_seconds</code> would break every Wizard-saved URL ever
+   issued. If a rename is genuinely needed, ship it as a new
+   optional field, deprecate the old field, dual-write for a
+   quarter, then remove. Same discipline as the per-PR HTML doc
+   convention — names are public contract once they ship.</li>
+</ol>
+<p>Wizard's prompt template (when it ships) will reference
+<code>buildRequirements.ts</code> directly via the codegen pipeline (similar
+to how the frontend types ride on <code>gen-types</code>). A schema change
+that touches <code>BuildRequirements</code> re-runs Wizard's prompt-template
+generator → CI catches drift.</p>
+<h3 id="what-this-part-deliberately-does-not-specify">What this part deliberately does NOT specify</h3>
+<ul>
+<li><strong>Wizard's UI.</strong> Single text box vs. multi-step? Voice input?
+  Image upload (PDF datasheet → infer requirements)? All Wizard's
+  decisions, made in <code>todo/WIZARD.md</code>.</li>
+<li><strong>The LLM prompt.</strong> Few-shot examples, system prompt structure,
+  which model (Claude, Gemini), how to handle ambiguity. Wizard's
+  problem.</li>
+<li><strong>Multi-turn refinement.</strong> Whether Wizard asks clarifying
+  questions ("vertical or horizontal?") before producing the
+  handoff URL, or one-shots from a single description. Wizard's
+  problem.</li>
+<li><strong>Confidence scoring.</strong> Whether Wizard surfaces a "I'm 80%
+  sure about stroke, 50% sure about move_time" annotation in the
+  handoff. If yes, that's a new optional field on the URL
+  (<code>?confidence=...</code>) that Build can render as field-level
+  badges; Build's Phase 1 doesn't need to support it.</li>
+<li><strong>Wizard session history.</strong> Saving "the natural-language input
+  that produced this Build" for later refinement. Storage,
+  retrieval, sharing — all Wizard concerns. Build only ever sees
+  the URL state.</li>
+</ul>
+<h3 id="why-lock-this-seam-in-build-phase-1-not-later">Why lock this seam in Build Phase 1, not later</h3>
+<p>Schema decisions ripple, and Build URLs are public contract from
+day one (bookmarkable, shareable). Defining the URL shape with
+Wizard as a known future consumer means Build's Phase 1 schema
+discipline doubles as Wizard's handoff spec — one design, two
+requirements. Build Phase 1 ships with no Wizard, but the door
+is wired, hinged, and locked.</p>
+<hr>
+<h2 id="part-7-migration-phasing">Part 7 — Migration &amp; phasing</h2>
+<p>A phased rollout, each phase reviewable as a small stack of PRs.
+Phase ordering respects the dependency graph: SCHEMA Phase 3
+unblocks everything; Selection's strip-down unblocks Build's UI
+work; vertical / gravity is additive on top of the horizontal MVP;
+Wizard handoff is forward-compat scaffolding.</p>
+<h3 id="phase-1-foundational-horizontal-linear-mvp">Phase 1 — Foundational (horizontal-linear MVP)</h3>
+<p><strong>Scope.</strong> Build can render <code>/build</code>, accept the requirements form,
+return real candidate lists per slot, and produce a Copy BOM for a
+horizontal linear motion application. All four slots
+(actuator + motor + drive + optional gearhead) work end-to-end.</p>
+<p><strong>PR sequence (4 PRs, mergeable in this order):</strong></p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Branch</th>
+<th>Scope</th>
+<th>Touches</th>
+<th>Prereq</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1A</td>
+<td><code>auto/relations-api-phase3-&lt;date&gt;</code></td>
+<td>SCHEMA Phase 3 backend: <code>specodex/relations.py</code> with <code>compatible_actuators / compatible_motors / compatible_drives / compatible_gearheads</code>, plus the four <code>/api/v1/relations/*</code> endpoints (Express side until PYTHON_BACKEND lands). Includes the <code>_distribution_position</code> block + <code>actuators</code> endpoint added to SCHEMA's scope per Part 4.</td>
+<td><code>specodex/</code>, <code>app/backend/src/routes/</code>, <code>cli/</code> test command</td>
+<td>SCHEMA Phase 1 ✓ shipped</td>
+</tr>
+<tr>
+<td>1B</td>
+<td><code>auto/selection-stripdown-&lt;date&gt;</code></td>
+<td>Strip Selection per Part 5: delete transmission-type buttons, delete <code>BuildTray.tsx</code>, remove "Add to build" from <code>&lt;ProductDetailModal&gt;</code> in non-Build context, fix the linear-actuator-bug per Part 5's recipe (likely the UX-trap fix; if it's the strict-default chip bug, includes that fix too). Move the linear-mode display transforms (<code>rpmToLinearSpeed</code>, <code>torqueToThrust</code>) to a helper that Build's Motor slot will consume in PR 1C.</td>
+<td><code>app/frontend/src/components/ProductList.tsx</code>, <code>app/frontend/src/components/BuildTray.tsx</code> (deleted), <code>app/frontend/src/components/ProductDetailModal.tsx</code>, <code>app/frontend/src/types/filters.ts</code>, <code>app/frontend/src/utils/linearMode.ts</code> (new)</td>
+<td>None</td>
+</tr>
+<tr>
+<td>1C</td>
+<td><code>auto/build-page-mvp-&lt;date&gt;</code></td>
+<td>New <code>/build</code> route + <code>&lt;BuildPage /&gt;</code> + <code>&lt;RequirementsForm /&gt;</code> + <code>&lt;CandidatesPane /&gt;</code> + <code>&lt;SystemSummary /&gt;</code> per Part 3. New <code>app/frontend/src/types/buildRequirements.ts</code> per Part 2. New <code>app/frontend/src/utils/buildDerivation.ts</code> (S-curve 1/3 trapezoidal math). Calls the relations API from PR 1A. Linear / horizontal only; rotary stub renders the placeholder.</td>
+<td><code>app/frontend/src/components/BuildPage.tsx</code> (new), <code>app/frontend/src/types/buildRequirements.ts</code> (new), <code>app/frontend/src/utils/buildDerivation.ts</code> (new), <code>app/frontend/src/utils/buildURLState.ts</code> (new), <code>app/frontend/src/utils/compat.ts</code> (add <code>actuator</code> to <code>BUILD_SLOTS</code> + new actuator↔motor adjacency rule), <code>app/frontend/src/App.tsx</code> (add lazy route + nav reshuffle)</td>
+<td>1A merged, 1B merged</td>
+</tr>
+<tr>
+<td>1D</td>
+<td><code>auto/actuators-redirect-&lt;date&gt;</code></td>
+<td>Replace <code>&lt;ActuatorPage /&gt;</code> with <code>&lt;Navigate to="/build?ml=linear&amp;or=horizontal" replace /&gt;</code> at the <code>/actuators</code> route. Delete <code>ActuatorPage.tsx</code> + <code>ActuatorPage.css</code> + <code>ActuatorPage.test.tsx</code>. Move the <code>&lt;ConfiguratorDrawer&gt;</code> (extracted from ActuatorPage lines 398–556) into <code>app/frontend/src/components/build/ConfiguratorDrawer.tsx</code> so Build's Actuator slot can consume it. Move the configurator templates (<code>configuratorTemplates.ts</code>) untouched — their location stays the same. Update <code>docs/index.html</code> if it links to <code>/actuators</code> directly.</td>
+<td><code>app/frontend/src/components/ActuatorPage*</code> (deleted), <code>app/frontend/src/components/build/ConfiguratorDrawer.tsx</code> (new), <code>app/frontend/src/App.tsx</code> (route swap), <code>docs/index.html</code> (link audit)</td>
+<td>1C merged</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Verification gate per PR.</strong> <code>./Quickstart verify</code> green (Python +
+backend + frontend) before merge. Each PR ships its
+<code>docs/requests/&lt;n&gt;.html</code> per the per-PR HTML doc convention.</p>
+<p><strong>Phase 1 exit criteria.</strong></p>
+<ol>
+<li>Land on <code>/build</code> with no params → form is empty, all slots
+   locked, no errors in console.</li>
+<li>Fill the four required fields (orientation, stroke, move_time,
+   dwell_time, mass) → Actuator slot unlocks with at least 5
+   candidates against the dev DB.</li>
+<li>Pick an Actuator → Motor slot unlocks with at least 3
+   compatible motors; Motor's specs render in mm/s and N (linear
+   mode auto-applied).</li>
+<li>Pick a Motor → Drive slot unlocks with at least 1 compatible
+   drive.</li>
+<li>Copy BOM produces a 3- or 4-line BOM with valid part numbers.</li>
+<li><code>/actuators</code> deep-link redirects to <code>/build?ml=linear&amp;or=horizontal</code>.</li>
+<li>The linear-actuator bug from Part 5 no longer reproduces.</li>
+<li><code>./Quickstart verify</code> green.</li>
+<li>Smoke staging post-deploy: <code>/health</code> 200, <code>/build</code> renders,
+   <code>/api/v1/relations/actuators</code> returns <code>data</code> array.</li>
+</ol>
+<h3 id="phase-2-vertical-gravity-commercial-polish">Phase 2 — Vertical + gravity + commercial polish</h3>
+<p><strong>Scope.</strong> Vertical orientation enters the force calculation;
+horizontal gets a friction estimate so it stops being optimistic;
+Save-to-Project lands; "View in Selection" deep-link wires the
+Build → Selection drill-down.</p>
+<p><strong>PR sequence (3 PRs):</strong></p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Scope</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2A</td>
+<td>Vertical orientation + gravity vector. <code>buildDerivation.ts</code> adds the <code>g_factor</code> block; <code>&lt;RequirementsForm /&gt;</code> adds the orientation-conditional warning copy ("Vertical sizing assumes worst-case lifting; lowering uses the same picks").</td>
+<td>Form-side only; relations API already accepts the <code>orientation</code> hint per Part 4.</td>
+</tr>
+<tr>
+<td>2B</td>
+<td>Friction estimate for horizontal. Default <code>friction_estimate ≈ 0.05 × payload_mass × g</code>; advanced field exposes the coefficient when an engineer wants to override. Form adds a collapsible "Advanced" section.</td>
+<td>Pure derivation change; no API contract break.</td>
+</tr>
+<tr>
+<td>2C</td>
+<td>Save to Project + View in Selection deep-link. Wire Build state into the existing <code>ProjectsContext</code>; add <code>Selection?type=motor&amp;filter=&lt;f&gt;</code> URL params support to <code>&lt;ProductList&gt;</code>.</td>
+<td>Depends on Projects already shipping (it has). Adds the "Build state" slot to the per-project record shape.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Phase 2 exit criteria.</strong> Vertical Build produces sane peak_force
+numbers (5 kg vertical lift at 1 m/s² accel → ~74 N, not 5 N); a
+horizontal build sized for a 10 kg payload chooses a beefier
+actuator than today's frictionless calc would (verifies friction
+estimate is wired); Save to Project round-trips a Build state
+across sessions.</p>
+<h3 id="phase-3-wizard-handoff-scaffolding">Phase 3 — Wizard handoff scaffolding</h3>
+<p><strong>Scope.</strong> Build supports the <code>?wizard=1</code> flag end-to-end (banner,
+auto-pick drafts, draft-vs-confirmed visual differentiation,
+"Back to Wizard" link). No actual Wizard yet — the link goes to
+<code>/wizard</code> which renders a "Wizard ships in a future release"
+placeholder.</p>
+<p><strong>PR sequence (2 PRs):</strong></p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Scope</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>3A</td>
+<td><code>?wizard=1</code> flag handling: auto-pick top candidate per slot as a draft, render the wizard-pick badge per Part 3, banner per Part 6.</td>
+</tr>
+<tr>
+<td>3B</td>
+<td><code>/wizard</code> route placeholder (separate spec lands when Wizard is designed).</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Phase 3 exit criteria.</strong> Build with <code>?wizard=1</code> and full
+requirements pre-populated auto-picks a draft per slot;
+single-click to swap clears the draft; user-confirmed picks
+persist across reload via the URL.</p>
+<h3 id="phase-4-out-of-builds-mvp-arc">Phase 4+ — Out of Build's MVP arc</h3>
+<p>These are explicitly deferred and tracked elsewhere (or not yet
+tracked, with the trigger noted). They are NOT part of Build's
+shipping path; they're listed so future-you knows where the next
+threads land.</p>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Trigger</th>
+<th>Lands in</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Rotary path (motor + gearhead Build, no actuator)</td>
+<td>First user asks "I need a rotary motion application Build"</td>
+<td>New <code>/build?ml=rotary</code> flow; reuses requirements form's motion class enum</td>
+</tr>
+<tr>
+<td>Multi-axis systems (Cartesian, gantry, robot)</td>
+<td>First multi-axis Build request</td>
+<td>Likely a new top-level page (<code>/system-build</code>) — Build stays single-axis</td>
+</tr>
+<tr>
+<td>Environmental requirements (temperature, IP rating, cleanroom)</td>
+<td>First user asks for them</td>
+<td>Additive to <code>BuildRequirements</code>; relations API gains optional filters</td>
+</tr>
+<tr>
+<td>Fieldbus selection step</td>
+<td>"Way later" per Nick — when servo selection becomes opinionated</td>
+<td>Lives on the Drive slot, not the requirements form</td>
+</tr>
+<tr>
+<td>Centre-of-gravity + bearing-moment checks</td>
+<td>Bearing-load incident or first user asks</td>
+<td>New <code>LinearOrientation</code> value <code>"side_mount"</code> + a CoG inputs section</td>
+</tr>
+<tr>
+<td>MSRP totals in <code>&lt;SystemSummary&gt;</code></td>
+<td>DB_CLEANUP Phase 2 (MSRP backfill) ships AND ≥80% of candidate rows have an MSRP</td>
+<td>Inline price line beneath the BOM</td>
+</tr>
+<tr>
+<td>Multiple stacked motion profiles</td>
+<td>First user asks for a complex duty cycle</td>
+<td>Already shaped for in Part 2's <code>MotionProfile[]</code> list</td>
+</tr>
+</tbody>
+</table>
+<h3 id="what-gets-retired">What gets retired</h3>
+<p>Pinned so the deletion is unambiguous. Deletion happens in PRs 1B
+and 1D as listed; this table is the audit summary.</p>
+<table>
+<thead>
+<tr>
+<th>Component / file</th>
+<th>Status after Phase 1</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>app/frontend/src/components/ActuatorPage.tsx</code></td>
+<td>DELETED</td>
+<td>Replaced by <code>&lt;BuildPage /&gt;</code>; configurator extracted into <code>&lt;ConfiguratorDrawer /&gt;</code>.</td>
+</tr>
+<tr>
+<td><code>app/frontend/src/components/ActuatorPage.css</code></td>
+<td>DELETED</td>
+<td>Same reason.</td>
+</tr>
+<tr>
+<td><code>app/frontend/src/components/ActuatorPage.test.tsx</code></td>
+<td>DELETED</td>
+<td>Same reason.</td>
+</tr>
+<tr>
+<td><code>app/frontend/src/components/BuildTray.tsx</code></td>
+<td>DELETED</td>
+<td>Absorbed into <code>&lt;SystemSummary /&gt;</code> inside <code>&lt;BuildPage /&gt;</code>; no longer follows the user across pages.</td>
+</tr>
+<tr>
+<td>Transmission-type buttons in <code>&lt;ProductList&gt;</code> (<code>page-toolbar-transmission</code> block)</td>
+<td>DELETED</td>
+<td>Replaced by <code>BuildRequirements.motion_class</code> + <code>orientation</code>.</td>
+</tr>
+<tr>
+<td><code>linearTravel</code> / <code>loadMass</code> inputs in <code>&lt;ProductList&gt;</code>'s toolbar</td>
+<td>DELETED</td>
+<td>Equivalent inputs in Build's requirements form.</td>
+</tr>
+<tr>
+<td><code>defaultStateForType</code>'s <code>appType / linearTravel / loadMass</code> fields</td>
+<td>DELETED</td>
+<td>Selection no longer has app-type state.</td>
+</tr>
+<tr>
+<td>"Add to build" button in <code>&lt;ProductDetailModal&gt;</code> (non-Build context)</td>
+<td>RENAMED + SCOPED</td>
+<td>Becomes "Pick for [slot]" and only appears on Build page.</td>
+</tr>
+<tr>
+<td><code>compat-filter-banner</code> in <code>&lt;ProductList&gt;</code> (the <code>compatFilterActive</code> JSX blocks)</td>
+<td>DELETED</td>
+<td>Selection no longer reflects build state.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="migration-risks-worth-naming">Migration risks worth naming</h3>
+<ul>
+<li><strong>The <code>build</code> slice in <code>AppContext</code> is shared state.</strong> Today it's
+  read by <code>ProductList</code> (for the compat-filter banner), <code>BuildTray</code>
+  (for slot rendering), and <code>ProductDetailModal</code> (for the "Add to
+  build" button). After the strip-down, only <code>&lt;BuildPage /&gt;</code> reads
+  it. Any future feature that taps the <code>build</code> slice from outside
+  Build needs to first decide whether the tap belongs in Build's
+  scope or whether <code>build</code> should formally page-local. Phase 1
+  leaves it global; if a Phase 2+ feature wants it, that's the
+  trigger to revisit.</li>
+<li><strong><code>compat.ts</code>'s <code>BUILD_SLOTS</code> reorder.</strong> Today: <code>['drive',
+  'motor', 'gearhead']</code>. Phase 1 reorders to
+  <code>['actuator', 'motor', 'drive', 'gearhead']</code> (prepends
+  <code>'actuator'</code> AND moves <code>'motor'</code> ahead of <code>'drive'</code> to match
+  user-facing fill order). Existing name-keyed adjacency rules
+  (<code>drive↔motor</code>, <code>motor↔gearhead</code>) keep working unchanged; PR 1C
+  adds the new <code>actuator↔motor</code> rule. <strong>The reorder DOES affect
+  <code>ChainReviewModal.tsx</code>'s <code>adjacentFilledPairs</code> helper</strong> — its
+  output yields different junctions than before (today: drive→motor,
+  motor→gearhead; after: actuator→motor, motor→drive, drive→gearhead).
+  Audit ChainReviewModal for any hardcoded slot pairs or index
+  assumptions when PR 1C lands. Update its junction labels to match
+  the new array order.</li>
+<li><strong>The <code>apiClient.search()</code> envelope.</strong> Relations endpoints
+  reuse the same <code>{success: true, data: [...]}</code> shape. If a
+  future relations endpoint needs pagination or streaming
+  semantics, it'll break the convention — handle by versioning
+  (<code>/api/v2/relations/*</code>) rather than mutating the v1 envelope.</li>
+<li><strong>CDN cache for <code>/build</code>.</strong> The route is a SPA path; CloudFront
+  serves <code>index.html</code> for it. If CDK's <code>defaultRootObject</code>
+  config doesn't already 404-fallback to <code>index.html</code>, <code>/build</code>
+  will 404 on direct navigation. Verify in PR 1C; this bit
+  Specodex once before with the Welcome route.</li>
+</ul>
+<hr>
+<h2 id="triggers-when-to-surface-this-doc">Triggers — when to surface this doc</h2>
+<table>
+<thead>
+<tr>
+<th>Trigger (files / topics in your current task)</th>
+<th>Surface</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>app/frontend/src/components/BuildPage.tsx</code>, <code>app/frontend/src/components/build/</code>, <code>app/frontend/src/types/buildRequirements.ts</code>, <code>app/frontend/src/utils/buildDerivation.ts</code>, <code>app/frontend/src/utils/buildURLState.ts</code></td>
+<td>This doc — the new Build module</td>
+</tr>
+<tr>
+<td><code>app/frontend/src/components/ActuatorPage.tsx</code> (still extant pre-Phase-1), <code>app/frontend/src/components/BuildTray.tsx</code> (still extant pre-Phase-1)</td>
+<td>This doc — both retired in Phase 1 PRs 1B and 1D</td>
+</tr>
+<tr>
+<td><code>app/frontend/src/types/configuratorTemplates.ts</code></td>
+<td>This doc <em>and</em> <code>todo/CATAGORIES.md</code> — Build's Actuator slot consumes these via the extracted <code>&lt;ConfiguratorDrawer /&gt;</code></td>
+</tr>
+<tr>
+<td><code>app/frontend/src/components/ProductList.tsx</code> (transmission-type buttons, <code>linearTravel</code> / <code>loadMass</code> inputs, <code>compat-filter-banner</code>)</td>
+<td>This doc — Selection strip-down per Part 5</td>
+</tr>
+<tr>
+<td><code>app/frontend/src/utils/compat.ts</code> (<code>BUILD_SLOTS</code>, adjacency rules)</td>
+<td>This doc — Phase 1 prepends <code>'actuator'</code> and adds the actuator↔motor adjacency rule</td>
+</tr>
+<tr>
+<td><code>specodex/relations.py</code>, <code>app/backend/src/routes/relations.ts</code>, <code>/api/v1/relations/*</code> endpoints</td>
+<td>This doc <em>and</em> <code>todo/SCHEMA.md</code> Phase 3 — Build is the only consumer of these endpoints today</td>
+</tr>
+<tr>
+<td><code>app/frontend/src/App.tsx</code> route table or nav order</td>
+<td>This doc — Phase 1 PR 1C reshuffles nav and adds <code>/build</code>; PR 1D rewrites <code>/actuators</code> to a redirect</td>
+</tr>
+<tr>
+<td>User asks about "the Build page", "requirements form", "/build", "Build a motion system"</td>
+<td>This doc</td>
+</tr>
+<tr>
+<td>User asks "how does Wizard hand off to Build", "Build URL params", "Wizard contract"</td>
+<td>This doc — Part 6</td>
+</tr>
+<tr>
+<td>User asks "why don't linear actuators show up on Selection"</td>
+<td>This doc — Part 5's bug investigation + the strip-down fix</td>
+</tr>
+<tr>
+<td>User asks "what's the difference between Selection / Build / Wizard"</td>
+<td>This doc — Part 1</td>
+</tr>
+<tr>
+<td>User asks "what does the relations API do" or proposes a client-side fallback for it</td>
+<td>This doc — Part 4's "no client-side fallback" rule</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="open-questions">Open questions</h2>
+<p>Items the spec deliberately leaves open. Each comes with the
+<strong>trigger</strong> that converts it from open question into a Phase X
+decision. None of these block Phase 1.</p>
+<ul>
+<li><strong>Friction model fidelity.</strong> Phase 2 ships a flat <code>0.05 × m × g</code>
+  estimate for horizontal. Real friction varies by drive
+  mechanism (ball screw ≈ 0.02, lead screw ≈ 0.10, belt-driven
+  ≈ 0.05) and the configurator templates have enough metadata to
+  pick per-template. <strong>Trigger:</strong> first under-sized horizontal
+  Build (motor stalls, customer reports thrust shortfall). Until
+  then the flat estimate is fine for routine selections.</li>
+<li><strong>Per-slot ranking.</strong> Phase 1 sorts candidates by "closest spec
+  match without massive over-spec" (a simple
+  <code>rated - required</code> ascending). That heuristic ignores price,
+  lead time, and vendor preference. <strong>Trigger:</strong> users reporting
+  Build's top pick is always the most expensive option, or the
+  one with 16-week lead time. Ranking becomes a Phase 2+ feature
+  with weights — the relations API gains a <code>sort_by</code> parameter.</li>
+<li><strong>Multi-vendor constraint.</strong> Today Build can pick a Tolomatic
+  actuator + a Yaskawa motor + a Beckhoff drive — three vendors,
+  three POs, three lead times. Most procurement workflows prefer
+  fewer vendors. <strong>Trigger:</strong> explicit user complaint or a
+  procurement-aware feature request. Then Build adds a "Same
+  vendor where possible" toggle that re-ranks candidates by
+  shared <code>manufacturer</code> field.</li>
+<li><strong>Saved-Build versioning.</strong> When Phase 2's Save-to-Project
+  lands, a saved Build snapshots the requirements + picks at
+  save time. If the catalogue changes (a picked product is
+  discontinued, a new actuator with better fit lands), the saved
+  Build becomes stale. <strong>Trigger:</strong> first user reopens a saved
+  Build a quarter later. Build then needs a "refresh against
+  current catalogue" affordance and a way to mark stale picks.</li>
+<li><strong>Wizard's prompt-template upkeep.</strong> Part 6 promises Wizard's
+  prompt template auto-syncs against <code>BuildRequirements</code> via
+  codegen. Until Wizard ships there's nothing to sync; once it
+  ships, the codegen pipeline needs a CI check that catches
+  prompt-template-vs-schema drift. <strong>Trigger:</strong> Wizard's spec
+  (<code>todo/WIZARD.md</code>) lands.</li>
+<li><strong>Build for non-actuator-anchored applications.</strong> Today's Build
+  treats the actuator as the load-anchor. Some applications
+  start with the motor (e.g. selecting a motor for an
+  already-specified custom mechanical assembly) or with the
+  drive (selecting a drive for an existing motor with no
+  catalogue analogue). <strong>Trigger:</strong> user request. The fix is
+  probably a "start from" toggle in the requirements form
+  (anchor = actuator | motor | drive) that flips the slot-fill
+  sequence's lock order. Out of MVP scope; flag if it surfaces.</li>
+<li><strong>Rotary table device class.</strong> Nick mentioned rotary tables
+  "much later." When that lands, rotary-with-actuator becomes a
+  meaningful flow (the rotary table IS the load-anchor for a
+  rotary application, same role the linear actuator plays for
+  linear). <strong>Trigger:</strong> new product type added to
+  <code>specodex/models/</code>; SCHEMA's <code>MotorMountPattern</code> literal may
+  also need rotary-table-specific entries.</li>
+<li><strong>Performance profile editor.</strong> Part 2's <code>MotionProfile[]</code> is
+  a list-of-1 today; eventually users will want to compose
+  multi-segment moves (e.g. "start fast, then settle slow") and
+  see the cumulative duty cycle. <strong>Trigger:</strong> first user asks
+  for it OR an internal evaluation of motor thermal sizing
+  surfaces a duty-cycle mis-estimation that a stacked profile
+  would catch. Probably becomes a separate "Motion profile
+  editor" component embedded in the requirements form.</li>
+<li><strong>Build state in URL vs. opaque ID.</strong> Part 6's URL
+  serialisation uses readable params (<code>?ml=linear&amp;st=200mm</code>).
+  This is great for sharing and bookmarking but exposes the
+  schema field names publicly — every rename breaks bookmarks.
+  Opaque IDs (<code>/build/&lt;uuid&gt;</code>) would let the schema evolve
+  freely but lose human-readability. <strong>Trigger:</strong> first
+  Build-URL-rename pain (a field rename breaks user bookmarks).
+  Solution direction: keep readable params for ephemeral use,
+  add opaque IDs for Save-to-Project's persistent links.</li>
+<li><strong>Mobile / touch UX.</strong> The two-pane layout in Part 3 assumes
+  desktop width. Mobile collapses to a single column with the
+  form on top, candidates scrolling below, system summary
+  pinned to the bottom — but the spec doesn't pin the
+  breakpoint or the touch-target sizes. <strong>Trigger:</strong> mobile
+  traffic measurably picks up (per the deferred analytics
+  doc, <code>todo/longterm/SEO.md</code>'s organic acquisition story).
+  Until then, desktop-first per the rest of the app.</li>
+</ul>
+        </article>
+    </main>
+
+    <footer>
+        <div class="footer-inner">
+            <a class="footer-link" href="../roadmap.html">← Back to roadmap</a>
+            <span class="footer-rule" aria-hidden="true"></span>
+            <a class="footer-link" href="https://github.com/JimothyJohn/specodex/blob/master/todo/BUILD.md" rel="noreferrer">Edit on GitHub</a>
+        </div>
+    </footer>
+</body>
+</html>

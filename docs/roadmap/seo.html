@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Status: 🚧 in progress. Phase 0 metadata foundation shipped 2026-04-28 (robots.txt, static sitemap, OG/Twitter cards, JSON-LD WebSite + Organization, canonical U">
+    <meta name="theme-color" content="#3A2C1C">
+    <title>Specodex — SEO plan: make Specodex the answer when an engineer searches a part number</title>
+    <link rel="icon" type="image/svg+xml" href="../logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-issue="SEO PLAN: MAKE SPECODEX ">
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="band">
+        <div class="band-inner">
+            <a class="band-brand" href="../index.html">
+                <svg class="band-mark" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <rect width="120" height="120" fill="#E8E2C9"/>
+                    <rect x="14" y="14" width="92" height="92" fill="none" stroke="#1A1A14" stroke-width="3"/>
+                    <rect x="14" y="14" width="92" height="22" fill="#3A2C1C"/>
+                    <rect x="62" y="60" width="40" height="10" fill="#A88A1C"/>
+                    <line x1="14" y1="56" x2="106" y2="56" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="74" x2="106" y2="74" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="92" x2="106" y2="92" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="60" y1="36" x2="60" y2="106" stroke="#1A1A14" stroke-width="2"/>
+                </svg>
+                <span class="wordmark">SPECODEX</span>
+            </a>
+            <nav class="band-nav" aria-label="Section">
+                <a href="../index.html">Catalog</a>
+                <a href="../roadmap.html">Roadmap</a>
+                <a href="https://github.com/JimothyJohn/specodex/blob/master/todo/SEO.md" rel="noreferrer">Source</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="doc-hero">
+            <div class="hero-tag">▮▮▮ SEO ▮▮▮</div>
+            <h1 class="hero-title">SEO plan: make Specodex the answer when an engineer searches a part number</h1>
+            <div class="doc-meta">
+                <span class="status-chip status-backlog">⚪ QUEUED (MULTI-DAY, NEEDS HUMAN PR FOR BUILD CONFIG)</span>
+                <span class="doc-source"><code>todo/SEO.md</code></span>
+            </div>
+        </section>
+
+        <article class="doc-body">
+<h1 id="seo-plan-make-specodex-the-answer-when-an-engineer-searches-a-part-number">SEO plan: make Specodex the answer when an engineer searches a part number</h1>
+<p>Status: 🚧 in progress. Phase 0 metadata foundation shipped 2026-04-28
+(robots.txt, static sitemap, OG/Twitter cards, JSON-LD <code>WebSite</code> +
+<code>Organization</code>, canonical URL). The structural lifts — SPA crawlability,
+per-product titles/meta, dynamic sitemap, category/manufacturer/comparison
+pages, OG image generator — remain. The product <em>is</em> the SEO asset; every
+product row in DynamoDB is a long-tail landing page waiting to be rendered.</p>
+<p>This doc is the <strong>how</strong>. Audience and channels live in
+<a href="MARKETING.md">MARKETING.md</a>; the two are paired.</p>
+<h2 id="whats-shipped-2026-04-28">What's shipped (2026-04-28)</h2>
+<p>Landed in <code>app/frontend/</code>:</p>
+<ul>
+<li><code>public/robots.txt</code> — explicit allow + disallow <code>/admin</code>, <code>/api/</code>,
+  sitemap reference.</li>
+<li><code>public/sitemap.xml</code> — minimal static sitemap (homepage + <code>/welcome</code>).
+  Per-product entries are deferred (see Phase 1b below).</li>
+<li><code>index.html</code> — added canonical link, Open Graph tags (with 1200×630 OG
+  image placeholder at <code>/og-default.png</code>), Twitter card tags, JSON-LD
+  <code>WebSite</code> (with <code>SearchAction</code>) + <code>Organization</code>, refined meta
+  description, <code>robots: index,follow</code>. Title shifted from "Product
+  selection" to "Cross-vendor industrial spec database" — better
+  query coverage on the head term. Both static files are served by
+  the existing CloudFront S3 default behavior — no infra change.</li>
+</ul>
+<p><strong>Open follow-ups from this batch:</strong></p>
+<ul>
+<li><code>og-default.png</code> does not exist yet. Until it's generated, link
+  unfurls fall back to text. Trivial (1200×630 PNG dropped into
+  <code>public/</code>); blocked only on a design pass — see Phase 2e for the
+  long-term per-product OG generator.</li>
+<li>Canonical URL is <code>https://www.specodex.com/</code> (cutover from the prior
+  prod host shipped per REBRAND Stage 4d). <code>index.html</code> (canonical,
+  og:url, JSON-LD <code>url</code>/<code>@id</code>/<code>urlTemplate</code>), <code>public/robots.txt</code>
+  (sitemap line), and <code>public/sitemap.xml</code> (every <code>&lt;loc&gt;</code>) all
+  point at <code>www.specodex.com</code>.</li>
+</ul>
+<h2 id="the-thesis">The thesis</h2>
+<p>When a mechatronics engineer searches <code>mitsubishi mr-j5-200a4 specs</code> or
+<code>yaskawa sgm7j-04afa61 datasheet</code>, the first 10 results today are some
+mix of:</p>
+<ol>
+<li>The manufacturer's own product page (often gated, often slow).</li>
+<li>A PDF host (<code>docs.rs-online.com</code>, <code>automation24.com</code>, etc.) — a raw
+   datasheet, no filtering.</li>
+<li>Distributor stocking pages (Digi-Key, Mouser, AutomationDirect) —
+   buy-now pages, minimal spec rendering.</li>
+<li>Forum threads with someone asking a specific question.</li>
+</ol>
+<p>None of these solve the engineer's actual job, which is <em>cross-vendor
+spec comparison</em>. Specodex's structural advantage: one indexed,
+canonical, fast-loading, schema-marked-up page per product, with cross-
+links to comparable products. If we get the technical SEO right, we
+should be able to rank in the first page for tens of thousands of
+specific part-number queries within 6-12 months — not by being clever
+on copy, but by being the only result that's actually structured.</p>
+<h2 id="current-seo-state-baseline-audit">Current SEO state — baseline audit</h2>
+<p>What exists at <code>&lt;https://www.specodex.com&gt;</code> (the canonical prod host post-cutover):</p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>State</th>
+<th>Remaining action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>robots.txt</code></td>
+<td>✅ shipped 2026-04-28 — <code>app/frontend/public/robots.txt</code></td>
+<td>Verify in prod; flip canonical URL post-DNS-cutover.</td>
+</tr>
+<tr>
+<td><code>sitemap.xml</code> (static, homepage only)</td>
+<td>✅ shipped 2026-04-28</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>sitemap.xml</code> (per-product, dynamic)</td>
+<td>❌ missing</td>
+<td>Auto-generate from DynamoDB on every deploy (Phase 1b).</td>
+</tr>
+<tr>
+<td><code>&lt;title&gt;</code>, <code>&lt;meta description&gt;</code> (homepage)</td>
+<td>✅ shipped 2026-04-28</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>&lt;title&gt;</code>, <code>&lt;meta description&gt;</code> (per-product)</td>
+<td>❌ static (SPA) — same <code>&lt;title&gt;</code> on every route</td>
+<td>Per-product values via prerender or SSR (Phase 1a/1d).</td>
+</tr>
+<tr>
+<td>Open Graph / Twitter cards (homepage)</td>
+<td>✅ shipped 2026-04-28</td>
+<td>Generate <code>og-default.png</code> (1200×630).</td>
+</tr>
+<tr>
+<td>Open Graph / Twitter cards (per-product)</td>
+<td>❌ missing</td>
+<td>Per-product OG tags + per-product OG image (Phase 1d, 2e).</td>
+</tr>
+<tr>
+<td>Schema.org structured data (<code>WebSite</code> + <code>Organization</code>)</td>
+<td>✅ shipped 2026-04-28</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Schema.org structured data (<code>Product</code> per page)</td>
+<td>❌ missing</td>
+<td>Inject <code>Product</code> JSON-LD per product page (Phase 1d).</td>
+</tr>
+<tr>
+<td>Canonical URL (homepage)</td>
+<td>✅ shipped 2026-04-28; canonical is <code>www.specodex.com</code> post-cutover</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Canonical URLs (per-product)</td>
+<td>❌ missing</td>
+<td>Set canonical to the <code>/products/{type}/{slug}</code> route (Phase 1e).</td>
+</tr>
+<tr>
+<td>Crawlability of SPA routes</td>
+<td>❌ poor — Vite SPA renders client-side</td>
+<td><strong>The big one.</strong> Prerender or SSR all product pages (Phase 1a).</td>
+</tr>
+<tr>
+<td>Internal linking</td>
+<td>❌ none — no link graph between products</td>
+<td>Comparison links, "similar products", category indexes (Phase 2).</td>
+</tr>
+<tr>
+<td>Page speed (LCP, INP)</td>
+<td>❌ unmeasured</td>
+<td>Lighthouse CI in <code>verify</code> step (Phase 1f).</td>
+</tr>
+<tr>
+<td>HTTPS, HTTP/2, compression</td>
+<td>✅ via CloudFront</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Mobile-friendly</td>
+<td>✅ per <code>app/frontend</code> responsive</td>
+<td>—</td>
+</tr>
+<tr>
+<td>GitHub Pages <code>docs/</code></td>
+<td>✅ live, has the marketing landing</td>
+<td>Add blog and crosslinks (Phase 2d).</td>
+</tr>
+</tbody>
+</table>
+<p>The three existentials (SPA crawlability, dynamic sitemap, per-product
+structured data) are the unfinished foundation; the homepage now passes
+a basic Lighthouse SEO audit but the long-tail catalog pages don't yet
+exist as crawlable URLs.</p>
+<h2 id="phase-1-technical-foundation-must-ship-before-any-marketing-push">Phase 1 — technical foundation (must ship before any marketing push)</h2>
+<h3 id="1a-spa-crawlability-pick-one-of-three">1a. SPA crawlability — pick one of three</h3>
+<p>The frontend is React + Vite, deployed to S3 + CloudFront. Out of the box,
+Googlebot will execute JS and <em>might</em> see the product pages, but it's slow,
+unreliable, and other crawlers (Bing, DuckDuckGo, social card scrapers,
+LLM crawlers) won't. Three options, ranked by fit:</p>
+<ul>
+<li><strong>Option A — Build-time prerender via <code>vite-plugin-prerender</code> or
+  similar.</strong> At <code>vite build</code>, hit the <code>/api/products</code> endpoint, generate
+  one static <code>.html</code> per product with the right <code>&lt;title&gt;</code>, <code>&lt;meta&gt;</code>, and
+  JSON-LD baked in, write them to S3 with the SPA shell as fallback for
+  unknown routes. <strong>Recommended.</strong> Fits the existing CDK frontend stack
+  with zero infra changes. Cost: build time grows with product count;
+  at 100k products, expect a 10-15 minute build. Mitigation: only
+  rebuild changed pages (incremental).</li>
+<li><strong>Option B — Edge SSR via Lambda@Edge.</strong> CloudFront origin-request
+  triggers a Lambda that renders the page server-side. More moving parts;
+  Lambda@Edge regional cold starts are real. Skip unless A doesn't scale.</li>
+<li><strong>Option C — Prerender.io / Rendertron.</strong> Detect crawler User-Agent
+  at the edge, route to a headless-Chrome-as-a-service. Cloaking-adjacent
+  (Google says it's fine, but it's brittle). Skip.</li>
+</ul>
+<p><strong>Decision: Option A.</strong> Stub <code>vite-plugin-prerender</code> config in
+<code>app/frontend/vite.config.ts</code>, drive product list from a build-time
+fetch against the staging API. Ship behind a <code>--prerender</code> flag in
+<code>./Quickstart deploy</code> first; once green for a week on staging, make
+it default.</p>
+<h3 id="1b-sitemap-dynamic-per-product">1b. Sitemap — dynamic, per-product</h3>
+<p>A static placeholder ships at <code>app/frontend/public/sitemap.xml</code>
+(homepage + <code>/welcome</code> only). Replace it with a deploy-time generator:</p>
+<ul>
+<li>New <code>cli/sitemap.py</code> module: scans DynamoDB, emits one <code>&lt;url&gt;</code>
+  per product at <code>/products/{type}/{slug}</code>, plus static routes
+  (<code>/</code>, <code>/welcome</code>, <code>/about</code>, category pages).</li>
+<li><code>&lt;lastmod&gt;</code> populated from <code>updated_at</code> (fall back to
+  <code>created_at</code>). <code>&lt;changefreq&gt;weekly&lt;/changefreq&gt;</code> on category
+  pages, <code>&lt;changefreq&gt;monthly&lt;/changefreq&gt;</code> on product pages.
+  <strong>Don't lie about changefreq</strong> — Google ignores it but other
+  crawlers trust it.</li>
+<li>Switch to <code>sitemap-index.xml</code> when products exceed 50k URLs.</li>
+<li>Wired into <code>./Quickstart deploy</code>: write to S3 root with a 1-day
+  cache, replacing the static placeholder.</li>
+<li>Submit to Search Console + Bing Webmaster after first prod deploy.</li>
+</ul>
+<h3 id="1c-robotstxt">1c. <code>robots.txt</code></h3>
+<p>Shipped 2026-04-28 at <code>app/frontend/public/robots.txt</code>. Vite copies it
+to <code>dist/</code>; CloudFront's S3 default behavior serves it from the bucket
+root. No CDK change was needed.</p>
+<p>The <code>Sitemap:</code> line points at <code>www.specodex.com</code> (post-cutover canonical).</p>
+<h3 id="1d-per-product-title-meta-json-ld">1d. Per-product <code>&lt;title&gt;</code>, <code>&lt;meta&gt;</code>, JSON-LD</h3>
+<p>Homepage <code>&lt;title&gt;</code>, <code>&lt;meta description&gt;</code>, OG/Twitter cards, and a
+site-level JSON-LD <code>WebSite</code> + <code>Organization</code> graph shipped 2026-04-28
+in <code>app/frontend/index.html</code>. The hard part — per-product values —
+still needs Phase 1a's prerender/SSR before it can land. The formulas
+below define what each prerendered page should emit.</p>
+<p>Title formula:</p>
+<pre><code>{Manufacturer} {Part Number} — {Type} {one key spec} | Specodex
+</code></pre>
+<p>Examples:
+- <code>Mitsubishi MR-J5-200A4 — Drive 2 kW 200 V | Specodex</code>
+- <code>Yaskawa SGM7J-04AFA61 — Motor 400 W servo with brake | Specodex</code></p>
+<p>Length budget: 60 chars target, 70 hard cap. Truncate mid-spec rather
+than truncating the part number — engineers search by part number.</p>
+<p>Meta description formula (155 char target):</p>
+<pre><code>{Type} from {Manufacturer}, part {Part Number}. {2-3 key specs}. View full
+spec table, datasheet, and cross-vendor alternatives on Specodex.
+</code></pre>
+<p>JSON-LD per product page (<code>&lt;script type="application/ld+json"&gt;</code>),
+matching <code>schema.org/Product</code>:</p>
+<pre><code class="language-json">{
+  &quot;@context&quot;: &quot;https://schema.org/&quot;,
+  &quot;@type&quot;: &quot;Product&quot;,
+  &quot;name&quot;: &quot;Mitsubishi MR-J5-200A4&quot;,
+  &quot;manufacturer&quot;: { &quot;@type&quot;: &quot;Organization&quot;, &quot;name&quot;: &quot;Mitsubishi Electric&quot; },
+  &quot;category&quot;: &quot;Servo Drive&quot;,
+  &quot;mpn&quot;: &quot;MR-J5-200A4&quot;,
+  &quot;description&quot;: &quot;...&quot;,
+  &quot;additionalProperty&quot;: [
+    { &quot;@type&quot;: &quot;PropertyValue&quot;, &quot;name&quot;: &quot;Rated Power&quot;, &quot;value&quot;: &quot;2&quot;, &quot;unitCode&quot;: &quot;KWT&quot; },
+    { &quot;@type&quot;: &quot;PropertyValue&quot;, &quot;name&quot;: &quot;Input Voltage&quot;, &quot;value&quot;: &quot;200&quot;, &quot;unitCode&quot;: &quot;VLT&quot; }
+  ],
+  &quot;url&quot;: &quot;https://www.specodex.com/products/drive/mitsubishi-mr-j5-200a4&quot;
+}
+</code></pre>
+<p>Map Specodex's <code>ValueUnit</code> / <code>MinMaxUnit</code> shapes (see <a href="UNITS.md">UNITS.md</a>)
+into <code>additionalProperty</code> entries. Use UN/CEFACT unit codes (<code>KWT</code>, <code>MTR</code>,
+<code>HUR</code>, <code>NEW</code>, etc.) where they exist; fall back to a custom <code>unitText</code>
+when not. <strong>Watch out:</strong> Schema.org <code>unitCode</code> expects UN/CEFACT, not
+SI strings — this is the most common mistake in this kind of markup.</p>
+<p>Open Graph + Twitter card tags on every product page so Slack /
+Discord / Twitter / LinkedIn link unfurls don't look broken. OG image:
+generated at build time from a per-type template (see "OG image
+generator" below).</p>
+<h3 id="1e-canonical-urls">1e. Canonical URLs</h3>
+<p>Every product has exactly one canonical URL: <code>/products/{type}/{slug}</code>,
+where <code>slug</code> is <code>{manufacturer}-{part_number}</code> lowercased and
+hyphenated. Self-canonical on the canonical URL; <code>&lt;link rel="canonical"&gt;</code>
+on any alias (e.g. if a product is reachable via the search filter URL).</p>
+<h3 id="1f-lighthouse-ci-in-verify">1f. Lighthouse CI in <code>verify</code></h3>
+<p>Add a Lighthouse audit step to <code>./Quickstart verify</code>, gated at:</p>
+<ul>
+<li>LCP &lt; 2.5s</li>
+<li>INP &lt; 200ms</li>
+<li>CLS &lt; 0.1</li>
+<li>SEO score &gt; 95</li>
+</ul>
+<p>Fail the build if regressions exceed thresholds. The frontend bundle
+is small enough that hitting these on CloudFront is realistic; the
+risk is JSON-LD payload bloat on product pages with hundreds of
+fields. Measure before tuning.</p>
+<h2 id="phase-2-content-scaffolding-concurrent-with-phase-1">Phase 2 — content scaffolding (concurrent with phase 1)</h2>
+<h3 id="2a-category-index-pages">2a. Category index pages</h3>
+<p><code>/products/motor</code>, <code>/products/drive</code>, etc. Each one renders:</p>
+<ul>
+<li>H1 with a one-sentence definition of the product type.</li>
+<li>A filter UI snapshot (top 50 by <code>rated_power</code> or whatever the type's
+  natural sort is).</li>
+<li>Links to all sub-categories (e.g. servo motor / stepper motor / DC
+  motor under <code>/products/motor</code>).</li>
+<li>Internal links to the top 10 manufacturers, each a <code>/products/motor?manufacturer=X</code>
+  page.</li>
+</ul>
+<p>Each category page is its own indexable URL, with its own title /
+meta / H1. Category pages are typically the highest-traffic SEO
+pages on this kind of site — the long-tail product pages get visits
+from part-number searches, but category pages catch "best servo
+motors", "industrial drive comparison", and similar broad queries.</p>
+<h3 id="2b-manufacturer-index-pages">2b. Manufacturer index pages</h3>
+<p><code>/manufacturer/{slug}</code> — one per vendor we've ingested. Renders all of
+that vendor's products grouped by type, with a one-paragraph intro
+("Mitsubishi Electric manufactures industrial servos under the MR-J
+family..."). Auto-generate the intro from a template + the ingested
+data; mark up with <code>Organization</code> schema.</p>
+<p>These pages are SEO gold for vendor-specific searches that don't include
+a part number ("yaskawa sigma servo motors", "abb acs880 family").</p>
+<h3 id="2c-comparison-pages-programmatic">2c. Comparison pages — programmatic</h3>
+<p><code>/compare/{type}/{manufacturer-a}-vs-{manufacturer-b}</code>, e.g.
+<code>/compare/drive/yaskawa-vs-mitsubishi</code>. Side-by-side spec table for
+the top N products from each vendor, with H2s for each spec category.</p>
+<p>There are O(vendor² × type) of these; cap to the top vendor pairs per
+type so we don't generate 100k empty comparison pages with thin
+content (Google penalizes that). Heuristic: only generate the comparison
+page if both vendors have ≥ 5 products of that type.</p>
+<h3 id="2d-engineering-blog-at-docsblog">2d. Engineering blog at <code>docs/blog/</code></h3>
+<p>GitHub Pages already serves <code>docs/</code>. Extend with <code>docs/blog/</code>,
+Jekyll-driven. Three foundational posts (also listed in
+<a href="MARKETING.md">MARKETING.md</a>):</p>
+<ul>
+<li><strong>Page-finder benchmark write-up</strong> — technical, links to repo.</li>
+<li><strong>Cross-vendor servo motor benchmark</strong> — pure data, ranks 5-10
+  vendors by spec dimensions.</li>
+<li><strong>Building a 3-axis motion stage</strong> — application walkthrough.</li>
+</ul>
+<p>Cross-link from the blog into the catalog (every product mention is a
+link to its Specodex page) and from the catalog footer into the blog.
+The link graph between <code>docs/blog/</code> and <code>www.specodex.com/products/...</code>
+is the second-biggest SEO lever after prerendering.</p>
+<h3 id="2e-og-image-generator">2e. OG image generator</h3>
+<p>A <code>cli/og-image.py</code> (or Node equivalent in <code>app/frontend/scripts/</code>)
+that renders a 1200×630 PNG per product at build time. Field-manual
+aesthetic — paper background, OD-green header bar, part number in
+condensed sans, key specs in tabular monospace. Stored in S3 at
+<code>/og/{slug}.png</code>.</p>
+<p>Without these, Slack/LinkedIn previews show a generic favicon and the
+URL — high friction for engineer-to-engineer sharing, which is the
+primary distribution channel per <a href="MARKETING.md">MARKETING.md</a>.</p>
+<h2 id="phase-3-keyword-strategy">Phase 3 — keyword strategy</h2>
+<p>Layered by intent and volume. Don't chase head terms; the long tail
+adds up.</p>
+<h3 id="tier-1-exact-part-numbers-highest-intent-lowest-volume-each">Tier 1 — exact part numbers (highest intent, lowest volume each)</h3>
+<ul>
+<li>Pattern: <code>{manufacturer} {part_number}</code> and <code>{part_number} datasheet</code>
+  and <code>{part_number} specs</code>.</li>
+<li>Volume per query: 10-1,000/month each.</li>
+<li>Volume in aggregate: massive — the catalog already has thousands of
+  parts.</li>
+<li>Strategy: prerendered product page with structured data wins these
+  as long as it's indexed. No additional work needed beyond Phase 1.</li>
+<li>Competition: vendor pages (slow, gated), distributor pages (transactional),
+  PDF mirrors (no UX). Specodex wins on UX once indexed.</li>
+</ul>
+<h3 id="tier-2-manufacturer-family-medium-volume-high-intent">Tier 2 — manufacturer + family (medium volume, high intent)</h3>
+<ul>
+<li>Pattern: <code>mitsubishi mr-j5</code>, <code>yaskawa sigma-7</code>, <code>abb acs880</code>, <code>siemens
+  sinamics s120</code>.</li>
+<li>Volume: 1k-10k/month each.</li>
+<li>Strategy: manufacturer + category index pages (Phase 2a/2b). H1 must
+  contain the family name; URL slug must too.</li>
+</ul>
+<h3 id="tier-3-spec-driven-category-searches-medium-volume-medium-intent">Tier 3 — spec-driven category searches (medium volume, medium intent)</h3>
+<ul>
+<li>Pattern: <code>2kw servo motor 200v</code>, <code>industrial drive ip65 fieldbus
+  ethercat</code>, <code>gearhead ratio 100:1 backlash</code>.</li>
+<li>Volume: 100-1k/month each.</li>
+<li>Strategy: filtered category pages where every filter combination is
+  a canonical URL with its own title and H1 (<code>/products/motor?rated_power_min=2000&amp;rated_voltage=200</code>
+  → also reachable as <code>/products/motor/2kw-200v</code>). <strong>Dangerous if not
+  capped</strong> — could generate millions of thin URLs. Cap to 200-500
+  pre-curated filter pages chosen by search-volume data.</li>
+</ul>
+<h3 id="tier-4-broad-informational-high-volume-low-intent">Tier 4 — broad informational (high volume, low intent)</h3>
+<ul>
+<li>Pattern: <code>what is a servo drive</code>, <code>how to choose a gearhead</code>,
+  <code>motor torque vs speed curve</code>.</li>
+<li>Volume: 5k-50k/month each.</li>
+<li>Strategy: blog content (Phase 2d). Specodex isn't going to outrank
+  Wikipedia / vendor whitepapers on these — but a well-written post
+  with embedded interactive search ("here's a live filter for what we
+  just discussed") earns its placement.</li>
+</ul>
+<h3 id="dont-pursue">Don't pursue</h3>
+<ul>
+<li>Generic head terms (<code>industrial motor</code>, <code>electric drive</code>). Volume
+  is real but intent is wrong — those searchers want a Wikipedia
+  article, not a spec database.</li>
+<li>Brand keywords for major distributors (<code>mouser</code>, <code>digikey</code>,
+  <code>automationdirect</code>). Trademark issues, no upside.</li>
+<li>Geo-targeted variants (<code>servo motor canada</code>, <code>drive supplier
+  germany</code>). Specodex isn't a distributor; these searchers want a
+  buy page, not a comparison.</li>
+</ul>
+<h2 id="phase-4-backlinks">Phase 4 — backlinks</h2>
+<p>Don't buy links. Earn them.</p>
+<table>
+<thead>
+<tr>
+<th>Source type</th>
+<th>Approach</th>
+<th>Expected lift</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Open-source repo on GitHub</td>
+<td>Submit to <code>awesome-industrial</code>, <code>awesome-robotics</code>, <code>awesome-mechatronics</code>, <code>awesome-engineering</code>. Each merged PR is a high-DA link.</td>
+<td>10-30 referring domains over 6 months</td>
+</tr>
+<tr>
+<td>Hacker News</td>
+<td>Show HN (per <a href="MARKETING.md">MARKETING.md</a> Phase 1)</td>
+<td>1 HN link, plus ~20-50 secondary blog mentions if it ranks</td>
+</tr>
+<tr>
+<td>Engineering blogs</td>
+<td>Cross-link from individual engineers' blogs after they discover the tool. Largely passive but accelerated by shipping useful content.</td>
+<td>Slow, compounds</td>
+</tr>
+<tr>
+<td>Forum threads</td>
+<td>Eng-Tips, ControlBooth, r/PLC. These are mostly nofollow but they drive referral traffic and signal real-user usage.</td>
+<td>High referral, low SEO direct</td>
+</tr>
+<tr>
+<td>Wikipedia</td>
+<td>Specodex won't have its own page; that's fine. But the <em>external links</em> sections of pages on individual products / families occasionally accept a high-quality reference. Don't add yourself; let it happen.</td>
+<td>Slow, occasional</td>
+</tr>
+<tr>
+<td>Trade press</td>
+<td>Per <a href="MARKETING.md">MARKETING.md</a> Phase 2. One placement is worth ~5 referring domains in the trade-press citation graph.</td>
+<td>5-15 referring domains</td>
+</tr>
+<tr>
+<td>University / academic</td>
+<td>Mechatronics professors who reference the tool in coursework or projects.</td>
+<td>Slow, very high DA when it lands</td>
+</tr>
+</tbody>
+</table>
+<p>The unifying rule: links happen because the tool is useful, not because
+we asked. Any "link-building" tactic that's separable from "make the
+tool better" is a yellow flag.</p>
+<h2 id="phase-5-measurement">Phase 5 — measurement</h2>
+<p>Ship before any of the above is complete:</p>
+<ul>
+<li><strong>Google Search Console</strong> verified on <code>www.specodex.com</code> (DNS TXT or
+  HTML meta tag, do both for redundancy).</li>
+<li><strong>Bing Webmaster Tools</strong> likewise.</li>
+<li><strong>GA4 or Plausible</strong> for traffic. Plausible if we want to advertise
+  "we don't track you" as a positioning element; GA4 if we want the
+  free integration with Search Console. <strong>Lean Plausible</strong> — fits the
+  field-manual / no-marketing-fluff vibe.</li>
+<li><strong>Lighthouse CI</strong> results stored as artifacts of every CI run.</li>
+<li><strong>Search Console weekly export</strong> to S3 — manual review for now.
+  (<code>./Quickstart godmode</code> is scoped to catalog data quality, not
+  search analytics.)</li>
+</ul>
+<p>KPIs by month-6 (calibrate as we measure):</p>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Target</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Indexed pages (Search Console)</td>
+<td>&gt; 80% of catalog</td>
+</tr>
+<tr>
+<td>Average position for tier-1 (exact part number) queries</td>
+<td>&lt; 10</td>
+</tr>
+<tr>
+<td>Average position for tier-2 (manufacturer + family) queries</td>
+<td>&lt; 30</td>
+</tr>
+<tr>
+<td>Click-through rate, indexed pages</td>
+<td>&gt; 4%</td>
+</tr>
+<tr>
+<td>Organic sessions / week</td>
+<td>5,000</td>
+</tr>
+<tr>
+<td>Referring domains (real, non-spam)</td>
+<td>50</td>
+</tr>
+<tr>
+<td>Core Web Vitals "Good" rate</td>
+<td>&gt; 90% of sessions</td>
+</tr>
+</tbody>
+</table>
+<h2 id="phasing-gates">Phasing — gates</h2>
+<table>
+<thead>
+<tr>
+<th>Phase</th>
+<th>Window</th>
+<th>Gate to next</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>0 — Audit.</strong> ✅ done 2026-04-28. Static metadata baseline shipped: <code>robots.txt</code>, static homepage <code>sitemap.xml</code>, homepage <code>&lt;title&gt;</code>/<code>&lt;meta&gt;</code>, canonical, OG/Twitter cards, JSON-LD <code>WebSite</code> + <code>Organization</code>.</td>
+<td>—</td>
+<td>Phase 1 begins.</td>
+</tr>
+<tr>
+<td><strong>1 — Foundation.</strong> Prerender (1a), dynamic per-product sitemap (1b), per-product meta + JSON-LD (1d), per-product canonical (1e), Lighthouse CI (1f). Also: generate <code>og-default.png</code>.</td>
+<td>2-3 weeks.</td>
+<td>Search Console shows ≥ 100 indexed product pages; Lighthouse SEO score &gt; 95.</td>
+</tr>
+<tr>
+<td><strong>2 — Content scaffolding.</strong> Category, manufacturer, comparison pages. Blog scaffolding + first 3 posts. OG images.</td>
+<td>4-6 weeks.</td>
+<td>Internal link graph has ≥ 5 inbound links per product page on average.</td>
+</tr>
+<tr>
+<td><strong>3 — Amplify.</strong> Coordinate with <a href="MARKETING.md">MARKETING.md</a> launch. Search Console + Bing live.</td>
+<td>Concurrent with marketing Phase 1.</td>
+<td>First HN front-page; first organic position-1 ranking on a tier-1 query.</td>
+</tr>
+<tr>
+<td><strong>4 — Iterate.</strong> Monthly review of Search Console queries vs. coverage. Add filter-page slugs based on observed search demand. Re-measure Core Web Vitals on every deploy.</td>
+<td>Ongoing.</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<h2 id="risks">Risks</h2>
+<ul>
+<li><strong>Prerender + DynamoDB schema drift.</strong> When <a href="UNITS.md">UNITS.md</a>'s
+  Phase 5 backfill runs, every prerendered page becomes stale. Solve:
+  rebuild prerender as a deploy-time step that always pulls the latest
+  data, never a checked-in artifact.</li>
+<li><strong>Thin / duplicate content from over-generation.</strong> Comparison pages
+  and filter-slug pages can balloon into millions of low-value URLs
+  if not capped. Cap aggressively in Phase 2.</li>
+<li><strong>JSON-LD that doesn't validate.</strong> Use Google's Rich Results Test on
+  10 sample product pages before shipping; any structured-data error
+  silently demotes the page.</li>
+<li><strong>Crawler budget.</strong> Once the catalog grows past ~100k products,
+  Googlebot may not crawl all of them. Solve via a tight sitemap,
+  good internal linking, and high-priority-page hints in <code>&lt;priority&gt;</code>
+  on the sitemap entries.</li>
+<li><strong>Robots.txt blocking the API in dev surfaces.</strong> If staging gets a
+  no-index header for safety and someone forgets to flip it on prod,
+  the entire site disappears from Google. Solve: an explicit assertion
+  in <code>./Quickstart smoke</code> that production HTML responses do <em>not</em> have
+  <code>X-Robots-Tag: noindex</code> or a <code>&lt;meta name="robots" content="noindex"&gt;</code>.</li>
+</ul>
+<h2 id="triggers">Triggers</h2>
+<table>
+<thead>
+<tr>
+<th>Trigger (files / topics in your current task)</th>
+<th>Surface</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>app/frontend/vite.config.ts</code> build config; SSR / prerender / <code>vite-plugin-*</code> discussions</td>
+<td>this doc (Phase 1a)</td>
+</tr>
+<tr>
+<td><code>app/infrastructure/lib/frontend-stack.ts</code> CloudFront behaviors; cache rules; S3 path mappings for <code>robots.txt</code>, <code>sitemap.xml</code>, <code>/og/</code></td>
+<td>this doc</td>
+</tr>
+<tr>
+<td><code>cli/sitemap.py</code> (does not exist yet — flag the deferred work)</td>
+<td>this doc (Phase 1b)</td>
+</tr>
+<tr>
+<td><code>&lt;title&gt;</code>, <code>&lt;meta&gt;</code>, <code>&lt;link rel=canonical&gt;</code>, JSON-LD, <code>application/ld+json</code>, <code>schema.org</code> references in any frontend file</td>
+<td>this doc (Phase 1d/1e)</td>
+</tr>
+<tr>
+<td><code>docs/blog/</code> creation, Jekyll config, GitHub Pages content beyond the landing page</td>
+<td>this doc (Phase 2d)</td>
+</tr>
+<tr>
+<td>User mentions "SEO", "ranking", "Google", "Search Console", "indexable", "sitemap", "structured data", "rich results", "OG image", "social card", "Lighthouse", "Core Web Vitals"</td>
+<td>this doc</td>
+</tr>
+<tr>
+<td>Schema for product pages — <code>additionalProperty</code>, <code>unitCode</code>, <code>Product</code> JSON-LD — interacts with <code>ValueUnit</code> shape</td>
+<td>this doc + <a href="UNITS.md">UNITS.md</a></td>
+</tr>
+<tr>
+<td>Prerender stale-data / rebuild-on-deploy concerns when the data shape changes</td>
+<td>this doc + <a href="UNITS.md">UNITS.md</a></td>
+</tr>
+<tr>
+<td><code>cli/og-image.py</code> or any OG-image generation work</td>
+<td>this doc (Phase 2e)</td>
+</tr>
+<tr>
+<td>Comparison-page URL patterns, programmatic-page generation, filter-slug routes</td>
+<td>this doc (Phase 2c, 3-tier3)</td>
+</tr>
+</tbody>
+</table>
+        </article>
+    </main>
+
+    <footer>
+        <div class="footer-inner">
+            <a class="footer-link" href="../roadmap.html">← Back to roadmap</a>
+            <span class="footer-rule" aria-hidden="true"></span>
+            <a class="footer-link" href="https://github.com/JimothyJohn/specodex/blob/master/todo/SEO.md" rel="noreferrer">Edit on GitHub</a>
+        </div>
+    </footer>
+</body>
+</html>

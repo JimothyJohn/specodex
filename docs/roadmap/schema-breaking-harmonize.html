@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Status: 🔴 Designed; needs explicit sign-off before applying. The rest of todo/SCHEMA.md (Phases 1, 2, 3, 4) all shipped during the 2026-05-09 / 10 sprints — thi">
+    <meta name="theme-color" content="#3A2C1C">
+    <title>Specodex — SCHEMA Phase 1.1 — BREAKING type harmonisation</title>
+    <link rel="icon" type="image/svg+xml" href="../logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-issue="SCHEMA PHASE 1.1 — BREAK">
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="band">
+        <div class="band-inner">
+            <a class="band-brand" href="../index.html">
+                <svg class="band-mark" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <rect width="120" height="120" fill="#E8E2C9"/>
+                    <rect x="14" y="14" width="92" height="92" fill="none" stroke="#1A1A14" stroke-width="3"/>
+                    <rect x="14" y="14" width="92" height="22" fill="#3A2C1C"/>
+                    <rect x="62" y="60" width="40" height="10" fill="#A88A1C"/>
+                    <line x1="14" y1="56" x2="106" y2="56" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="74" x2="106" y2="74" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="92" x2="106" y2="92" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="60" y1="36" x2="60" y2="106" stroke="#1A1A14" stroke-width="2"/>
+                </svg>
+                <span class="wordmark">SPECODEX</span>
+            </a>
+            <nav class="band-nav" aria-label="Section">
+                <a href="../index.html">Catalog</a>
+                <a href="../roadmap.html">Roadmap</a>
+                <a href="https://github.com/JimothyJohn/specodex/blob/master/todo/SCHEMA_BREAKING_HARMONIZE.md" rel="noreferrer">Source</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="doc-hero">
+            <div class="hero-tag">▮▮▮ SCHEMA BREAKING HARMONIZE ▮▮▮</div>
+            <h1 class="hero-title">SCHEMA Phase 1.1 — BREAKING type harmonisation</h1>
+            <div class="doc-meta">
+                <span class="status-chip status-signoff">🔴 NEEDS SIGN-OFF</span>
+                <span class="doc-source"><code>todo/SCHEMA_BREAKING_HARMONIZE.md</code></span>
+            </div>
+        </section>
+
+        <article class="doc-body">
+<h1 id="schema-phase-11-breaking-type-harmonisation">SCHEMA Phase 1.1 — BREAKING type harmonisation</h1>
+<p><strong>Status:</strong> 🔴 Designed; needs explicit sign-off before applying. The
+rest of <code>todo/SCHEMA.md</code> (Phases 1, 2, 3, 4) all shipped during the
+2026-05-09 / 10 sprints — this is the only piece deferred for the
+sign-off conversation about whether to break existing DB rows.</p>
+<p>The original <code>todo/SCHEMA.md</code> (623 lines covering the fit-check + 4
+shipped phases + this one) was retired post-sprint. Recover the
+full design rationale via <code>git log --diff-filter=D --follow --
+todo/SCHEMA.md</code> if needed.</p>
+<h2 id="two-open-breaking-changes">Two open breaking changes</h2>
+<h3 id="1-unify-motor_type-motortechnology-literal">1. Unify <code>motor_type</code> → <code>MotorTechnology</code> literal</h3>
+<p>Three product types use three different vocabularies for the same
+concept:</p>
+<table>
+<thead>
+<tr>
+<th>Model</th>
+<th>Today's type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Motor.type</code></td>
+<td><code>Literal["brushless dc", "brushed dc", "ac induction", "ac synchronous", "ac servo", "permanent magnet", "hybrid"]</code></td>
+</tr>
+<tr>
+<td><code>ElectricCylinder.motor_type</code></td>
+<td><code>Optional[str]</code> (free-form)</td>
+</tr>
+<tr>
+<td><code>LinearActuator.motor_type</code></td>
+<td><code>Optional[Literal["step_motor", "servo_motor", "motorless"]]</code></td>
+</tr>
+</tbody>
+</table>
+<p>None of the three overlap. A user filtering by motor type can't
+write a single query that covers all three product types.</p>
+<p><strong>Proposed unified literal</strong> (in <code>specodex/models/common.py</code>):</p>
+<pre><code class="language-python">MotorTechnology = Literal[
+    &quot;brushless_dc&quot;,      # BLDC servo, most common modern type
+    &quot;brushed_dc&quot;,
+    &quot;ac_servo&quot;,
+    &quot;ac_induction&quot;,
+    &quot;ac_synchronous&quot;,
+    &quot;permanent_magnet&quot;,
+    &quot;stepper&quot;,
+    &quot;hybrid_stepper&quot;,
+    &quot;linear_motor&quot;,
+    &quot;motorless&quot;,         # actuator ships without a motor (customer-supplied)
+]
+</code></pre>
+<p><strong>Migration:</strong>
+- <code>Motor.type</code> → <code>MotorTechnology</code>
+- <code>ElectricCylinder.motor_type</code> → <code>Optional[MotorTechnology]</code>
+- <code>LinearActuator.motor_type</code> → <code>Optional[MotorTechnology]</code>
+- Existing records: a one-shot CLI <code>./Quickstart admin -- harmonize-motor-type --stage dev [--apply]</code> (dry-run default) maps old strings to the new vocabulary. Synonym table:</p>
+<table>
+<thead>
+<tr>
+<th>Old value (any product)</th>
+<th>New <code>MotorTechnology</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>"brushless dc"</code></td>
+<td><code>"brushless_dc"</code></td>
+</tr>
+<tr>
+<td><code>"brushed dc"</code></td>
+<td><code>"brushed_dc"</code></td>
+</tr>
+<tr>
+<td><code>"ac servo"</code></td>
+<td><code>"ac_servo"</code></td>
+</tr>
+<tr>
+<td><code>"ac induction"</code></td>
+<td><code>"ac_induction"</code></td>
+</tr>
+<tr>
+<td><code>"ac synchronous"</code></td>
+<td><code>"ac_synchronous"</code></td>
+</tr>
+<tr>
+<td><code>"permanent magnet"</code></td>
+<td><code>"permanent_magnet"</code></td>
+</tr>
+<tr>
+<td><code>"hybrid"</code></td>
+<td><code>"hybrid_stepper"</code></td>
+</tr>
+<tr>
+<td><code>"step_motor"</code> (LinearActuator)</td>
+<td><code>"stepper"</code></td>
+</tr>
+<tr>
+<td><code>"servo_motor"</code> (LinearActuator)</td>
+<td><code>"ac_servo"</code> (default — refine per-vendor if known)</td>
+</tr>
+<tr>
+<td><code>"motorless"</code></td>
+<td><code>"motorless"</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="2-electriccylinderfieldbus-optionallistcommunicationprotocol">2. <code>ElectricCylinder.fieldbus</code> → <code>Optional[List[CommunicationProtocol]]</code></h3>
+<table>
+<thead>
+<tr>
+<th>Model</th>
+<th>Today's type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Drive.fieldbus</code></td>
+<td><code>Optional[List[CommunicationProtocol]]</code> ✓</td>
+</tr>
+<tr>
+<td><code>ElectricCylinder.fieldbus</code></td>
+<td><code>Optional[str]</code> (raw string)</td>
+</tr>
+<tr>
+<td><code>Motor.fieldbus</code></td>
+<td>not present</td>
+</tr>
+<tr>
+<td><code>LinearActuator.fieldbus</code></td>
+<td>not present</td>
+</tr>
+</tbody>
+</table>
+<p><code>Drive</code> already uses the structured <code>CommunicationProtocol</code> model
+in <code>specodex/models/communication_protocol.py</code>. Promote
+<code>ElectricCylinder.fieldbus</code> to the same shape; add the field to
+<code>Motor</code> and <code>LinearActuator</code> (optional, nulls fine for catalogs
+without on-board comm).</p>
+<p><strong>Migration:</strong> same <code>harmonize</code> CLI, separate sub-action.
+<code>ElectricCylinder.fieldbus</code> strings get parsed via
+<code>CommunicationProtocol</code>'s constructor (existing logic accepts
+free-form strings like "ethercat" / "EtherCAT" / "ECAT").</p>
+<h2 id="why-these-are-flagged-breaking">Why these are flagged BREAKING</h2>
+<p>Both reshape the JSON envelope DynamoDB rows already carry. Existing
+rows with <code>motor_type='ac servo'</code> (Motor) need to be rewritten to
+<code>motor_type='ac_servo'</code> before the new literal accepts them. Without
+the harmonize CLI, post-migration <code>client.list(Motor)</code> will silently
+drop those rows in deserialisation.</p>
+<p><strong>Don't apply until</strong> the harmonize CLI is written, dry-run on dev
+shows the synonym table catches every existing value, and Nick
+signs off on breaking the JSON envelope.</p>
+<h2 id="whats-not-in-this-phase-already-shipped-or-obsolete">What's NOT in this phase (already shipped or obsolete)</h2>
+<ul>
+<li><code>encoder_feedback_support</code> shape unification — was in the original
+  Phase 1.1 plan, but DOUBLE_TAP (PR #91) replaced the
+  <code>Optional[str]</code> / <code>Optional[List[str]]</code> field with the structured
+  <code>EncoderFeedback</code> model entirely. The shape question is moot.</li>
+<li><code>frame_size</code> / <code>motor_mount_pattern</code> — shipped via SCHEMA Phase 1
+  (PR #87) and Phase 2 (PR #117 — backfill CLI; execution is the
+  remaining operator action).</li>
+</ul>
+<h2 id="triggers-surface-this-doc-when">Triggers — surface this doc when</h2>
+<ul>
+<li>User asks "unify motor_type", "harmonize motor types", "BREAKING
+  schema migration", "MotorTechnology literal".</li>
+<li>Touching <code>Motor.type</code>, <code>ElectricCylinder.motor_type</code>,
+  <code>LinearActuator.motor_type</code>, or <code>ElectricCylinder.fieldbus</code>
+  fields.</li>
+<li>Adding a new product type that has a <code>motor_type</code> field —
+  consider whether to slot in here vs. leave the divergence.</li>
+</ul>
+        </article>
+    </main>
+
+    <footer>
+        <div class="footer-inner">
+            <a class="footer-link" href="../roadmap.html">← Back to roadmap</a>
+            <span class="footer-rule" aria-hidden="true"></span>
+            <a class="footer-link" href="https://github.com/JimothyJohn/specodex/blob/master/todo/SCHEMA_BREAKING_HARMONIZE.md" rel="noreferrer">Edit on GitHub</a>
+        </div>
+    </footer>
+</body>
+</html>

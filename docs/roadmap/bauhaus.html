@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="PR #136 explored three design directions; Bauhaus Catalog won. PR #150 landed wave 1 — the tokens layer, the header, the filter-chip truncation fix, and Oswald ">
+    <meta name="theme-color" content="#3A2C1C">
+    <title>Specodex — BAUHAUS — UI refresh port from `docs/design/bauhaus-catalog.html`</title>
+    <link rel="icon" type="image/svg+xml" href="../logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-issue="BAUHAUS — UI REFRESH POR">
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="band">
+        <div class="band-inner">
+            <a class="band-brand" href="../index.html">
+                <svg class="band-mark" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <rect width="120" height="120" fill="#E8E2C9"/>
+                    <rect x="14" y="14" width="92" height="92" fill="none" stroke="#1A1A14" stroke-width="3"/>
+                    <rect x="14" y="14" width="92" height="22" fill="#3A2C1C"/>
+                    <rect x="62" y="60" width="40" height="10" fill="#A88A1C"/>
+                    <line x1="14" y1="56" x2="106" y2="56" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="74" x2="106" y2="74" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="92" x2="106" y2="92" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="60" y1="36" x2="60" y2="106" stroke="#1A1A14" stroke-width="2"/>
+                </svg>
+                <span class="wordmark">SPECODEX</span>
+            </a>
+            <nav class="band-nav" aria-label="Section">
+                <a href="../index.html">Catalog</a>
+                <a href="../roadmap.html">Roadmap</a>
+                <a href="https://github.com/JimothyJohn/specodex/blob/master/todo/BAUHAUS.md" rel="noreferrer">Source</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="doc-hero">
+            <div class="hero-tag">▮▮▮ BAUHAUS ▮▮▮</div>
+            <h1 class="hero-title">BAUHAUS — UI refresh port from `docs/design/bauhaus-catalog.html`</h1>
+            <div class="doc-meta">
+                <span class="status-chip status-inflight">IN FLIGHT</span>
+                <span class="doc-source"><code>todo/BAUHAUS.md</code></span>
+            </div>
+        </section>
+
+        <article class="doc-body">
+<h1 id="bauhaus-ui-refresh-port-from-docsdesignbauhaus-cataloghtml">BAUHAUS — UI refresh port from <code>docs/design/bauhaus-catalog.html</code></h1>
+<blockquote>
+<p><strong>Status:</strong> 🎨 in flight. Wave 1 shipped 2026-05-12 via <a href="https://github.com/JimothyJohn/specodex/pull/150">PR #150</a>.
+Phases 2–10 below break the remaining work into independently shippable PRs.</p>
+<p><strong>Date drafted:</strong> 2026-05-12.
+<strong>Owner:</strong> Nick. <strong>Contributors welcome on hygiene phases (6, 7);</strong> visual phases (2–5, 8–10) need a single hand for consistency.</p>
+</blockquote>
+<hr>
+<h2 id="0-why-this-exists">0. Why this exists</h2>
+<p><a href="https://github.com/JimothyJohn/specodex/pull/136">PR #136</a> explored three design
+directions; Bauhaus Catalog won. <a href="https://github.com/JimothyJohn/specodex/pull/150">PR #150</a>
+landed wave 1 — the tokens layer, the header, the filter-chip truncation fix,
+and Oswald column headers. That PR's "out of scope" section is the explicit
+follow-up menu; this doc turns it into a phased plan keyed to the static mock.</p>
+<p><strong>The audit's three "amateur tells"</strong> the wider port still has to resolve:</p>
+<ol>
+<li><strong>Silent truncation.</strong> Long attribute names (<code>network_protocol</code>,
+   <code>encoder_resolution_bits</code>) clipped to <code>Re…</code> on chips and <code>MANUF…</code> on
+   column headers. PR #150 fixed the chip side; the column-header side is
+   the dirty working-tree edit that was lost in cross-session churn — see
+   <strong>Phase 1 — recovery</strong> below for the captured diff.</li>
+<li><strong>Layering chaos.</strong> App.css has <strong>21 inline <code>z-index</code> values</strong> ranging
+   <code>0 → 10000</code>. PR #150 added 6 tokens (<code>--z-content</code> → <code>--z-toast</code>); the
+   call-site migration is Phase 6.</li>
+<li><strong>Specificity wars.</strong> App.css has <strong>116 <code>!important</code> declarations</strong>
+   across ~6 clusters (column-remove-btn, button overrides, modal close,
+   filter chip, density variants, scrollbar). Phase 7.</li>
+</ol>
+<p>Plus a fourth tell that's visual rather than structural: <strong>web-pill rounded
+corners and soft drop-shadows</strong> that fight the paper-and-stamp aesthetic.
+Each visual phase strips those at the surface it touches.</p>
+<p><strong>This is a MASSIVE lift in aggregate, BUT</strong> every phase is independently
+shippable. Stop after any one and the app still works; later surfaces just
+keep their pre-port look until their phase lands.</p>
+<hr>
+<h2 id="1-end-state-visual-docsdesignbauhaus-cataloghtml">1. End-state visual = <code>docs/design/bauhaus-catalog.html</code></h2>
+<p>The mock at <code>docs/design/bauhaus-catalog.html</code> (829 lines, self-contained
+HTML/CSS) is the single source of truth for the target visual. Every phase
+references it by surface:</p>
+<table>
+<thead>
+<tr>
+<th>Surface in mock</th>
+<th>Selectors / shape</th>
+<th>Maps to phase</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>.top-strip</code> + <code>.top-nav</code> + <code>.top-options</code></td>
+<td>square brand-mark, joined-button nav, density/units/theme top-options</td>
+<td>✅ Wave 1 (header) + small polish in Phase 2</td>
+</tr>
+<tr>
+<td><code>.breadcrumb-strip</code></td>
+<td>second header bar with <code>FIG. 01</code> rotated-square marker</td>
+<td>Phase 2</td>
+</tr>
+<tr>
+<td><code>aside.rail</code> (280px)</td>
+<td>left filter rail container, 2px ink right-border</td>
+<td>Phase 4</td>
+</tr>
+<tr>
+<td><code>.rail-section</code> + <code>.rail-head</code> + <code>.badge</code></td>
+<td>Oswald uppercase head with 2px underline, mono count badge</td>
+<td>Phase 4</td>
+</tr>
+<tr>
+<td><code>.rail-type-list</code> (with <code>.marker</code>, <code>.label</code>, <code>.count</code>)</td>
+<td>product-type list, 8×8 ink squares, active = ink-on-paper</td>
+<td>Phase 4</td>
+</tr>
+<tr>
+<td><code>.filter-stack</code> + <code>.filter-row</code> + <code>label</code></td>
+<td>label-over-chip stack, Oswald 10px uppercase labels</td>
+<td>Phase 5</td>
+</tr>
+<tr>
+<td><code>.filter-chip</code> + <code>.op</code> + <code>.close</code></td>
+<td>hard-bordered chip, brass <code>≥/≤/IN</code> op prefix, divided close-X cell with stamp-red hover</td>
+<td>Phase 5</td>
+</tr>
+<tr>
+<td><code>.add-filter</code></td>
+<td>dashed-border button, hover → solid</td>
+<td>Phase 5</td>
+</tr>
+<tr>
+<td><code>.results-head</code> + <code>.results-eyebrow</code> (with triangle) + <code>.results-title h1</code></td>
+<td>brass uppercase eyebrow with <code>▼</code> triangle, 32px Oswald headline</td>
+<td>Phase 2</td>
+</tr>
+<tr>
+<td><code>.results-counts</code> (with large <code>&lt;strong&gt;</code> tabular numerals)</td>
+<td>"matching <strong>142</strong> of <strong>6,108</strong>" pattern, 28px display numerals</td>
+<td>Phase 2</td>
+</tr>
+<tr>
+<td><code>.toolbar</code></td>
+<td>joined-button view toggle (Table / Grid / Compat), active = ink-on-paper</td>
+<td>Phase 2</td>
+</tr>
+<tr>
+<td><code>.stat-row</code> + <code>.stat-cell</code> + <code>.stat-label</code> + <code>.stat-value</code></td>
+<td>4-cell summary bar with hard borders and 8×8 corner marks</td>
+<td>Phase 2</td>
+</tr>
+<tr>
+<td><code>.results-table-wrap</code> + <code>table.results</code></td>
+<td>bordered table, paper-dim thead, hairline grid-fine row separators, <code>.is-numeric</code> right-aligned tabular</td>
+<td>Phase 3</td>
+</tr>
+<tr>
+<td><code>td .pn</code> + <code>td .mfg</code></td>
+<td>Oswald part-number + mute mono manufacturer caption</td>
+<td>Phase 3</td>
+</tr>
+<tr>
+<td><code>.tag</code> / <code>.tag.brass</code></td>
+<td>inline 1px-ink-border tag chips inside cells</td>
+<td>Phase 3</td>
+</tr>
+<tr>
+<td><code>.legend</code></td>
+<td>dashed-border footer key</td>
+<td>Phase 3</td>
+</tr>
+<tr>
+<td><code>.footnote</code></td>
+<td>top-ruled footer with corner-mark</td>
+<td>Phase 3</td>
+</tr>
+</tbody>
+</table>
+<p><strong>What the mock does NOT show</strong> (and therefore each phase has to decide
+without it):
+- Modal dialogs (ProductDetailModal, ChainReviewModal, AuthModal) — <strong>Phase 8</strong>
+- BuildPage, AdminPanel, DatasheetsPage — <strong>Phases 9, 10</strong>
+- Dropdown / MultiSelectFilterPopover / Tooltip primitives — extend the mock's
+  hard-border vocabulary; see per-phase scope.
+- Dark theme (espresso variant) — derived from tokens; should follow per surface
+  without dedicated phases. Validated at each phase's exit.</p>
+<hr>
+<h2 id="2-phases-at-a-glance">2. Phases at a glance</h2>
+<table>
+<thead>
+<tr>
+<th>Phase</th>
+<th>Scope</th>
+<th>Effort</th>
+<th>Risk</th>
+<th>Reversible?</th>
+<th>Gate</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>1</strong></td>
+<td>Column-header WRAP fix (recover lost edit) + any small wave-1 polish</td>
+<td>XS (&lt; 1h)</td>
+<td>low</td>
+<td>yes (revert)</td>
+<td>vitest unchanged; long-label visual check</td>
+</tr>
+<tr>
+<td><strong>2</strong></td>
+<td>Catalog summary bar: results-head + stat-row + toolbar</td>
+<td>M (1–2 days)</td>
+<td>medium</td>
+<td>yes</td>
+<td>visual diff vs mock; no data-shape changes</td>
+</tr>
+<tr>
+<td><strong>3</strong></td>
+<td>Catalog table: borders + hairline rules + <code>.pn/.mfg</code> cell content + tag chips</td>
+<td>M (1–2 days)</td>
+<td>medium</td>
+<td>yes</td>
+<td>vitest unchanged; row hover preserved</td>
+</tr>
+<tr>
+<td><strong>4</strong></td>
+<td>Filter rail: layout (380→280), rail-section heads, type-list with markers</td>
+<td>M (2 days)</td>
+<td>medium</td>
+<td>yes</td>
+<td>filter logic untouched, visual swap only</td>
+</tr>
+<tr>
+<td><strong>5</strong></td>
+<td>Filter chips: operator-prefix, hard-bordered close-X, dashed +ADD FILTER</td>
+<td>S (½ day)</td>
+<td>low</td>
+<td>yes</td>
+<td>filter state-management contract preserved</td>
+</tr>
+<tr>
+<td><strong>6</strong></td>
+<td>Z-index migration: 21 inline magic numbers → 6 tokens from wave 1</td>
+<td>S (½ day)</td>
+<td>low</td>
+<td>yes</td>
+<td>visual diff is <strong>null</strong>; layering preserved</td>
+</tr>
+<tr>
+<td><strong>7</strong></td>
+<td><code>!important</code> sweep: ~6 specificity clusters refactored</td>
+<td>M (1–2 days)</td>
+<td>medium</td>
+<td>yes</td>
+<td>visual diff is <strong>null</strong>; all overrides still work</td>
+</tr>
+<tr>
+<td><strong>8</strong></td>
+<td>Modal pattern: ProductDetailModal + ChainReviewModal port</td>
+<td>M (1–2 days)</td>
+<td>medium</td>
+<td>yes</td>
+<td>modal contracts preserved; e2e modal flows pass</td>
+</tr>
+<tr>
+<td><strong>9</strong></td>
+<td>BuildPage Bauhaus port</td>
+<td>M (1–2 days)</td>
+<td>medium</td>
+<td>yes</td>
+<td>build-flow regression tests pass</td>
+</tr>
+<tr>
+<td><strong>10</strong></td>
+<td>AdminPanel + DatasheetsPage port</td>
+<td>L (3–4 days)</td>
+<td>medium</td>
+<td>yes</td>
+<td>admin + datasheet edit smoke tests pass</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Stop-after-any-phase property.</strong> Phases 1–5 are visual, phases 6–7 are
+hygiene, phases 8–10 are remaining surfaces. The app stays shippable after
+each. Hygiene phases (6, 7) can be slotted between visual phases or done
+in parallel by a different contributor.</p>
+<p><strong>Recommended order if shipping serially:</strong> 1 → 2 → 3 → 6 → 4 → 5 → 7 → 8 → 9 → 10.
+Rationale: visual catalog (1, 2, 3) lands the most user-visible delta first;
+z-index migration (6) before rail/chips (4, 5) means the rail/chips don't
+inherit new magic numbers; <code>!important</code> sweep (7) after all chip-and-rail
+selectors stabilise so the cluster refactor doesn't have to be redone.</p>
+<hr>
+<h2 id="phase-1-column-header-wrap-recovery">Phase 1 — Column-header wrap + recovery</h2>
+<p><strong>Goal:</strong> finish the column-header truncation thread from PR #150. The
+captured-but-lost edit is recoverable from this doc's appendix.</p>
+<h3 id="11-scope">1.1 Scope</h3>
+<ul>
+<li>One selector: <code>.column-header-label-text</code> in <code>app/frontend/src/App.css</code>.</li>
+<li>Replace <code>white-space: nowrap; overflow: hidden; text-overflow: ellipsis</code>
+  with the same <code>word-break: break-word; overflow-wrap: anywhere; min-width: 0</code>
+  treatment <code>.filter-attribute</code> got in PR #150.</li>
+<li>Add <code>line-height: 1.15</code> so 2-line wrap doesn't overflow the cell vertically.</li>
+</ul>
+<h3 id="12-why-this-happens-at-the-live-cell-width">1.2 Why this happens at the live cell width</h3>
+<p>PR #150 switched the column-header type to Oswald uppercase on the theory
+that the condensed font would fit more characters per line and the existing
+ellipsis was a safety net. At the live cell width (~52px after the sort
+indicator and remove button claim their share) even <code>"Manufacturer"</code> still
+clips to <code>MANUF…</code>. Wrapping is the actual fix; the condensed font remains
+beneficial for keeping wrap-count low.</p>
+<h3 id="13-files-touched">1.3 Files touched</h3>
+<ul>
+<li><code>app/frontend/src/App.css</code> (one selector, ~22 lines)</li>
+</ul>
+<h3 id="14-exit-criteria">1.4 Exit criteria</h3>
+<ul>
+<li>[ ] Visual: long column labels (<code>Manufacturer</code>, <code>Network Protocol</code>,
+      <code>Encoder Resolution Bits</code>) wrap to 2 lines instead of <code>…</code>.</li>
+<li>[ ] Visual: short labels (<code>Type</code>, <code>Power</code>) still render on one line.</li>
+<li>[ ] <code>npm test -- --run</code> — unchanged pass/fail counts.</li>
+<li>[ ] <code>npm run lint</code> — unchanged warning count.</li>
+</ul>
+<h3 id="15-recovery-source">1.5 Recovery source</h3>
+<p>The captured diff for this phase lives in the <strong>Appendix A</strong> at the bottom
+of this doc — verbatim from the lost dirty working-tree edit.</p>
+<hr>
+<h2 id="phase-2-catalog-summary-bar">Phase 2 — Catalog summary bar</h2>
+<p><strong>Goal:</strong> port the top of the catalog page (results-head + stat-row +
+toolbar) to match the mock.</p>
+<h3 id="21-scope">2.1 Scope</h3>
+<p>The mock's <code>main.content</code> opens with three blocks:</p>
+<ul>
+<li><strong><code>.results-head</code></strong> — eyebrow (brass uppercase with <code>▼</code> triangle), 32px
+  Oswald headline, results-counts pattern (<code>matching **N** of **TOTAL**</code>
+  with 28px tabular numerals), joined-button toolbar on the right.</li>
+<li><strong><code>.stat-row</code></strong> — 4-cell summary with hard ink borders and 8×8 corner
+  marks. Each cell: Oswald 10px uppercase label + 24px tabular value</li>
+<li>optional unit / accent.</li>
+<li><strong><code>.toolbar</code></strong> — joined buttons (Table / Grid / Compat), active state
+  is ink-on-paper inversion.</li>
+</ul>
+<h3 id="22-current-state">2.2 Current state</h3>
+<p>The React app today has a <code>.results-header</code> or equivalent in <code>App.tsx</code>
+that renders count + filters chips but does NOT have:
+- The eyebrow + triangle pattern
+- The 4-cell stat-row (this is new — derives stats from the current result set)
+- The joined-button toolbar (currently <code>&lt;DensityToggle&gt;</code> + separate
+  view-mode controls scattered in the header)</p>
+<p>The stat-row needs a small TypeScript surface for deriving the 4 stats from
+the filtered result set. Keep it pure-frontend; no backend change.</p>
+<h3 id="23-files-touched">2.3 Files touched</h3>
+<ul>
+<li><code>app/frontend/src/App.tsx</code> (markup, ~50 lines)</li>
+<li><code>app/frontend/src/App.css</code> (selectors, ~150 lines)</li>
+<li>Possibly extract <code>ResultsSummary.tsx</code> + <code>ResultsSummary.css</code> if the JSX
+  grows past 30 lines (per CLAUDE.md's per-component CSS rule).</li>
+</ul>
+<h3 id="24-risk">2.4 Risk</h3>
+<p>Medium. The stat-row needs to derive stats from the result set, which
+means deciding which stats per product type. <strong>Sub-question to surface
+during phase 2 design:</strong> is the stat selection static-per-product-type
+(declared in <code>filters.ts</code>) or computed dynamically (top-4 numeric-range
+attributes by spread)? Recommend static-per-product-type for predictability;
+the mock implies it.</p>
+<h3 id="25-exit-criteria">2.5 Exit criteria</h3>
+<ul>
+<li>[ ] Summary bar renders for <code>drive</code>, <code>motor</code>, <code>gearhead</code>, <code>contactor</code>,
+      <code>robot_arm</code>, <code>electric_cylinder</code> (every <code>ProductType</code>).</li>
+<li>[ ] Toolbar <code>Table</code> toggle preserved as default; new <code>Grid</code> and <code>Compat</code>
+      toggles can stub to "coming soon" or wire to existing modes if any.</li>
+<li>[ ] Eyebrow triangle renders without SVG (CSS triangle per the mock).</li>
+<li>[ ] No new z-index magic numbers (use tokens from PR #150).</li>
+</ul>
+<hr>
+<h2 id="phase-3-catalog-table">Phase 3 — Catalog table</h2>
+<p><strong>Goal:</strong> port the results table to the mock's bordered/ruled shape.</p>
+<h3 id="31-scope">3.1 Scope</h3>
+<ul>
+<li><code>&lt;table&gt;</code> wrapper with <code>border: 1px solid var(--ink)</code>.</li>
+<li><code>thead th</code> — paper-dim background, 2px ink bottom rule, hairline
+  <code>grid-line</code> right rules, Oswald 10px uppercase, optional unit-tag in
+  mono. <code>.is-numeric</code> right-aligned.</li>
+<li><code>tbody td</code> — hairline <code>grid-fine</code> bottom + right separators, hover →
+  <code>paper-warm</code>, <code>.is-numeric</code> tabular right-aligned.</li>
+<li><code>.pn</code> (Oswald 13px part-number) + <code>.mfg</code> (mute 11px mono caption) cell
+  content pattern for the primary identity column.</li>
+<li><code>.tag</code> chips for protocols / certifications cells (1px ink border,
+  uppercase, optional brass-fill variant).</li>
+</ul>
+<h3 id="32-current-state">3.2 Current state</h3>
+<p>The React app has <code>ResultsTable.tsx</code> (or equivalent) and <code>ColumnHeader.tsx</code>.
+PR #150 already ported the column-header <em>type</em>; Phase 1 finishes the wrap.
+Phase 3 ports the surrounding structure: borders, row rules, cell content
+patterns.</p>
+<h3 id="33-risk">3.3 Risk</h3>
+<p>Medium. The largest visual delta in the port. Hover handling and selection
+state need to coexist with the new hairline rules without specificity wars.
+<strong>Watch out:</strong> the current row-selected state uses <code>!important</code> in the
+<code>.column-remove-btn</code> cluster — Phase 3 may need partial Phase 7 work to land
+cleanly, OR Phase 7 lands first and Phase 3 inherits the clean specificity.</p>
+<h3 id="34-files-touched">3.4 Files touched</h3>
+<ul>
+<li><code>app/frontend/src/App.css</code> (table selectors, ~200 lines)</li>
+<li><code>app/frontend/src/components/ColumnHeader.tsx</code> if structural changes needed</li>
+<li>Possibly extract a <code>ResultsTable.css</code> sibling per the per-component CSS rule.</li>
+</ul>
+<h3 id="35-exit-criteria">3.5 Exit criteria</h3>
+<ul>
+<li>[ ] Table renders with hard outer border + hairline inner rules.</li>
+<li>[ ] Sort indicators preserved (PR #150 didn't touch them).</li>
+<li>[ ] Density toggle (cozy / compact) still works.</li>
+<li>[ ] No new <code>!important</code> declarations.</li>
+<li>[ ] Column reorder / hide / sort UX unchanged.</li>
+</ul>
+<hr>
+<h2 id="phase-4-filter-rail">Phase 4 — Filter rail</h2>
+<p><strong>Goal:</strong> port the left filter rail to the mock's 280px / Bauhaus shape.</p>
+<h3 id="41-scope">4.1 Scope</h3>
+<ul>
+<li>Rail container: 280px wide (down from 380px in current app), 2px ink
+  right-border.</li>
+<li><code>.rail-section</code> blocks separated by <code>.rail-head</code> (Oswald uppercase with
+  2px underline) and <code>.badge</code> count on the right.</li>
+<li><code>.rail-type-list</code> for product-type selector: 8×8 ink squares as markers,
+  active state = ink-on-paper inversion, count column right-aligned tabular.</li>
+</ul>
+<h3 id="42-current-state">4.2 Current state</h3>
+<p>The current <code>&lt;FilterSidebar&gt;</code> (or equivalent) is the 380px rigid sidebar
+the PR #150 description called out as rough. It mixes product-type selector,
+active-filter chips, and add-filter UI without strong sectioning. Phase 4
+introduces the rail-section structure.</p>
+<h3 id="43-files-touched">4.3 Files touched</h3>
+<ul>
+<li><code>app/frontend/src/components/FilterSidebar.tsx</code> (or whichever file holds
+  the rail) — possibly rename or split.</li>
+<li>Sibling <code>.css</code> extraction per the per-component CSS rule.</li>
+<li><code>app/frontend/src/App.css</code> — remove the old 380px-wide layout rules.</li>
+</ul>
+<h3 id="44-risk">4.4 Risk</h3>
+<p>Medium. Layout width change (380 → 280) propagates to every page that uses
+the rail. Need to verify density / compact modes still fit at 280px.</p>
+<h3 id="45-exit-criteria">4.5 Exit criteria</h3>
+<ul>
+<li>[ ] Rail width = 280px on desktop, full-width above on mobile (media query
+      at 980px per the mock).</li>
+<li>[ ] Rail-section structure for <code>Product Type</code>, <code>Active Filters</code>,
+      <code>Manufacturer</code> (and any other sections the current sidebar has).</li>
+<li>[ ] Product-type list renders all 6 types with marker + label + count.</li>
+<li>[ ] Active type's count is rendered in <code>--brass-bright</code> per the mock.</li>
+</ul>
+<hr>
+<h2 id="phase-5-filter-chips-add-filter">Phase 5 — Filter chips + add-filter</h2>
+<p><strong>Goal:</strong> complete the rail's filter-row + filter-chip + add-filter pattern.</p>
+<h3 id="51-scope">5.1 Scope</h3>
+<ul>
+<li><code>.filter-row</code> — Oswald 10px uppercase label above, chip below.</li>
+<li><code>.filter-chip</code> — 1px ink border, brass-colored op prefix (<code>≥/≤/IN</code>),
+  divided close-X cell with stamp-red hover.</li>
+<li><code>.add-filter</code> — dashed-border button, hover → solid border.</li>
+</ul>
+<h3 id="52-risk">5.2 Risk</h3>
+<p>Low. Filter state-management contract is preserved; this is purely
+presentational. Operator-prefix logic already exists in the
+<code>FilterChip.tsx</code> value-formatter.</p>
+<h3 id="53-exit-criteria">5.3 Exit criteria</h3>
+<ul>
+<li>[ ] Active filters render with op prefix (<code>≥</code>, <code>≤</code>, <code>=</code>, <code>IN</code>, etc.)
+      in brass.</li>
+<li>[ ] Remove-X button has stamp-red hover.</li>
+<li>[ ] <code>+ ADD FILTER</code> button matches dashed → solid hover.</li>
+<li>[ ] No regression in filter add/remove flow tests.</li>
+</ul>
+<hr>
+<h2 id="phase-6-z-index-call-site-migration-hygiene">Phase 6 — Z-index call-site migration (hygiene)</h2>
+<p><strong>Goal:</strong> migrate the 21 inline <code>z-index</code> values in App.css onto the tokens
+PR #150 added.</p>
+<h3 id="61-scope">6.1 Scope</h3>
+<p>Current inline values to migrate:</p>
+<table>
+<thead>
+<tr>
+<th>Current</th>
+<th>Token</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>z-index: 0</code>, <code>z-index: 1</code>, <code>z-index: 2</code></td>
+<td><code>var(--z-content)</code></td>
+</tr>
+<tr>
+<td><code>z-index: 10</code>, <code>z-index: 30</code></td>
+<td><code>var(--z-toolbar)</code></td>
+</tr>
+<tr>
+<td><code>z-index: 50</code>, <code>z-index: 100</code></td>
+<td><code>var(--z-header)</code></td>
+</tr>
+<tr>
+<td><code>z-index: 999</code>, <code>z-index: 1000</code></td>
+<td><code>var(--z-popover)</code></td>
+</tr>
+<tr>
+<td><code>z-index: 2000</code></td>
+<td><code>var(--z-modal)</code></td>
+</tr>
+<tr>
+<td><code>z-index: 9999</code>, <code>z-index: 10000</code></td>
+<td><code>var(--z-toast)</code></td>
+</tr>
+</tbody>
+</table>
+<p>Mapping requires reading each call site's intent — a <code>z-index: 1000</code> on a
+dropdown is <code>--z-popover</code>, not <code>--z-modal</code>. <strong>Phase 6 is non-trivial
+reading-work</strong> even though the diff is small.</p>
+<h3 id="62-risk">6.2 Risk</h3>
+<p>Low if mappings are done carefully; medium if rushed. The risk is layering
+regressions (modal under dropdown, toast under modal). Mitigation: take
+screenshots of every modal / popover / toast state before and after; visual
+diff.</p>
+<h3 id="63-exit-criteria">6.3 Exit criteria</h3>
+<ul>
+<li>[ ] Zero inline numeric <code>z-index:</code> values in App.css; all tokens.</li>
+<li>[ ] Visual diff of layered surfaces is null.</li>
+<li>[ ] Toast over modal, modal over popover, popover over header, header
+      over content — all preserved.</li>
+</ul>
+<hr>
+<h2 id="phase-7-important-cluster-refactor-hygiene">Phase 7 — <code>!important</code> cluster refactor (hygiene)</h2>
+<p><strong>Goal:</strong> reduce App.css's 116 <code>!important</code> declarations across ~6 clusters
+by refactoring specificity.</p>
+<h3 id="71-the-clusters-from-pr-150s-audit">7.1 The clusters (from PR #150's audit)</h3>
+<ol>
+<li><code>.column-remove-btn</code> — ~20 declarations</li>
+<li>Button-override stack (<code>.btn</code>, <code>.btn-primary</code>, <code>.btn-ghost</code>, etc.) — ~20</li>
+<li>Modal close button — ~10</li>
+<li>Filter chip variants — ~15</li>
+<li>Density-mode overrides (cozy vs compact) — ~25</li>
+<li>Scrollbar / overlay overrides — ~10</li>
+<li>The rest — scattered ~16</li>
+</ol>
+<p>Total ~116 (matches grep count).</p>
+<h3 id="72-approach">7.2 Approach</h3>
+<p>For each cluster:
+1. Identify the original specificity conflict the <code>!important</code> was patching.
+2. Refactor to a single canonical selector with appropriate specificity (use
+   <code>:where()</code> for low-specificity defaults, explicit classes for overrides).
+3. Delete the <code>!important</code>s.</p>
+<p>This is the highest-risk hygiene phase because of the breadth. <strong>Recommendation:</strong> do
+clusters in separate PRs (Phase 7a, 7b, ...) rather than one mega-PR, so each
+is reviewable.</p>
+<h3 id="73-exit-criteria">7.3 Exit criteria</h3>
+<ul>
+<li>[ ] Cluster N's <code>!important</code> count drops to zero.</li>
+<li>[ ] Visual diff for the cluster's surface is null.</li>
+<li>[ ] No new specificity hacks introduced (no <code>[class][class]</code> chains).</li>
+</ul>
+<hr>
+<h2 id="phase-8-modal-pattern-productdetailmodal-chainreviewmodal">Phase 8 — Modal pattern (ProductDetailModal + ChainReviewModal)</h2>
+<p><strong>Goal:</strong> port modal dialogs to the Bauhaus vocabulary (hard borders, no
+rounded corners, no soft shadows).</p>
+<h3 id="81-scope">8.1 Scope</h3>
+<p>The mock does not include a modal, but the vocabulary is derivable:
+- Backdrop: solid <code>var(--ink)</code> at 60% opacity (no blur).
+- Modal frame: 2px ink border, no rounded corners, no drop shadow.
+- Header: Oswald uppercase with 2px ink bottom rule.
+- Close button: square ink-bordered cell with stamp-red hover (mirror the
+  filter-chip <code>.close</code> from Phase 5).
+- Footer: top-ruled action bar with right-aligned hard-bordered buttons.</p>
+<h3 id="82-files-touched">8.2 Files touched</h3>
+<ul>
+<li><code>app/frontend/src/components/ProductDetailModal.tsx</code> + <code>.css</code></li>
+<li><code>app/frontend/src/components/ChainReviewModal.tsx</code></li>
+<li><code>app/frontend/src/components/ui/ConfirmDialog.tsx</code> + <code>.css</code></li>
+<li><code>app/frontend/src/components/ui/FeedbackModal.tsx</code> + <code>.css</code></li>
+</ul>
+<h3 id="83-exit-criteria">8.3 Exit criteria</h3>
+<ul>
+<li>[ ] All modals share the same hard-border + no-shadow vocabulary.</li>
+<li>[ ] No native <code>&lt;dialog&gt;</code> UA chrome (already enforced by the no-native-chrome rule).</li>
+<li>[ ] Modal close button has stamp-red hover.</li>
+<li>[ ] Existing modal-flow tests pass.</li>
+</ul>
+<hr>
+<h2 id="phase-9-buildpage">Phase 9 — BuildPage</h2>
+<p><strong>Goal:</strong> port the Build flow to Bauhaus.</p>
+<h3 id="91-notes">9.1 Notes</h3>
+<p>BuildPage has its own CSS file already (<code>BuildPage.css</code>, 228 lines). Phase 9
+rewrites that file against the mock's vocabulary. The page-level shape
+(stepper / tray / canvas) stays; only the visual layer changes.</p>
+<h3 id="92-risk">9.2 Risk</h3>
+<p>Medium. Build flow has integration tests (<code>BuildPage.test.tsx</code>,
+<code>BuildTray.test.tsx</code>); they assert DOM structure, not visual styling, so
+should survive. Verify regardless.</p>
+<hr>
+<h2 id="phase-10-adminpanel-datasheetspage">Phase 10 — AdminPanel + DatasheetsPage</h2>
+<p><strong>Goal:</strong> port the admin surfaces (AdminPanel, DatasheetsPage,
+ProductManagement) to Bauhaus.</p>
+<h3 id="101-notes">10.1 Notes</h3>
+<p>Largest phase by file count (<code>AdminPanel.css</code> 247 lines,
+<code>ProductManagement.css</code> 258 lines). Mostly tabular layouts that should map
+cleanly onto Phase 3's table vocabulary.</p>
+<h3 id="102-risk">10.2 Risk</h3>
+<p>Medium. Admin surfaces have less test coverage than the catalog flow;
+manual smoke is important here. Run <code>./Quickstart admin</code> flows end-to-end.</p>
+<hr>
+<h2 id="risk-register">Risk register</h2>
+<table>
+<thead>
+<tr>
+<th>Risk</th>
+<th>Likelihood</th>
+<th>Mitigation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Specificity refactor (Phase 7) breaks an obscure override path</td>
+<td>medium</td>
+<td>Per-cluster PRs, not mega-PR; visual diff per cluster</td>
+</tr>
+<tr>
+<td>Rail width change (Phase 4: 380 → 280) breaks at density-compact</td>
+<td>low</td>
+<td>Test all density modes before merge</td>
+</tr>
+<tr>
+<td>Stat-row derivation (Phase 2) is wrong for an under-tested product type</td>
+<td>medium</td>
+<td>Stat selection static-per-product-type, not dynamic; explicit per-type test fixtures</td>
+</tr>
+<tr>
+<td>Z-index mappings (Phase 6) miscategorise a <code>z-index: 1000</code> as popover when it's actually modal</td>
+<td>low</td>
+<td>Manual layering review; screenshot diff</td>
+</tr>
+<tr>
+<td>App.css mega-file conflicts on every parallel PR</td>
+<td>high (already burning)</td>
+<td>Aggressive per-component CSS extraction during each phase (already the established pattern)</td>
+</tr>
+<tr>
+<td>Modal vocabulary divergence between Phase 8 modals and Phase 5 chips' close-X</td>
+<td>low</td>
+<td>Both reference same <code>.close</code> selector or a shared <code>--close-button-pattern</code> mixin</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="what-this-deliberately-does-not-do">What this deliberately does not do</h2>
+<ul>
+<li><strong>Dark theme rework.</strong> The espresso variant derives from the same tokens
+  and follows automatically per surface. Validate at each phase's exit;
+  don't dedicate a phase to it.</li>
+<li><strong>Mobile redesign.</strong> The mock has one media query at 980px (rail collapses
+  to top bar, stat-row to 2-column). Each visual phase includes its own
+  responsive behaviour; no separate mobile phase.</li>
+<li><strong>Frontend logic.</strong> This is CSS + minimal JSX className/structure changes
+  only. No state-management or data-fetching changes.</li>
+<li><strong>Welcome page and AuthModal.</strong> Outside the catalog flow, distinct visual
+  identity. Out of scope.</li>
+<li><strong>Backend, API, infrastructure.</strong> Untouched.</li>
+<li><strong>Replacing existing component libraries.</strong> No <code>shadcn</code>, no <code>radix</code>,
+  no <code>MUI</code>. The app-native primitives pattern stays per CLAUDE.md.</li>
+<li><strong>New design tokens.</strong> Phases 2–10 consume the tokens added in PR #150
+  and nothing else. If a phase needs a new token, surface it for review
+  before adding.</li>
+</ul>
+<hr>
+<h2 id="triggers-when-to-revisit-this-doc">Triggers — when to revisit this doc</h2>
+<ul>
+<li>Wave-N PR opened → mark Phase N as <code>🚧 in flight</code> here.</li>
+<li>Wave-N PR merged → mark Phase N as <code>✅ shipped &lt;date&gt;</code>.</li>
+<li>Mock changes (<code>docs/design/bauhaus-catalog.html</code>) → re-read the surface
+  table in §1 to see which phases the diff affects.</li>
+<li>Audit re-runs (<code>grep -c '!important' App.css</code>, <code>grep -c 'z-index' App.css</code>)
+  and the counts increase → flag the regression on the relevant phase.</li>
+</ul>
+<hr>
+<h2 id="references">References</h2>
+<ul>
+<li><a href="../docs/design/bauhaus-catalog.html"><code>docs/design/bauhaus-catalog.html</code></a> — target visual mock (829 lines, self-contained)</li>
+<li><a href="../docs/design/index.html"><code>docs/design/index.html</code></a> — design lab with all three explored directions</li>
+<li><a href="https://github.com/JimothyJohn/specodex/pull/136">PR #136</a> — three direction explorations; Bauhaus picked</li>
+<li><a href="https://github.com/JimothyJohn/specodex/pull/150">PR #150</a> — wave 1 (tokens + header + filter chip + Oswald column headers)</li>
+<li><a href="../CLAUDE.md">CLAUDE.md</a> — "No native browser/OS chrome" and "Per-component CSS files" rules that constrain every phase</li>
+</ul>
+<hr>
+<h2 id="appendix-a-phase-1-recovery-diff-captured-2026-05-12">Appendix A — Phase 1 recovery diff (captured 2026-05-12)</h2>
+<p>The dirty working-tree edit lost in cross-session reflog churn. Re-apply
+this to <code>app/frontend/src/App.css</code> near line 6740 as the entire content of
+Phase 1.</p>
+<pre><code class="language-diff">@@ -6740,16 +6740,18 @@ input.transmission-param-input {
+   font-weight: 600;
+   letter-spacing: 0.16em;
+   text-transform: uppercase;
+-  /* Bauhaus stencil label. Column headers were proportional-cased mono
+-   * with `nowrap + ellipsis`, which clipped long attribute names into
+-   * &quot;Re…&quot; — one of the two truncation surfaces the audit called out.
+-   * Switching to Oswald uppercase reads as a manual heading and the
+-   * ellipsis is no longer the only resort because the headline font
+-   * is condensed. We still clip on very long labels, but at the cell
+-   * width it now takes a *real* outlier to lose information. */
+-  white-space: nowrap;
+-  overflow: hidden;
+-  text-overflow: ellipsis;
++  line-height: 1.15;
++  /* Wrap to multiple lines rather than ellipsis-clipping. PR #150
++   * switched to Oswald (condensed) on the theory that more characters
++   * would fit on one line, but at the live cell width (~52px after
++   * the sort indicator and remove button claim their share) even
++   * &quot;Manufacturer&quot; still clips to &quot;MANUF…&quot;. Mirror the same wrap
++   * treatment used on .filter-attribute: word-break + overflow-wrap,
++   * no nowrap, no ellipsis. The header grows by ~17px on long labels
++   * — cheap given the column-header is already 208px tall. */
++  word-break: break-word;
++  overflow-wrap: anywhere;
++  min-width: 0;
+ }
+
+ .column-header-slider {
+</code></pre>
+<p>Selector context: this is inside <code>.column-header-label-text</code> in the
+<code>/* === Column header (sticky table header cell) === */</code> region of
+<code>app/frontend/src/App.css</code>. The selector starts at approximately line 6735
+(check before applying — surrounding code may have shifted in any
+intervening commits).</p>
+        </article>
+    </main>
+
+    <footer>
+        <div class="footer-inner">
+            <a class="footer-link" href="../roadmap.html">← Back to roadmap</a>
+            <span class="footer-rule" aria-hidden="true"></span>
+            <a class="footer-link" href="https://github.com/JimothyJohn/specodex/blob/master/todo/BAUHAUS.md" rel="noreferrer">Edit on GitHub</a>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Status: 📐 design-only as of 2026-05-09. No code lands until the scope below is signed off.">
+    <meta name="theme-color" content="#3A2C1C">
+    <title>Specodex — Growth CLI: `./Quickstart growth` — awareness first, measurement later</title>
+    <link rel="icon" type="image/svg+xml" href="../logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-issue="GROWTH CLI: `./QUICKSTAR">
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="band">
+        <div class="band-inner">
+            <a class="band-brand" href="../index.html">
+                <svg class="band-mark" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <rect width="120" height="120" fill="#E8E2C9"/>
+                    <rect x="14" y="14" width="92" height="92" fill="none" stroke="#1A1A14" stroke-width="3"/>
+                    <rect x="14" y="14" width="92" height="22" fill="#3A2C1C"/>
+                    <rect x="62" y="60" width="40" height="10" fill="#A88A1C"/>
+                    <line x1="14" y1="56" x2="106" y2="56" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="74" x2="106" y2="74" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="92" x2="106" y2="92" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="60" y1="36" x2="60" y2="106" stroke="#1A1A14" stroke-width="2"/>
+                </svg>
+                <span class="wordmark">SPECODEX</span>
+            </a>
+            <nav class="band-nav" aria-label="Section">
+                <a href="../index.html">Catalog</a>
+                <a href="../roadmap.html">Roadmap</a>
+                <a href="https://github.com/JimothyJohn/specodex/blob/master/todo/longterm/GROWTH_CLI.md" rel="noreferrer">Source</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="doc-hero">
+            <div class="hero-tag">▮▮▮ LONGTERM GROWTH CLI ▮▮▮</div>
+            <h1 class="hero-title">Growth CLI: `./Quickstart growth` — awareness first, measurement later</h1>
+            <div class="doc-meta">
+                <span class="status-chip status-deferred">DEFERRED (LONGTERM/)</span>
+                <span class="doc-source"><code>todo/longterm/GROWTH_CLI.md</code></span>
+            </div>
+        </section>
+
+        <article class="doc-body">
+<h1 id="growth-cli-quickstart-growth-awareness-first-measurement-later">Growth CLI: <code>./Quickstart growth</code> — awareness first, measurement later</h1>
+<p>Status: 📐 <strong>design-only as of 2026-05-09.</strong> No code lands until the
+scope below is signed off.</p>
+<h2 id="why-this-doc-exists">Why this doc exists</h2>
+<p>Nick asked: <em>"Let's develop a CLI to incorporate common marketing CLIs
+like Google Cloud, Meta, etc. so we maximize our engagement footprint
+and begin to build a feedback loop of engagement, improvement,
+awareness, and iteration."</em></p>
+<p>After one pass through <code>todo/MARKETING.md</code>, two things
+re-shaped the scope:</p>
+<ol>
+<li><strong><code>MARKETING.md</code> puts paid ads in the "Don't bother" column</strong> — <em>"The
+   CPM for 'industrial engineer' is brutal and the audience tunes out.
+   Re-evaluate at $10k MRR."</em> Meta is not even named. So a Google Ads /
+   Meta Marketing / LinkedIn Ads orchestrator is out — directly contrary
+   to the active marketing thesis.</li>
+<li><strong>There is no footprint yet to measure.</strong> Nick (2026-05-09): <em>"I
+   don't expect any actual hits yet because I'm not reaching out, we
+   need to focus solely on awareness before we build a footprint, and
+   after we have a footprint we can start seeing what's working."</em>
+   Wiring Search Console / GitHub traffic / CloudFront analytics on
+   week zero produces a digest of zeros. The order is: build a
+   footprint first → then measure what's working.</li>
+</ol>
+<p>So the CLI breaks into two halves on different clocks:</p>
+<ul>
+<li><strong>Awareness half (now).</strong> A small set of helpers that make the
+  <em>outbound</em> push from MARKETING.md cheaper and less error-prone —
+  <em>without</em> automating the actual posting. Peer signal collapses if
+  posts read as automated, so the human stays in the loop.</li>
+<li><strong>Measurement half (deferred).</strong> The Search Console + GitHub +
+  CloudFront + Stripe digest from the prior version of this doc.
+  Worth nothing until there's traffic; revisit once MARKETING.md
+  phase 1 (Show HN + r/PLC + r/AskEngineers + awesome-* PRs) has
+  shipped and produced its first week of signal.</li>
+</ul>
+<h2 id="what-the-cli-does-awareness-half-phase-1">What the CLI does (awareness half — phase 1)</h2>
+<p>One subcommand, read-only against the local repo + prod deployment +
+the GitHub board. Outputs to stdout. Does not post anywhere.</p>
+<h3 id="quickstart-growth-preflight"><code>./Quickstart growth preflight</code></h3>
+<p>The pre-flight gate before pressing post on a high-traffic channel
+(Show HN, r/PLC, etc.). Composes existing commands and the board:</p>
+<ul>
+<li><code>./Quickstart smoke https://datasheets.advin.io</code> (or <code>specodex.com</code>
+  once the rebrand cutover ships) — every canonical endpoint must
+  200 with the expected shape.</li>
+<li><code>./Quickstart bench</code> — offline quality run; flag any
+  precision/recall regression vs <code>outputs/benchmarks/latest.json</code>.</li>
+<li><code>gh project item-list 1 --owner JimothyJohn</code> — flag any P0 card
+  in <code>In progress</code> / <code>In review</code> / <code>Backlog</code> status.</li>
+<li>Git state — flag any uncommitted changes on master, or master not
+  matching origin.</li>
+</ul>
+<p>Output is one of:</p>
+<pre><code>GROWTH PREFLIGHT — READY
+✓ smoke: 5/5 endpoints healthy
+✓ bench: precision 0.91 (Δ +0.01), recall 0.84 (Δ -0.00)
+✓ board: no P0 cards open
+✓ git:   master clean, in sync with origin
+</code></pre>
+<p>or:</p>
+<pre><code>GROWTH PREFLIGHT — HOLD
+✗ smoke: /api/v1/search?type=motor returned 400
+✓ bench: precision 0.91, recall 0.84
+✗ board: P0 card open — "Stripe webhook signature broken"
+✓ git:   master clean
+</code></pre>
+<p>Why this is worth building: MARKETING.md is explicit that <em>"a
+high-profile post on HN/Reddit with a broken comparison is worse than
+no post"</em>. The cost of one broken Show HN is a 90-day cooldown before
+resubmission. One command that gates against that is worth the build.</p>
+<h3 id="out-of-scope-phase-1">Out of scope (phase 1)</h3>
+<ul>
+<li><strong>No automated posting.</strong> No HN submit API, no Reddit submit, no
+  LinkedIn API call. Peer signal evaporates instantly when posts
+  read as bot-driven; MARKETING.md is unambiguous about this.</li>
+<li><strong>No paid-ads APIs.</strong> Not Google Ads, not Meta Marketing, not
+  LinkedIn Ads. Per MARKETING.md "Don't bother" until $10k MRR.</li>
+<li><strong>No checklist tracker.</strong> A <code>todo/MARKETING.md</code> checkbox or a
+  Project board card is cheaper than a state-file CLI. Skip until
+  the manual approach actually creaks.</li>
+<li><strong>No draft templating.</strong> Nick writes his own posts. The maintainer
+  voice is part of the trust signal; CLI-templated post drafts are
+  not.</li>
+<li><strong>No <code>facts</code> subcommand.</strong> A "live numbers for embedding in a post"
+  dump was scoped here briefly (2026-05-09), then dropped: the
+  numbers are one curl + one <code>outputs/benchmarks/latest.json</code> read
+  away, and Nick will be writing the post by hand anyway. Skip until
+  someone is actually drafting a post and finding the manual lookup
+  annoying.</li>
+</ul>
+<h2 id="what-the-cli-does-measurement-half-deferred">What the CLI does (measurement half — deferred)</h2>
+<p>Picked up only after MARKETING.md phase 1 produces its first week of
+signal. The full surface from the prior version of this doc, in
+order of dependency:</p>
+<table>
+<thead>
+<tr>
+<th>Phase</th>
+<th>Surface</th>
+<th>Pulls</th>
+<th>Auth</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>2</strong></td>
+<td>GitHub repo traffic</td>
+<td>stars Δ, clones, top referrers, top paths</td>
+<td><code>gh auth token</code> (already on dev box)</td>
+</tr>
+<tr>
+<td><strong>3</strong></td>
+<td>Google Search Console</td>
+<td>impressions, clicks, top queries, new top-10s</td>
+<td>OAuth installed-app refresh token in <code>.env</code></td>
+</tr>
+<tr>
+<td><strong>4</strong></td>
+<td>CloudFront access logs</td>
+<td>sessions/week, top paths, 4xx ratio, cache hits</td>
+<td>existing AWS creds; verify log bucket exists first</td>
+</tr>
+<tr>
+<td><strong>5</strong></td>
+<td>HN / Reddit mentions</td>
+<td>new threads referencing <code>specodex.com</code>, <code>datasheets.advin.io</code>, <code>specodex</code></td>
+<td>Algolia HN (no auth); Reddit JSON (no auth)</td>
+</tr>
+<tr>
+<td><strong>6</strong></td>
+<td>Stripe (when paid surface ships)</td>
+<td>new subs, MRR, churn</td>
+<td>restricted read-only key</td>
+</tr>
+<tr>
+<td><strong>7</strong></td>
+<td>Threshold flags</td>
+<td>new top-10 GSC query, 4xx spike, new referrer never seen before</td>
+<td>local logic only</td>
+</tr>
+</tbody>
+</table>
+<p>Output: <code>outputs/growth/&lt;yyyy-mm-dd&gt;.md</code> weekly digest plus a
+terminal summary, mirroring the bench output pattern. Each phase
+ships standalone — kill the project between phases if the value
+isn't there.</p>
+<h2 id="phasing">Phasing</h2>
+<table>
+<thead>
+<tr>
+<th>Phase</th>
+<th>Scope</th>
+<th>Size</th>
+<th>Gate to next</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>1 — Preflight.</strong> Compose <code>smoke</code> + <code>bench</code> + board + git into one gate.</td>
+<td>XS</td>
+<td>One real run produces a meaningful HOLD on a known-broken state.</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>— wait —</strong></td>
+<td>First week of MARKETING.md phase 1 traffic must land before phase 2 starts. The gate is "did we actually post anywhere?", not a date.</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td><strong>2 — GitHub traffic.</strong> Stars, clones, referrers.</td>
+<td>XS</td>
+<td>One real digest readable end-to-end.</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>3 — Search Console.</strong></td>
+<td>S</td>
+<td>OAuth refresh token wired without a credential leak.</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>4 — CloudFront logs.</strong></td>
+<td>M</td>
+<td>Numbers reconcile within 5% of a manual spot-check.</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>5 — HN + Reddit mentions.</strong></td>
+<td>XS</td>
+<td>Surfaces a known-good past mention.</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>6 — Stripe.</strong></td>
+<td>XS</td>
+<td>Stripe MRR &gt; $0 in test mode.</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>7 — Threshold flags.</strong></td>
+<td>S</td>
+<td>At least one flag fires on real data.</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h2 id="implementation-sketch-phase-1">Implementation sketch (phase 1)</h2>
+<ul>
+<li><strong>Module:</strong> <code>cli/growth.py</code>, dispatched via
+  <code>./Quickstart growth &lt;subcommand&gt;</code>.</li>
+<li><strong>Subcommands:</strong> <code>preflight</code>. Future: <code>traffic</code>, <code>search</code>,
+  <code>cloudfront</code>, <code>mentions</code>, <code>stripe</code>, <code>digest</code>.</li>
+<li><strong>Sources:</strong> one source = one module under
+  <code>specodex/growth/&lt;source&gt;.py</code> with a single <code>fetch(window) -&gt; dict</code>
+  function. The CLI composes them.</li>
+<li><strong>Cache.</strong> Each fetch writes raw JSON to
+  <code>outputs/growth/.cache/&lt;source&gt;/&lt;yyyy-mm-dd&gt;.json</code>; subsequent
+  runs read cache when present. Mirrors the bench cache pattern.</li>
+<li><strong>Secrets.</strong> All new env vars added to <code>.env.example</code> with one-line
+  comments. No credential file beyond <code>.env</code>.</li>
+<li><strong>Tests.</strong> <code>tests/unit/test_growth_*.py</code> per module, fixtured
+  against a recorded JSON response. No live calls in CI.</li>
+</ul>
+<h2 id="open-questions-for-phases-2">Open questions (for phases 2+)</h2>
+<ul>
+<li><strong>GSC property URL.</strong> Both <code>specodex.com</code> and <code>datasheets.advin.io</code>
+  verified as Search Console properties? Phase 3 ships with whichever
+  is verified.</li>
+<li><strong>CloudFront log bucket.</strong> Confirm the bucket name + read perms
+  per stage before scoping phase 4. If logs aren't enabled, that's
+  a CDK change in <code>app/infrastructure/</code> — out of this CLI's scope.</li>
+</ul>
+<h2 id="triggers">Triggers</h2>
+<table>
+<thead>
+<tr>
+<th>Trigger (files / topics in your current task)</th>
+<th>Surface</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>User mentions "growth CLI", "engagement footprint", "marketing CLI", "feedback loop on traffic", "preflight", "Show HN check", "facts dump for a post"</td>
+<td>this doc</td>
+</tr>
+<tr>
+<td>User asks to wire Search Console, GitHub traffic, CloudFront logs, HN/Reddit mentions, or Stripe metrics into a report</td>
+<td>this doc</td>
+</tr>
+<tr>
+<td><code>cli/growth.py</code> or <code>specodex/growth/</code> created or modified</td>
+<td>this doc</td>
+</tr>
+<tr>
+<td>Any conversation about <em>paid</em> spend on Google / Meta / LinkedIn</td>
+<td>this doc + MARKETING.md "Don't bother"</td>
+</tr>
+<tr>
+<td>Before any high-traffic post (Show HN, r/PLC, awesome-* PR)</td>
+<td>run <code>./Quickstart growth preflight</code> (once phase 1a ships)</td>
+</tr>
+</tbody>
+</table>
+        </article>
+    </main>
+
+    <footer>
+        <div class="footer-inner">
+            <a class="footer-link" href="../roadmap.html">← Back to roadmap</a>
+            <span class="footer-rule" aria-hidden="true"></span>
+            <a class="footer-link" href="https://github.com/JimothyJohn/specodex/blob/master/todo/longterm/GROWTH_CLI.md" rel="noreferrer">Edit on GitHub</a>
+        </div>
+    </footer>
+</body>
+</html>

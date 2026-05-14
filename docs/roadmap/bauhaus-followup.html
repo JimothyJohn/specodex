@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="The catalog page and every modal are Bauhaus-ported. What's left is BuildPage (Phase 9), AdminPanel + DatasheetsPage + ProductManagement (Phase 10), and the def">
+    <meta name="theme-color" content="#3A2C1C">
+    <title>Specodex — BAUHAUS port — follow-up status</title>
+    <link rel="icon" type="image/svg+xml" href="../logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-issue="BAUHAUS PORT — FOLLOW-UP">
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="band">
+        <div class="band-inner">
+            <a class="band-brand" href="../index.html">
+                <svg class="band-mark" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <rect width="120" height="120" fill="#E8E2C9"/>
+                    <rect x="14" y="14" width="92" height="92" fill="none" stroke="#1A1A14" stroke-width="3"/>
+                    <rect x="14" y="14" width="92" height="22" fill="#3A2C1C"/>
+                    <rect x="62" y="60" width="40" height="10" fill="#A88A1C"/>
+                    <line x1="14" y1="56" x2="106" y2="56" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="74" x2="106" y2="74" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="92" x2="106" y2="92" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="60" y1="36" x2="60" y2="106" stroke="#1A1A14" stroke-width="2"/>
+                </svg>
+                <span class="wordmark">SPECODEX</span>
+            </a>
+            <nav class="band-nav" aria-label="Section">
+                <a href="../index.html">Catalog</a>
+                <a href="../roadmap.html">Roadmap</a>
+                <a href="https://github.com/JimothyJohn/specodex/blob/master/todo/BAUHAUS_FOLLOWUP.md" rel="noreferrer">Source</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="doc-hero">
+            <div class="hero-tag">▮▮▮ BAUHAUS FOLLOWUP ▮▮▮</div>
+            <h1 class="hero-title">BAUHAUS port — follow-up status</h1>
+            <div class="doc-meta">
+                <span class="status-chip status-inflight">IN FLIGHT</span>
+                <span class="doc-source"><code>todo/BAUHAUS_FOLLOWUP.md</code></span>
+            </div>
+        </section>
+
+        <article class="doc-body">
+<h1 id="bauhaus-port-follow-up-status">BAUHAUS port — follow-up status</h1>
+<blockquote>
+<p>Companion to <a href="BAUHAUS.md"><code>todo/BAUHAUS.md</code></a> — that's the plan, this is
+the state. Pick this up when you sit back down. Last updated end of
+the 2026-05-12 session.</p>
+</blockquote>
+<hr>
+<h2 id="tldr">TL;DR</h2>
+<p>The catalog page and every modal are Bauhaus-ported. What's left is
+<strong>BuildPage</strong> (Phase 9), <strong>AdminPanel + DatasheetsPage + ProductManagement</strong>
+(Phase 10), and the deferred <strong><code>!important</code> cluster sweep</strong> (Phase 7).
+Two visual threads I never nailed down: filter chip internals (you said
+"internals look wrong beyond what I shipped" but the specific element
+was never identified), and the slider "fine resolution" ask (continuous-
+interpolation interpretation in PR #180 was wrong, reverted via #181;
+the actual intent is undefined).</p>
+<hr>
+<h2 id="what-shipped-today">What shipped today</h2>
+<p>Grouped by area, with PR links and one-line "what it does":</p>
+<h3 id="foundation">Foundation</h3>
+<ul>
+<li><a href="https://github.com/JimothyJohn/specodex/pull/158">#158</a> — <code>todo/BAUHAUS.md</code> plan doc (10-phase roadmap).</li>
+</ul>
+<h3 id="catalog-page-top-to-bottom">Catalog page (top to bottom)</h3>
+<ul>
+<li><a href="https://github.com/JimothyJohn/specodex/pull/170">#170</a> Phase 2a — <code>.page-toolbar</code> Bauhaus restyle (2px ink rule, Oswald numerals, brass percent, ink-on-paper Clear button).</li>
+<li><a href="https://github.com/JimothyJohn/specodex/pull/171">#171</a> Phase 2b — Collapsible <code>CatalogStatRow</code> component (4-cell stats over filtered set; drive + motor today, easy to extend).</li>
+<li><a href="https://github.com/JimothyJohn/specodex/pull/172">#172</a> Phase 3 — Catalog table outer frame + hairline cell rules + Oswald part numbers + mono mfg captions + dropped zebra striping.</li>
+<li><a href="https://github.com/JimothyJohn/specodex/pull/173">#173</a> Phase 4b — Column-header section treatment (2px ink underline, 0.16em tracking, hairline column separators).</li>
+<li><a href="https://github.com/JimothyJohn/specodex/pull/159">#159</a> Phase 1 — Column-header label wrap recovery (the lost edit).</li>
+<li><a href="https://github.com/JimothyJohn/specodex/pull/176">#176</a> — Column-header sort button can grow when label wraps (was clipping at fixed 22px).</li>
+</ul>
+<h3 id="filter-rail">Filter rail</h3>
+<ul>
+<li><a href="https://github.com/JimothyJohn/specodex/pull/161">#161</a> Phase 5 — Filter chip internals: brass op-prefix, hard-divided stamp-red close-X, dashed <code>+ ADD FILTER</code>.</li>
+<li><a href="https://github.com/JimothyJohn/specodex/pull/162">#162</a> Phase 4 partial — Filter sidebar width 380px → 280px (only affects DatasheetList — the catalog has no rail).</li>
+</ul>
+<h3 id="modal-vocabulary-all-four-now-share-one">Modal vocabulary (all four now share one)</h3>
+<ul>
+<li><a href="https://github.com/JimothyJohn/specodex/pull/164">#164</a> Phase 8a — <code>ConfirmDialog</code> (reference implementation).</li>
+<li><a href="https://github.com/JimothyJohn/specodex/pull/165">#165</a> Phase 8b — <code>FeedbackModal</code> (inherits ConfirmDialog frame + form-internal styling).</li>
+<li><a href="https://github.com/JimothyJohn/specodex/pull/182">#182</a> Phase 8c — <code>ProductDetailModal</code> (incl. spec section heads; spec-table internals deferred).</li>
+<li><a href="https://github.com/JimothyJohn/specodex/pull/183">#183</a> Phase 8d — <code>ChainReviewModal</code>.</li>
+</ul>
+<h3 id="slider-visual-perf">Slider visual + perf</h3>
+<ul>
+<li><a href="https://github.com/JimothyJohn/specodex/pull/177">#177</a> — Slider rail/region/thumb/value-pill Bauhaus port (squared, ink borders, dropped drop-shadow + halo stacks; thumb stays circular as a drag affordance).</li>
+<li><a href="https://github.com/JimothyJohn/specodex/pull/178">#178</a> — Initial perf attempt: <code>startTransition</code> on <code>onFilterChange</code> + local-thumb state. Helped but still laggy.</li>
+<li><a href="https://github.com/JimothyJohn/specodex/pull/179">#179</a> — Real perf fix: <code>DistributionChart</code>'s <code>anchorNumeric</code> memo had <code>products</code> in its deps even though the body resolved <code>allProducts ?? products</code> (always <code>allProducts</code> from ColumnHeader). Memo invalidated on every drag tick, walking 6k items + sorting per column. Hoisted the ternary out of the memo. Synchronous filter path works at 60Hz now. Dropped the startTransition.</li>
+<li><a href="https://github.com/JimothyJohn/specodex/pull/175">#175</a> — Sort indicator + sort-priority badge + alignment fix (dropped brass glow, squared the priority badge, centered the label-and-indicator pair).</li>
+<li><a href="https://github.com/JimothyJohn/specodex/pull/174">#174</a> — <code>useDeferredValue</code> on CatalogStatRow products + computed-column header wrap (<code>.product-grid-header-label</code>).</li>
+</ul>
+<h3 id="hygiene">Hygiene</h3>
+<ul>
+<li><a href="https://github.com/JimothyJohn/specodex/pull/160">#160</a> Phase 6 — <code>App.css</code> z-index call-site migration (12 of 20 sites; 8 intentionally left as numeric for intra-component / decorative stacking).</li>
+<li><a href="https://github.com/JimothyJohn/specodex/pull/163">#163</a> Phase 6b — Per-component CSS z-index migration (Toast, ConfirmDialog, ProductManagement).</li>
+</ul>
+<h3 id="unrelated-still-landed-this-session">Unrelated (still landed this session)</h3>
+<ul>
+<li><a href="https://github.com/JimothyJohn/specodex/pull/155">#155</a> — <code>chore(dependabot)</code>: ignore uuid majors until Express deletion.</li>
+<li><a href="https://github.com/JimothyJohn/specodex/pull/169">#169</a> — <code>fix(smoke)</code>: retry once on known-transient AWS-edge deny (closes <a href="https://github.com/JimothyJohn/specodex/issues/151">#151</a>).</li>
+</ul>
+<h3 id="reverts">Reverts</h3>
+<ul>
+<li><a href="https://github.com/JimothyJohn/specodex/pull/181">#181</a> — Reverted <a href="https://github.com/JimothyJohn/specodex/pull/180">#180</a> (continuous-value slider) after you reported "it just got worse." See landmines below.</li>
+</ul>
+<hr>
+<h2 id="whats-left-in-the-plan">What's left in the plan</h2>
+<table>
+<thead>
+<tr>
+<th>Phase</th>
+<th>Surface</th>
+<th>Effort</th>
+<th>State</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>7</td>
+<td><code>!important</code> cluster sweep (116 across 36 selector leaves, 6 families)</td>
+<td>M</td>
+<td><strong>Deferred</strong> — needs browser inspector to read specificity conflicts before refactoring</td>
+</tr>
+<tr>
+<td>9</td>
+<td>BuildPage</td>
+<td>M</td>
+<td>Untouched</td>
+</tr>
+<tr>
+<td>10</td>
+<td>AdminPanel + DatasheetsPage + ProductManagement</td>
+<td>L</td>
+<td>Untouched</td>
+</tr>
+</tbody>
+</table>
+<p>The catalog itself is <strong>structurally done</strong>. Phase 9/10 are non-catalog surfaces (build flow + admin tools).</p>
+<hr>
+<h2 id="open-threads-with-no-clear-resolution">Open threads with no clear resolution</h2>
+<h3 id="1-filter-chip-internals">1. Filter chip internals</h3>
+<p>You said in this session: <em>"the chip internals look wrong beyond what I shipped."</em> When asked which element, you confirmed "yes" but never named the specific component. We pivoted into slider work and never came back. <strong>Best guess:</strong> the chip container itself (<code>.filter-chip-minimal</code>) was never ported — Phase 5 only touched the inside (operator, remove-X, +ADD FILTER), so the outer container still has soft <code>--border-color</code> and the prior background, while the inside is hard-Bauhaus. The mismatch reads as broken. Next pickup should ask you to confirm, then port <code>.filter-chip-minimal</code> (1px ink border, flat paper, squared corners — same vocabulary as the other chip-like cells).</p>
+<h3 id="2-slider-fine-resolution">2. Slider "fine resolution"</h3>
+<p>You said <em>"i want the slider to have a fine resolution."</em> I interpreted as continuous interpolation between catalog points (PR #180). You said <em>"it just got worse"</em> and we reverted via <a href="https://github.com/JimothyJohn/specodex/pull/181">#181</a>. The actual intent is undefined. Possibilities from the original menu that weren't picked:
+- Continuous values (PR #180's interpretation — REJECTED)
+- More pixels per value on the track (longer slider)
+- Drop percentile mapping, go linear
+- Something else entirely</p>
+<p><strong>Don't re-attempt without asking what specifically "fine resolution" means.</strong> Guessing again risks another revert.</p>
+<h3 id="3-histogram-bar-styling">3. Histogram bar styling</h3>
+<p>Bars are rendered inside <code>DistributionChart.tsx</code> (component-internal SVG/canvas, didn't trace fully). The slider track around them is now Bauhaus-vocabulary (PR #177) but the histogram bars themselves haven't been touched. Likely small fix — bars are probably already squared <code>&lt;rect&gt;</code> SVG; need a color/tracking review. Easy follow-up.</p>
+<h3 id="4-productdetailmodal-spec-table-internals">4. ProductDetailModal spec-table internals</h3>
+<p>PR #182 ported the modal frame + header + close + section heads, but left the spec-table internals (row label/value text, units, nested sub-tables) un-ported. Current treatment is readable; I called it "could read as over-touched" if pushed further into Bauhaus. Up to you whether to polish or leave.</p>
+<h3 id="5-the-8-inline-z-indexes-in-appcss">5. The 8 inline z-indexes in App.css</h3>
+<p>PR #160 migrated 12 of 20 sites; 8 remain (intra-component stacking + <code>::before</code> decorations like vignette + scan-lines). PR #160's description asked: <em>add a <code>--z-local</code> / <code>--z-decoration</code> token, or leave numeric?</em> No answer yet. Leaving numeric with comments is the safer default.</p>
+<hr>
+<h2 id="landmines-where-i-made-wrong-calls-today">Landmines (where I made wrong calls today)</h2>
+<p>These are documented so you don't have to dig through the conversation to find them.</p>
+<h3 id="parallel-session-head-shift-in-shared-worktree">Parallel-session HEAD shift in shared worktree</h3>
+<p>Mid-session another agent was active in <code>/Users/nick/github/specodex</code> working on <code>auto/drift-audit-ci-152-20260512</code> (PR #168). Between my <code>git checkout -b fix/smoke-retry-...</code> and my <code>git commit</code>, their session moved HEAD to their branch, so my smoke-retry commit (<code>c3f7fc9</code>) landed on top of THEIR work-in-progress. I recovered via cherry-pick onto the correct branch, and they cleanly rebased my mistaken commit out of their branch.</p>
+<p><strong>Lesson for next session:</strong> run <code>git branch --show-current</code> immediately before every <code>git commit</code> in this shared worktree, not just at session start. The parallel sessions are real and HEAD moves silently.</p>
+<p>If you want isolated sessions in future, <code>git worktree add ../specodex-bauhaus design/bauhaus-port-tokens-header-table-20260510</code> would have prevented this.</p>
+<h3 id="continuous-slider-pr-180">Continuous slider PR #180</h3>
+<p>Interpreted "fine resolution" wrong. Reverted via #181. Listed in open threads above. <strong>Ask before re-attempting.</strong></p>
+<h3 id="phase-4bs-rail-port-doesnt-apply">Phase 4b's "rail port" doesn't apply</h3>
+<p>The plan's Phase 4 assumed the catalog had a left filter rail. Surveying the React app: it doesn't. The catalog uses per-column filter UI (histogram + slider + operator inside each <code>ColumnHeader</code>). The mock's rail-section-with-marker pattern translated to "column header section treatment" — PR #173 added a 2px ink underline + 0.16em tracking + hairline column separators. <strong>If you want the full mock layout (left rail with type list + filter chips), that's a structural UX shift, not a CSS port.</strong> Phase 4 in the plan is over-spec'd against the actual app.</p>
+<h3 id="file-state-collision-in-autodrift-audit-ci-152-20260512-worktree">File-state collision in <code>auto/drift-audit-ci-152-20260512</code> worktree</h3>
+<p>When I checked out the parallel-session branch by mistake, my <code>git add</code> picked up the OTHER session's staged <code>drift-audit.yml</code> file along with my test files. The cleanup involved a <code>git reset --mixed HEAD~1</code> + cherry-pick. If you see commits mixing concerns in shared worktrees in future, that's a likely cause.</p>
+<hr>
+<h2 id="recommended-next-pickup">Recommended next pickup</h2>
+<p>In order of estimated value:</p>
+<ol>
+<li><strong>Resolve the filter chip internals thread.</strong> Ask Nick which specific chip element looks wrong; my guess is <code>.filter-chip-minimal</code> container. If yes, single small PR (1 selector, ~20 lines CSS).</li>
+<li><strong>Phase 9 — BuildPage.</strong> Self-contained (<code>BuildPage.css</code> already exists at 228 lines). One PR. Apply same modal/chip/table vocabulary patterns as the catalog port. Medium effort.</li>
+<li><strong>Histogram bar styling in <code>DistributionChart</code>.</strong> Probably a small SVG/color tweak inside the component. Low effort, high mono-soup reduction.</li>
+<li><strong>Phase 10 — AdminPanel + DatasheetsPage + ProductManagement.</strong> Larger phase. Three separate files (<code>AdminPanel.css</code> 247 lines, <code>ProductManagement.css</code> 258 lines, plus DatasheetsPage selectors in App.css). Could be three PRs.</li>
+<li><strong>Phase 7 — <code>!important</code> sweep.</strong> Highest risk, lowest velocity per LOC. Needs browser-inspector pass; do per-cluster (column-remove-btn first, then button overrides, etc.). Six families, six PRs.</li>
+</ol>
+<p>Skip until specifically asked:
+- Slider "fine resolution" (open thread #2)
+- ProductDetailModal spec-table internals (open thread #4)
+- The 8 remaining inline z-indexes (open thread #5)</p>
+<hr>
+<h2 id="verification-checklist-5-min">Verification checklist (5 min)</h2>
+<p>Before assuming today's work is good:</p>
+<ul>
+<li><code>./Quickstart dev</code>, drive or motor catalog</li>
+<li>Toolbar: 2px ink rule beneath, Oswald numerals, brass percent, ink-on-paper Clear hover</li>
+<li>Stat-row beneath toolbar: 4 cells with hard ink borders + 8×8 corner marks; toggle to collapse persists in localStorage</li>
+<li>Table: 1px ink frame, no zebra striping, Oswald part numbers, mono mfg captions, hairline cell rules</li>
+<li>Column headers: 2px ink underline, sort arrows are clean (no glow), sort-priority chips are squared brass-border (not round brass-fill), labels wrap on overflow</li>
+<li>Sliders: hard ruled line, brass-filled active region, clean ink-bordered circular thumb</li>
+<li>Click any product → modal: ink backdrop, 2px ink frame, Oswald title with rule, stamp-red close-X hover</li>
+<li>Trigger any confirm dialog → same modal frame, joined-button action strip</li>
+<li>Feedback modal → same frame, hard-bordered form fields</li>
+<li>Build a motor+drive pair → chain review modal → same frame</li>
+</ul>
+<p>If anything looks wrong, the PR is named per phase in the table above — easy to revert individually.</p>
+        </article>
+    </main>
+
+    <footer>
+        <div class="footer-inner">
+            <a class="footer-link" href="../roadmap.html">← Back to roadmap</a>
+            <span class="footer-rule" aria-hidden="true"></span>
+            <a class="footer-link" href="https://github.com/JimothyJohn/specodex/blob/master/todo/BAUHAUS_FOLLOWUP.md" rel="noreferrer">Edit on GitHub</a>
+        </div>
+    </footer>
+</body>
+</html>
