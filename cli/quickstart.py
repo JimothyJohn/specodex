@@ -1093,6 +1093,13 @@ def main() -> None:
         )
         return
 
+    if len(sys.argv) >= 2 and sys.argv[1] == "batch-drives":
+        run(
+            ["uv", "run", "python", "-m", "cli.batch_servo_drives", *sys.argv[2:]],
+            cwd=ROOT,
+        )
+        return
+
     if len(sys.argv) >= 2 and sys.argv[1] == "audit-dedupes":
         run(
             ["uv", "run", "python", "-m", "cli.audit_dedupes", *sys.argv[2:]],

@@ -1,0 +1,1911 @@
+{
+  "_comment": "Advanced Motion Controls (AMC) servo + stepper drives \u2014 272 verified PDF datasheets discovered 2026-05-13 by walking servo.a-m-c.com/product-sitemap.xml. Most URLs at servo.a-m-c.com/hubfs/Datasheets/, 33 'Reserved' status legacy drives at www.a-m-c.com/wp-content/uploads/documents/. All Content-Type: application/pdf verified.",
+  "_source": "servo.a-m-c.com + www.a-m-c.com",
+  "manufacturer": "Advanced Motion Controls",
+  "targets": [
+    {
+      "slug": "100a25",
+      "product_family": "Classic",
+      "product_name": "100A25",
+      "url": "https://www.a-m-c.com/wp-content/uploads/documents/AMC_Datasheet_100A25.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "100a40",
+      "product_family": "Classic",
+      "product_name": "100A40",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/Other/AMC_Datasheet_100A40.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "120a10",
+      "product_family": "Classic",
+      "product_name": "120A10",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/Other/AMC_Datasheet_120A10.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "a12a100",
+      "product_family": "AxCent",
+      "product_name": "A12A100",
+      "url": "https://www.a-m-c.com/wp-content/uploads/documents/AMC_Datasheet_A12A100.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "a20a200",
+      "product_family": "AxCent",
+      "product_name": "A20A200",
+      "url": "https://www.a-m-c.com/wp-content/uploads/documents/AMC_Datasheet_A20A200.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "a25a100",
+      "product_family": "AxCent",
+      "product_name": "A25A100",
+      "url": "https://www.a-m-c.com/wp-content/uploads/documents/AMC_Datasheet_A25A100.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "a25a200",
+      "product_family": "AxCent",
+      "product_name": "A25A200",
+      "url": "https://www.a-m-c.com/wp-content/uploads/documents/AMC_Datasheet_A25A200.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "a30a100",
+      "product_family": "AxCent",
+      "product_name": "A30A100",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_A30A100.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "a50a100",
+      "product_family": "AxCent",
+      "product_name": "A50A100",
+      "url": "https://www.a-m-c.com/wp-content/uploads/documents/AMC_Datasheet_A50A100.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "a50a100i",
+      "product_family": "AxCent",
+      "product_name": "A50A100I",
+      "url": "https://www.a-m-c.com/wp-content/uploads/documents/AMC_Datasheet_A50A100I.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "a50a200",
+      "product_family": "AxCent",
+      "product_name": "A50A200",
+      "url": "https://www.a-m-c.com/wp-content/uploads/documents/AMC_Datasheet_A50A200.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "a50a200i",
+      "product_family": "AxCent",
+      "product_name": "A50A200I",
+      "url": "https://www.a-m-c.com/wp-content/uploads/documents/AMC_Datasheet_A50A200I.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "ab100c200",
+      "product_family": "AxCent",
+      "product_name": "AB100C200",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_AB100C200.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "ab125a200",
+      "product_family": "AxCent",
+      "product_name": "AB125A200",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_AB125A200.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "ab15a100",
+      "product_family": "AxCent",
+      "product_name": "AB15A100",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_AB15A100.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "ab200a100",
+      "product_family": "AxCent",
+      "product_name": "AB200A100",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_AB200A100.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "ab20a200",
+      "product_family": "AxCent",
+      "product_name": "AB20A200",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_AB20A200.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "ab250a060",
+      "product_family": "AxCent",
+      "product_name": "AB250A060",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_AB250A060.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "ab25a100",
+      "product_family": "AxCent",
+      "product_name": "AB25A100",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_AB25A100.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "ab30a100",
+      "product_family": "AxCent",
+      "product_name": "AB30A100",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_AB30A100.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "ab30a200",
+      "product_family": "AxCent",
+      "product_name": "AB30A200",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_AB30A200.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "ab30a200ac",
+      "product_family": "AxCent",
+      "product_name": "AB30A200AC",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_AB30A200AC.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "ab30a200i",
+      "product_family": "AxCent",
+      "product_name": "AB30A200I",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_AB30A200I.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "ab50a100",
+      "product_family": "AxCent",
+      "product_name": "AB50A100",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_AB50A100.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "ab50a200",
+      "product_family": "AxCent",
+      "product_name": "AB50A200",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_AB50A200.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "ab50a200i",
+      "product_family": "AxCent",
+      "product_name": "AB50A200I",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_AB50A200I.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "abdc30a100",
+      "product_family": "AxCent",
+      "product_name": "ABDC30A100",
+      "url": "https://www.a-m-c.com/wp-content/uploads/documents/AMC_Datasheet_ABDC30A100.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "avb100c200",
+      "product_family": "AxCent",
+      "product_name": "AVB100C200",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_AVB100C200.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "avb125a200",
+      "product_family": "AxCent",
+      "product_name": "AVB125A200",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_AVB125A200.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "avb200a100",
+      "product_family": "AxCent",
+      "product_name": "AVB200A100",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_AVB200A100.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "avb250a060",
+      "product_family": "AxCent",
+      "product_name": "AVB250A060",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_AVB250A060.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "az12a8",
+      "product_family": "AxCent",
+      "product_name": "AZ12A8",
+      "url": "https://www.a-m-c.com/wp-content/uploads/documents/AMC_Datasheet_AZ12A8.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "az12a8ddc",
+      "product_family": "AxCent",
+      "product_name": "AZ12A8DDC",
+      "url": "https://www.a-m-c.com/wp-content/uploads/documents/AMC_Datasheet_AZ12A8DDC.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "az20a8",
+      "product_family": "AxCent",
+      "product_name": "AZ20A8",
+      "url": "https://www.a-m-c.com/wp-content/uploads/documents/AMC_Datasheet_AZ20A8.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "az20a8ddc",
+      "product_family": "AxCent",
+      "product_name": "AZ20A8DDC",
+      "url": "https://www.a-m-c.com/wp-content/uploads/documents/AMC_Datasheet_AZ20A8DDC.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "az25a20",
+      "product_family": "AxCent",
+      "product_name": "AZ25A20",
+      "url": "https://www.a-m-c.com/wp-content/uploads/documents/AMC_Datasheet_AZ25A20.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "az40a8",
+      "product_family": "AxCent",
+      "product_name": "AZ40A8",
+      "url": "https://www.a-m-c.com/wp-content/uploads/documents/AMC_Datasheet_AZ40A8.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "az6a8",
+      "product_family": "AxCent",
+      "product_name": "AZ6A8",
+      "url": "https://www.a-m-c.com/wp-content/uploads/documents/AMC_Datasheet_AZ6A8.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "az6a8ddc",
+      "product_family": "AxCent",
+      "product_name": "AZ6A8DDC",
+      "url": "https://www.a-m-c.com/wp-content/uploads/documents/AMC_Datasheet_AZ6A8DDC.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "azb10a4",
+      "product_family": "AxCent",
+      "product_name": "AZB10A4",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_AZB10A4.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "azb12a8",
+      "product_family": "AxCent",
+      "product_name": "AZB12A8",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_AZB12A8.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "azb20a8",
+      "product_family": "AxCent",
+      "product_name": "AZB20A8",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_AZB20A8.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "azb25a20",
+      "product_family": "AxCent",
+      "product_name": "AZB25A20",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_AZB25A20.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "azb25a20-10",
+      "product_family": "AxCent",
+      "product_name": "AZB25A20-10",
+      "url": "https://www.a-m-c.com/wp-content/uploads/documents/AMC_Datasheet_AZB25A20-10.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "azb40a8",
+      "product_family": "AxCent",
+      "product_name": "AZB40A8",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_AZB40A8.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "azb60a8",
+      "product_family": "AxCent",
+      "product_name": "AZB60A8",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_AZB60A8.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "azb6a8",
+      "product_family": "AxCent",
+      "product_name": "AZB6A8",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_AZB6A8.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "azbd10a4",
+      "product_family": "AxCent",
+      "product_name": "AZBD10A4",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_AZBD10A4.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "azbdc10a4",
+      "product_family": "AxCent",
+      "product_name": "AZBDC10A4",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_AZBDC10A4.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "azbdc10a4ic",
+      "product_family": "AxCent",
+      "product_name": "AZBDC10A4IC",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_AZBDC10A4IC.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "azbdc12a8",
+      "product_family": "AxCent",
+      "product_name": "AZBDC12A8",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_AZBDC12A8.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "azbdc20a8",
+      "product_family": "AxCent",
+      "product_name": "AZBDC20A8",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_AZBDC20A8.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "azbdc25a20",
+      "product_family": "AxCent",
+      "product_name": "AZBDC25A20",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_AZBDC25A20.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "azbdc40a8",
+      "product_family": "AxCent",
+      "product_name": "AZBDC40A8",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_AZBDC40A8.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "azbdc60a8",
+      "product_family": "AxCent",
+      "product_name": "AZBDC60A8",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_AZBDC60A8.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "azbdc6a8",
+      "product_family": "AxCent",
+      "product_name": "AZBDC6A8",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_AZBDC6A8.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "azbe10a4",
+      "product_family": "AxCent",
+      "product_name": "AZBE10A4",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_AZBE10A4.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "azbe12a8",
+      "product_family": "AxCent",
+      "product_name": "AZBE12A8",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_AZBE12A8.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "azbe20a8",
+      "product_family": "AxCent",
+      "product_name": "AZBE20A8",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_AZBE20A8.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "azbe40a8",
+      "product_family": "AxCent",
+      "product_name": "AZBE40A8",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_AZBE40A8.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "azbe60a8",
+      "product_family": "AxCent",
+      "product_name": "AZBE60A8",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_AZBE60A8.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "azbe6a8",
+      "product_family": "AxCent",
+      "product_name": "AZBE6A8",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_AZBE6A8.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "azbh10a4",
+      "product_family": "AxCent",
+      "product_name": "AZBH10A4",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_AZBH10A4.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "azbh12a8",
+      "product_family": "AxCent",
+      "product_name": "AZBH12A8",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_AZBH12A8.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "azbh20a8",
+      "product_family": "AxCent",
+      "product_name": "AZBH20A8",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_AZBH20A8.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "azbh25a20-10",
+      "product_family": "AxCent",
+      "product_name": "AZBH25A20-10",
+      "url": "https://www.a-m-c.com/wp-content/uploads/documents/AMC_Datasheet_AZBH25A20-10.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "azbh40a8",
+      "product_family": "AxCent",
+      "product_name": "AZBH40A8",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_AZBH40A8.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "azbh60a8",
+      "product_family": "AxCent",
+      "product_name": "AZBH60A8",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_AZBH60A8.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "azbh6a8",
+      "product_family": "AxCent",
+      "product_name": "AZBH6A8",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_AZBH6A8.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "azxb15a8",
+      "product_family": "AxCent",
+      "product_name": "AZXB15A8",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_AZXB15A8.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "azxb25a8",
+      "product_family": "AxCent",
+      "product_name": "AZXB25A8",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_AZXB25A8.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "azxb8a8",
+      "product_family": "AxCent",
+      "product_name": "AZXB8A8",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_AZXB8A8.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "azxbdc15a8",
+      "product_family": "AxCent",
+      "product_name": "AZXBDC15A8",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_AZXBDC15A8.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "azxbdc25a8",
+      "product_family": "AxCent",
+      "product_name": "AZXBDC25A8",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_AZXBDC25A8.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "azxbdc8a8",
+      "product_family": "AxCent",
+      "product_name": "AZXBDC8A8",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_AZXBDC8A8.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "azxbe15a8",
+      "product_family": "AxCent",
+      "product_name": "AZXBE15A8",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_AZXBE15A8.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "azxbe25a8",
+      "product_family": "AxCent",
+      "product_name": "AZXBE25A8",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_AZXBE25A8.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "azxbe8a8",
+      "product_family": "AxCent",
+      "product_name": "AZXBE8A8",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_AZXBE8A8.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "azxbh15a8",
+      "product_family": "AxCent",
+      "product_name": "AZXBH15A8",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_AZXBH15A8.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "azxbh25a8",
+      "product_family": "AxCent",
+      "product_name": "AZXBH25A8",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_AZXBH25A8.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "azxbh40a8",
+      "product_family": "AxCent",
+      "product_name": "AZXBH40A8",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_AZXBH40A8.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "azxbh8a8",
+      "product_family": "AxCent",
+      "product_name": "AZXBH8A8",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_AZXBH8A8.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "b060a400ac",
+      "product_family": "AxCent",
+      "product_name": "B060A400AC",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_B060A400AC.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "b100a400ac",
+      "product_family": "AxCent",
+      "product_name": "B100A400AC",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_B100A400AC.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "b30a40",
+      "product_family": "AxCent",
+      "product_name": "B30A40",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_B30A40.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "b30a40ac",
+      "product_family": "AxCent",
+      "product_name": "B30A40AC",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/AxCent/AMC_Datasheet_B30A40AC.pdf",
+      "bus": "analog"
+    },
+    {
+      "slug": "dpcania-015s400",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPCANIA-015S400",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DPCANIA-015S400.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "dpcania-030a400",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPCANIA-030A400",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DPCANIA-030A400.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "dpcania-030a800",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPCANIA-030A800",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DPCANIA-030A800.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "dpcania-040a400",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPCANIA-040A400",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DPCANIA-040A400.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "dpcania-060a800",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPCANIA-060A800",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DPCANIA-060A800.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "dpcania-100b080",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPCANIA-100B080",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DPCANIA-100B080.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "dpcania-c060a400",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPCANIA-C060A400",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DPCANIA-C060A400.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "dpcania-c100a400",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPCANIA-C100A400",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DPCANIA-C100A400.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "dpcanie-015s400",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPCANIE-015S400",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DPCANIE-015S400.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "dpcanie-030a400",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPCANIE-030A400",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DPCANIE-030A400.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "dpcanie-030a800",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPCANIE-030A800",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DPCANIE-030A800.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "dpcanie-040a400",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPCANIE-040A400",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DPCANIE-040A400.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "dpcanie-060a800",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPCANIE-060A800",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DPCANIE-060A800.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "dpcanie-100b080",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPCANIE-100B080",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DPCANIE-100B080.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "dpcanie-c060a400",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPCANIE-C060A400",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DPCANIE-C060A400.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "dpcanie-c100a400",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPCANIE-C100A400",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DPCANIE-C100A400.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "dpcanir-030a400",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPCANIR-030A400",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DPCANIR-030A400.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "dpcanir-060a800",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPCANIR-060A800",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DPCANIR-060A800.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "dpcante-020b080",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPCANTE-020B080",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DPCANTE-020B080.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "dpcante-040b080",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPCANTE-040B080",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DPCANTE-040B080.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "dpcante-060b080",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPCANTE-060B080",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DPCANTE-060B080.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "dpcantr-020b080",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPCANTR-020B080",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DPCANTR-020B080.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "dpcantr-040b080",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPCANTR-040B080",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DPCANTR-040B080.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "dpcantr-060b080",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPCANTR-060B080",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DPCANTR-060B080.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "dpeaniu-015s400",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPEANIU-015S400",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DPEANIU-015S400.pdf",
+      "bus": "ethercat"
+    },
+    {
+      "slug": "dpeaniu-020b080",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPEANIU-020B080",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DPEANIU-020B080.pdf",
+      "bus": "ethercat"
+    },
+    {
+      "slug": "dpeaniu-030a800",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPEANIU-030A800",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DPEANIU-030A800.pdf",
+      "bus": "ethercat"
+    },
+    {
+      "slug": "dpeaniu-040a400",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPEANIU-040A400",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DPEANIU-040A400.pdf",
+      "bus": "ethercat"
+    },
+    {
+      "slug": "dpeaniu-060a800",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPEANIU-060A800",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DPEANIU-060A800.pdf",
+      "bus": "ethercat"
+    },
+    {
+      "slug": "dpeaniu-100b080",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPEANIU-100B080",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DPEANIU-100B080.pdf",
+      "bus": "ethercat"
+    },
+    {
+      "slug": "dpeaniu-c060a400",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPEANIU-C060A400",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DPEANIU-C060A400.pdf",
+      "bus": "ethercat"
+    },
+    {
+      "slug": "dpeaniu-c100a400",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPEANIU-C100A400",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DPEANIU-C100A400.pdf",
+      "bus": "ethercat"
+    },
+    {
+      "slug": "dpqnnie-020b080",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPQNNIE-020B080",
+      "url": "https://www.a-m-c.com/wp-content/uploads/documents/AMC_Datasheet_DPQNNIE-020B080.pdf",
+      "bus": "other"
+    },
+    {
+      "slug": "dprahie-015a400",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPRAHIE-015A400",
+      "url": "https://www.a-m-c.com/wp-content/uploads/documents/AMC_Datasheet_DPRAHIE-015A400.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "dprahie-015n400",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPRAHIE-015N400",
+      "url": "https://www.a-m-c.com/wp-content/uploads/documents/AMC_Datasheet_DPRAHIE-015N400.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "dprahie-015s400",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPRAHIE-015S400",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DPRAHIE-015S400.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "dprahie-030a400",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPRAHIE-030A400",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DPRAHIE-030A400.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "dprahie-030a800",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPRAHIE-030A800",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DPRAHIE-030A800.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "dprahie-040a400",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPRAHIE-040A400",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DPRAHIE-040A400.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "dprahie-060a800",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPRAHIE-060A800",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DPRAHIE-060A800.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "dprahir-015a400",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPRAHIR-015A400",
+      "url": "https://www.a-m-c.com/wp-content/uploads/documents/AMC_Datasheet_DPRAHIR-015A400.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "dprahir-015s400",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPRAHIR-015S400",
+      "url": "https://www.a-m-c.com/wp-content/uploads/documents/AMC_Datasheet_DPRAHIR-015S400.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "dprahir-030a400",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPRAHIR-030A400",
+      "url": "https://www.a-m-c.com/wp-content/uploads/documents/AMC_Datasheet_DPRAHIR-030A400.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "dprahir-030a800",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPRAHIR-030A800",
+      "url": "https://www.a-m-c.com/wp-content/uploads/documents/AMC_Datasheet_DPRAHIR-030A800.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "dprahir-060a800",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPRAHIR-060A800",
+      "url": "https://www.a-m-c.com/wp-content/uploads/documents/AMC_Datasheet_DPRAHIR-060A800.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "dpralte-020b080",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPRALTE-020B080",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DPRALTE-020B080.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "dpralte-040b080",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPRALTE-040B080",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DPRALTE-040B080.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "dpralte-060b080",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPRALTE-060B080",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DPRALTE-060B080.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "dpraltr-020b080",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPRALTR-020B080",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DPRALTR-020B080.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "dpraltr-040b080",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPRALTR-040B080",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DPRALTR-040B080.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "dpraltr-060b080",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPRALTR-060B080",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DPRALTR-060B080.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "dpranie-015a400",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPRANIE-015A400",
+      "url": "https://www.a-m-c.com/wp-content/uploads/documents/AMC_Datasheet_DPRANIE-015A400.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "dpranie-015s400",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPRANIE-015S400",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DPRANIE-015S400.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "dpranie-030a400",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPRANIE-030A400",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DPRANIE-030A400.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "dpranie-030a800",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPRANIE-030A800",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DPRANIE-030A800.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "dpranie-030n400",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPRANIE-030N400",
+      "url": "https://www.a-m-c.com/wp-content/uploads/documents/AMC_Datasheet_DPRANIE-030N400.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "dpranie-040a400",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPRANIE-040A400",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DPRANIE-040A400.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "dpranie-060a800",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPRANIE-060A800",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DPRANIE-060A800.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "dpranie-100b080",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPRANIE-100B080",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DPRANIE-100B080.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "dpranie-c060a400",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPRANIE-C060A400",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DPRANIE-C060A400.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "dpranie-c100a400",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPRANIE-C100A400",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DPRANIE-C100A400.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "dpranir-015a400",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPRANIR-015A400",
+      "url": "https://www.a-m-c.com/wp-content/uploads/documents/AMC_Datasheet_DPRANIR-015A400.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "dpranir-015s400",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPRANIR-015S400",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DPRANIR-015S400.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "dpranir-030a400",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPRANIR-030A400",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DPRANIR-030A400.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "dpranir-030a800",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPRANIR-030A800",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DPRANIR-030A800.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "dpranir-040a400",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPRANIR-040A400",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DPRANIR-040A400.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "dpranir-060a800",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPRANIR-060A800",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DPRANIR-060A800.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "dpranir-c060a400",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPRANIR-C060A400",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DPRANIR-C060A400.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "dpranir-c100a400",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DPRANIR-C100A400",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DPRANIR-C100A400.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "dvc200a100",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DVC200A100",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DVC200A100.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "dvc250a060",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DVC250A060",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DVC250A060.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "dzcante-012l080",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DZCANTE-012L080",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DZCANTE-012L080.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "dzcante-020l080",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DZCANTE-020L080",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DZCANTE-020L080.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "dzcante-025l200",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DZCANTE-025L200",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DZCANTE-025L200.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "dzcante-025l200-10",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DZCANTE-025L200-10",
+      "url": "https://www.a-m-c.com/wp-content/uploads/documents/AMC_Datasheet_DZCANTE-025L200-10.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "dzcante-040l080",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DZCANTE-040L080",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DZCANTE-040L080.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "dzcante-060l080",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DZCANTE-060L080",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DZCANTE-060L080.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "dzcants-020l080",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DZCANTS-020L080",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DZCANTS-020L080.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "dzcants-060l080",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DZCANTS-060L080",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DZCANTS-060L080.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "dzcantu-020b080",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DZCANTU-020B080",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DZCANTU-020B080.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "dzcantu-040b080",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DZCANTU-040B080",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DZCANTU-040B080.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "dzralte-012l080",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DZRALTE-012L080",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DZRALTE-012L080.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "dzralte-020l080",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DZRALTE-020L080",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DZRALTE-020L080.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "dzralte-025l200",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DZRALTE-025L200",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DZRALTE-025L200.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "dzralte-025l200-10",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DZRALTE-025L200-10",
+      "url": "https://www.a-m-c.com/wp-content/uploads/documents/AMC_Datasheet_DZRALTE-025L200-10.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "dzralte-040l080",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DZRALTE-040L080",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DZRALTE-040L080.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "dzralte-060l080",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DZRALTE-060L080",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DZRALTE-060L080.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "dzxcante-008l080",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DZXCANTE-008L080",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DZXCANTE-008L080.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "dzxcante-015l080",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DZXCANTE-015L080",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DZXCANTE-015L080.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "dzxcante-040l080",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DZXCANTE-040L080",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DZXCANTE-040L080.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "dzxralte-008l080",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DZXRALTE-008L080",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DZXRALTE-008L080.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "dzxralte-015l080",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DZXRALTE-015L080",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DZXRALTE-015L080.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "dzxralte-040l080",
+      "product_family": "DigiFlex Performance",
+      "product_name": "DZXRALTE-040L080",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/DigiFlex-Performance/AMC_Datasheet_DZXRALTE-040L080.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "fd060-10-cm",
+      "product_family": "FlexPro",
+      "product_name": "FD060-10-CM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FD060-10-CM.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "fd060-10-em",
+      "product_family": "FlexPro",
+      "product_name": "FD060-10-EM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FD060-10-EM.pdf",
+      "bus": "ethercat"
+    },
+    {
+      "slug": "fd060-10-rm",
+      "product_family": "FlexPro",
+      "product_name": "FD060-10-RM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FD060-10-RM.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "fd060-25-cm",
+      "product_family": "FlexPro",
+      "product_name": "FD060-25-CM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FD060-25-CM.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "fd060-25-em",
+      "product_family": "FlexPro",
+      "product_name": "FD060-25-EM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FD060-25-EM.pdf",
+      "bus": "ethercat"
+    },
+    {
+      "slug": "fd060-25-rm",
+      "product_family": "FlexPro",
+      "product_name": "FD060-25-RM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FD060-25-RM.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "fd060-45c-cm",
+      "product_family": "FlexPro",
+      "product_name": "FD060-45C-CM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FD060-45C-CM.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "fd060-45c-em",
+      "product_family": "FlexPro",
+      "product_name": "FD060-45C-EM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FD060-45C-EM.pdf",
+      "bus": "ethercat"
+    },
+    {
+      "slug": "fd060-5-cm",
+      "product_family": "FlexPro",
+      "product_name": "FD060-5-CM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FD060-5-CM.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "fd060-5-em",
+      "product_family": "FlexPro",
+      "product_name": "FD060-5-EM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FD060-5-EM.pdf",
+      "bus": "ethercat"
+    },
+    {
+      "slug": "fd060-5-rm",
+      "product_family": "FlexPro",
+      "product_name": "FD060-5-RM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FD060-5-RM.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "fd060-60c-cm",
+      "product_family": "FlexPro",
+      "product_name": "FD060-60C-CM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FD060-60C-CM.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "fd060-60c-em",
+      "product_family": "FlexPro",
+      "product_name": "FD060-60C-EM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FD060-60C-EM.pdf",
+      "bus": "ethercat"
+    },
+    {
+      "slug": "fd060-60c-rm",
+      "product_family": "FlexPro",
+      "product_name": "FD060-60C-RM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FD060-60C-RM.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "fd100-25-cm",
+      "product_family": "FlexPro",
+      "product_name": "FD100-25-CM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FD100-25-CM.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "fd100-25-em",
+      "product_family": "FlexPro",
+      "product_name": "FD100-25-EM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FD100-25-EM.pdf",
+      "bus": "ethercat"
+    },
+    {
+      "slug": "fd100-25-rm",
+      "product_family": "FlexPro",
+      "product_name": "FD100-25-RM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FD100-25-RM.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "fd100-50-cm",
+      "product_family": "FlexPro",
+      "product_name": "FD100-50-CM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FD100-50-CM.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "fd100-50-em",
+      "product_family": "FlexPro",
+      "product_name": "FD100-50-EM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FD100-50-EM.pdf",
+      "bus": "ethercat"
+    },
+    {
+      "slug": "fd100-50-ipm",
+      "product_family": "FlexPro",
+      "product_name": "FD100-50-IPM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FD100-50-IPM.pdf",
+      "bus": "ethernet-ip"
+    },
+    {
+      "slug": "fd100-50-rm",
+      "product_family": "FlexPro",
+      "product_name": "FD100-50-RM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FD100-50-RM.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "fe060-1-cm",
+      "product_family": "FlexPro",
+      "product_name": "FE060-1-CM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FE060-1-CM.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "fe060-1-em",
+      "product_family": "FlexPro",
+      "product_name": "FE060-1-EM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FE060-1-EM.pdf",
+      "bus": "ethercat"
+    },
+    {
+      "slug": "fe060-1-rm",
+      "product_family": "FlexPro",
+      "product_name": "FE060-1-RM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FE060-1-RM.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "fe060-10-cm",
+      "product_family": "FlexPro",
+      "product_name": "FE060-10-CM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FE060-10-CM.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "fe060-10-em",
+      "product_family": "FlexPro",
+      "product_name": "FE060-10-EM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FE060-10-EM.pdf",
+      "bus": "ethercat"
+    },
+    {
+      "slug": "fe060-10-ipm",
+      "product_family": "FlexPro",
+      "product_name": "FE060-10-IPM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FE060-10-IPM.pdf",
+      "bus": "ethernet-ip"
+    },
+    {
+      "slug": "fe060-10-rm",
+      "product_family": "FlexPro",
+      "product_name": "FE060-10-RM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FE060-10-RM.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "fe060-100-cm",
+      "product_family": "FlexPro",
+      "product_name": "FE060-100-CM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FE060-100-CM.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "fe060-100-em",
+      "product_family": "FlexPro",
+      "product_name": "FE060-100-EM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FE060-100-EM.pdf",
+      "bus": "ethercat"
+    },
+    {
+      "slug": "fe060-25-cm",
+      "product_family": "FlexPro",
+      "product_name": "FE060-25-CM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FE060-25-CM.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "fe060-25-em",
+      "product_family": "FlexPro",
+      "product_name": "FE060-25-EM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FE060-25-EM.pdf",
+      "bus": "ethercat"
+    },
+    {
+      "slug": "fe060-25-ipm",
+      "product_family": "FlexPro",
+      "product_name": "FE060-25-IPM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FE060-25-IPM.pdf",
+      "bus": "ethernet-ip"
+    },
+    {
+      "slug": "fe060-25-rm",
+      "product_family": "FlexPro",
+      "product_name": "FE060-25-RM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FE060-25-RM.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "fe060-45c-cm",
+      "product_family": "FlexPro",
+      "product_name": "FE060-45C-CM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FE060-45C-CM.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "fe060-45c-em",
+      "product_family": "FlexPro",
+      "product_name": "FE060-45C-EM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FE060-45C-EM.pdf",
+      "bus": "ethercat"
+    },
+    {
+      "slug": "fe060-5-cm",
+      "product_family": "FlexPro",
+      "product_name": "FE060-5-CM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FE060-5-CM.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "fe060-5-em",
+      "product_family": "FlexPro",
+      "product_name": "FE060-5-EM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FE060-5-EM.pdf",
+      "bus": "ethercat"
+    },
+    {
+      "slug": "fe060-5-ipm",
+      "product_family": "FlexPro",
+      "product_name": "FE060-5-IPM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FE060-5-IPM.pdf",
+      "bus": "ethernet-ip"
+    },
+    {
+      "slug": "fe060-5-rm",
+      "product_family": "FlexPro",
+      "product_name": "FE060-5-RM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FE060-5-RM.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "fe060-60c-cm",
+      "product_family": "FlexPro",
+      "product_name": "FE060-60C-CM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FE060-60C-CM.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "fe060-60c-em",
+      "product_family": "FlexPro",
+      "product_name": "FE060-60C-EM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FE060-60C-EM.pdf",
+      "bus": "ethercat"
+    },
+    {
+      "slug": "fe060-60c-rm",
+      "product_family": "FlexPro",
+      "product_name": "FE060-60C-RM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FE060-60C-RM.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "fe100-25-cm",
+      "product_family": "FlexPro",
+      "product_name": "FE100-25-CM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FE100-25-CM.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "fe100-25-em",
+      "product_family": "FlexPro",
+      "product_name": "FE100-25-EM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FE100-25-EM.pdf",
+      "bus": "ethercat"
+    },
+    {
+      "slug": "fe100-25-rm",
+      "product_family": "FlexPro",
+      "product_name": "FE100-25-RM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FE100-25-RM.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "fe100-50-cm",
+      "product_family": "FlexPro",
+      "product_name": "FE100-50-CM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FE100-50-CM.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "fe100-50-em",
+      "product_family": "FlexPro",
+      "product_name": "FE100-50-EM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FE100-50-EM.pdf",
+      "bus": "ethercat"
+    },
+    {
+      "slug": "fe100-50-ipm",
+      "product_family": "FlexPro",
+      "product_name": "FE100-50-IPM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FE100-50-IPM.pdf",
+      "bus": "ethernet-ip"
+    },
+    {
+      "slug": "fe100-50-rm",
+      "product_family": "FlexPro",
+      "product_name": "FE100-50-RM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FE100-50-RM.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "fm060-1-cm",
+      "product_family": "FlexPro",
+      "product_name": "FM060-1-CM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FM060-1-CM.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "fm060-1-em",
+      "product_family": "FlexPro",
+      "product_name": "FM060-1-EM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FM060-1-EM.pdf",
+      "bus": "ethercat"
+    },
+    {
+      "slug": "fm060-1-rm",
+      "product_family": "FlexPro",
+      "product_name": "FM060-1-RM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FM060-1-RM.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "fm060-10-cm",
+      "product_family": "FlexPro",
+      "product_name": "FM060-10-CM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FM060-10-CM.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "fm060-10-em",
+      "product_family": "FlexPro",
+      "product_name": "FM060-10-EM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FM060-10-EM.pdf",
+      "bus": "ethercat"
+    },
+    {
+      "slug": "fm060-10-rm",
+      "product_family": "FlexPro",
+      "product_name": "FM060-10-RM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FM060-10-RM.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "fm060-100-cm",
+      "product_family": "FlexPro",
+      "product_name": "FM060-100-CM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FM060-100-CM.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "fm060-100-em",
+      "product_family": "FlexPro",
+      "product_name": "FM060-100-EM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FM060-100-EM.pdf",
+      "bus": "ethercat"
+    },
+    {
+      "slug": "fm060-25-cm",
+      "product_family": "FlexPro",
+      "product_name": "FM060-25-CM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FM060-25-CM.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "fm060-25-em",
+      "product_family": "FlexPro",
+      "product_name": "FM060-25-EM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FM060-25-EM.pdf",
+      "bus": "ethercat"
+    },
+    {
+      "slug": "fm060-25-rm",
+      "product_family": "FlexPro",
+      "product_name": "FM060-25-RM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FM060-25-RM.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "fm060-45c-em",
+      "product_family": "FlexPro",
+      "product_name": "FM060-45C-EM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FM060-45C-EM.pdf",
+      "bus": "ethercat"
+    },
+    {
+      "slug": "fm060-5-cm",
+      "product_family": "FlexPro",
+      "product_name": "FM060-5-CM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FM060-5-CM.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "fm060-5-em",
+      "product_family": "FlexPro",
+      "product_name": "FM060-5-EM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FM060-5-EM.pdf",
+      "bus": "ethercat"
+    },
+    {
+      "slug": "fm060-5-rm",
+      "product_family": "FlexPro",
+      "product_name": "FM060-5-RM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FM060-5-RM.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "fm060-60c-cm",
+      "product_family": "FlexPro",
+      "product_name": "FM060-60C-CM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FM060-60C-CM.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "fm060-60c-em",
+      "product_family": "FlexPro",
+      "product_name": "FM060-60C-EM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FM060-60C-EM.pdf",
+      "bus": "ethercat"
+    },
+    {
+      "slug": "fm060-60c-rm",
+      "product_family": "FlexPro",
+      "product_name": "FM060-60C-RM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FM060-60C-RM.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "fm100-25-cm",
+      "product_family": "FlexPro",
+      "product_name": "FM100-25-CM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FM100-25-CM.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "fm100-50-cm",
+      "product_family": "FlexPro",
+      "product_name": "FM100-50-CM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FM100-50-CM.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "fm100-50-em",
+      "product_family": "FlexPro",
+      "product_name": "FM100-50-EM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FM100-50-EM.pdf",
+      "bus": "ethercat"
+    },
+    {
+      "slug": "fmp060-10-em",
+      "product_family": "FlexPro",
+      "product_name": "FMP060-10-EM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FMP060-10-EM.pdf",
+      "bus": "ethercat"
+    },
+    {
+      "slug": "fmp060-25-em",
+      "product_family": "FlexPro",
+      "product_name": "FMP060-25-EM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FMP060-25-EM.pdf",
+      "bus": "ethercat"
+    },
+    {
+      "slug": "fmp060-25-ipm",
+      "product_family": "FlexPro",
+      "product_name": "FMP060-25-IPM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FMP060-25-IPM.pdf",
+      "bus": "ethernet-ip"
+    },
+    {
+      "slug": "fmp100-50-ipm",
+      "product_family": "FlexPro",
+      "product_name": "FMP100-50-IPM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FMP100-50-IPM.pdf",
+      "bus": "ethernet-ip"
+    },
+    {
+      "slug": "fxe060-10-cm",
+      "product_family": "FlexPro",
+      "product_name": "FXE060-10-CM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FXE060-10-CM.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "fxe060-10-em",
+      "product_family": "FlexPro",
+      "product_name": "FXE060-10-EM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FXE060-10-EM.pdf",
+      "bus": "ethercat"
+    },
+    {
+      "slug": "fxe060-10-rm",
+      "product_family": "FlexPro",
+      "product_name": "FXE060-10-RM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FXE060-10-RM.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "fxe060-25-cm",
+      "product_family": "FlexPro",
+      "product_name": "FXE060-25-CM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FXE060-25-CM.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "fxe060-25-em",
+      "product_family": "FlexPro",
+      "product_name": "FXE060-25-EM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FXE060-25-EM.pdf",
+      "bus": "ethercat"
+    },
+    {
+      "slug": "fxe060-25-rm",
+      "product_family": "FlexPro",
+      "product_name": "FXE060-25-RM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FXE060-25-RM.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "fxe060-5-cm",
+      "product_family": "FlexPro",
+      "product_name": "FXE060-5-CM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FXE060-5-CM.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "fxe060-5-em",
+      "product_family": "FlexPro",
+      "product_name": "FXE060-5-EM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FXE060-5-EM.pdf",
+      "bus": "ethercat"
+    },
+    {
+      "slug": "fxe060-5-rm",
+      "product_family": "FlexPro",
+      "product_name": "FXE060-5-RM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FXE060-5-RM.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "fxm060-10-cm",
+      "product_family": "FlexPro",
+      "product_name": "FXM060-10-CM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FXM060-10-CM.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "fxm060-10-em",
+      "product_family": "FlexPro",
+      "product_name": "FXM060-10-EM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FXM060-10-EM.pdf",
+      "bus": "ethercat"
+    },
+    {
+      "slug": "fxm060-10-rm",
+      "product_family": "FlexPro",
+      "product_name": "FXM060-10-RM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FXM060-10-RM.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "fxm060-25-cm",
+      "product_family": "FlexPro",
+      "product_name": "FXM060-25-CM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FXM060-25-CM.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "fxm060-25-em",
+      "product_family": "FlexPro",
+      "product_name": "FXM060-25-EM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FXM060-25-EM.pdf",
+      "bus": "ethercat"
+    },
+    {
+      "slug": "fxm060-25-rm",
+      "product_family": "FlexPro",
+      "product_name": "FXM060-25-RM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FXM060-25-RM.pdf",
+      "bus": "rs485"
+    },
+    {
+      "slug": "fxm060-5-cm",
+      "product_family": "FlexPro",
+      "product_name": "FXM060-5-CM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FXM060-5-CM.pdf",
+      "bus": "canopen"
+    },
+    {
+      "slug": "fxm060-5-em",
+      "product_family": "FlexPro",
+      "product_name": "FXM060-5-EM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FXM060-5-EM.pdf",
+      "bus": "ethercat"
+    },
+    {
+      "slug": "fxm060-5-rm",
+      "product_family": "FlexPro",
+      "product_name": "FXM060-5-RM",
+      "url": "https://servo.a-m-c.com/hubfs/Datasheets/Servo-Drives/FlexPro/AMC_Datasheet_FXM060-5-RM.pdf",
+      "bus": "rs485"
+    }
+  ]
+}
