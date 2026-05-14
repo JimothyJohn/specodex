@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="The stripe/ Rust Lambda is the only Rust in the repo. It is ~500 LoC across 7 files, handles 5 endpoints in test-mode metered billing, and was originally justif">
+    <meta name="theme-color" content="#3A2C1C">
+    <title>Specodex — PYTHON_STRIPE — Rust → Python migration for the billing Lambda</title>
+    <link rel="icon" type="image/svg+xml" href="../logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-issue="PYTHON_STRIPE — RUST → P">
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="band">
+        <div class="band-inner">
+            <a class="band-brand" href="../index.html">
+                <svg class="band-mark" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <rect width="120" height="120" fill="#E8E2C9"/>
+                    <rect x="14" y="14" width="92" height="92" fill="none" stroke="#1A1A14" stroke-width="3"/>
+                    <rect x="14" y="14" width="92" height="22" fill="#3A2C1C"/>
+                    <rect x="62" y="60" width="40" height="10" fill="#A88A1C"/>
+                    <line x1="14" y1="56" x2="106" y2="56" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="74" x2="106" y2="74" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="92" x2="106" y2="92" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="60" y1="36" x2="60" y2="106" stroke="#1A1A14" stroke-width="2"/>
+                </svg>
+                <span class="wordmark">SPECODEX</span>
+            </a>
+            <nav class="band-nav" aria-label="Section">
+                <a href="../index.html">Catalog</a>
+                <a href="../roadmap.html">Roadmap</a>
+                <a href="https://github.com/JimothyJohn/specodex/blob/master/todo/PYTHON_STRIPE.md" rel="noreferrer">Source</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="doc-hero">
+            <div class="hero-tag">▮▮▮ PYTHON STRIPE ▮▮▮</div>
+            <h1 class="hero-title">PYTHON_STRIPE — Rust → Python migration for the billing Lambda</h1>
+            <div class="doc-meta">
+                <span class="status-chip status-backlog">⚪ QUEUED (OPERATOR-DRIVEN DEPLOY)</span>
+                <span class="doc-source"><code>todo/PYTHON_STRIPE.md</code></span>
+            </div>
+        </section>
+
+        <article class="doc-body">
+<h1 id="python_stripe-rust-python-migration-for-the-billing-lambda">PYTHON_STRIPE — Rust → Python migration for the billing Lambda</h1>
+<blockquote>
+<p><strong>Status:</strong> 🚧 Phase 1 layout scaffolded — <code>stripe_py/</code> exists with all 7
+modules and 8 test files. Phase 1 deploy + Phase 2 SSM cutover + Phase 3
+Rust deletion still pending. Independent of <code>todo/PYTHON_BACKEND.md</code>
+Phases 0–3 (the Express → FastAPI cutover); can ship at any time.</p>
+<p><strong>Date drafted:</strong> 2026-05-02.
+<strong>Owner:</strong> Nick.</p>
+</blockquote>
+<hr>
+<h2 id="0-why-this-exists">0. Why this exists</h2>
+<p>The <code>stripe/</code> Rust Lambda is <strong>the only Rust in the repo</strong>. It is ~500
+LoC across 7 files, handles 5 endpoints in test-mode metered billing,
+and was originally justified as "fast cold starts" — a property that
+buys nothing for Stripe webhooks (async, nobody waits) or Checkout
+sessions (the user is being redirected to Stripe). The cost of carrying
+it is the entire <code>cargo</code> toolchain in CI, a separate deploy path
+(<code>cargo lambda deploy</code> — not in CDK), and a third mental context for
+every developer.</p>
+<p>Replacing it with a Python Lambda:</p>
+<ul>
+<li>Reuses the existing <code>boto3</code> and <code>python-dotenv</code> already in
+  <code>pyproject.toml</code>.</li>
+<li>Uses the official <code>stripe</code> Python SDK (which exposes
+  <code>Webhook.construct_event</code> — no need to reimplement the HMAC-SHA256
+  signature check by hand, as the Rust impl does).</li>
+<li>Drops <code>cargo</code>, <code>clippy</code>, <code>rust-toolchain</code>, the ARM64 cross-compile
+  dance, and the <code>stripe/Cargo.toml</code> dep tree.</li>
+<li>Brings the runtime count from 3 (Python + TS + Rust) to 2.</li>
+<li>Closes the polyglot-tax loop the original audit opened.</li>
+</ul>
+<p><strong>Out of scope (don't bundle into this work):</strong></p>
+<ul>
+<li>Moving billing into the existing API Lambda. The billing surface
+  stays a separate Lambda with its own Function URL — the SSM-driven
+  URL handoff (see §1.3) is the cleanest cutover mechanism we have.</li>
+<li>Switching off test mode. The new Lambda must keep the same hard
+  guard (refuse to start without <code>sk_test_...</code>).</li>
+<li>Adding new endpoints, new webhook event types, or new billing
+  models. Behaviour parity first; new features in their own scoped
+  doc.</li>
+<li>CDK ownership of the billing Lambda. Today it's deployed
+  out-of-band via <code>cargo lambda deploy</code>; the Python Lambda will keep
+  the same out-of-band shape for Phase 1, with CDK adoption optional
+  in Phase 3.</li>
+</ul>
+<hr>
+<h2 id="1-end-state-shape">1. End-state shape</h2>
+<pre><code>app/backend/services/stripe.ts ── HTTP ──►  Python billing Lambda
+        ▲                                      │
+        │                                      ├── stripe (Python SDK)
+        │                                      │
+        │                                      └── boto3 ──► DynamoDB
+        │                                                    (datasheetminer-users)
+        │
+        └── reads `${ssmPrefix}/stripe-lambda-url` (unchanged)
+</code></pre>
+<p><strong>Single source of truth for the URL: SSM.</strong> The Express backend already
+reads <code>${ssmPrefix}/stripe-lambda-url</code> (see
+<code>app/backend/src/config/index.ts</code>) and calls into whatever Lambda lives
+behind it. Cutover = update the SSM parameter; rollback = update it
+back.</p>
+<p><strong>What stays:</strong></p>
+<ul>
+<li><code>datasheetminer-users</code> DynamoDB table (same schema, same name, same
+  region).</li>
+<li><code>${ssmPrefix}/stripe-lambda-url</code> SSM parameter (just points at a
+  new Function URL).</li>
+<li>The 5-endpoint contract: <code>POST /checkout</code>, <code>POST /webhook</code>,
+  <code>POST /usage</code>, <code>GET /status/{user_id}</code>, <code>GET /health</code>.</li>
+<li><code>app/backend/src/services/stripe.ts</code> (the Express-side fetch
+  client) — it speaks JSON; it doesn't care what runtime is on the
+  other end.</li>
+<li>The test-mode hard guard.</li>
+</ul>
+<p><strong>What goes:</strong></p>
+<ul>
+<li><code>stripe/</code> (the entire Rust crate — <code>Cargo.toml</code>, <code>Cargo.lock</code>,
+  <code>src/{main,config,checkout,db,models,usage,webhook}.rs</code>, <code>.env.example</code>).</li>
+<li>Any <code>cargo</code> / <code>cargo-lambda</code> references in CI.</li>
+<li>Manual HMAC-SHA256 signature verification (Rust <code>webhook.rs:88-117</code>)
+  — replaced by <code>stripe.Webhook.construct_event(...)</code> from the
+  official SDK.</li>
+</ul>
+<hr>
+<h2 id="2-phases-at-a-glance">2. Phases at a glance</h2>
+<table>
+<thead>
+<tr>
+<th>Phase</th>
+<th>Scope</th>
+<th>Effort</th>
+<th>Risk</th>
+<th>Reversible?</th>
+<th>Gate</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>1.1 layout</strong></td>
+<td><code>stripe_py/</code> directory + 7 modules + 8 test files matching §1.1</td>
+<td>shipped</td>
+<td>—</td>
+<td>—</td>
+<td>✅ scaffold landed in <code>6ac30b0</code></td>
+</tr>
+<tr>
+<td><strong>1.x deploy</strong></td>
+<td>Test-suite green, Function URL provisioned on dev, <code>$0.50</code> test charge round-trips</td>
+<td>0.5–1 day</td>
+<td>low</td>
+<td>yes (Function URL is throwaway)</td>
+<td><code>tests/integration/test_billing_py.py</code> green; round-trip works on dev</td>
+</tr>
+<tr>
+<td><strong>2</strong></td>
+<td>Cutover: update prod SSM <code>stripe-lambda-url</code> to the Python Function URL; soak 7 days; Rust Lambda stays alive but unused</td>
+<td>0.5 day + soak</td>
+<td>medium</td>
+<td>yes (one SSM <code>put-parameter</code> reverts)</td>
+<td>zero billing-related errors in CloudWatch over the soak; one real webhook (subscription update or invoice event) processed cleanly</td>
+</tr>
+<tr>
+<td><strong>3</strong></td>
+<td>Delete <code>stripe/</code> (Rust crate). Optional: fold <code>stripe_py/</code> into CDK as a managed <code>PythonFunction</code>.</td>
+<td>0.5 day</td>
+<td>low</td>
+<td>git revert</td>
+<td><code>./Quickstart verify</code> green; CDK synth clean</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Phase 1 ships independently and pays for itself even if Phase 2
+never happens</strong> — at worst we land a tested Python Lambda no one is
+using, and the choice to cut over is a future SSM update.</p>
+<hr>
+<h2 id="phase-1-stand-up-stripe_py-in-parallel">Phase 1 — Stand up <code>stripe_py/</code> in parallel</h2>
+<p><strong>Goal:</strong> byte-compatible drop-in replacement for the Rust Lambda,
+deployed as a separate Lambda with its own Function URL. The Express
+backend keeps calling the Rust Lambda; the Python Lambda is dark.</p>
+<h3 id="11-layout-shipped-commit-6ac30b0">1.1 Layout — ✅ shipped (commit <code>6ac30b0</code>)</h3>
+<pre><code>stripe_py/
+├── pyproject.toml              # scoped to this dir; uv workspace member
+├── README.md                   # mirrors stripe/README.md
+├── .env.example
+├── src/
+│   └── billing/
+│       ├── __init__.py
+│       ├── handler.py          # Lambda entrypoint: lambda_handler(event, context)
+│       ├── router.py           # path/method dispatch (5 routes)
+│       ├── config.py           # env loader + test-mode guard
+│       ├── models.py           # Pydantic request/response shapes
+│       ├── db.py               # boto3 DynamoDB wrapper (UsersDb)
+│       ├── checkout.py         # create_checkout_session
+│       ├── webhook.py          # construct_event + dispatch by event type
+│       └── usage.py            # report_usage
+└── tests/
+    ├── conftest.py             # moto fixtures for DynamoDB, fake Stripe client
+    ├── test_checkout.py
+    ├── test_webhook.py
+    ├── test_usage.py
+    ├── test_status.py
+    └── test_handler.py         # integration via the Lambda event shape
+</code></pre>
+<p><strong>Why a separate <code>pyproject.toml</code> (not just a <code>cli/billing/</code> module
+under the root project):</strong> the billing Lambda has its own dependency
+footprint (<code>stripe</code>, <code>aws-lambda-powertools</code>) that has no business in
+the pipeline's deps. Keeping it isolated means the Lambda zip is small
+and the pipeline's deps don't bleed into the billing surface. Wire it
+as a uv workspace member from the root <code>pyproject.toml</code> so
+<code>./Quickstart verify</code> picks it up.</p>
+<h3 id="12-framework-choice-plain-handler-not-fastapi">1.2 Framework choice — plain handler, not FastAPI</h3>
+<p>The Rust Lambda is a 5-route dispatch with no shared middleware (no
+auth — this Lambda is internal to our infra, called by the Express
+backend, not by users). FastAPI + Mangum buys nothing here and adds
+~600ms to cold start.</p>
+<p><strong>Strawman:</strong> plain <code>lambda_handler(event, context)</code> with a 30-line
+router function that pattern-matches on <code>(method, path)</code>. This is
+what <code>stripe/src/main.rs:59-81</code> does in Rust — the Python equivalent
+is ~50 lines.</p>
+<p>If we ever want OpenAPI auto-docs or middleware here, switch to
+<code>aws-lambda-powertools</code> (already a sensible default for AWS-native
+Python Lambdas). FastAPI is overkill for 5 internal routes.</p>
+<h3 id="13-endpoint-behaviour-parity">1.3 Endpoint behaviour parity</h3>
+<table>
+<thead>
+<tr>
+<th>Endpoint</th>
+<th>Rust source</th>
+<th>Python destination</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>POST /checkout</code></td>
+<td><code>checkout.rs:12</code></td>
+<td><code>checkout.py:create_checkout_session</code></td>
+<td>Same Stripe SDK calls (<code>Customer.create</code>, <code>checkout.Session.create</code>). Same DynamoDB writes.</td>
+</tr>
+<tr>
+<td><code>POST /webhook</code></td>
+<td><code>webhook.rs:12</code></td>
+<td><code>webhook.py:handle_webhook</code></td>
+<td><strong>Use <code>stripe.Webhook.construct_event(payload, sig_header, secret)</code></strong> — drops the manual HMAC code in <code>webhook.rs:88-117</code>. Same event handlers (<code>checkout.session.completed</code>, <code>customer.subscription.updated|deleted</code>, <code>invoice.payment_failed</code>).</td>
+</tr>
+<tr>
+<td><code>POST /usage</code></td>
+<td><code>usage.rs:8</code></td>
+<td><code>usage.py:report_usage</code></td>
+<td>Same: lookup user → require active subscription → fetch subscription items → <code>POST /v1/subscription_items/{id}/usage_records</code>. <strong>Note:</strong> stripe-python ≥10 dropped the <code>SubscriptionItem.create_usage_record</code> wrapper, so the Python impl uses <code>StripeClient.raw_request("post", ...)</code> to hit the legacy metered endpoint Stripe still serves (and that the existing Dashboard product is configured against). Migration to the modern Meter Events API would require reconfiguring the Stripe Dashboard product (legacy metered prices → Billing Meters); deliberately out of scope for this port (see §6).</td>
+</tr>
+<tr>
+<td><code>GET /status/{user_id}</code></td>
+<td><code>main.rs:130</code></td>
+<td><code>handler.py</code> (inline; trivial)</td>
+<td>Same: get_user, return <code>{user_id, subscription_status, stripe_customer_id}</code> or <code>none</code> if missing.</td>
+</tr>
+<tr>
+<td><code>GET /health</code></td>
+<td><code>main.rs:70</code></td>
+<td><code>handler.py</code> (inline)</td>
+<td>Returns <code>{"status": "ok", "mode": "test"}</code>.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Status enum parity</strong> (<code>stripe/src/models.rs:15</code>): <code>active</code>,
+<code>past_due</code>, <code>canceled</code> (also accept <code>cancelled</code>), <code>incomplete</code>,
+<code>none</code>. Python uses a <code>StrEnum</code> with the same values. DynamoDB
+serialisation stays string-typed; no migration needed because the
+shape is byte-identical.</p>
+<p><strong>Test-mode guard parity</strong> (<code>stripe/src/config.rs:28</code>): refuse to
+start if <code>STRIPE_SECRET_KEY</code> doesn't start with <code>sk_test_</code>. In Python:
+raise <code>RuntimeError</code> at module import time inside <code>config.py</code>. The
+Lambda fails to initialise and CloudWatch shows the error — same UX
+as the Rust panic.</p>
+<h3 id="14-webhook-signature-verification-use-the-sdk">1.4 Webhook signature verification — use the SDK</h3>
+<p>Rust currently rolls its own HMAC-SHA256 verification (<code>webhook.rs:88</code>)
+because <code>async-stripe</code> doesn't ship a verifier helper. The Python
+SDK does ship one:</p>
+<pre><code class="language-python">import stripe
+event = stripe.Webhook.construct_event(
+    payload=raw_body,
+    sig_header=request_headers[&quot;stripe-signature&quot;],
+    secret=config.stripe_webhook_secret,
+)
+# event is stripe.Event with .type, .data.object, etc.
+</code></pre>
+<p>This is the canonical path Stripe documents. <strong>Do not port the manual
+HMAC code.</strong> The SDK handles timestamp tolerance, signature
+encoding edge cases, and version skew correctly. Less code, fewer
+foot-guns.</p>
+<h3 id="15-dynamodb-reuse-specodexdbdynamopy-patterns">1.5 DynamoDB — reuse <code>specodex/db/dynamo.py</code> patterns</h3>
+<p>The <code>datasheetminer-users</code> table is <strong>separate</strong> from the products
+table, so we can't share the existing <code>DynamoDBService</code>. But we copy
+its idioms (boto3 client memoised at module scope, attribute-value
+helpers, <code>moto</code> integration tests). 4 methods on the new <code>UsersDb</code>
+class, mirroring <code>stripe/src/db.rs</code>:</p>
+<ul>
+<li><code>get_user(user_id) -&gt; UserRecord | None</code></li>
+<li><code>get_user_by_customer_id(customer_id) -&gt; UserRecord | None</code>
+  — currently a full table scan in Rust (<code>db.rs:32</code>); keep it as a
+  scan for now (table is small) but <strong>add a TODO</strong> to introduce a
+  GSI on <code>stripe_customer_id</code> when row count justifies it.</li>
+<li><code>put_user(record) -&gt; None</code></li>
+<li><code>update_subscription_status(user_id, sub_id, status) -&gt; None</code></li>
+</ul>
+<h3 id="16-models-pydantic-not-dataclasses">1.6 Models — Pydantic, not dataclasses</h3>
+<p>Reuses our existing Pydantic dependency. The 5 request/response shapes
+in <code>stripe/src/models.rs:38-72</code> become Pydantic models in
+<code>stripe_py/src/billing/models.py</code>. The router validates inbound
+JSON via <code>Model.model_validate_json(...)</code> (returns 400 on
+<code>ValidationError</code>) and serialises responses with <code>model_dump_json()</code>.</p>
+<p>This is the only place the project gets uniformity for free: every
+service shape, end-to-end, is a Pydantic model.</p>
+<h3 id="17-deployment">1.7 Deployment</h3>
+<p><strong>Phase 1 keeps the out-of-band shape.</strong> Ship via SAM CLI or <code>aws
+lambda</code> directly:</p>
+<pre><code class="language-bash">cd stripe_py
+uv pip install --target ./build -r requirements.txt   # or use uv-managed venv + zip
+zip -r function.zip src/ build/
+aws lambda create-function \
+  --function-name datasheetminer-payments-py \
+  --runtime python3.12 \
+  --handler billing.handler.lambda_handler \
+  --zip-file fileb://function.zip \
+  --role &lt;existing-role-arn&gt; \
+  --environment &quot;Variables={STRIPE_SECRET_KEY=sk_test_...,STRIPE_WEBHOOK_SECRET=whsec_...,STRIPE_PRICE_ID=price_...,USERS_TABLE_NAME=datasheetminer-users,FRONTEND_URL=https://www.specodex.com}&quot;
+
+aws lambda create-function-url-config \
+  --function-name datasheetminer-payments-py \
+  --auth-type NONE
+</code></pre>
+<p>Or — and probably better for the longer-term — wrap this in a
+<code>./Quickstart deploy-billing-py</code> subcommand that does the same dance
+once. Cargo-lambda is gone; we don't need an exotic build tool.</p>
+<p><strong>Note:</strong> Lambda Python 3.12 ships boto3 in the runtime layer. The
+deploy zip only needs to bundle <code>stripe</code>, <code>pydantic</code>, and
+<code>python-dotenv</code> (~5 MB). No layers required.</p>
+<h3 id="18-local-testing">1.8 Local testing</h3>
+<pre><code class="language-bash"># Stripe CLI for webhook signature replay
+stripe listen --forward-to http://localhost:9000/webhook
+
+# AWS SAM local emulator for the Lambda runtime
+cd stripe_py &amp;&amp; sam local start-api  # if we add template.yaml
+# OR just run the handler directly with a mock event
+uv run python -c &quot;from billing.handler import lambda_handler; print(lambda_handler({...}, None))&quot;
+</code></pre>
+<p>Test fixtures use <code>moto</code> for DynamoDB (already in <code>[dependency-groups].dev</code>)
+and a fake Stripe client that records calls (using <code>pytest-mock</code> —
+also already a dep).</p>
+<h3 id="19-exit-criteria-for-phase-1">1.9 Exit criteria for Phase 1</h3>
+<ul>
+<li>[ ] <code>stripe_py/</code> exists with the 7 modules above.</li>
+<li>[ ] <code>uv run pytest stripe_py/tests/</code> is green.</li>
+<li>[ ] <code>./Quickstart verify</code> runs the new tests as part of the Python
+      stage.</li>
+<li>[ ] The Lambda is deployed to <strong>dev</strong> with its own Function URL.</li>
+<li>[ ] A <code>$0.50</code> Stripe test-mode charge round-trips:
+      <code>/checkout</code> → Stripe Checkout → <code>/webhook (checkout.session.completed)</code>
+      → user marked active in DynamoDB → <code>/usage</code> records 1000 tokens
+      → Stripe dashboard shows the usage record.</li>
+<li>[ ] Rust Lambda still runs prod traffic. No SSM change yet.</li>
+</ul>
+<hr>
+<h2 id="phase-2-cutover-via-ssm-url-flip">Phase 2 — Cutover via SSM URL flip</h2>
+<p><strong>Goal:</strong> switch prod traffic from the Rust Function URL to the Python
+Function URL with a single <code>aws ssm put-parameter</code> call.</p>
+<h3 id="21-pre-flight">2.1 Pre-flight</h3>
+<ul>
+<li>[ ] Phase 1 exit criteria all green.</li>
+<li>[ ] Python Lambda also deployed to <strong>prod</strong> (same script, prod env
+      vars, prod role). It is live but unreached because no one calls
+      its URL yet.</li>
+<li>
+<p>[ ] Pull the current SSM URL value and stash it for rollback:</p>
+<p><code>bash
+  aws ssm get-parameter --name /datasheetminer/prod/stripe-lambda-url \
+    --query 'Parameter.Value' --output text
+  # Save this output as the rollback target.</code></p>
+</li>
+</ul>
+<h3 id="22-cutover">2.2 Cutover</h3>
+<pre><code class="language-bash"># Replace &lt;python-function-url&gt; with the URL output from Phase 1's
+# create-function-url-config.
+aws ssm put-parameter \
+  --name /datasheetminer/prod/stripe-lambda-url \
+  --value &lt;python-function-url&gt; \
+  --overwrite \
+  --type String
+</code></pre>
+<p>The Express backend reads SSM at boot. <strong>This means existing warm
+Lambdas keep using the Rust URL until they cycle.</strong> Force a cycle by
+either deploying a no-op change to the API Lambda or by waiting for
+natural cycling (~hours under low traffic). Plan for a 1-hour overlap
+window where both backends could be hit.</p>
+<p>The overlap is safe — both Lambdas read/write the same DynamoDB rows
+and same Stripe customer/subscription records. The only risk is <strong>one
+webhook event processed twice</strong> if Stripe retries during the window,
+which is idempotent because:
+- <code>checkout.session.completed</code>: setting subscription_id and status to
+  <code>active</code> twice is a no-op.
+- <code>customer.subscription.updated|deleted</code>: setting status to whatever
+  Stripe just told us, twice, is a no-op.
+- <code>invoice.payment_failed</code>: only logs; no state change.</p>
+<h3 id="23-soak">2.3 Soak</h3>
+<p>7 days of CloudWatch monitoring on the Python Lambda:</p>
+<ul>
+<li>Error rate ≤ baseline (Rust Lambda's 7-day error rate before
+  cutover).</li>
+<li>p50 / p99 latency within 2× of Rust (cold starts will be worse;
+  steady-state should be fine).</li>
+<li>At least one real webhook of each type (subscription update, invoice
+  event) processed cleanly.</li>
+</ul>
+<p>If anything looks wrong, revert in one command:</p>
+<pre><code class="language-bash">aws ssm put-parameter \
+  --name /datasheetminer/prod/stripe-lambda-url \
+  --value &lt;rust-function-url-from-step-2.1&gt; \
+  --overwrite --type String
+</code></pre>
+<h3 id="24-exit-criteria-for-phase-2">2.4 Exit criteria for Phase 2</h3>
+<ul>
+<li>[ ] Prod SSM URL points at the Python Lambda for 7 consecutive days.</li>
+<li>[ ] Zero billing-related incidents during the soak.</li>
+<li>[ ] Stripe dashboard shows usage records and webhook deliveries
+      processed in the soak window.</li>
+</ul>
+<hr>
+<h2 id="phase-3-delete-rust-optional-cdk-adoption">Phase 3 — Delete Rust + optional CDK adoption</h2>
+<p><strong>Goal:</strong> reclaim the diff. Optional follow-up: bring the Python
+Lambda into CDK so its deploy stops being out-of-band.</p>
+<h3 id="31-delete-the-rust-crate">3.1 Delete the Rust crate</h3>
+<pre><code class="language-bash">git rm -r stripe/
+</code></pre>
+<p>Touch points to clean up afterwards:</p>
+<ul>
+<li><code>.github/workflows/ci.yml</code> — drop any <code>cargo</code> / <code>clippy</code> /
+  <code>cargo-lambda</code> steps if they exist.</li>
+<li>Root <code>README.md</code> / <code>CLAUDE.md</code> — search for <code>Rust</code>, <code>cargo</code>, the
+  <code>stripe/</code> directory; rewrite the references.</li>
+</ul>
+<h3 id="32-optional-fold-stripe_py-into-cdk">3.2 Optional: fold <code>stripe_py/</code> into CDK</h3>
+<p>Today the billing Lambda is deployed via a shell script. CDK ownership
+buys: stack-level rollback, infra change-tracking, environment-pinned
+config. It costs: a <code>PythonFunction</code> construct in
+<code>app/infrastructure/lib/api-stack.ts</code> and dep changes in CDK's own
+<code>package.json</code> (the <code>aws-cdk/aws-lambda-python-alpha</code> module). For a
+single 5-endpoint Lambda this is a real win, but it's not required for
+the migration to be "done." Defer if the queue is full.</p>
+<p>If we do it: the Function URL gets created by CDK, and the SSM
+parameter becomes a CDK output reference instead of a hand-edited
+value. The cutover (Phase 2) is then just a CDK deploy with the new
+URL.</p>
+<h3 id="33-exit-criteria-for-phase-3">3.3 Exit criteria for Phase 3</h3>
+<ul>
+<li>[ ] <code>stripe/</code> directory is gone.</li>
+<li>[ ] No <code>cargo</code> references anywhere in <code>.github/</code>, <code>Quickstart</code>,
+      <code>cli/</code>, or root configs.</li>
+<li>[ ] <code>./Quickstart verify</code> green.</li>
+<li>[ ] (Optional) CDK synth shows the Python billing Lambda and its
+      Function URL as managed resources.</li>
+</ul>
+<hr>
+<h2 id="3-risk-register">3. Risk register</h2>
+<table>
+<thead>
+<tr>
+<th>Risk</th>
+<th>Likelihood</th>
+<th>Impact</th>
+<th>Mitigation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Stripe webhook downtime during cutover overlap</td>
+<td>low</td>
+<td>high</td>
+<td>Both Lambdas are idempotent on the events we handle (see §2.2). Cutover is reversible via SSM.</td>
+</tr>
+<tr>
+<td>Python cold start ≥ 2s vs Rust ~50ms</td>
+<td>medium</td>
+<td>low</td>
+<td>Webhooks are async; Checkout is a redirect; nobody is staring at a spinner. If <code>/status</code> or <code>/usage</code> latency complaints arise, enable provisioned concurrency on the billing Lambda (~$5/mo).</td>
+</tr>
+<tr>
+<td><code>stripe.Webhook.construct_event</code> throws on a malformed signature where Rust would have silently rejected</td>
+<td>low</td>
+<td>low</td>
+<td>The exception path is the same: return 400. Test parity in <code>tests/test_webhook.py</code> with malformed signatures.</td>
+</tr>
+<tr>
+<td><code>boto3</code> scan in <code>get_user_by_customer_id</code> becomes slow as the users table grows</td>
+<td>low</td>
+<td>medium</td>
+<td>Same risk exists today in Rust. Add a GSI on <code>stripe_customer_id</code> when row count &gt; 5k. Tracked as a TODO in <code>db.py</code>.</td>
+</tr>
+<tr>
+<td>Missing env var in Python Lambda silently defaults instead of erroring</td>
+<td>low</td>
+<td>medium</td>
+<td>Mirror <code>config.rs</code>: every required var raises in <code>config.py</code> at module import; missing vars surface as a CloudWatch init error, not a runtime 500.</td>
+</tr>
+<tr>
+<td>Test-mode guard regression — accidentally accepting <code>sk_live_</code></td>
+<td>low</td>
+<td>very high</td>
+<td>Hard guard in <code>config.py</code> <em>plus</em> a unit test (<code>test_config.py::test_refuses_live_keys</code>).</td>
+</tr>
+<tr>
+<td>The Python deploy zip exceeds Lambda's 50 MB direct-upload limit once <code>stripe</code>+<code>pydantic</code> deps are bundled</td>
+<td>low</td>
+<td>low</td>
+<td>Empirically <code>stripe</code>+<code>pydantic</code>+<code>python-dotenv</code> is ~5 MB. If it ever balloons, switch to a Lambda Layer or the container-image runtime.</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="4-decisions-deferred-not-blocking-phase-1">4. Decisions deferred (not blocking Phase 1)</h2>
+<p>These don't gate the migration. Each becomes its own scoped doc when
+it matters.</p>
+<ol>
+<li><strong>CDK ownership of the billing Lambda.</strong> Phase 3 §3.2 — defer if
+   the queue is full.</li>
+<li><strong>GSI on <code>stripe_customer_id</code>.</strong> Today it's a scan in both Rust and
+   Python. Worth doing eventually; not now.</li>
+<li><strong>Live-mode flip.</strong> Today the Lambda hard-rejects <code>sk_live_</code>. The
+   migration to live billing is a separate exercise that touches
+   pricing, terms-of-service, and PCI scope review. Out of scope here.</li>
+<li><strong>Move billing into the FastAPI service</strong> (the Phase-1 destination
+   in <code>todo/PYTHON_BACKEND.md</code>). Tempting once the FastAPI service
+   exists — same Pydantic models, same Lambda runtime. But billing's
+   security posture (Stripe webhook signatures, isolated DynamoDB
+   table, fail-open semantics) argues for keeping it isolated. Defer
+   the decision until both services are running.</li>
+<li><strong>Async vs sync <code>stripe</code> calls.</strong> The Python SDK is sync. Lambda
+   is async-friendly via <code>asyncio.to_thread(...)</code>, but for a 5-route
+   dispatch with no concurrent work per request, sync is fine.
+   Revisit only if we ever batch operations.</li>
+</ol>
+<hr>
+<h2 id="5-triggers-when-to-surface-this-doc">5. Triggers — when to surface this doc</h2>
+<p>If your current task matches any of these, raise this plan before
+going further:</p>
+<ul>
+<li>Touching <code>stripe/</code> (Rust source). Phase 1 is queued; new features
+  belong in Python, not Rust.</li>
+<li>Adding a new webhook event type. Implement it once, in Python; do
+  not double-implement in Rust.</li>
+<li>Adding a new endpoint to the billing surface. Same — Python only.</li>
+<li>Modifying <code>app/backend/src/services/stripe.ts</code> (the fetch client).
+  Verify the change is runtime-agnostic (it should be — the fetch
+  client doesn't care what's behind the URL). If you're tempted to
+  add a feature flag for "Rust vs Python," don't — the SSM URL flip
+  is the feature flag.</li>
+<li>Touching <code>${ssmPrefix}/stripe-lambda-url</code> in any deploy script.
+  Phase 2 owns this parameter; coordinate cutovers.</li>
+</ul>
+<hr>
+<h2 id="6-what-this-plan-deliberately-does-not-do">6. What this plan deliberately does not do</h2>
+<ul>
+<li><strong>Rewrite Rust as a learning exercise.</strong> This is a port. The Rust
+  shape is good; the Python shape is identical with a smaller dep
+  tree.</li>
+<li><strong>Add new functionality.</strong> Behaviour parity first. New billing
+  features go in their own scoped doc, after cutover.</li>
+<li><strong>Promise zero downtime.</strong> The SSM cutover has a 1-hour overlap
+  window where both Lambdas may receive traffic. The events are
+  idempotent (§2.2), so the practical downtime is zero — but the
+  <em>guarantee</em> of zero would require API Gateway alias routing, which
+  is overkill for an internal Lambda.</li>
+<li><strong>Replace the SSM URL handoff with API Gateway.</strong> The current
+  Function-URL-via-SSM shape is the simplest possible thing that
+  works and is what makes cutover a one-line revert.</li>
+<li><strong>Bring the billing Lambda's dependencies into the root
+  <code>pyproject.toml</code>.</strong> Keeping <code>stripe</code> out of the pipeline's deps
+  (and the pipeline's CI matrix) is a real isolation win.</li>
+</ul>
+<hr>
+<h2 id="7-open-questions-for-nick">7. Open questions for Nick</h2>
+<p>These need answers before Phase 2 cutover. <strong>Phase 1 is unblocked
+regardless.</strong></p>
+<ol>
+<li><strong>Cutover timing.</strong> Stripe webhooks are async, so the cutover is
+   safe at any hour. Is there a preferred window (e.g., post-7pm PT
+   on a Tuesday) for the SSM flip and the post-flip soak?</li>
+<li><strong>Provisioned concurrency budget.</strong> If we end up needing ~$5/mo
+   for billing-Lambda warm starts, is that approved up-front, or
+   does it need its own decision?</li>
+<li><strong>CDK adoption (Phase 3 §3.2).</strong> Want it bundled into Phase 3, or
+   broken out as a separate small task?</li>
+<li><strong><code>./Quickstart deploy-billing-py</code> shape.</strong> The current Rust
+   deploy is a hand-run <code>cargo lambda deploy</code>. Worth investing 30
+   minutes in a Quickstart subcommand for the Python deploy, or
+   leave it as a documented shell snippet in <code>stripe_py/README.md</code>?</li>
+</ol>
+<hr>
+<h2 id="8-references">8. References</h2>
+<ul>
+<li><code>stripe/</code> — the Rust source being replaced (<code>Cargo.toml</code> + 7
+  modules + README).</li>
+<li><code>app/backend/src/services/stripe.ts</code> — the Express-side client
+  whose URL points at the Lambda.</li>
+<li><code>app/backend/src/middleware/subscription.ts</code> — the gate that
+  consumes <code>/status/{user_id}</code>.</li>
+<li><code>app/backend/src/routes/subscription.ts</code> — exposes
+  <code>/api/subscription/{checkout,status}</code> on the Express side.</li>
+<li><code>app/backend/src/config/index.ts</code> — reads
+  <code>${ssmPrefix}/stripe-lambda-url</code> from SSM.</li>
+<li><code>todo/PYTHON_BACKEND.md</code> Phase 4 — the seed sketch this doc
+  expands. The original code audit lives in git history at
+  <code>todo/REFACTOR.md</code>.</li>
+<li><code>stripe</code> Python SDK — https://github.com/stripe/stripe-python</li>
+<li><code>stripe.Webhook.construct_event</code> — https://docs.stripe.com/webhooks#verify-official-libraries</li>
+<li><code>aws-lambda-powertools</code> (Python) — https://docs.powertools.aws.dev/lambda/python/</li>
+</ul>
+        </article>
+    </main>
+
+    <footer>
+        <div class="footer-inner">
+            <a class="footer-link" href="../roadmap.html">← Back to roadmap</a>
+            <span class="footer-rule" aria-hidden="true"></span>
+            <a class="footer-link" href="https://github.com/JimothyJohn/specodex/blob/master/todo/PYTHON_STRIPE.md" rel="noreferrer">Edit on GitHub</a>
+        </div>
+    </footer>
+</body>
+</html>

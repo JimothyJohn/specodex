@@ -6219,16 +6219,17 @@ input.transmission-param-input {
  * filter pane reads as normal sidebar furniture. Scoped to
  * `.filter-controls-top` so admin pages and ProductDetailModal don't
  * inherit the loud version. */
+/* Bauhaus phase 7d: 4 `!important`s removed (padding, border, bg,
+ * color). PR #192 wrapped the global `button` rule in `:where()`,
+ * so this hero-state selector (specificity 30 from
+ * `.filter-controls-top` + `.custom-dropdown-trigger` + the
+ * attribute) wins automatically. */
 .filter-controls-top .custom-dropdown-trigger[data-placeholder='true'] {
-  /* `!important` on padding/border/background mirrors the global `button`
-   * rule at line ~3825 which uses !important and would otherwise win
-   * the cascade. The hero-state dropdown is the one place that needs to
-   * override that global treatment. */
-  padding: 0.7rem 0.85rem !important;
+  padding: 0.7rem 0.85rem;
   font-size: 1rem;
-  border: 2px solid var(--accent-primary) !important;
-  background: var(--card-bg) !important;
-  color: var(--accent-primary) !important;
+  border: 2px solid var(--accent-primary);
+  background: var(--card-bg);
+  color: var(--accent-primary);
   letter-spacing: 0.02em;
   animation: productTypePulse 1.8s ease-in-out infinite;
 }

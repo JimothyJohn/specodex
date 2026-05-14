@@ -33,6 +33,10 @@ dev = [
     # rule in ~/.claude/CLAUDE.md ("Determinism is non-negotiable").
     "freezegun>=1.5.0",
     "hypothesis>=6.152.6",
+    # Pure-Python Markdown renderer — used by scripts/gen_roadmap.py to
+    # render todo/*.md into docs/roadmap/<slug>.html. Dev-only; never
+    # imported at runtime by specodex/ or cli/.
+    "markdown>=3.7",
     "moto[dynamodb]>=5.2.1",
     # Mutation testing — measures real assertion strength rather than
     # line coverage. Run as a periodic job (not a CI gate) until a

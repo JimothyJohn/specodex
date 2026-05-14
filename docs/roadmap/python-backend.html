@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="A code audit (in git history at todo/REFACTOR.md) flagged three structural taxes on the current architecture:">
+    <meta name="theme-color" content="#3A2C1C">
+    <title>Specodex — PYTHON_BACKEND — TypeScript → Python migration for `app/backend/`</title>
+    <link rel="icon" type="image/svg+xml" href="../logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-issue="PYTHON_BACKEND — TYPESCR">
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="band">
+        <div class="band-inner">
+            <a class="band-brand" href="../index.html">
+                <svg class="band-mark" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <rect width="120" height="120" fill="#E8E2C9"/>
+                    <rect x="14" y="14" width="92" height="92" fill="none" stroke="#1A1A14" stroke-width="3"/>
+                    <rect x="14" y="14" width="92" height="22" fill="#3A2C1C"/>
+                    <rect x="62" y="60" width="40" height="10" fill="#A88A1C"/>
+                    <line x1="14" y1="56" x2="106" y2="56" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="74" x2="106" y2="74" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="92" x2="106" y2="92" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="60" y1="36" x2="60" y2="106" stroke="#1A1A14" stroke-width="2"/>
+                </svg>
+                <span class="wordmark">SPECODEX</span>
+            </a>
+            <nav class="band-nav" aria-label="Section">
+                <a href="../index.html">Catalog</a>
+                <a href="../roadmap.html">Roadmap</a>
+                <a href="https://github.com/JimothyJohn/specodex/blob/master/todo/PYTHON_BACKEND.md" rel="noreferrer">Source</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="doc-hero">
+            <div class="hero-tag">▮▮▮ PYTHON BACKEND ▮▮▮</div>
+            <h1 class="hero-title">PYTHON_BACKEND — TypeScript → Python migration for `app/backend/`</h1>
+            <div class="doc-meta">
+                <span class="status-chip status-backlog">⚪ QUEUED</span>
+                <span class="doc-source"><code>todo/PYTHON_BACKEND.md</code></span>
+            </div>
+        </section>
+
+        <article class="doc-body">
+<h1 id="python_backend-typescript-python-migration-for-appbackend">PYTHON_BACKEND — TypeScript → Python migration for <code>app/backend/</code></h1>
+<blockquote>
+<p><strong>Status:</strong> 📐 planned. Phase 0 (codegen) is shipped; Phases 1-3 (FastAPI
+cutover) are multi-week and <strong>gated on PHASE5_RECOVERY landing first</strong> so
+the FastAPI auth surface mirrors the right Cognito shape.</p>
+<p><strong>Date drafted:</strong> 2026-05-02.
+<strong>Owner:</strong> Nick. <strong>Contributors welcome on Phase 0 only</strong> — Phases 1+ need a
+single hand on the rudder.</p>
+</blockquote>
+<hr>
+<h2 id="0-why-this-exists">0. Why this exists</h2>
+<p>A code audit (in git history at <code>todo/REFACTOR.md</code>) flagged three
+structural taxes on the current architecture:</p>
+<ol>
+<li><strong>Polyglot stack without polyglot justification.</strong> Python pipeline + Node
+   API + Rust billing. Three runtimes, three lint configs, three deploy
+   paths. Only the pipeline (Python, ML libs) and the frontend (React) are
+   load-bearing — the Node backend is <strong>a hand-typed mirror of the Pydantic
+   layer</strong>.</li>
+<li><strong>Six places to update for a new product type.</strong> Pydantic model → TS
+   interface → TS union → Zod enum → backend allowlist → frontend union.
+   CLAUDE.md has a runbook for it; the right answer is to make the runbook
+   unnecessary.</li>
+<li><strong>No type-safe contract between Python and TypeScript.</strong> A field
+   renamed in Python without updating TS ships and nobody notices until a
+   user reports a missing column.</li>
+</ol>
+<p>This doc is the actionable plan to retire the Express backend. It is <strong>not</strong>
+a license to start ripping out code — Phase 0 is the only piece you can ship
+without an ADR. Phases 1-4 each get their own scoped doc when the team
+decides to run them.</p>
+<p><strong>Out of scope (don't bundle into this work):</strong>
+- Rewriting Pydantic models. They're correct.
+- Rewriting the page-finder, scraper, or quality gate.
+- Migrating off DynamoDB or single-table design.
+- Frontend rewrites (React stays).
+- The CDK infrastructure layer stays in TypeScript — too much
+  AWS-specific TS context to be worth porting.</p>
+<hr>
+<h2 id="1-end-state-shape">1. End-state shape</h2>
+<pre><code>specodex/models/*.py  ── pydantic2ts ──►  app/frontend/src/types/generated.ts
+        │                                          ▲
+        │                                          │  imported by React
+        ▼                                          │
+   FastAPI app  ─── handlers consume Pydantic ─────┘
+   (app/backend_py/)        return Pydantic
+        │
+        └──► Mangum / AWS Lambda Web Adapter ──► same API Gateway as today
+                                                          │
+                                                          ▼
+                                                    DynamoDB (unchanged)
+</code></pre>
+<p><strong>Single source of truth: <code>specodex/models/</code>.</strong> Everything else is generated
+or consumes generated artifacts.</p>
+<p><strong>What stays:</strong>
+- <code>specodex/</code> Python pipeline.
+- <code>app/frontend/</code> React SPA (with <code>types/generated.ts</code> replacing the
+  hand-typed <code>types/models.ts</code>).
+- <code>app/infrastructure/</code> CDK stacks (TS — single exception to the
+  Python-everywhere goal).
+- DynamoDB schema, S3 upload bucket, Cognito user pool.</p>
+<p><strong>What goes:</strong>
+- <code>app/backend/</code> (the entire Express + serverless-http app).
+- <code>app/backend/src/types/{models,schemas}.ts</code> (replaced by generated).
+- The Zod re-validation layer in <code>routes/search.ts</code> (FastAPI does it from
+  Pydantic directly).
+- Eventually: the Rust Stripe Lambda, replaced by a Python Lambda. Tracked
+  in <a href="#phase-4--drop-the-rust-billing-lambda">§9 Phase 4</a>.</p>
+<hr>
+<h2 id="2-phases-at-a-glance">2. Phases at a glance</h2>
+<table>
+<thead>
+<tr>
+<th>Phase</th>
+<th>Scope</th>
+<th>Effort</th>
+<th>Risk</th>
+<th>Reversible?</th>
+<th>Gate</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>0</strong></td>
+<td><code>pydantic2ts</code> codegen wired through <code>./Quickstart gen-types</code> ✅ shipped 2026-05-02</td>
+<td>1-2 days</td>
+<td>low</td>
+<td>yes (delete generated.ts)</td>
+<td>runs in CI</td>
+</tr>
+<tr>
+<td><strong>0a</strong></td>
+<td>Drift check + commit <code>generated.ts</code> ✅ shipped 2026-05-02; consumer rewire still pending</td>
+<td>0.5 day shipped + ~1 day rewire</td>
+<td>low</td>
+<td>yes</td>
+<td><code>test-codegen</code> job green</td>
+</tr>
+<tr>
+<td><strong>0b</strong></td>
+<td>Drop the Zod enum in <code>routes/search.ts</code> in favour of <code>VALID_PRODUCT_TYPES</code> derived from generated types</td>
+<td>0.5 day</td>
+<td>low</td>
+<td>yes</td>
+<td>search contract tests still pass</td>
+</tr>
+<tr>
+<td><strong>1</strong></td>
+<td>FastAPI service stood up at <code>/api/v2/...</code> in parallel</td>
+<td>1-2 weeks</td>
+<td>medium</td>
+<td>yes (delete v2 stack)</td>
+<td>feature-flag in frontend; &lt;2% error delta vs v1</td>
+</tr>
+<tr>
+<td><strong>2</strong></td>
+<td>Frontend cuts over to v2 by default; v1 in fallback for one release</td>
+<td>2-3 days</td>
+<td>medium</td>
+<td>yes (re-flag)</td>
+<td>one full release cycle of v2 stable</td>
+</tr>
+<tr>
+<td><strong>3</strong></td>
+<td>Express backend deleted from repo + CDK</td>
+<td>1 day</td>
+<td>low (after Phase 2)</td>
+<td>git revert</td>
+<td>smoke tests green on v2 only</td>
+</tr>
+<tr>
+<td><strong>4</strong></td>
+<td>Rust Stripe Lambda → Python Lambda</td>
+<td>1-2 days</td>
+<td>low</td>
+<td>yes</td>
+<td>webhook signatures verified; a $0.50 test charge round-trips</td>
+</tr>
+<tr>
+<td><strong>5</strong></td>
+<td><code>cli/</code> migration scripts cleaned up ✅ shipped 2026-04-30 (commit <code>c322393</code> deleted 13 finished one-shot scripts; one archive remains under <code>scripts/migrations/</code>)</td>
+<td>0.5 day</td>
+<td>zero</td>
+<td>trivial</td>
+<td>grace period + delete</td>
+</tr>
+</tbody>
+</table>
+<p><strong>You can stop after any phase and the system is still shippable.</strong> This is
+the most important property — there is no "you've started so you must
+finish" cliff between Phase 0 and Phase 4.</p>
+<hr>
+<h2 id="phase-0-codegen-split-out-into-modelgenmd">Phase 0 — codegen (split out into <a href="MODELGEN.md">MODELGEN.md</a>)</h2>
+<p>The <code>pydantic2ts</code> codegen + drift gate + consumer rewire moved into its
+own doc on 2026-05-02 because it ships independently and is worth
+tracking on its own.</p>
+<p><strong>State at split:</strong>
+- ✅ <code>./Quickstart gen-types</code> → <code>app/frontend/src/types/generated.ts</code>
+- ✅ <code>test-codegen</code> CI job blocking deploy on drift
+- ⏳ Frontend <code>models.ts</code> → re-export shim (5 documented shape mismatches)
+- ⏳ Backend Zod enum + allowlist collapse
+- ⏳ "Adding a new product type" runbook collapse to 2 files + codegen</p>
+<p><strong>See <a href="MODELGEN.md">MODELGEN.md</a> for the operational details.</strong> Phases
+1+ below assume Phase 0 has landed (the FastAPI service consumes the
+same Pydantic models, so the codegen gate keeps the contract honest as
+the backend changes underneath it).</p>
+<hr>
+<h2 id="phase-1-fastapi-service-in-parallel">Phase 1 — FastAPI service in parallel</h2>
+<p><strong>Goal:</strong> stand up <code>app/backend_py/</code> as a FastAPI app that reuses
+<code>specodex.models</code> directly. Deploy it to a separate Lambda + API Gateway
+path (<code>/api/v2/...</code>). The frontend continues to use v1; v2 is dark.</p>
+<h3 id="11-layout">1.1 Layout</h3>
+<pre><code>app/
+├── backend/          # Express, slated for Phase 3 deletion
+└── backend_py/
+    ├── pyproject.toml          # FastAPI + Mangum, scoped to this dir
+    ├── src/
+    │   ├── main.py             # FastAPI app, Mangum handler
+    │   ├── routes/
+    │   │   ├── products.py
+    │   │   ├── datasheets.py
+    │   │   ├── search.py
+    │   │   ├── upload.py
+    │   │   ├── projects.py
+    │   │   ├── auth.py
+    │   │   └── admin.py
+    │   ├── middleware/
+    │   │   ├── readonly.py
+    │   │   ├── adminonly.py
+    │   │   └── auth.py
+    │   ├── db/
+    │   │   └── dynamodb.py     # imports specodex.db.dynamo
+    │   └── services/
+    │       ├── search.py
+    │       └── stripe.py
+    └── tests/
+</code></pre>
+<p><strong>Reuse over rewrite.</strong> <code>db/dynamodb.py</code> re-exports
+<code>specodex.db.dynamo.DynamoDBService</code>. The FastAPI <code>/products</code> handler is
+4 lines:</p>
+<pre><code class="language-python">@router.get(&quot;/products&quot;, response_model=list[Product])
+async def list_products(type: ProductType | None = None):
+    return DynamoDBService().list_products(product_type=type)
+</code></pre>
+<h3 id="12-auth">1.2 Auth</h3>
+<p><code>aws-jwt-verify</code>'s Python equivalent is <code>python-jose</code> + the Cognito JWKS
+endpoint. The middleware mirrors <code>app/backend/src/middleware/auth.ts</code>
+exactly — same JWT extraction, same group check.</p>
+<p>The PHASE5_RECOVERY work (<code>todo/PHASE5_RECOVERY.md</code>) lands first. <strong>Do
+not start Phase 1 until Phase 5a/c/d/e/f are confirmed on <code>origin/master</code>.</strong>
+Building a parallel backend on top of unmerged auth is the most expensive
+mistake we could make here.</p>
+<h3 id="13-deployment">1.3 Deployment</h3>
+<p>CDK <code>api-stack.ts</code> adds a second Lambda function (<code>ApiPyFunction</code>) and a
+second API Gateway stage (or a path-prefixed route on the existing API
+Gateway, behind <code>/api/v2/</code>). Both backends share the DynamoDB table, the
+S3 upload bucket, and the Cognito user pool. <strong>No data migration needed.</strong></p>
+<p>Lambda runtime: Python 3.12 (matches <code>pyproject.toml</code>). Handler:
+<code>mangum.Mangum(app)</code>. Cold start: ~800ms (vs Express ~200ms). Mitigation:
+SnapStart (works for Python now) or provisioned concurrency on the v2
+path once we cut over.</p>
+<h3 id="14-frontend-feature-flag">1.4 Frontend feature flag</h3>
+<p><code>app/frontend/src/api/client.ts</code> reads <code>VITE_API_VERSION</code> (default <code>v1</code>).
+A localStorage override (<code>?api=v2</code>) flips one user to v2 for soak
+testing. Once v2 is stable, the default flips.</p>
+<h3 id="15-test-parity">1.5 Test parity</h3>
+<ul>
+<li><strong>Contract tests</strong> (<code>tests/staging/</code>) get parameterised over v1 and v2.
+  Same fixtures, both endpoints, both must pass.</li>
+<li><strong>Smoke tests</strong> (<code>tests/post_deploy/</code>) run against both stacks.</li>
+<li><strong>Benchmark suite</strong> is unaffected — it doesn't touch the API.</li>
+</ul>
+<h3 id="16-exit-criteria-for-phase-1">1.6 Exit criteria for Phase 1</h3>
+<ul>
+<li>[ ] <code>app/backend_py/</code> deploys to dev + staging via CDK.</li>
+<li>[ ] All <code>tests/staging/</code> and <code>tests/post_deploy/</code> pass against v2.</li>
+<li>[ ] CloudWatch shows v2 error rate within 2% of v1 over 24h.</li>
+<li>[ ] At least one engineer (Nick) has used <code>?api=v2</code> for a full session.</li>
+</ul>
+<hr>
+<h2 id="phase-2-frontend-cutover">Phase 2 — Frontend cutover</h2>
+<p><strong>Goal:</strong> flip <code>VITE_API_VERSION</code> default to <code>v2</code>. v1 remains live as a
+fallback for one release cycle.</p>
+<h3 id="21-steps">2.1 Steps</h3>
+<ol>
+<li>Bump <code>VITE_API_VERSION=v2</code> in <code>app/.env.dev</code>, then <code>app/.env.prod</code>.</li>
+<li>Deploy frontend with the new default.</li>
+<li>Soak for one week. Watch CloudWatch error metrics, watch user reports.</li>
+<li>If any regression, set <code>VITE_API_VERSION=v1</code> and redeploy frontend
+   (no backend change required). This is the kill-switch.</li>
+</ol>
+<h3 id="22-exit-criteria">2.2 Exit criteria</h3>
+<ul>
+<li>[ ] Production traffic on v2 for 7 days with error rate ≤ v1's baseline.</li>
+<li>[ ] Smoke suite green on v2.</li>
+<li>[ ] Zero open incidents tied to v2.</li>
+</ul>
+<hr>
+<h2 id="phase-3-decommission-express">Phase 3 — Decommission Express</h2>
+<p><strong>Goal:</strong> delete <code>app/backend/</code>. Reclaim 26k lines of TS.</p>
+<h3 id="31-steps">3.1 Steps</h3>
+<ol>
+<li>Delete the v1 Lambda + API Gateway stage in CDK. Keep DynamoDB, S3,
+   Cognito.</li>
+<li>Delete <code>app/backend/</code> and the npm workspace entry pointing at it.</li>
+<li>Delete <code>app/backend/src/types/{models,schemas}.ts</code> (already a
+   re-export shim from Phase 0a).</li>
+<li>Update <code>./Quickstart verify</code> to drop the <code>backend</code> stage.</li>
+<li>Update <code>.github/workflows/ci.yml</code> to drop the <code>backend</code> job.</li>
+<li>Remove every <code>app/backend</code> reference from <code>CLAUDE.md</code>.</li>
+<li>Drop the <code>uuid</code> ignore from <code>.github/dependabot.yml</code>. Added because
+   uuid v14 is ESM-only and the Express jest setup (ts-jest CJS, no
+   <code>transformIgnorePatterns</code>) couldn't load it; once Express is gone
+   the constraint expires. See PR #147 (closed 2026-05-12) for the
+   diagnosis.</li>
+</ol>
+<h3 id="32-exit-criteria">3.2 Exit criteria</h3>
+<ul>
+<li>[ ] <code>app/backend/</code> does not exist.</li>
+<li>[ ] <code>./Quickstart verify</code> runs <code>python</code> and <code>frontend</code> stages only.</li>
+<li>[ ] CI is faster (one fewer job).</li>
+<li>[ ] CDK stacks list shows no Express Lambda.</li>
+</ul>
+<h3 id="33-dont-forget">3.3 Don't forget</h3>
+<ul>
+<li>Compat routes (<code>app/backend/src/routes/compat.ts</code>) — these are a
+  smell flagged in the original audit. Phase 3 is the natural moment
+  to ask "do we still have any consumer of the compat shape?" If yes,
+  port it to FastAPI. If no, delete it.</li>
+</ul>
+<hr>
+<h2 id="phase-4-drop-the-rust-billing-lambda">Phase 4 — Drop the Rust billing Lambda</h2>
+<p><strong>Goal:</strong> rewrite <code>stripe/</code> (Rust) as a Python Lambda. ~100 lines, reuses
+existing <code>boto3</code> and shares the DynamoDB client. Removes the third
+runtime entirely.</p>
+<h3 id="41-why-this-is-post-cutover">4.1 Why this is post-cutover</h3>
+<p>The Rust Lambda is functionally orthogonal to the API migration. We do
+it last because:
+- Stripe webhook downtime tolerance is <strong>zero</strong> — best to touch this
+  when nothing else is changing.
+- The benefit is purely cleanup; users see nothing.</p>
+<h3 id="42-steps">4.2 Steps</h3>
+<ol>
+<li>New <code>stripe_py/</code> directory. FastAPI <code>POST /webhook</code> handler with
+   signature verification using the <code>stripe</code> Python SDK.</li>
+<li>CDK stack swaps <code>RustFunction</code> for <code>PythonFunction</code>.</li>
+<li>Deploy to dev. Run a $0.50 test charge end-to-end (Stripe test mode).</li>
+<li>Deploy to prod during a low-traffic window.</li>
+<li>Delete <code>stripe/</code> (Rust source).</li>
+</ol>
+<h3 id="43-exit-criteria">4.3 Exit criteria</h3>
+<ul>
+<li>[ ] No <code>cargo</code>, <code>clippy</code>, or <code>rust-toolchain</code> references in CI.</li>
+<li>[ ] <code>stripe_py/</code> handles all webhook events the Rust Lambda did.</li>
+<li>[ ] One real charge round-trips through prod.</li>
+</ul>
+<hr>
+<h2 id="phase-5-migration-archive-cleanup-shipped-2026-04-30">Phase 5 — Migration archive cleanup ✅ shipped 2026-04-30</h2>
+<p><strong>Goal:</strong> move one-time migration scripts out of <code>cli/</code> into
+<code>scripts/migrations/&lt;date&gt;-&lt;name&gt;.py</code>. Pure hygiene; not blocking
+anything.</p>
+<p><strong>What landed:</strong> commit <code>c322393</code> deleted 13 finished one-shot scripts
+outright (<code>cli/migrate_electric_cylinders.py</code>, <code>cli/migrate_units_to_dict.py</code>,
+<code>cli/batch_servo_*.py</code>, <code>cli/ingest_tolomatic.py</code>, <code>cli/units_triage.py</code>,
+plus dead refs in FUTURE.md and Quickstart). The earlier
+<code>scripts/migrations/2026-04-26-batch_process.py</code> is the lone archived
+script kept for provenance. Net effect matches Phase 5's intent — the
+<code>cli/</code> directory now only contains active recurring tools.</p>
+<p>Effort: 0.5 day. Risk: zero. Run when the queue is empty.</p>
+<hr>
+<h2 id="3-risk-register">3. Risk register</h2>
+<table>
+<thead>
+<tr>
+<th>Risk</th>
+<th>Likelihood</th>
+<th>Impact</th>
+<th>Mitigation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Generated TS doesn't compile against existing frontend code</td>
+<td>medium</td>
+<td>medium</td>
+<td>Phase 0 ships generation only; Phase 0a does the cutover gradually with <code>verify</code> as the gate</td>
+</tr>
+<tr>
+<td>FastAPI cold-start hurts UX</td>
+<td>medium</td>
+<td>low</td>
+<td>SnapStart / provisioned concurrency on v2 path</td>
+</tr>
+<tr>
+<td>Auth middleware behaviour drifts from Express version</td>
+<td>medium</td>
+<td>high</td>
+<td>Port test-by-test from <code>app/backend/tests/auth.middleware.test.ts</code>; phase 5 recovery lands first</td>
+</tr>
+<tr>
+<td>Pydantic computed_field doesn't emit cleanly to TS</td>
+<td>low</td>
+<td>low</td>
+<td>Fallback: drop <code>@computed_field</code> for <code>PK</code>/<code>SK</code> and compute on read in the API</td>
+</tr>
+<tr>
+<td>Hidden coupling: a TS service consumes a non-standard shape</td>
+<td>low</td>
+<td>medium</td>
+<td>Phase 1 runs in parallel; v2 doesn't replace v1 until contract tests are 100% green on both</td>
+</tr>
+<tr>
+<td>Stripe webhook downtime during Phase 4 cutover</td>
+<td>low</td>
+<td>high</td>
+<td>Deploy during low-traffic window; have a Rust-Lambda rollback ready in CDK</td>
+</tr>
+<tr>
+<td>Polyglot dev experience worsens before Phase 3</td>
+<td>high</td>
+<td>low</td>
+<td>Acceptable — Phase 1-2 deliberately runs both backends; pain is bounded</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="4-decisions-deferred-not-blocking-phase-0">4. Decisions deferred (not blocking Phase 0)</h2>
+<p>These are real questions a senior would ask. None of them gate the codegen
+work. Each becomes its own scoped doc when it matters.</p>
+<ol>
+<li><strong>OpenAPI client codegen for the frontend.</strong> Once FastAPI is up, do we
+   point <code>openapi-typescript</code> at <code>/openapi.json</code> and generate the client
+   too? Probably yes. Tracked in Phase 1, decided then.</li>
+<li><strong>Rate limiting layer.</strong> Express has none today; FastAPI gets one
+   built in via <code>slowapi</code>. Default to "match current behaviour" (i.e.
+   none) and add it post-cutover.</li>
+<li><strong>Async DynamoDB client.</strong> <code>aioboto3</code> exists. The pipeline is sync.
+   Decision: stay sync in Phase 1; revisit if request latency becomes a
+   complaint.</li>
+<li><strong>Where does Pydantic <code>Mangum</code> Lambda Web Adapter live in the source
+   tree?</strong> <code>app/backend_py/src/main.py</code> is the strawman. Could also be
+   <code>specodex/api/</code> if we want the API to ship with the library. Defer
+   until Phase 1 starts.</li>
+<li><strong>Migrating the agent / processor / scraper into the same FastAPI
+   app.</strong> Tempting, but they're cron-driven, not request-driven. Keep
+   them as separate Lambdas (current shape). No microservices unless
+   required.</li>
+</ol>
+<hr>
+<h2 id="5-triggers-when-to-surface-this-doc">5. Triggers — when to surface this doc</h2>
+<p>If your current task matches any of these, raise this plan before going
+further:</p>
+<ul>
+<li>Touching <code>app/backend/src/**</code>. Anything beyond a bug fix should ask
+  "does this make Phase 3 harder?"</li>
+<li>Adding a new product type. The runbook (<code>CLAUDE.md</code> "Adding a new
+  product type") still says 6 files; once Phase 0a/b lands it'll be 2.
+  Until then, do the 6, but keep the codegen migration in mind.</li>
+<li>Adding a new endpoint. If it'll just be re-implemented in FastAPI
+  next month, weigh the cost.</li>
+<li>Touching <code>app/backend/src/types/{models,schemas}.ts</code>. <strong>Stop.</strong> Edit
+  the Pydantic model and re-run <code>./Quickstart gen-types</code> instead. The
+  hand-edit will get blown away by Phase 0a.</li>
+<li>Touching <code>stripe/</code> (Rust). Phase 4 is queued.</li>
+</ul>
+<hr>
+<h2 id="6-what-this-plan-deliberately-does-not-do">6. What this plan deliberately does not do</h2>
+<ul>
+<li><strong>Pick a definite calendar date for Phase 1.</strong> That's a scheduling
+  decision, not a planning decision.</li>
+<li><strong>Assume FastAPI is the right framework.</strong> Litestar, Robyn, and
+  vanilla <code>aws-lambda-powertools</code> are all candidates. FastAPI is the
+  strawman because (a) Pydantic-native, (b) auto OpenAPI, (c) widest
+  community. Re-evaluate at Phase 1 kickoff.</li>
+<li><strong>Mandate a Cognito → Clerk swap.</strong> Clerk is a faster-to-ship
+  alternative the audit flagged, but PHASE5_RECOVERY.md lands Cognito
+  first. Don't conflate the two.</li>
+<li><strong>Re-shape DynamoDB.</strong> Adding GSIs is its own plan; doing it
+  concurrently with a backend rewrite is exactly the "two refactors at
+  once" anti-pattern.</li>
+<li><strong>Promise that this collapses the polyglot stack to one language.</strong>
+  CDK stays in TS. Frontend stays in TS (React). After Phase 4 the
+  runtime count is 2 (Python app-layer + TS UI/IaC), not 1.</li>
+</ul>
+<hr>
+<h2 id="7-open-questions-for-nick">7. Open questions for Nick</h2>
+<p>These need answers before Phase 1 kicks off. <strong>Phase 0 is unblocked
+regardless.</strong></p>
+<ol>
+<li><strong>Calendar.</strong> Is there a 2-week stretch between SEO/MARKETING and
+   GODMODE where Phase 1 is acceptable, or does it slot in only after
+   GODMODE ships?</li>
+<li><strong>Stretch on this code path.</strong> Does the team (i.e., Nick + occasional
+   contributors) want to learn FastAPI on the critical path, or is the
+   parallel-deploy strategy acceptable?</li>
+<li><strong>Risk appetite for v2 traffic.</strong> Phase 2 cutover is the riskiest
+   step. Should v2 carry 10% of traffic for a week before flipping the
+   default, or full cut-over with a kill-switch?</li>
+<li><strong>Authentic deprecation date for Express.</strong> Phase 3 needs a hard
+   sunset. "When v2 is stable" → name a date.</li>
+</ol>
+<hr>
+<h2 id="8-references">8. References</h2>
+<ul>
+<li><code>todo/PHASE5_RECOVERY.md</code> — auth must land before Phase 1.</li>
+<li><code>CLAUDE.md</code> — "Adding a new product type" runbook (target of Phase
+  0b's collapse).</li>
+<li><code>pydantic-to-typescript</code> — https://github.com/phillipdupuis/pydantic-to-typescript</li>
+<li><code>Mangum</code> — https://mangum.fastapiexpert.com/</li>
+<li><code>FastAPI</code> — https://fastapi.tiangolo.com/</li>
+</ul>
+<p>The original code audit lives in git history at <code>todo/REFACTOR.md</code>
+(deleted 2026-05-03 once its findings were operationalised here, in
+<code>MODELGEN.md</code>, and in <code>PYTHON_STRIPE.md</code>).</p>
+        </article>
+    </main>
+
+    <footer>
+        <div class="footer-inner">
+            <a class="footer-link" href="../roadmap.html">← Back to roadmap</a>
+            <span class="footer-rule" aria-hidden="true"></span>
+            <a class="footer-link" href="https://github.com/JimothyJohn/specodex/blob/master/todo/PYTHON_BACKEND.md" rel="noreferrer">Edit on GitHub</a>
+        </div>
+    </footer>
+</body>
+</html>

@@ -27,41 +27,6 @@ the seam between them needs to be locked early (the requirement
 schema in Part 2 must be JSON-serialisable so Wizard can hand it
 off as URL state or a saved draft).
 
-## Status (post-2026-05-10 sprint)
-
-**Design-only.** Phase 1 implementation **unblocked** — both hard
-prereqs shipped during the 2026-05-09 / 10 sprints. Promoted to the
-top of the next-sprint user-facing-work queue in `todo/README.md`.
-
-Hard prerequisites — both ✅ shipped:
-
-- ~~**SCHEMA Phase 3** (`specodex/relations.py` + `/api/v1/relations/*`
-  + `RelationsPanel` skeleton)~~ ✅ shipped via PRs #89/#90/#92.
-- ~~The bug investigation in Part 5 (linear_actuator surfacing on
-  Selection)~~ ✅ shipped via PR #86 (linear-actuator type
-  discoverability fix).
-
-Soft predecessors (already shipped):
-
-- CATAGORIES Phase 0+1 (supercategory map + `/actuators` MVP) —
-  the source the Build page absorbs.
-- SCHEMA Phase 1 (additive cross-product fields:
-  `motor_mount_pattern`, `compatible_motor_mounts`,
-  `input_motor_mount`, `output_motor_mount`).
-
-Phasing (full PR breakdown in Part 7):
-
-- **Phase 1** — foundational refactor + Linear-Motion / horizontal
-  Build with relations API consumption (4 PRs).
-- **Phase 2** — vertical orientation + gravity vector + friction
-  estimate + Save-to-Project + Build → Selection deep-link (3 PRs).
-- **Phase 3** — Wizard handoff scaffolding (2 PRs).
-- **Phase 4+** — out of MVP arc (rotary path, multi-axis,
-  environmental fields, fieldbus, centre-of-gravity, MSRP totals,
-  multi-segment motion profiles). Each item triggered by an explicit
-  user request or downstream readiness; see Part 7 for the trigger
-  table.
-
 ---
 
 ## Part 1 — The three-page model

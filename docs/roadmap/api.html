@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Status: 📐 not started. Depends on:">
+    <meta name="theme-color" content="#3A2C1C">
+    <title>Specodex — Programmatic API access (paid)</title>
+    <link rel="icon" type="image/svg+xml" href="../logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-issue="PROGRAMMATIC API ACCESS ">
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="band">
+        <div class="band-inner">
+            <a class="band-brand" href="../index.html">
+                <svg class="band-mark" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <rect width="120" height="120" fill="#E8E2C9"/>
+                    <rect x="14" y="14" width="92" height="92" fill="none" stroke="#1A1A14" stroke-width="3"/>
+                    <rect x="14" y="14" width="92" height="22" fill="#3A2C1C"/>
+                    <rect x="62" y="60" width="40" height="10" fill="#A88A1C"/>
+                    <line x1="14" y1="56" x2="106" y2="56" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="74" x2="106" y2="74" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="92" x2="106" y2="92" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="60" y1="36" x2="60" y2="106" stroke="#1A1A14" stroke-width="2"/>
+                </svg>
+                <span class="wordmark">SPECODEX</span>
+            </a>
+            <nav class="band-nav" aria-label="Section">
+                <a href="../index.html">Catalog</a>
+                <a href="../roadmap.html">Roadmap</a>
+                <a href="https://github.com/JimothyJohn/specodex/blob/master/todo/API.md" rel="noreferrer">Source</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="doc-hero">
+            <div class="hero-tag">▮▮▮ API ▮▮▮</div>
+            <h1 class="hero-title">Programmatic API access (paid)</h1>
+            <div class="doc-meta">
+                <span class="status-chip status-backlog">⚪ QUEUED</span>
+                <span class="doc-source"><code>todo/API.md</code></span>
+            </div>
+        </section>
+
+        <article class="doc-body">
+<h1 id="programmatic-api-access-paid">Programmatic API access (paid)</h1>
+<p>Status: 📐 not started. Depends on:</p>
+<ul>
+<li>Cognito identity, JWT middleware, admin gating — ✅ shipped (auth Phases 1–4).</li>
+<li>SES verified-identity sender for welcome / receipt emails —
+  ⏳ stranded on <code>feat-auth-phase5a-ses</code> (see <a href="PHASE5_RECOVERY.md">PHASE5_RECOVERY.md</a>).
+  Bouncing the welcome on a $50/mo invoice is bad.</li>
+<li>WAF rate-limit layer — ✅ shipped (auth Phase 5b on master). The
+  data plane has a floor before any external-facing reader can hit
+  it.</li>
+<li>The existing <code>stripe/</code> (Rust) or <code>stripe_py/</code> (Python port — see
+  <a href="PYTHON_STRIPE.md">PYTHON_STRIPE.md</a>) Lambda actually deployed and
+  live. Today the Rust Lambda is unwired to the production stack.</li>
+</ul>
+<p>This doc plans the <strong>paid programmatic access tier</strong> as a separate
+product surface from the SPA's "logged-in user with a JWT in
+localStorage" path. Engineering teams want curl, scripts, CI
+integrations; that's a different auth shape, a different rate-limit
+shape, and the right place to apply per-call billing.</p>
+<h2 id="why-this-is-a-separate-doc">Why this is a separate doc</h2>
+<p>The SPA-user story (auth Phases 1–4 on master) is "interactive user
+in a browser": register, log in, manage account, get admin powers.
+Forcing API access to fit that model would mean issuing JWTs to
+scripts (which expire every hour and require a refresh-token dance)
+or running curl through OAuth (overkill).</p>
+<p>Programmatic access wants:</p>
+<ul>
+<li>Long-lived credentials (don't refresh every hour).</li>
+<li>A header you can <code>curl -H ...</code> without a session manager.</li>
+<li>Per-key attribution and rate limits.</li>
+<li>Per-call billing — engineers want to see "how much did my CI run
+  cost" without dividing by token counts.</li>
+</ul>
+<p>Different auth shape → different doc.</p>
+<h2 id="the-thesis">The thesis</h2>
+<p><strong>Reuse what's there:</strong></p>
+<ul>
+<li><strong>Cognito users for identity.</strong> One person = one Cognito sub. API
+  keys belong to a Cognito user; revoking a user revokes their keys.
+  Don't fork into a separate "API user" model.</li>
+<li><strong>The <code>stripe/</code> Lambda for billing.</strong> It already implements the
+  hard half: per-user Stripe Customer, metered Price, usage records,
+  subscription gate, DynamoDB users table. The integration story is
+  "API keys map to user_ids; usage flows through the existing
+  <code>/usage</code> endpoint unchanged."</li>
+</ul>
+<p><strong>Add minimum viable surface:</strong></p>
+<ul>
+<li>API key issuance (one Cognito user → many keys).</li>
+<li>Per-key auth middleware on the API.</li>
+<li>Per-key usage attribution (so a leaked key gets revoked without
+  killing the user's other keys).</li>
+<li>Self-service management UI in the SPA's account menu.</li>
+</ul>
+<p>The boring parts (Stripe Customer setup, metered Price, webhooks for
+subscription state, invoice generation) <strong>are already done in
+<code>stripe/</code>.</strong> Don't re-invent them.</p>
+<h2 id="what-stripe-already-does">What <code>stripe/</code> already does</h2>
+<p>Source: <code>stripe/README.md</code> and <code>stripe/src/</code>. Quick inventory:</p>
+<table>
+<thead>
+<tr>
+<th>Capability</th>
+<th>Endpoint</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Create Stripe Customer + Subscription</td>
+<td><code>POST /checkout</code></td>
+<td>✅ implemented</td>
+</tr>
+<tr>
+<td>Receive subscription state changes</td>
+<td><code>POST /webhook</code></td>
+<td>✅ implemented</td>
+</tr>
+<tr>
+<td>Record per-call usage</td>
+<td><code>POST /usage</code></td>
+<td>✅ implemented (token-based today)</td>
+</tr>
+<tr>
+<td>Check subscription active</td>
+<td><code>GET /status/{user_id}</code></td>
+<td>✅ implemented</td>
+</tr>
+<tr>
+<td>Test mode enforced via <code>sk_test_</code> prefix check</td>
+<td>n/a</td>
+<td>✅ implemented</td>
+</tr>
+</tbody>
+</table>
+<p>DynamoDB schema (<code>datasheetminer-users</code>):</p>
+<pre><code>user_id (PK)            String   App's user identifier (= Cognito sub)
+stripe_customer_id      String
+subscription_id         String
+subscription_status     String   active | past_due | canceled | none
+created_at              String   ISO 8601
+</code></pre>
+<p><strong>Today the wire format is <code>user_id</code> (a generic string).</strong> That's
+the integration point: Cognito sub fits the slot.</p>
+<p><strong>One open Q on <code>stripe/</code>:</strong> the metered Price today is per-token.
+For a data API, billing per call (per record returned, per search
+query) probably makes more sense than per token — engineers
+intuitively price calls, not tokens. This is a Stripe Dashboard
+config change (new Price ID), not a code change; the <code>/usage</code>
+endpoint shape stays the same. Decision deferred until pricing is
+actually being set.</p>
+<h2 id="phase-a-api-key-model">Phase A — API key model</h2>
+<p>DynamoDB layout. Lean toward <strong>adding to <code>stripe/</code>'s users table</strong>
+since it's already keyed on <code>user_id</code> and tied to the billing
+model. Don't fork a third table.</p>
+<p>Schema additions:</p>
+<pre><code>PK = USER#&lt;cognito_sub&gt;
+SK = APIKEY#&lt;key_id&gt;            &lt;- ULID is fine; sortable + unique
+
+Attributes:
+  hashed_key         String      argon2id of the full secret
+  prefix             String      sk_live_&lt;8-char&gt;          (for display)
+  name               String      user-supplied label
+  created_at         String      ISO 8601
+  last_used_at       String      ISO 8601, async-updated
+  revoked_at         String      ISO 8601 if revoked
+  monthly_cap_cents  Number?     optional per-key spend cap
+</code></pre>
+<p><strong>Key format:</strong> <code>sk_live_&lt;22 chars base62&gt;</code>. Stripe-style prefix so
+GitHub secret scanning catches leaks (Stripe is on the partner list;
+we'd register <code>sk_live_</code> for our own scanner if we ever scale to
+that, but the format also makes our own internal grep tooling easy).</p>
+<p><strong>Show the full key once on creation.</strong> Store only the argon2id hash.
+Lose-it-once-it's-gone is the standard for API keys; nobody expects
+to retrieve the raw value.</p>
+<h2 id="phase-b-auth-middleware">Phase B — Auth middleware</h2>
+<p>Header convention: <code>Authorization: Bearer sk_live_...</code>. <strong>Same header
+as JWT auth.</strong> The middleware sniffs the prefix to decide which path:</p>
+<pre><code class="language-typescript">// app/backend/src/middleware/auth.ts (extend existing)
+export async function requireAuth(req, res, next) {
+  const token = extractBearer(req);
+  if (!token) return res.status(401).json({...});
+
+  if (token.startsWith('sk_live_')) {
+    // API key path
+    const user = await verifyApiKey(token);
+    if (!user) return res.status(401).json({...});
+    req.user = user;        // same shape as the JWT path
+    return next();
+  }
+
+  // JWT path (existing)
+  const user = await verifyToken(token);
+  ...
+}
+</code></pre>
+<p><code>verifyApiKey</code> flow:</p>
+<ol>
+<li>Hash the incoming key with argon2id.</li>
+<li>Lookup by hashed_key (GSI on the users table — <code>hashed_key</code> →
+   <code>user_id</code>).</li>
+<li>If not found or <code>revoked_at</code> set → 401.</li>
+<li>Async: update <code>last_used_at</code>. Fire-and-forget; do not block the
+   request.</li>
+<li>Resolve to <code>{ sub, email, groups }</code> — same <code>AuthedUser</code> shape as
+   the JWT path so downstream middleware (subscription gate,
+   adminOnly) doesn't need to know which auth path was taken.</li>
+<li>Call <code>stripe/</code>'s <code>GET /status/{user_id}</code>; if not active → 402
+   Payment Required.</li>
+</ol>
+<p>After the endpoint completes, fire <code>POST /usage</code> with the call's
+token count or record-count, depending on what the metered Price ends
+up tracking.</p>
+<p><strong>Performance:</strong> argon2id is intentionally slow (~50ms typical). Cache
+the hashed_key → user_id lookup in-memory for ~30s with a small LRU.
+On a Lambda warm container this drops typical key-auth overhead to
+&lt;1ms after first hit.</p>
+<h2 id="phase-c-rate-limiting">Phase C — Rate limiting</h2>
+<p>Per-key sliding window. Two layers:</p>
+<p><strong>Edge (WAFv2 rate-based rule, keyed on Authorization header).</strong>
+Picks up bursts before the Lambda even spawns. Cheap; piggybacks on
+the auth Phase 5b WAF stack already on master.</p>
+<p><strong>Application-side (Lambda + DynamoDB token bucket).</strong> Fine-grained,
+per-key. Keeps the abuse case where one user's leaked key can't
+saturate everyone's rate limit pool. Default 60 req/min per key,
+configurable per key (paying users can negotiate higher limits).</p>
+<p>Don't use Redis — DynamoDB conditional updates handle the bucket math
+fine and we already have it. ~30 lines.</p>
+<h2 id="phase-d-self-service-ui">Phase D — Self-service UI</h2>
+<p>In the SPA's <code>AccountMenu</code>, add a new "API keys" item alongside
+"Logout":</p>
+<ul>
+<li><strong>List:</strong> show prefix only (full key never re-displayed), name,
+  created/last-used, revoke button.</li>
+<li><strong>Create:</strong> modal asking for a name, then showing the full key
+  exactly once with a "copy to clipboard" button and a clear "save
+  this now, you won't see it again" warning.</li>
+<li><strong>Revoke:</strong> confirm-and-set <code>revoked_at</code>. No soft-delete; revoked
+  keys stay in the DB for audit.</li>
+<li><strong>Optional v2:</strong> per-key spend cap input (writes
+  <code>monthly_cap_cents</code>); auto-revoke when exceeded (a webhook from
+  <code>stripe/</code> checks invoice progress against the cap).</li>
+</ul>
+<h2 id="phase-e-documentation-onboarding">Phase E — Documentation + onboarding</h2>
+<p><code>/api/docs</code> already exists in the backend (see project CLAUDE.md).
+Add an "API key auth" section that mirrors the existing docs but
+with API key examples:</p>
+<pre><code class="language-bash">curl -H &quot;Authorization: Bearer sk_live_...&quot; \
+     https://api.specodex.com/api/v1/search?type=motor
+</code></pre>
+<p>Add a "Getting Started" page in the SPA accessible to logged-in
+paying users — pre-fills a curl with their key (the one-time-show
+modal), shows pricing, links to docs.</p>
+<h2 id="phase-f-pricing-decision">Phase F — Pricing decision</h2>
+<p><strong>The biggest open question</strong> and the one that doesn't depend on any
+of the above shipping. Decide before pricing the product publicly:</p>
+<table>
+<thead>
+<tr>
+<th>Model</th>
+<th>Shape</th>
+<th>Pros</th>
+<th>Cons</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Per-call</td>
+<td>$0.01/call</td>
+<td>Engineers price intuitively; low friction</td>
+<td>Underprices high-data calls (search returning 1000 records)</td>
+</tr>
+<tr>
+<td>Per-record</td>
+<td>$0.001/record returned</td>
+<td>Aligns with value delivered</td>
+<td>Hard to predict for the buyer</td>
+</tr>
+<tr>
+<td>Per-token</td>
+<td>$0.001/1K tokens (current <code>stripe/</code> shape)</td>
+<td>Aligns with backend cost</td>
+<td>Buyers don't know what tokens are</td>
+</tr>
+<tr>
+<td>Tiered subscription</td>
+<td>$99/mo for 100K calls, $499/mo for 1M</td>
+<td>Predictable buyer cost</td>
+<td>Misaligned with usage; over/under</td>
+</tr>
+<tr>
+<td>Free tier + paid</td>
+<td>1K calls/mo free, $0.01/call after</td>
+<td>Conversion play</td>
+<td>Free tier gets scraped by bots → security cost</td>
+</tr>
+</tbody>
+</table>
+<p>Recommendation pending real data: <strong>per-record returned</strong>, with a
+free tier hard-capped at 1K records/month per Cognito user. Aligns
+with what users actually take from the API; the data is the product.
+Free tier creates a lead funnel for the SPA without giving away the
+catalog wholesale.</p>
+<h2 id="risks">Risks</h2>
+<ul>
+<li><strong>Key leaks.</strong> Engineers paste keys into Slack / GitHub / Notion.
+  Mitigations:</li>
+<li>GitHub secret scanning partnership (long-tail, low effort once
+    registered).</li>
+<li>Internal grep-the-leaks job: scrape recent public commits in
+    user-supplied GitHub usernames for the prefix. Optional.</li>
+<li>Auto-revocation on detection.</li>
+<li><strong>Cost runaway for the user.</strong> Stripe metered means a runaway
+  script bills the user real money. Mitigations:</li>
+<li>Per-key <code>monthly_cap_cents</code> (Phase D v2).</li>
+<li>Email at 50% / 80% / 100% of cap.</li>
+<li>Hard cap on first key for new users — $20/mo until they
+    explicitly raise it.</li>
+<li><strong>Free tier as an attack surface.</strong> If we add a free tier, bots
+  will burn through 1K-call quotas to extract data without paying.
+  Counter: enforce per-Cognito-sub quotas (one user, one quota); rely
+  on Phase 5b registration captcha to keep account-creation cheap
+  for legit users but expensive for bots.</li>
+<li><strong>Pricing migration.</strong> If we launch with per-token (current
+  <code>stripe/</code> shape) and migrate to per-record later, existing
+  customers' invoices change shape mid-relationship. Better to make
+  the pricing decision before launch than to change it after.</li>
+<li><strong><code>stripe/</code> test-mode lock.</strong> The Lambda refuses to start without
+  <code>sk_test_</code>. Switching to live keys is a one-line config check
+  inversion + a real Stripe live key, but make sure the test/live
+  separation is correct end-to-end before flipping.</li>
+<li><strong>Identity drift.</strong> If we ever migrate off Cognito (not optimizing
+  for this today), the user_id in <code>stripe/</code>'s table needs a migration
+  path. Cognito sub is opaque — keep it that way; don't bake
+  assumptions about its format into the API code.</li>
+</ul>
+<h2 id="what-this-unblocks">What this unblocks</h2>
+<ul>
+<li><strong>Public API as a paid product line</strong> — the catalog has B2B value
+  beyond the SPA UI; programmatic access opens that revenue.</li>
+<li><strong>CI integrations</strong> — Bazel rules, npm packages, GitHub Actions
+  reading product data into build-time catalogs.</li>
+<li><strong>Webhook subscriptions</strong> — "notify me when a new motor matching
+  these specs is added." Same auth shape; built on top of the same
+  Stripe billing pipeline (per-event pricing).</li>
+<li><strong>Partner integrations</strong> — design tools, BOM generators, CAD
+  plugins. All want a long-lived key, not an OAuth dance.</li>
+</ul>
+<h2 id="triggers">Triggers</h2>
+<p>Read this doc before:</p>
+<ul>
+<li>Adding any non-SPA caller to <code>/api/*</code> routes (CLI, Postman
+  collection, partner integration). Don't bypass-auth them — figure
+  out the API key story first.</li>
+<li>Pricing or marketing the API as a product line.</li>
+<li>Touching <code>stripe/</code> to make sure changes don't conflict with the
+  per-call billing direction sketched above.</li>
+<li>Adding a <code>usage</code> reporter to a new endpoint — keep the wire format
+  consistent with <code>stripe/</code>'s <code>/usage</code> endpoint.</li>
+<li>Designing the rate-limit story (the auth Phase 5b WAF on master
+  handles edge bursts; the per-key fine-grained limit lives here,
+  not there).</li>
+</ul>
+        </article>
+    </main>
+
+    <footer>
+        <div class="footer-inner">
+            <a class="footer-link" href="../roadmap.html">← Back to roadmap</a>
+            <span class="footer-rule" aria-hidden="true"></span>
+            <a class="footer-link" href="https://github.com/JimothyJohn/specodex/blob/master/todo/API.md" rel="noreferrer">Edit on GitHub</a>
+        </div>
+    </footer>
+</body>
+</html>

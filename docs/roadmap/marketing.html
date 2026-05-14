@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Status: 📐 planned. No paid spend, no ads, no agency. Engineer-to-engineer distribution, leaning on the niche-signal of the field-manual aesthetic and the open-s">
+    <meta name="theme-color" content="#3A2C1C">
+    <title>Specodex — Marketing plan: get Specodex into the hands of mechatronics engineers</title>
+    <link rel="icon" type="image/svg+xml" href="../logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-issue="MARKETING PLAN: GET SPEC">
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="band">
+        <div class="band-inner">
+            <a class="band-brand" href="../index.html">
+                <svg class="band-mark" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <rect width="120" height="120" fill="#E8E2C9"/>
+                    <rect x="14" y="14" width="92" height="92" fill="none" stroke="#1A1A14" stroke-width="3"/>
+                    <rect x="14" y="14" width="92" height="22" fill="#3A2C1C"/>
+                    <rect x="62" y="60" width="40" height="10" fill="#A88A1C"/>
+                    <line x1="14" y1="56" x2="106" y2="56" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="74" x2="106" y2="74" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="92" x2="106" y2="92" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="60" y1="36" x2="60" y2="106" stroke="#1A1A14" stroke-width="2"/>
+                </svg>
+                <span class="wordmark">SPECODEX</span>
+            </a>
+            <nav class="band-nav" aria-label="Section">
+                <a href="../index.html">Catalog</a>
+                <a href="../roadmap.html">Roadmap</a>
+                <a href="https://github.com/JimothyJohn/specodex/blob/master/todo/MARKETING.md" rel="noreferrer">Source</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="doc-hero">
+            <div class="hero-tag">▮▮▮ MARKETING ▮▮▮</div>
+            <h1 class="hero-title">Marketing plan: get Specodex into the hands of mechatronics engineers</h1>
+            <div class="doc-meta">
+                <span class="status-chip status-backlog">⚪ QUEUED</span>
+                <span class="doc-source"><code>todo/MARKETING.md</code></span>
+            </div>
+        </section>
+
+        <article class="doc-body">
+<h1 id="marketing-plan-get-specodex-into-the-hands-of-mechatronics-engineers">Marketing plan: get Specodex into the hands of mechatronics engineers</h1>
+<p>Status: 📐 planned. No paid spend, no ads, no agency. Engineer-to-engineer
+distribution, leaning on the niche-signal of the field-manual aesthetic and
+the open-source repo as proof of seriousness. Stripe metered billing exists
+in <code>stripe/</code> (Rust Lambda) — there's a paid surface to graduate to once
+free distribution proves the audience.</p>
+<p>This doc is the <strong>what</strong> and <strong>where</strong>. SEO is in <a href="SEO.md">SEO.md</a>; the two
+overlap (programmatic product pages serve both) but the channels are
+distinct and worth keeping separate.</p>
+<h2 id="the-audience-sharply">The audience, sharply</h2>
+<p>Not "industrial buyers" in the abstract. Concretely, the people who already
+have a stack of vendor PDFs open in browser tabs at 4pm on a Wednesday:</p>
+<table>
+<thead>
+<tr>
+<th>Segment</th>
+<th>Title keywords</th>
+<th>Where they live</th>
+<th>What they want from Specodex</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Mechatronics design engineer</strong></td>
+<td>mechatronics engineer, motion control engineer, controls engineer</td>
+<td>LinkedIn, Eng-Tips, r/PLC, r/AskEngineers, vendor forums (Rockwell, Siemens, Beckhoff)</td>
+<td>Side-by-side cross-vendor specs without filling out a "talk to sales" form</td>
+</tr>
+<tr>
+<td><strong>System integrator / machine builder (OEM)</strong></td>
+<td>systems engineer, machine designer, automation engineer, packaging engineer</td>
+<td>CSIA member directory, Pack Expo / Automate booth ops, IMTS, ControlBooth</td>
+<td>"Find me a motor that fits this envelope, this torque, this voltage, in stock from anyone"</td>
+</tr>
+<tr>
+<td><strong>Robotics startup engineer</strong></td>
+<td>robotics engineer, mech eng (robotics), R&amp;D</td>
+<td>r/robotics, ROS Discourse, HN, Bay Area / Boston meetups</td>
+<td>Spec'ing prototype builds — payload-/reach-/repeatability-driven search</td>
+</tr>
+<tr>
+<td><strong>Sourcing / supply-chain engineer</strong></td>
+<td>sourcing engineer, supplier qualification, commodity manager</td>
+<td>LinkedIn, ISM (Inst. for Supply Management), trade-rep newsletters</td>
+<td>Apples-to-apples cost + lead-time + spec compare across approved vendors</td>
+</tr>
+<tr>
+<td><strong>University / capstone teams</strong></td>
+<td>mechatronics professor, FSAE/FRC mentor, senior design advisor</td>
+<td>r/EngineeringStudents, ASME student chapters, FIRST mentor lists</td>
+<td>Free, citation-able spec source for student build reports</td>
+</tr>
+<tr>
+<td><strong>Consulting / contract design firms</strong></td>
+<td>consulting mechanical engineer, contract automation</td>
+<td>LinkedIn, ENR-style trade press, niche newsletters</td>
+<td>Same as integrators but billed hourly, so time-savings is the pitch</td>
+</tr>
+</tbody>
+</table>
+<p>The unifying trait: <strong>they all know what <code>rotor_inertia=4.5e-5 kg·m²</code> means
+and resent UIs that hide it behind "request a quote".</strong> Marketing copy
+addressed to anyone who <em>doesn't</em> already know that is wasted spend.</p>
+<h2 id="positioning">Positioning</h2>
+<p><strong>Tagline (canonical, do not soften):</strong></p>
+<blockquote>
+<p>A product selection frontend that only an engineer could love.</p>
+</blockquote>
+<p><strong>Elevator (one paragraph, for cold-channel use):</strong></p>
+<blockquote>
+<p>Specodex indexes industrial electromechanical product specs — motors,
+drives, gearheads, contactors, actuators, robot arms — across
+manufacturers, into a single filterable database. Search by the numbers
+that matter (rated power, continuous torque, fieldbus, IP rating), see
+every vendor side-by-side, follow the link straight to the original
+datasheet. No quote-gates, no marketing fluff, no "contact sales".
+Free at <a href="https://www.specodex.com">https://www.specodex.com</a>; source on GitHub.</p>
+</blockquote>
+<p><strong>Anti-positioning (what we are <em>not</em>):</strong></p>
+<ul>
+<li>Not a marketplace. We don't sell parts, we don't take referral fees on
+  buys, we don't shadow-rank vendors. (Once that changes, the positioning
+  changes — flag it.)</li>
+<li>Not a CAD/PDM/PLM tool. We don't model, we don't quote, we don't BOM-export
+  into SAP. (BOM-style copy/export is a planned UX feature; that's
+  "convenience for the engineer at their desk", not "PLM integration".)</li>
+<li>Not vendor-affiliated. The site shows ABB, Siemens, Rockwell, Yaskawa,
+  Mitsubishi, Schneider, Oriental Motor, Maxon, Nidec, Omron, etc. without
+  preferential ordering. This neutrality is the product.</li>
+</ul>
+<h2 id="channels-ranked-by-roi">Channels, ranked by ROI</h2>
+<p>Engineer audiences ignore advertising and respond to peer signal,
+demonstrated competence, and visible craft. Channels below are ordered
+by expected return per hour spent.</p>
+<h3 id="tier-1-highest-leverage-do-first">Tier 1 — highest leverage, do first</h3>
+<ol>
+<li>
+<p><strong>Hacker News "Show HN".</strong> One-shot, but 10k+ engineers read in a
+   single morning if it lands on the front page. Submit <em>after</em> the
+   Specodex rebrand cutover (DNS on <code>specodex.com</code>, see
+   <a href="REBRAND.md">REBRAND.md</a>) so the URL is stable for the comment thread.
+   Title formula: <code>Show HN: Specodex – cross-vendor spec database for
+   motors, drives, gearheads (datasheet-mined)</code>. Lead the post with the
+   one-paragraph elevator. Have a maintainer (@JimothyJohn) ready to
+   answer comments live for the first 4 hours — that's where the actual
+   trust gets built. Single attempt; if it flops, wait 90 days before
+   resubmitting with substantially new material (a major feature, a
+   benchmark blog post, etc.).</p>
+</li>
+<li>
+<p><strong>r/PLC, r/AskEngineers, r/Mechatronics, r/robotics, r/AutomationEng.</strong>
+   Five subreddits, ~600k combined subscribers, all engineer-heavy. Don't
+   blast — post one well-written "I built this because I got tired of
+   X" thread per sub, spaced over 2-3 weeks. Reddit detects coordinated
+   posting and shadowbans; pace matters more than reach. Engage every
+   comment in the first 48 hours. Lead with a screenshot of the filter
+   chips (TM-01) — it reads as "real software" instantly.</p>
+</li>
+<li>
+<p><strong>Eng-Tips and ControlBooth forums.</strong> Older, smaller, but extremely
+   high-trust audiences. Eng-Tips has a "Motors &amp; Generators Engineering"
+   forum with ~50 daily active engineers who actually answer each other's
+   datasheet questions. Soft-introduce by <em>answering questions with
+   Specodex links</em> before posting any standalone announcement. The bar
+   for promo posts is very high; the bar for "here's a useful link in a
+   genuine answer" is normal.</p>
+</li>
+<li>
+<p><strong>GitHub repo as a marketing asset.</strong> The README already exists
+   (<code>README.md</code>), but it's developer-onboarding focused. Add a top-of-
+   README screenshot of the catalog UI and a one-line "use the live
+   app at www.specodex.com — no install needed".
+   <code>awesome-*</code> lists worth submitting to: <code>awesome-industrial</code>, <code>awesome-
+   robotics</code>, <code>awesome-mechatronics</code>, <code>awesome-engineering-resources</code>.
+   These are slow-burn but each merge ≈ 50-200 referral clicks/month
+   forever.</p>
+</li>
+</ol>
+<h3 id="tier-2-sustained-content-second">Tier 2 — sustained content, second</h3>
+<ol start="5">
+<li>
+<p><strong>Engineering blog on the GitHub Pages site (<code>docs/</code>).</strong> Already
+   serving <code>index.html</code> — extend with a <code>/blog/</code> directory. Three posts
+   that earn their keep:
+   - <strong>"How we extract specs from a 600-page Mitsubishi catalog without
+     blowing $40 on Gemini calls."</strong> Technical, names names, shows the
+     <code>page_finder</code> heuristic. Engineering audiences love seeing the
+     trick. Cross-post to HN as a follow-up if the Show HN went well.
+   - <strong>"Yaskawa Σ-7 vs Mitsubishi MR-J5 vs Allen-Bradley Kinetix — by
+     the numbers."</strong> Pure data, no opinions. Ranks by rated power /
+     continuous torque / footprint. Doubles as SEO bait (see
+     <a href="SEO.md">SEO.md</a>) for the comparison long-tail.
+   - <strong>"Building a 3-axis motion stage from scratch: motor + gearhead +
+     drive + cylinder."</strong> Walkthrough using Specodex's filter UI. Ties
+     into <a href="INTEGRATION.md">INTEGRATION.md</a> once the chain-review modal
+     ships.</p>
+</li>
+<li>
+<p><strong>YouTube collaborations, no own channel yet.</strong> The audience has
+   established channels they trust:
+   - Tim Wilborne (<code>twcontrols</code>, ~50k subs) — Rockwell-heavy, but
+     occasionally features tools.
+   - Tim Hyland (<code>thelearningpit</code>) — Allen-Bradley educational.
+   - RealPars — paid courses, has affiliate-style relationships.
+   - Smart Manufacturing Show, automation podcasts.
+   Pitch a 5-minute "I'll search for a motor that meets your criteria
+   live on the show" segment. Free for them (no ad slot needed), useful
+   for their audience, demoable.</p>
+</li>
+<li>
+<p><strong>LinkedIn — long-form posts, not the algorithm.</strong> LinkedIn's organic
+   reach for industrial engineers is genuinely good if the post reads
+   like an engineer wrote it (specific, concrete, no buzzwords). Cadence:
+   one post every 10-14 days. Topic shape that works:
+   "I just did X using these tools, here's the screenshot, here's the
+   one weird thing I learned." Avoid "thought leadership" tone — it
+   reads as fake to this audience.</p>
+</li>
+</ol>
+<h3 id="tier-3-slower-burn-third">Tier 3 — slower-burn, third</h3>
+<ol start="8">
+<li>
+<p><strong>Trade press / e-newsletters.</strong> Most have a "new tools" or "engineer's
+   workbench" beat editor who'll publish a 200-word writeup if pitched
+   well:
+   - <em>Design World</em> (designworldonline.com) — has a Motion Control beat.
+   - <em>Control Engineering</em> (controleng.com) — ICS / PLC heavy.
+   - <em>Machine Design</em> (machinedesign.com) — broader mechanical.
+   - <em>Motion Control &amp; Sensors</em> — niche newsletter, very relevant.
+   - <em>Automation World</em> — process + discrete.
+   Approach: short pitch email to the section editor with two sentences
+   on what + why, and one image. Don't send a press release. They get
+   forty per week and ignore them.</p>
+</li>
+<li>
+<p><strong>Conferences — booth or no booth.</strong>
+   - <strong>Automate</strong> (Detroit, biennial) — the U.S. mechatronics conference.
+     A booth is ~$5-15k; not worth it pre-revenue. Free attend + walk +
+     hand out something physical (sticker with the URL works) is the
+     pre-revenue play.
+   - <strong>IMTS</strong> (Chicago, biennial, manufacturing-tech). Same logic.
+   - <strong>Pack Expo</strong> (Las Vegas / Chicago, packaging machinery). Same.
+   - <strong>NI Week / VIEW</strong> (NI's user conf). Decent crowd; small.
+   Decision rule: no paid booth until either (a) Stripe revenue covers
+   it 2× or (b) we have a partner who's splitting cost.</p>
+</li>
+<li>
+<p><strong>Cold outbound to system integrators.</strong> Use the CSIA member
+    directory (~600 certified integrators, public list). Personalized
+    one-line emails with a screenshot, addressed to the engineering
+    lead. Conversion is low (1-2%) but each conversion is a 5-engineer
+    team who'll all use it. Only worth doing once we have a second
+    engineer; otherwise the response volume eats time.</p>
+</li>
+</ol>
+<h3 id="dont-bother">Don't bother</h3>
+<ul>
+<li><strong>Google / LinkedIn paid ads.</strong> The CPM for "industrial engineer" is
+  brutal and the audience tunes out. Re-evaluate at $10k MRR.</li>
+<li><strong>Generic SaaS review sites</strong> (G2, Capterra). The audience doesn't
+  use them for this kind of tool.</li>
+<li><strong>Influencer marketing.</strong> Not a thing in this niche. Engineers cite
+  forum threads and YouTube tutorials, not "thought leaders".</li>
+</ul>
+<h2 id="conversion-ladder">Conversion ladder</h2>
+<p>Free public site → engineer use → either of:</p>
+<p>(A) <strong>Bulk / API tier</strong> (paid, via Stripe). Engineers who want
+programmatic access, CSV export of the full filtered set, or BOM-import
+into their internal tools. Pricing thought: $X/month for individual,
+$Y/month for team-of-N. (Numbers TBD; Stripe metered billing is
+already plumbed in <code>stripe/</code>.)</p>
+<p>(B) <strong>Sponsored ingestion</strong> (paid, by manufacturers — <em>not yet, and only
+with neutrality preserved</em>). Manufacturers who want guaranteed coverage
+of their catalog get billed for ingestion, but their products <em>do not</em>
+rank higher, get no badging, get no preferential placement. The product
+remains neutral or it has nothing. <strong>Hold off on this until the user
+base is large enough that it matters to them; otherwise it's just
+selling data entry.</strong></p>
+<p>(C) <strong>Custom-type ingestion as a service</strong> (paid, by integrators).
+A consulting firm has a niche product type (say, hydraulic
+proportional valves) they want indexed for their internal use plus
+the public site. We run <code>./Quickstart schemagen</code> against their PDF
+pile and bill for the engineering time. Low-volume, but margin is
+high.</p>
+<h2 id="what-we-measure">What we measure</h2>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Target by month-3 of active marketing</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Unique sessions / week to <code>specodex.com</code></td>
+<td>1,000</td>
+<td>CloudFront access logs / GA</td>
+</tr>
+<tr>
+<td>Returning sessions ratio</td>
+<td>&gt; 25%</td>
+<td>GA</td>
+</tr>
+<tr>
+<td>GitHub stars</td>
+<td>250</td>
+<td>repo</td>
+</tr>
+<tr>
+<td>Search impressions / week (Google)</td>
+<td>5,000</td>
+<td>Google Search Console</td>
+</tr>
+<tr>
+<td>External backlinks (real, non-spam)</td>
+<td>30</td>
+<td>ahrefs free / Search Console</td>
+</tr>
+<tr>
+<td>Newsletter / email opt-ins</td>
+<td>100</td>
+<td>TBD — needs a <code>/subscribe</code></td>
+</tr>
+<tr>
+<td>Stripe conversions (when paid surface ships)</td>
+<td>first 5</td>
+<td>Stripe dashboard</td>
+</tr>
+</tbody>
+</table>
+<p>Marketing telemetry isn't built into the data-quality observatory
+(<code>./Quickstart godmode</code>) today — that report is scoped to catalog
+quality. If we want a marketing panel later, it's its own surface;
+GA / Plausible + Search Console exports cover the audience side
+without a custom dashboard.</p>
+<h2 id="phasing">Phasing</h2>
+<table>
+<thead>
+<tr>
+<th>Phase</th>
+<th>Window</th>
+<th>Gate to next</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>0 — Pre-flight.</strong> Specodex rebrand cutover (<a href="REBRAND.md">REBRAND.md</a>) complete; SEO foundation (<a href="SEO.md">SEO.md</a>) phase 1 shipped (sitemap, structured data, prerender).</td>
+<td>Until <code>specodex.com</code> resolves and Google has indexed &gt; 50 product pages.</td>
+<td>Both gates green.</td>
+</tr>
+<tr>
+<td><strong>1 — Soft launch.</strong> Show HN. r/PLC + r/AskEngineers thread. Top-of-README screenshot. <code>awesome-*</code> PRs.</td>
+<td>30 days.</td>
+<td>Sustained &gt; 200 sessions/week; &gt; 50 GitHub stars; no critical UX bugs surfaced.</td>
+</tr>
+<tr>
+<td><strong>2 — Content.</strong> Three engineering-blog posts. Two YouTube collab pitches. Three trade-press pitches.</td>
+<td>60 days.</td>
+<td>At least one trade-press placement <em>or</em> one YouTube mention <em>or</em> a second HN appearance.</td>
+</tr>
+<tr>
+<td><strong>3 — Outbound.</strong> CSIA cold outreach, LinkedIn cadence, conference attend (no booth). Begin paid surface (Stripe) once free funnel is producing &gt; 1,000 sessions/week.</td>
+<td>Indefinite.</td>
+<td>Stripe MRR &gt; $0.</td>
+</tr>
+<tr>
+<td><strong>4 — Scale.</strong> Re-evaluate paid ads, conference booths, and partnership conversations. Only with revenue justifying spend.</td>
+<td>TBD.</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<h2 id="risks-and-what-to-watch">Risks and what to watch</h2>
+<ul>
+<li><strong>Looking like a vendor's affiliate site.</strong> If users perceive Specodex
+  as ranking ABB above Siemens (or vice versa), the trust collapses
+  permanently. Code-level: the search ordering must be deterministic
+  and stable across vendors. Marketing-level: never accept a
+  manufacturer-paid placement that affects ranking. Re-read this rule
+  before any sponsorship conversation.</li>
+<li><strong>Datasheet copyright pushback.</strong> Manufacturers occasionally object to
+  spec aggregation on copyright grounds. Specs themselves are facts and
+  not copyrightable; verbatim datasheet <em>text</em> and <em>images</em> are. Specodex
+  links to the original datasheet rather than re-hosting — preserve that
+  hard line. If a takedown notice arrives, comply on the specific item,
+  document, and continue. Don't capitulate site-wide.</li>
+<li><strong>Quality regressions visible to early users.</strong> A high-profile post on
+  HN/Reddit with a broken comparison is worse than no post. Run
+  <code>./Quickstart bench --live</code> and <code>./Quickstart smoke</code> against prod
+  immediately before any high-traffic announcement.</li>
+<li><strong>Email collection without a privacy story.</strong> If we add a <code>/subscribe</code>,
+  it needs a one-paragraph privacy statement. Engineers care about this.</li>
+</ul>
+<h2 id="triggers">Triggers</h2>
+<table>
+<thead>
+<tr>
+<th>Trigger (files / topics in your current task)</th>
+<th>Surface</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>User mentions "marketing", "launch", "Show HN", "Reddit post", "conference", "outbound", "press", "newsletter", "growth"</td>
+<td>this doc</td>
+</tr>
+<tr>
+<td><code>app/frontend/src/components/Welcome.tsx</code> copy edits, hero tagline changes</td>
+<td>this doc + <a href="REBRAND.md">REBRAND.md</a></td>
+</tr>
+<tr>
+<td>Stripe billing surface activation (<code>stripe/</code>, paywall, pricing page)</td>
+<td>this doc</td>
+</tr>
+<tr>
+<td>Any conversation about manufacturer outreach, vendor partnerships, or sponsored placements</td>
+<td>this doc — re-read the neutrality rule first</td>
+</tr>
+<tr>
+<td><code>docs/blog/</code> creation, GitHub Pages content additions beyond the landing page</td>
+<td>this doc + <a href="SEO.md">SEO.md</a></td>
+</tr>
+<tr>
+<td>User asks "how do I get this in front of {engineers, integrators, OEMs, mechatronics, robotics teams}"</td>
+<td>this doc</td>
+</tr>
+</tbody>
+</table>
+        </article>
+    </main>
+
+    <footer>
+        <div class="footer-inner">
+            <a class="footer-link" href="../roadmap.html">← Back to roadmap</a>
+            <span class="footer-rule" aria-hidden="true"></span>
+            <a class="footer-link" href="https://github.com/JimothyJohn/specodex/blob/master/todo/MARKETING.md" rel="noreferrer">Edit on GitHub</a>
+        </div>
+    </footer>
+</body>
+</html>

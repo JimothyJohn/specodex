@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Driven by the field-coverage audit at outputs/audit_fields_dev_&lt;ts&gt;.md (re-runnable via uv run python -m cli.audit_fields --stage dev). The audit scans pr">
+    <meta name="theme-color" content="#3A2C1C">
+    <title>Specodex — DB schema cleanup — gameplan</title>
+    <link rel="icon" type="image/svg+xml" href="../logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-issue="DB SCHEMA CLEANUP — GAME">
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="band">
+        <div class="band-inner">
+            <a class="band-brand" href="../index.html">
+                <svg class="band-mark" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <rect width="120" height="120" fill="#E8E2C9"/>
+                    <rect x="14" y="14" width="92" height="92" fill="none" stroke="#1A1A14" stroke-width="3"/>
+                    <rect x="14" y="14" width="92" height="22" fill="#3A2C1C"/>
+                    <rect x="62" y="60" width="40" height="10" fill="#A88A1C"/>
+                    <line x1="14" y1="56" x2="106" y2="56" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="74" x2="106" y2="74" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="92" x2="106" y2="92" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="60" y1="36" x2="60" y2="106" stroke="#1A1A14" stroke-width="2"/>
+                </svg>
+                <span class="wordmark">SPECODEX</span>
+            </a>
+            <nav class="band-nav" aria-label="Section">
+                <a href="../index.html">Catalog</a>
+                <a href="../roadmap.html">Roadmap</a>
+                <a href="https://github.com/JimothyJohn/specodex/blob/master/todo/DB_CLEANUP.md" rel="noreferrer">Source</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="doc-hero">
+            <div class="hero-tag">▮▮▮ DB CLEANUP ▮▮▮</div>
+            <h1 class="hero-title">DB schema cleanup — gameplan</h1>
+            <div class="doc-meta">
+                <span class="status-chip status-signoff">🔴 NEEDS SIGN-OFF</span>
+                <span class="doc-source"><code>todo/DB_CLEANUP.md</code></span>
+            </div>
+        </section>
+
+        <article class="doc-body">
+<h1 id="db-schema-cleanup-gameplan">DB schema cleanup — gameplan</h1>
+<p>Driven by the field-coverage audit at
+<code>outputs/audit_fields_dev_&lt;ts&gt;.md</code> (re-runnable via
+<code>uv run python -m cli.audit_fields --stage dev</code>). The audit scans
+<code>products-dev</code> and tabulates, per <code>product_type</code>, the fraction of rows
+that have a populated value for every Pydantic-declared field.</p>
+<p><strong>Status (post-2026-05-10 sprint):</strong> Phase 1 ✅ shipped (gearhead
+torque rename + electric_cylinder field drops). <strong>Phase 2 needs a
+decision before implementation</strong> — the audit memory
+(<code>project_field_audit_findings.md</code>) recommends <em>dropping</em> <code>lead_time</code> /
+<code>warranty</code> / <code>msrp</code> outright (0% populate rate, fields inherited
+speculatively from a Stripe-driven design that never landed). The
+churn plan's previous framing of "Phase 2 = populate these fields" is
+stale. Decide drop-vs-populate before opening a PR.</p>
+<p>This doc enumerates the cleanup phases that fell out of the
+2026-05-07 audit (against 6578 PRODUCT rows, 6 product types) and which
+of them this PR ships.</p>
+<h2 id="whats-in-scope-for-this-pr">What's in scope for this PR</h2>
+<h3 id="phase-1-gearhead-torque-field-name-fix-real-bug-ships">Phase 1 — Gearhead torque field-name fix (real bug, ships)</h3>
+<p>The <code>gearhead</code> model declares <code>rated_torque</code> (0% hits) and
+<code>peak_torque</code> (0.6% hits). The Gemini extractor emits
+<code>max_continuous_torque</code> (51.8%) and <code>max_peak_torque</code> (51.2%) — and
+those land in DynamoDB on PRODUCT# rows but the Pydantic model can't
+read them back. The API and frontend never see the data even though
+51%+ of gearhead rows have it.</p>
+<p>The <code>specodex/models/gearhead.md</code> ADR (lines 41–42, 87, 107) already
+documents <code>max_continuous_torque</code> / <code>max_peak_torque</code> as the canonical
+names, so the bug is squarely in <code>gearhead.py</code> having drifted from its
+own ADR.</p>
+<p><strong>Files touched:</strong></p>
+<ul>
+<li><code>specodex/models/gearhead.py</code> — rename the two fields</li>
+<li><code>specodex/integration/adapters.py</code> (line 106–107) — gearhead adapter
+  maps <code>Gearhead.rated_torque</code> → port's <code>rated_torque</code>. Keep the port
+  field name (<code>MechanicalShaftPort</code> is shared with motor and motor
+  rightly uses <code>rated_torque</code>); only update the source side</li>
+<li><code>specodex/spec_rules.py</code> (lines 53–54) — add bounds entries for
+  <code>max_continuous_torque</code> and <code>max_peak_torque</code>. Leave the existing
+  <code>rated_torque</code> / <code>peak_torque</code> rules in place (still correct for
+  motor)</li>
+<li><code>cli/intake.py</code> (line ~57) — gearhead column-list comment</li>
+<li><code>app/frontend/src/types/generated.ts</code> — regenerated by
+  <code>./Quickstart gen-types</code></li>
+</ul>
+<p><strong>No DB migration needed.</strong> Existing rows already carry the new field
+names; the rename just lets the API see them. The 0–0.6% rows under
+<code>rated_torque</code>/<code>peak_torque</code> are noise (likely from the
+sub-1% intake before this drift was ever caught) — they'll persist
+harmlessly until next dedupe pass.</p>
+<h3 id="phase-2-drop-two-semantically-wrong-fields-from-electric_cylinder-ships">Phase 2 — Drop two semantically-wrong fields from electric_cylinder (ships)</h3>
+<p>The <code>electric_cylinder</code> model declares two fields that don't apply to
+the product class and have 0% hit rate after 265 rows:</p>
+<ul>
+<li><code>gear_ratio</code> — electric cylinders don't expose a gear ratio in the
+  rotary sense (lead-screw pitch is the relevant linear analogue, and
+  that field already exists). Likely inherited speculatively.</li>
+<li><code>linear_speed_at_rated_load</code> — duplicates <code>max_linear_speed</code> for
+  practical purposes; the LLM never picks up a separate value.</li>
+</ul>
+<p><strong>Files touched:</strong></p>
+<ul>
+<li><code>specodex/models/electric_cylinder.py</code> — drop both fields</li>
+<li><code>app/frontend/src/types/generated.ts</code> — regenerated</li>
+</ul>
+<h3 id="phase-3-field-coverage-audit-cli-ships">Phase 3 — Field-coverage audit CLI (ships)</h3>
+<p><code>cli/audit_fields.py</code> is the audit tool that surfaced these. It's
+read-only (scan + report only, no DB writes), filters to PK
+<code>PRODUCT#*</code> to avoid double-counting <code>INGEST#*</code> co-tenant rows, and
+mirrors the <code>audit_dedupes</code> CLI shape so it's re-runnable from the
+same console pattern. Output goes to
+<code>outputs/audit_fields_&lt;stage&gt;_&lt;ts&gt;.{json,md}</code>.</p>
+<h2 id="whats-deferred-called-out-not-shipped">What's deferred (called out, not shipped)</h2>
+<h3 id="lead_time-and-warranty-on-productbase-keep"><code>lead_time</code> and <code>warranty</code> on <code>ProductBase</code> — keep</h3>
+<p>Both are 0–13% across product types. Datasheets don't carry this
+data; it would come from a distributor / catalog enrichment path that
+isn't running at scale. <strong>Per Nick's instruction, leave them in.</strong>
+They're cheap to keep (Optional fields with no extractor cost) and
+the path to populating them is a separate workstream, not a model
+cleanup.</p>
+<h3 id="msrp-msrp_source_url-msrp_fetched_at-on-productbase-keep"><code>msrp</code> / <code>msrp_source_url</code> / <code>msrp_fetched_at</code> on <code>ProductBase</code> — keep</h3>
+<p><code>./Quickstart price-enrich</code> exists and does populate these (drive
+shows 0.7% on <code>msrp</code> — a small but real signal that enrichment is
+sometimes running). Removing them would tear out the price-enrich
+contract. Keep until / unless that workstream is explicitly retired.</p>
+<h3 id="linear_actuator-over-spec-defer"><code>linear_actuator</code> over-spec — defer</h3>
+<p>13/43 declared fields at 0%. Sample is only 46 PRODUCT# rows so the
+threshold-based call is shaky; before dropping fields like
+<code>holding_force</code>, <code>peak_current</code>, <code>rated_voltage</code>, <code>dynamic_load_rating</code>
+we should ingest a few more vendors and re-run the audit. Likely
+candidates for a future cleanup pass once n is meaningful.</p>
+<h3 id="drive-borderline-fields-keep"><code>drive</code> borderline fields — keep</h3>
+<p><code>ethernet_ports</code> (2.1%) and <code>release_year</code> (2.5%) are below the 5%
+threshold but informative when present (PLC-class drives, model
+recency). No win in dropping.</p>
+<h3 id="robot_arm-per-type-fields-keep"><code>robot_arm</code> per-type fields — keep</h3>
+<p><code>force_torque_sensor</code> (2.0%), <code>dimensions</code> (2.2%), <code>product_family</code>
+(0%) are all structurally sparse rather than wrong. Robot arms are
+typically family-named (so <code>product_family</code> empty is normal — the
+<code>product_name</code> carries the family), only some have integrated F/T
+sensors, and very few datasheets express bounding-box dimensions for
+6-DOF arms. Keep.</p>
+<h2 id="verification">Verification</h2>
+<p><code>./Quickstart verify</code> is the pre-push gate (lint + tests + build,
+mirrors CI). For this PR specifically:</p>
+<ul>
+<li>Python: <code>uv run ruff check . &amp;&amp; uv run ruff format --check . &amp;&amp; uv run pytest</code></li>
+<li>Frontend codegen drift: <code>./Quickstart gen-types</code> followed by
+  <code>git diff --exit-code app/frontend/src/types/generated.ts</code></li>
+<li>Frontend build: covered by <code>./Quickstart verify --only frontend</code></li>
+</ul>
+<p>Re-running the audit after the merge should show:</p>
+<ul>
+<li><code>gearhead</code> removal-candidate list shrinks (no more <code>rated_torque</code> /
+  <code>peak_torque</code> at 0%) and <code>max_continuous_torque</code> /
+  <code>max_peak_torque</code> move from "undeclared" to "declared" at ~51%</li>
+<li><code>electric_cylinder</code> always-empty count drops by 2</li>
+</ul>
+<h2 id="out-of-scope-for-this-doc">Out of scope for this doc</h2>
+<ul>
+<li>The <code>audit_dedupes</code> Phase 1/2/3 work (separate doc:
+  <code>todo/DEDUPE.md</code>)</li>
+<li>Dropping <code>ProductBase</code> commercial fields (Nick's call to keep)</li>
+<li>Linear actuator schema rework (insufficient sample)</li>
+<li>Anything that would require a DB rewrite across stages</li>
+</ul>
+        </article>
+    </main>
+
+    <footer>
+        <div class="footer-inner">
+            <a class="footer-link" href="../roadmap.html">← Back to roadmap</a>
+            <span class="footer-rule" aria-hidden="true"></span>
+            <a class="footer-link" href="https://github.com/JimothyJohn/specodex/blob/master/todo/DB_CLEANUP.md" rel="noreferrer">Edit on GitHub</a>
+        </div>
+    </footer>
+</body>
+</html>

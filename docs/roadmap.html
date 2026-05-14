@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Specodex roadmap — feature kanban driven by todo/*.md. Ready, backlog, sign-off, deferred — no PR history.">
+    <meta name="theme-color" content="#3A2C1C">
+    <title>Specodex — Roadmap</title>
+    <link rel="icon" type="image/svg+xml" href="logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="roadmap/style.css">
+</head>
+<body data-issue="ROADMAP">
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="band">
+        <div class="band-inner">
+            <a class="band-brand" href="index.html">
+                <svg class="band-mark" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <rect width="120" height="120" fill="#E8E2C9"/>
+                    <rect x="14" y="14" width="92" height="92" fill="none" stroke="#1A1A14" stroke-width="3"/>
+                    <rect x="14" y="14" width="92" height="22" fill="#3A2C1C"/>
+                    <rect x="62" y="60" width="40" height="10" fill="#A88A1C"/>
+                    <line x1="14" y1="56" x2="106" y2="56" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="74" x2="106" y2="74" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="92" x2="106" y2="92" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="60" y1="36" x2="60" y2="106" stroke="#1A1A14" stroke-width="2"/>
+                </svg>
+                <span class="wordmark">SPECODEX</span>
+            </a>
+            <nav class="band-nav" aria-label="Section">
+                <a href="index.html">Catalog</a>
+                <a href="roadmap.html" class="active">Roadmap</a>
+                <a href="https://github.com/JimothyJohn/specodex" rel="noreferrer">GitHub</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="hero-tag">▮▮▮ FIELD ROADMAP ▮▮▮</div>
+            <h1 class="hero-title">What's queued, what's ready, what's deferred.</h1>
+            <p class="hero-sub">
+                One card per <code>todo/*.md</code> plan doc, grouped by status. Source of
+                truth lives on the
+                <a href="https://github.com/users/JimothyJohn/projects/1" rel="noreferrer">orchestration board</a>;
+                this page is the public, indexable snapshot. Click a card to open the full plan.
+            </p>
+        </section>
+
+        <section class="kanban-column" aria-label="Ready column">
+            <header class="column-head">
+                <span class="column-code">READY</span>
+                <h2 class="column-title">Ready</h2>
+                <p class="column-blurb">Ready to PR, no blockers.</p>
+                <span class="column-count">1</span>
+            </header>
+            <ol class="kanban-stack">
+                <li>
+                    <a class="kanban-card" href="roadmap/hardening.html">
+                        <div class="card-head">
+                            <span class="card-source">todo/HARDENING.md</span>
+                            <span class="status-chip status-ready">🟡 READY TO PR</span>
+                        </div>
+                        <h3 class="card-title">HARDENING — adversarial-by-default testing posture</h3>
+                        <p class="card-summary">Audit date: 2026-05-09 Status (post-2026-05-10 sprint): 10 of 14 findings shipped; 4 remain.</p>
+                    </a>
+                </li>
+            </ol>
+        </section>
+        <section class="kanban-column" aria-label="Backlog column">
+            <header class="column-head">
+                <span class="column-code">BACKLOG</span>
+                <h2 class="column-title">Backlog</h2>
+                <p class="column-blurb">Queued behind the row above.</p>
+                <span class="column-count">6</span>
+            </header>
+            <ol class="kanban-stack">
+                <li>
+                    <a class="kanban-card" href="roadmap/build.html">
+                        <div class="card-head">
+                            <span class="card-source">todo/BUILD.md</span>
+                            <span class="status-chip status-backlog">⚪ QUEUED (INDEPENDENT, USER-FACING)</span>
+                        </div>
+                        <h3 class="card-title">BUILD — requirements-first system assembler</h3>
+                        <p class="card-summary">The third page in Specodex's user-facing hierarchy, and the one the rest of the application is meant to point at. Today the catalog has two surfaces: Selection (/, the filterable component browser) and Actuators (/actuators, a Linear-Motion supercategory…</p>
+                    </a>
+                </li>
+
+                <li>
+                    <a class="kanban-card" href="roadmap/marketing.html">
+                        <div class="card-head">
+                            <span class="card-source">todo/MARKETING.md</span>
+                            <span class="status-chip status-backlog">⚪ QUEUED</span>
+                        </div>
+                        <h3 class="card-title">Marketing plan: get Specodex into the hands of mechatronics engineers</h3>
+                        <p class="card-summary">Status: 📐 planned. No paid spend, no ads, no agency. Engineer-to-engineer distribution, leaning on the niche-signal of the field-manual aesthetic and the open-source repo as proof of seriousness. Stripe metered billing exists in stripe/ (Rust Lambda) —…</p>
+                    </a>
+                </li>
+
+                <li>
+                    <a class="kanban-card" href="roadmap/api.html">
+                        <div class="card-head">
+                            <span class="card-source">todo/API.md</span>
+                            <span class="status-chip status-backlog">⚪ QUEUED</span>
+                        </div>
+                        <h3 class="card-title">Programmatic API access (paid)</h3>
+                        <p class="card-summary">Status: 📐 not started. Depends on:</p>
+                    </a>
+                </li>
+
+                <li>
+                    <a class="kanban-card" href="roadmap/python-backend.html">
+                        <div class="card-head">
+                            <span class="card-source">todo/PYTHON_BACKEND.md</span>
+                            <span class="status-chip status-backlog">⚪ QUEUED</span>
+                        </div>
+                        <h3 class="card-title">PYTHON_BACKEND — TypeScript → Python migration for `app/backend/`</h3>
+                        <p class="card-summary">A code audit (in git history at todo/REFACTOR.md) flagged three structural taxes on the current architecture:</p>
+                    </a>
+                </li>
+
+                <li>
+                    <a class="kanban-card" href="roadmap/python-stripe.html">
+                        <div class="card-head">
+                            <span class="card-source">todo/PYTHON_STRIPE.md</span>
+                            <span class="status-chip status-backlog">⚪ QUEUED (OPERATOR-DRIVEN DEPLOY)</span>
+                        </div>
+                        <h3 class="card-title">PYTHON_STRIPE — Rust → Python migration for the billing Lambda</h3>
+                        <p class="card-summary">The stripe/ Rust Lambda is the only Rust in the repo. It is ~500 LoC across 7 files, handles 5 endpoints in test-mode metered billing, and was originally justified as &quot;fast cold starts&quot; — a property that buys nothing for Stripe webhooks (async, nobody…</p>
+                    </a>
+                </li>
+
+                <li>
+                    <a class="kanban-card" href="roadmap/seo.html">
+                        <div class="card-head">
+                            <span class="card-source">todo/SEO.md</span>
+                            <span class="status-chip status-backlog">⚪ QUEUED (MULTI-DAY, NEEDS HUMAN PR FOR BUILD CONFIG)</span>
+                        </div>
+                        <h3 class="card-title">SEO plan: make Specodex the answer when an engineer searches a part number</h3>
+                        <p class="card-summary">Status: 🚧 in progress. Phase 0 metadata foundation shipped 2026-04-28 (robots.txt, static sitemap, OG/Twitter cards, JSON-LD WebSite + Organization, canonical URL). The structural lifts — SPA crawlability, per-product titles/meta, dynamic sitemap,…</p>
+                    </a>
+                </li>
+            </ol>
+        </section>
+        <section class="kanban-column" aria-label="Needs Sign-off column">
+            <header class="column-head">
+                <span class="column-code">SIGNOFF</span>
+                <h2 class="column-title">Needs Sign-off</h2>
+                <p class="column-blurb">Blocked on an explicit human decision.</p>
+                <span class="column-count">2</span>
+            </header>
+            <ol class="kanban-stack">
+                <li>
+                    <a class="kanban-card" href="roadmap/db-cleanup.html">
+                        <div class="card-head">
+                            <span class="card-source">todo/DB_CLEANUP.md</span>
+                            <span class="status-chip status-signoff">🔴 NEEDS SIGN-OFF</span>
+                        </div>
+                        <h3 class="card-title">DB schema cleanup — gameplan</h3>
+                        <p class="card-summary">Driven by the field-coverage audit at outputs/audit_fields_dev_&lt;ts&gt;.md (re-runnable via uv run python -m cli.audit_fields --stage dev). The audit scans products-dev and tabulates, per product_type, the fraction of rows that have a populated value for every…</p>
+                    </a>
+                </li>
+
+                <li>
+                    <a class="kanban-card" href="roadmap/schema-breaking-harmonize.html">
+                        <div class="card-head">
+                            <span class="card-source">todo/SCHEMA_BREAKING_HARMONIZE.md</span>
+                            <span class="status-chip status-signoff">🔴 NEEDS SIGN-OFF</span>
+                        </div>
+                        <h3 class="card-title">SCHEMA Phase 1.1 — BREAKING type harmonisation</h3>
+                        <p class="card-summary">Status: 🔴 Designed; needs explicit sign-off before applying. The rest of todo/SCHEMA.md (Phases 1, 2, 3, 4) all shipped during the 2026-05-09 / 10 sprints — this is the only piece deferred for the sign-off conversation about whether to break existing DB rows.</p>
+                    </a>
+                </li>
+            </ol>
+        </section>
+        <section class="kanban-column" aria-label="In Flight column">
+            <header class="column-head">
+                <span class="column-code">INFLIGHT</span>
+                <h2 class="column-title">In Flight</h2>
+                <p class="column-blurb">Wave shipped; further waves open.</p>
+                <span class="column-count">2</span>
+            </header>
+            <ol class="kanban-stack">
+                <li>
+                    <a class="kanban-card" href="roadmap/bauhaus-followup.html">
+                        <div class="card-head">
+                            <span class="card-source">todo/BAUHAUS_FOLLOWUP.md</span>
+                            <span class="status-chip status-inflight">IN FLIGHT</span>
+                        </div>
+                        <h3 class="card-title">BAUHAUS port — follow-up status</h3>
+                        <p class="card-summary">The catalog page and every modal are Bauhaus-ported. What's left is BuildPage (Phase 9), AdminPanel + DatasheetsPage + ProductManagement (Phase 10), and the deferred !important cluster sweep (Phase 7). Two visual threads I never nailed down: filter chip…</p>
+                    </a>
+                </li>
+
+                <li>
+                    <a class="kanban-card" href="roadmap/bauhaus.html">
+                        <div class="card-head">
+                            <span class="card-source">todo/BAUHAUS.md</span>
+                            <span class="status-chip status-inflight">IN FLIGHT</span>
+                        </div>
+                        <h3 class="card-title">BAUHAUS — UI refresh port from `docs/design/bauhaus-catalog.html`</h3>
+                        <p class="card-summary">PR #136 explored three design directions; Bauhaus Catalog won. PR #150 landed wave 1 — the tokens layer, the header, the filter-chip truncation fix, and Oswald column headers. That PR's &quot;out of scope&quot; section is the explicit follow-up menu; this doc turns…</p>
+                    </a>
+                </li>
+            </ol>
+        </section>
+        <section class="kanban-column" aria-label="Deferred column">
+            <header class="column-head">
+                <span class="column-code">DEFERRED</span>
+                <h2 class="column-title">Deferred</h2>
+                <p class="column-blurb">Parked in todo/longterm/.</p>
+                <span class="column-count">3</span>
+            </header>
+            <ol class="kanban-stack">
+                <li>
+                    <a class="kanban-card" href="roadmap/longterm-board.html">
+                        <div class="card-head">
+                            <span class="card-source">todo/longterm/BOARD.md</span>
+                            <span class="status-chip status-deferred">DEFERRED (LONGTERM/)</span>
+                        </div>
+                        <h3 class="card-title">Board review — Specodex / Datasheetminer</h3>
+                        <p class="card-summary">First reaction: &quot;Oh, this is for me. Finally.&quot;</p>
+                    </a>
+                </li>
+
+                <li>
+                    <a class="kanban-card" href="roadmap/longterm-configuration.html">
+                        <div class="card-head">
+                            <span class="card-source">todo/longterm/CONFIGURATION.md</span>
+                            <span class="status-chip status-deferred">DEFERRED (LONGTERM/)</span>
+                        </div>
+                        <h3 class="card-title">CONFIGURATION — rethinking the configurator architecture</h3>
+                        <p class="card-summary">The MVP works. It also has six structural limits that will hurt within the next ten templates. This doc names them and proposes the next architecture so we don't paint ourselves into a corner.</p>
+                    </a>
+                </li>
+
+                <li>
+                    <a class="kanban-card" href="roadmap/longterm-growth-cli.html">
+                        <div class="card-head">
+                            <span class="card-source">todo/longterm/GROWTH_CLI.md</span>
+                            <span class="status-chip status-deferred">DEFERRED (LONGTERM/)</span>
+                        </div>
+                        <h3 class="card-title">Growth CLI: `./Quickstart growth` — awareness first, measurement later</h3>
+                        <p class="card-summary">Status: 📐 design-only as of 2026-05-09. No code lands until the scope below is signed off.</p>
+                    </a>
+                </li>
+            </ol>
+        </section>
+    </main>
+
+    <footer>
+        <div class="footer-inner">
+            <span>Generated from <code>todo/*.md</code> via <code>scripts/gen_roadmap.py</code>.</span>
+            <span class="footer-rule" aria-hidden="true"></span>
+            <a class="footer-link" href="https://github.com/JimothyJohn/specodex/tree/master/todo" rel="noreferrer">todo/ on GitHub</a>
+            <a class="footer-link" href="index.html">Catalog →</a>
+        </div>
+    </footer>
+</body>
+</html>
