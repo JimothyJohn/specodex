@@ -7423,29 +7423,35 @@ input.transmission-param-input {
   overflow: hidden;
   flex: 0 0 auto;
 }
+/* Bauhaus phase 7b: 6 `!important`s removed from .multi-filter-popover-
+ * mode-btn — all were defensive against the broad `button, .button`
+ * rule that PR #192 wrapped in `:where()` (zero specificity). Class
+ * selector (specificity 10) wins automatically. */
 .multi-filter-popover-mode-btn {
   width: 26px;
   height: 22px;
-  padding: 0 !important;
-  border: none !important;
-  background: transparent !important;
-  color: var(--text-tertiary) !important;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-tertiary);
   font-weight: 800;
   font-size: 1rem;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  box-shadow: none !important;
-  border-radius: 0 !important;
+  box-shadow: none;
+  border-radius: 0;
 }
+/* Active-state variants — specificity 20 beats the .multi-filter-
+ * popover-mode-btn base (specificity 10) on its own. */
 .multi-filter-popover-mode-btn--include.is-active {
-  background: #5fa45f !important;
-  color: #fff !important;
+  background: #5fa45f;
+  color: #fff;
 }
 .multi-filter-popover-mode-btn--exclude.is-active {
-  background: #c2557a !important;
-  color: #fff !important;
+  background: #c2557a;
+  color: #fff;
 }
 
 .multi-filter-popover-list {
@@ -7516,23 +7522,27 @@ input.transmission-param-input {
   display: flex;
   justify-content: flex-end;
 }
+/* Bauhaus phase 7b: 7 + 3 = 10 `!important`s removed from
+ * .multi-filter-popover-clear (+ :hover). All defensive against the
+ * broad `button, .button` rule, which is zero-specificity since
+ * PR #192. */
 .multi-filter-popover-clear {
-  padding: 0.25rem 0.6rem !important;
-  background: transparent !important;
-  color: var(--text-secondary) !important;
-  border: 1px solid var(--border-color) !important;
-  font-size: 0.78rem !important;
+  padding: 0.25rem 0.6rem;
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+  font-size: 0.78rem;
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  border-radius: var(--radius-sm, 5px) !important;
+  border-radius: var(--radius-sm, 5px);
   cursor: pointer;
-  box-shadow: none !important;
+  box-shadow: none;
 }
 .multi-filter-popover-clear:hover {
-  border-color: var(--accent-primary) !important;
-  color: var(--text-primary) !important;
-  background: var(--bg-tertiary) !important;
+  border-color: var(--accent-primary);
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
 }
 
 /* =========================================================================
