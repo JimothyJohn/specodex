@@ -9,7 +9,6 @@ Stages run in order; each is independently skippable via --skip:
 
     smoke   pytest tests/post_deploy/      every canonical endpoint 200s
     bench   uv run python -m cli.bench     offline quality run, exit 0
-    board   gh project item-list 1 ...     no P0 cards open on the board
     git                                    on master, clean, in sync with origin
 
 Exit code 0 = READY (safe to post). Exit code 1 = HOLD (one or more stages
@@ -19,7 +18,7 @@ knows the gate is only as strong as what ran.
 Usage:
     uv run python -m cli.growth preflight
     uv run python -m cli.growth preflight --url https://datasheets.advin.io
-    uv run python -m cli.growth preflight --skip bench --skip board
+    uv run python -m cli.growth preflight --skip bench
 """
 
 from __future__ import annotations
@@ -37,8 +36,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_URL = "https://datasheets.advin.io"
-STAGES = ("smoke", "bench", "board", "git")
-OPEN_STATUSES = frozenset({"Backlog", "Ready", "In progress", "In review"})
+STAGES = ("smoke", "bench", "git")
 
 log = logging.getLogger("growth")
 
@@ -134,60 +132,6 @@ def _check_bench() -> StageResult:
     return StageResult("bench", True, False, detail)
 
 
-def _check_board() -> StageResult:
-    """Look for open P0 cards on Specodex Orchestration board (project 1)."""
-    if not shutil.which("gh"):
-        return StageResult(
-            "board", False, True, "gh CLI not on PATH; can't check P0 cards"
-        )
-    proc = subprocess.run(
-        [
-            "gh",
-            "project",
-            "item-list",
-            "1",
-            "--owner",
-            "JimothyJohn",
-            "--format",
-            "json",
-            "--limit",
-            "200",
-        ],
-        capture_output=True,
-        text=True,
-    )
-    if proc.returncode != 0:
-        first = (proc.stderr or "").strip().splitlines()
-        msg = first[0] if first else "gh failed (auth?)"
-        return StageResult("board", False, False, f"FAILED — {msg}")
-
-    try:
-        data = json.loads(proc.stdout)
-    except json.JSONDecodeError as e:
-        return StageResult("board", False, False, f"non-JSON from gh: {e}")
-
-    items = data.get("items", []) if isinstance(data, dict) else (data or [])
-    open_p0 = [
-        it
-        for it in items
-        if (it.get("priority") or "") == "P0"
-        and (it.get("status") or "") in OPEN_STATUSES
-    ]
-    if open_p0:
-        head = open_p0[0]
-        title = (head.get("title") or "(untitled)")[:60]
-        status = head.get("status", "?")
-        more = f" (+{len(open_p0) - 1} more)" if len(open_p0) > 1 else ""
-        return StageResult(
-            "board",
-            False,
-            False,
-            f"{len(open_p0)} P0 open — [{status}] {title}{more}",
-        )
-    total = data.get("totalCount", len(items)) if isinstance(data, dict) else len(items)
-    return StageResult("board", True, False, f"no P0 cards open (scanned {total})")
-
-
 def _check_git() -> StageResult:
     """Working tree clean, on master, master in sync with origin/master."""
     if not (ROOT / ".git").exists():
@@ -274,8 +218,6 @@ def run_preflight(
             r = _timed(_check_smoke, url)
         elif name == "bench":
             r = _timed(_check_bench)
-        elif name == "board":
-            r = _timed(_check_board)
         elif name == "git":
             r = _timed(_check_git)
         else:

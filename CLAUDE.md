@@ -351,9 +351,9 @@ hand back when the diff touches `app/infrastructure/**` (CDK),
 live-mode, prod deploy, or shared infra mutations. For these, the
 review-wait gate still matters.
 
-(The daily orchestrator agent runs unattended and keeps the
-draft-PR-then-Nick-merges flow — that's a different mode, documented
-in "Backlog & orchestration board" below.)
+(Background remote agents — if any are still wired — run unattended
+and keep the draft-PR-then-Nick-merges flow. That's a different mode
+than interactive work.)
 
 ### Per-PR HTML documentation
 
@@ -381,97 +381,75 @@ navigable.
 
 ---
 
-## Backlog & orchestration board
+## Backlog & `todo/`
 
-Work is queued on the **Specodex Orchestration** GitHub Project (v2),
-owned by user `JimothyJohn`, project number `1`. URL:
-<https://github.com/users/JimothyJohn/projects/1>.
+Work is queued in `todo/`. One file per area
+(`todo/<AREA>.md`); `todo/README.md` is the dependency map, the
+chronological order, and the source of status. `docs/roadmap.html`
+is a generated kanban of the same data (run `uv run python
+scripts/gen_roadmap.py` after editing any `todo/*.md`).
 
-**The board is the source of truth for what's active, blocked, or
-queued.** `todo/<AREA>.md` docs are the per-card detail; `todo/README.md`
-is the dependency map and chronological order. Status / Priority / Size
-live on the board, NOT inside the docs.
+There is **no GitHub Project board**. The "Specodex Orchestration"
+board was deleted 2026-05-13 — it was duplicating `todo/` and
+nobody was actually using it. If a remote agent or skill still
+references `https://github.com/users/JimothyJohn/projects/1` or
+`gh project … --owner JimothyJohn 1`, that reference is stale and
+should be removed.
 
-### How to create a card
+### What makes a good `todo/` entry
 
-A well-formed card is a small, reviewable chunk of work that links to
-its plan doc. Two ways to create:
+A well-formed todo doc is a small, reviewable chunk of work, named
+by its area (`HARDENING.md`, `SEO.md`). It includes:
 
-**Web UI:** <https://github.com/users/JimothyJohn/projects/1> →
-**+ Add item** → fill title/body/Status/Priority/Size.
+- **First line:** `# <AREA> — <one-line scope>`. The H1 becomes
+  the card title in `docs/roadmap.html`.
+- **Status blockquote** right after the H1, naming the current
+  state (`📐 planned`, `🚧 in progress`, `🔴 needs sign-off`,
+  `🎨 in flight`). The status emoji is what the roadmap renderer
+  reads.
+- **Phased plan** below, broken into independently shippable PRs.
+- **Trigger conditions** if the doc has file-level triggers — add
+  a row to `todo/README.md`'s "Trigger conditions" table so the
+  doc auto-surfaces when matching files are touched.
 
-**CLI:** `gh project item-create 1 --owner JimothyJohn --title "..."
---body "..."` returns the item ID, then set fields via
-`gh project item-edit --id <ITEM_ID> --project-id PVT_kwHOAXGElM4BWctw
---field-id <FIELD_ID> --single-select-option-id <OPTION_ID>`. Field IDs:
+When deferring something to "after MVP soak" or "no active plan,"
+move the file under `todo/longterm/` — that bucket is inert until
+explicitly named (see auto-memory `feedback_todo_longterm.md`).
 
-| Field    | Field ID                              | Options (name → id)                                                                                          |
-|----------|----------------------------------------|--------------------------------------------------------------------------------------------------------------|
-| Status   | `PVTSSF_lAHOAXGElM4BWctwzhRw5cw`       | Backlog `f75ad846` · Ready `61e4505c` · In progress `47fc9ee4` · In review `df73e18b` · Done `98236657`      |
-| Priority | `PVTSSF_lAHOAXGElM4BWctwzhRw5o0`       | P0 `79628723` · P1 `0a877460` · P2 `da944a9c`                                                                |
-| Size     | `PVTSSF_lAHOAXGElM4BWctwzhRw5o4`       | XS `6c6483d2` · S `f784b110` · M `7515a9f1` · L `817d0097` · XL `db339eb2`                                    |
+### How work gets done
 
-Project ID (only needed for raw GraphQL or `item-edit`):
-`PVT_kwHOAXGElM4BWctw`.
+1. Pick a row from `todo/README.md`'s churn plan (the table at the
+   bottom of the file) or scan the kanban at `docs/roadmap.html`.
+2. Branch off master as `auto/<area>-<short-slug>-<yyyymmdd>` (or
+   any descriptive name for human-driven work).
+3. Make the smallest correct change. Run `./Quickstart verify` or
+   the relevant subset before committing.
+4. Push and open a PR. Default is non-draft when CI passes and the
+   diff doesn't touch hard-to-reverse surfaces (see
+   "Shipping a change" above for the draft-PR exceptions).
+5. After merge, update the status line in `todo/<AREA>.md` (or
+   delete the doc if its scope is fully shipped); regenerate
+   `docs/roadmap.html`.
 
-Re-fetch IDs if stale: `gh project field-list 1 --owner JimothyJohn --format json`.
+**Hard rules for autonomous / unattended work** (skip if any apply):
 
-### What makes a good card
-
-- **Title.** Short, specific, scoped to one logical chunk. Format:
-  `<AREA>: <verb-phrase>`. Good: `MODELGEN: consumer rewire + Zod enum
-  collapse`. Bad: `Fix types`.
-- **Body.** First line: `Doc: todo/<AREA>.md`. Then a one-paragraph
-  scope summary lifted from the doc, plus any blockers or unblock
-  notes ("BLOCKED on PHASE5_RECOVERY", "UNBLOCKS API.md").
-- **Status.** New cards default to `Backlog`. Move to `Ready` when
-  blockers clear and the work is queued for pickup.
-- **Priority.** P0 = drop-everything, must be human-driven (security,
-  prod-down, blocking ship). P1 = next-up. P2 = nice-to-have.
-- **Size.** Best estimate of focused engineering effort: XS ≤ 1h,
-  S ≤ ½ day, M ≤ 2 days, L ≤ 1 week, XL > 1 week. Cards bigger than L
-  should usually be split.
-
-### How cards get worked
-
-A daily remote agent (`Specodex daily orchestrator`,
-<https://claude.ai/code/routines/trig_018nasuoHWyKyxfmmNXhPvTg>,
-fires at 10:00 UTC weekdays) pulls Ready cards and ships DRAFT PRs.
-The same rules apply when working a card by hand:
-
-1. Move card → `In progress`.
-2. Scope to one sub-phase from the linked doc; branch off master as
-   `auto/<area>-<short-slug>-<yyyymmdd>` (or any descriptive name for
-   human-driven work).
-3. Make the smallest correct change. Run `./Quickstart verify` or the
-   relevant subset before committing.
-4. Push and open a **DRAFT** PR (`gh pr create --draft`). Never merge
-   from the agent or in a "churning through cards" session — Nick
-   reviews and merges.
-5. Move card → `In review` and link the PR.
-
-The agent's **hard rules** (the "skip if any apply" filter):
-
-- P0 cards stay on the board for human pickup.
-- Anything blocked per `todo/README.md`'s dependency map is skipped
-  until the blocker clears.
-- No edits to `app/infrastructure/**` (CDK), `.github/workflows/**`
+- Anything blocked per `todo/README.md`'s dependency map.
+- Edits to `app/infrastructure/**` (CDK), `.github/workflows/**`
   (CI/CD), or anything that triggers an AWS-mutating command
   (`./Quickstart deploy`, `./Quickstart admin promote`, `--stage
   prod`).
-- No DynamoDB writes outside dev (and even on dev, prefer dry-run).
-- No Stripe live-mode keys, real charges, or webhook secret rotation.
-- No cherry-picking across worktrees or rewriting shared history.
+- DynamoDB writes outside dev (and even on dev, prefer dry-run).
+- Stripe live-mode keys, real charges, or webhook secret rotation.
+- Cherry-picking across worktrees or rewriting shared history.
 
-If a card is borderline, skip it. The cost of skipping is a missed
+If a row is borderline, skip it. The cost of skipping is a missed
 day; the cost of an unauthorized infra change is much higher.
 
-When `todo/<AREA>.md` ships its scope (or its action items move into
-another doc), delete the doc (`git rm todo/<AREA>.md`); the design
-rationale stays recoverable via `git log --diff-filter=D --follow --
-todo/<AREA>.md`. Mark the corresponding board card `Done` and link
-the merge commit. See the deletion log in `todo/README.md`'s
-"Recently shipped" header for the pattern.
+When `todo/<AREA>.md` ships its full scope (or its action items
+move into another doc), delete the file (`git rm todo/<AREA>.md`);
+the design rationale stays recoverable via `git log --diff-filter=D
+--follow -- todo/<AREA>.md`. See the deletion log in
+`todo/README.md`'s "Recently shipped" header for the pattern.
 
 ## Environment
 
