@@ -4132,23 +4132,18 @@ code, pre, .monospace {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
 }
 
-/* Terminal screen effect - subtle CRT scan lines */
+/* Terminal screen effect - subtle CRT scan lines.
+ *
+ * Disabled 2026-05-13 for whole-page perf. position:fixed +
+ * repeating-linear-gradient at 1px resolution over the entire viewport
+ * was forcing the compositor to re-rasterize the scan-line layer on
+ * every paint. Combined with the body's now-also-disabled fixed
+ * background layers, this was a major contributor to drag/scroll
+ * stutter. Aesthetic loss: subtle 1px CRT scan lines at 30% opacity
+ * that most users won't miss; can be reintroduced as a single CSS
+ * variable opt-in if anyone misses it. */
 .app::before {
-  content: '';
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  background: repeating-linear-gradient(
-    0deg,
-    rgba(0, 0, 0, 0) 0px,
-    rgba(0, 0, 0, 0.03) 1px,
-    rgba(0, 0, 0, 0) 2px
-  );
-  z-index: 999;
-  opacity: 0.3;
+  content: none;
 }
 
 /* Military stencil effect for headers */
@@ -5607,37 +5602,51 @@ hr::after {
  *   2. minor grid
  *   3. paper fibre (SVG turbulence, tiled, semi-transparent)
  * The body's background-color sits underneath. */
+/* Engineering-paper background — perf fix 2026-05-13.
+ *
+ * `background-attachment: fixed` on FIVE background layers (4 gradient
+ * grid lines + 1 SVG turbulence noise filter) was forcing whole-
+ * viewport re-rasterization on every paint operation. With React
+ * frequently triggering re-renders during slider drags / hovers /
+ * scrolls, this caused observable whole-page stutter.
+ *
+ * Switched to `background-attachment: scroll` (the default). Visual
+ * cost: the grid + noise scroll with the page instead of being pinned
+ * to the viewport. Drafting-paper aesthetic stays, just slightly less
+ * "the page is a window onto a fixed sheet" and more "the sheet IS the
+ * page."
+ *
+ * Also dropped the SVG turbulence noise layer — feTurbulence is the
+ * single most expensive piece of CSS in this file to rasterize, and
+ * the visual contribution is subtle paper-texture noise that most
+ * users won't notice missing. Keep the grid lines, lose the texture. */
 body {
   background-image:
     linear-gradient(to right,  var(--grid-line-major) 0 1px, transparent 1px 100%),
     linear-gradient(to bottom, var(--grid-line-major) 0 1px, transparent 1px 100%),
     linear-gradient(to right,  var(--grid-line-minor) 0 1px, transparent 1px 100%),
-    linear-gradient(to bottom, var(--grid-line-minor) 0 1px, transparent 1px 100%),
-    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.06  0 0 0 0 0.05  0 0 0 0 0.04  0 0 0 0.42 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+    linear-gradient(to bottom, var(--grid-line-minor) 0 1px, transparent 1px 100%);
   background-size:
     calc(var(--grid-cell) * var(--grid-block)) calc(var(--grid-cell) * var(--grid-block)),
     calc(var(--grid-cell) * var(--grid-block)) calc(var(--grid-cell) * var(--grid-block)),
     var(--grid-cell) var(--grid-cell),
-    var(--grid-cell) var(--grid-cell),
-    220px 220px;
+    var(--grid-cell) var(--grid-cell);
   background-position: 0 0;
-  background-attachment: fixed, fixed, fixed, fixed, fixed;
+  background-attachment: scroll;
   position: relative;
 }
 
 /* Soft vignette so edges feel like the page is lifted off a desk.
  * Strength is theme-driven — the dark surface needs more, the manila
- * needs almost none or it muddies the warm tone. */
+ * needs almost none or it muddies the warm tone.
+ *
+ * Disabled 2026-05-13 for whole-page perf. Another fixed full-
+ * viewport painted layer; combined with the body's grid + noise, was
+ * forcing constant compositor work. Set content: none rather than
+ * deleting the rule so the visual can be restored by flipping one
+ * line. */
 body::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  background: radial-gradient(ellipse at center,
-    transparent 0%,
-    transparent 65%,
-    rgba(0, 0, 0, var(--vignette-strength)) 100%);
+  content: none;
 }
 
 /* App chrome must sit above the grid/noise layers. */
