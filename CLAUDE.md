@@ -315,16 +315,35 @@ After `./Quickstart deploy --stage <stage>` returns, confirm the stack is actual
 
 ## Shipping a change
 
+Two long-lived branches drive deploys:
+
+- **`dev`** — push here to auto-deploy the staging stack (CloudFront
+  staging URL). No prod deploy. Use for visually verifying a change
+  on a real deployed environment before promoting.
+- **`master`** — push here (or merge `dev` → `master`) to run the
+  full chain: tests → staging deploy → smoke → **prod approval gate
+  (`environment: production`, JimothyJohn required reviewer)** →
+  prod deploy → smoke.
+
 Default flow for non-routine work in an interactive session:
 
-1. Branch off master.
-2. Commit + push.
+1. Branch off `dev` (or `master` for hotfix-shaped work).
+2. Commit + push the feature branch.
 3. Open a **non-draft** PR. Title says what changed; body says why.
+   - Targeting `dev`: when CI passes, merge → dev auto-deploys to
+     staging → eyeball the staging CloudFront URL → open a follow-up
+     PR `dev` → `master` to ship to prod.
+   - Targeting `master` directly (small/obvious changes, hotfixes):
+     when CI passes, merge → staging deploys → prod waits on Nick's
+     environment-approval click.
 4. Watch CI. When all required checks pass and there are no
-   conflicts, **merge it** — don't wait for Nick to click approve.
+   conflicts, **merge it** — don't wait for Nick to click approve
+   on the *PR* (the prod-environment click is a separate gate that
+   stays).
 
-Nick approves every clean PR; the click is theater. The PR exists for
-CI gating and as a paper trail, not as a review gate.
+Nick approves every clean PR; the PR click is theater. The PR exists
+for CI gating and as a paper trail, not as a review gate. The
+production-environment click is the real gate.
 
 **Exception — hard-to-reverse blast radius.** Keep the PR draft and
 hand back when the diff touches `app/infrastructure/**` (CDK),
