@@ -519,13 +519,19 @@ body {
   font-size: 1rem;
 }
 
-/* Filter Bar Styles */
+/* Filter Bar — used by DatasheetsPage's DatasheetFilterBar.
+ *
+ * Bauhaus phase 10c: hard ink frame, squared, no shadow. Filter-bar
+ * buttons get the Oswald uppercase stencil treatment with hard
+ * ink borders and ink-on-paper hover inversion — same vocabulary
+ * as .confirm-dialog-cancel, .page-toolbar-clear, .build-page__reset. */
 .filter-bar {
   margin-bottom: 1.5rem;
   padding: 1.5rem;
-  background: var(--card-bg);
-  border-radius: 8px;
-  box-shadow: 0 1px 3px var(--shadow-sm);
+  background: var(--bg-secondary);
+  border: 1px solid var(--text-primary);
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .filter-bar-header {
@@ -534,53 +540,67 @@ body {
 
 .filter-bar-controls {
   display: flex;
-  gap: 1rem;
+  gap: 0.75rem;
   align-items: center;
   flex-wrap: wrap;
 }
 
 .filter-bar-controls label {
+  font-family: var(--font-headline);
+  font-size: 0.72rem;
   font-weight: 600;
-  color: #333;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
 }
 
 .filter-bar-button {
-  padding: 0.35rem 0.8rem;
-  border: none;
-  border-radius: 4px;
-  font-size: 0.85rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--text-primary);
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: var(--font-headline);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
   cursor: pointer;
-  transition: all 0.2s;
-  font-weight: 500;
+  transition: background-color 0.15s linear, color 0.15s linear;
 }
 
-.filter-bar-button.primary {
-  background-color: var(--accent-primary);
+.filter-bar-button:hover {
+  background: var(--text-primary);
   color: var(--bg-primary);
+}
+
+/* Primary = the action you almost always want next: brass fill +
+ * ink text + ink border. Hover inverts to ink-on-paper. Mirrors
+ * .confirm-dialog-confirm--default from PR #164. */
+.filter-bar-button.primary {
+  background: var(--accent-primary);
+  color: var(--text-primary);
+  border-color: var(--text-primary);
 }
 
 .filter-bar-button.primary:hover {
-  background-color: var(--accent-secondary);
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px var(--shadow-md);
-}
-
-.filter-bar-button.secondary {
-  background-color: var(--accent-primary);
+  background: var(--text-primary);
   color: var(--bg-primary);
 }
 
-.filter-bar-button.secondary:hover {
-  background-color: var(--accent-secondary);
-}
-
+/* Secondary + tertiary share the base transparent-ink-bordered
+ * vocabulary defined above. */
+.filter-bar-button.secondary,
 .filter-bar-button.tertiary {
-  background-color: var(--accent-primary);
-  color: var(--bg-primary);
+  background: transparent;
+  color: var(--text-primary);
+  border-color: var(--text-primary);
 }
 
+.filter-bar-button.secondary:hover,
 .filter-bar-button.tertiary:hover {
-  background-color: var(--accent-secondary);
+  background: var(--text-primary);
+  color: var(--bg-primary);
 }
 
 .filter-bar-chips {
@@ -1234,50 +1254,26 @@ button.secondary:hover {
   width: 100%;
 }
 
+/* Filter sidebar title — stencil-label vocabulary. Bauhaus phase 10c
+ * drops the brass-gradient ::after fade beneath the underline. The
+ * underline is a 2px ink rule (matches every other section head in
+ * the port — .rail-head, .spec-category-title, .build-page__pane-
+ * title, .admin-section h3, etc.); the gradient fade was a one-off
+ * flourish, not part of the system. */
 .filter-sidebar-title {
   font-family: var(--font-headline);
-  font-size: 0.95rem;
-  font-weight: 500;
-  letter-spacing: 0.18em;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--text-primary);
-  margin-bottom: 0.4rem;
-  padding-bottom: 0.3rem;
-  border-bottom: 1px solid var(--text-primary);
-  position: relative;
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 2px solid var(--text-primary);
 }
 
 .filter-sidebar-title::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, var(--accent-primary) 0%, transparent 100%);
-  opacity: 0.3;
-}
-
-.filter-sidebar-title-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  margin-bottom: 0.4rem;
-  padding-bottom: 0.25rem;
-  border-bottom: 1px solid var(--text-primary);
-  position: relative;
-}
-
-.filter-sidebar-title-row::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, var(--accent-primary) 0%, transparent 100%);
-  opacity: 0.3;
+  content: none;
 }
 
 .filter-sidebar-title-row .filter-sidebar-title {
@@ -2149,16 +2145,19 @@ button.secondary:hover {
   padding: 2rem;
 }
 
+/* Datasheet results header — same 2px ink bottom rule as the
+ * catalog .page-toolbar (PR #170) and modal title bars. Bauhaus
+ * phase 10c. */
 .results-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 0;
-  padding: 0.45rem 0.7rem;
-  border-bottom: 2px solid var(--border-color);
+  padding: 0.55rem 0.7rem;
+  border-bottom: 2px solid var(--text-primary);
   gap: 0.5rem;
   flex-wrap: wrap;
-  background: var(--bg-primary);
+  background: transparent;
 }
 
 .results-header-left {
@@ -5732,19 +5731,19 @@ body::after {
     0 -2px 0 rgba(0, 0, 0, 0.04) inset;
 }
 
-/* Section heading reads as a labelled tab. */
+/* Bauhaus phase 10c: the prior "engineering paper rebrand" layer
+ * gave .filter-sidebar-title a 0.30em hyper-spaced tracking and a
+ * dashed brass ::after underline. Both retired in favour of the
+ * single stencil-label vocabulary (0.16em tracking + 2px ink rule)
+ * that every other section head in the port uses. */
 .filter-sidebar-title {
   font-family: var(--font-headline);
-  letter-spacing: 0.30em;
-  border-bottom: 1px solid var(--text-secondary);
-  padding-bottom: 0.4rem;
+  letter-spacing: 0.16em;
+  border-bottom: 2px solid var(--text-primary);
+  padding-bottom: 0.35rem;
 }
 .filter-sidebar-title::after {
-  background: none;
-  border-bottom: 1px dashed var(--accent-primary);
-  height: 0;
-  opacity: 0.55;
-  bottom: -3px;
+  content: none;
 }
 
 /* ----- Form fields: drafting-form aesthetic ------------------------- */
@@ -6059,18 +6058,24 @@ input.transmission-param-input {
   line-height: 1.05;
 }
 
-/* ----- Tables — zebra rows + a hover row. Tabular-nums is already set;
- * we add scanability without losing the drafting feel. */
-.product-card-minimal:nth-child(even),
-.datasheet-row:nth-child(even) {
-  background: rgba(0, 0, 0, 0.025);
-}
-.product-card-minimal:hover,
-.datasheet-row:hover {
-  background: rgba(156, 122, 22, 0.08);
-  outline: 1px solid rgba(156, 122, 22, 0.30);
-  outline-offset: -1px;
+/* Bauhaus phase 10c: zebra rows and brass-outline-on-hover deliberately
+ * REMOVED. Phase 3 (PR #172) dropped zebra striping on
+ * .product-card-minimal individually, but this combined rule
+ * silently re-added it for both catalog rows AND datasheet rows,
+ * plus painted a brass outline on every hover. With this rule gone,
+ * the single-paper-sheet treatment from Phase 3 finally takes
+ * effect — hairline cell separators do the row tracking, hover
+ * uses a flat bg-tertiary tint.
+ *
+ * Datasheet rows need their own hover rule because they don't
+ * inherit Phase 3's catalog-specific cleanup. Same vocabulary. */
+.datasheet-row {
   cursor: pointer;
+  transition: background-color 0.12s linear;
+}
+
+.datasheet-row:hover {
+  background: var(--bg-tertiary);
 }
 
 /* ----- Cards — card surfaces lift on hover. Subtle, but everything
