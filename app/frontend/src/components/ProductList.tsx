@@ -511,7 +511,14 @@ export default function ProductList() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [linearizedSource, torqueTargets, productType]);
 
-  const showGearColumn = productType === 'motor' && torqueTargets.length > 0;
+  /* Gear ratio is always visible on the motor view, not gated on
+   * `torqueTargets.length > 0`. Per-row value comes from gearMap
+   * (which is empty when there's no torque filter), so rows fall
+   * back to ratio 1 → "—" until a torque filter promotes them
+   * into a real gear pick. Keeps the column in the table's
+   * mental model rather than appearing/disappearing as filters
+   * are toggled. */
+  const showGearColumn = productType === 'motor';
 
   const filteredProducts = useMemo(() => {
     return applyFilters(gearedSource, filters);
@@ -1182,12 +1189,12 @@ export default function ProductList() {
                 <div className="col-resize-handle" onMouseDown={(e) => startResize('part_number', e)} />
               </div>
               </Tooltip>
-              {/* Gear ratio (computed). Shown only when an active torque
-                  filter forces a gear pick — otherwise it's all 1:1
-                  noise. Per-row value comes from gearMap; rated_torque
-                  and rated_speed cells already display the post-gear
-                  values so the table is an accurate depiction of
-                  what each motor would deliver at the chosen ratio. */}
+              {/* Gear ratio (computed). Always visible on the motor view;
+                  displays '—' for direct drive (gearMap unset or ratio 1).
+                  Per-row value comes from gearMap; rated_torque and
+                  rated_speed cells display the post-gear values so the
+                  table is an accurate depiction of what each motor would
+                  deliver at the chosen ratio. */}
               {showGearColumn && (
                 <div className="product-grid-header-item computed-col" style={{ width: 70 }}>
                   <div className="product-grid-header-label">Gear</div>
