@@ -81,7 +81,8 @@ For the long version, see [HISTORY.md](HISTORY.md). The traction line:
 Status legend: ✅ done · 🚧 in progress · ⏸ deferred · 🔴 urgent · 📐 planned
 
 Order matches `todo/README.md`'s suggested chronological dependency
-chain. Active board: [Specodex Orchestration](https://github.com/users/JimothyJohn/projects/1).
+chain. Backlog lives in `todo/` (kanban mirror at
+[`docs/roadmap.html`](docs/roadmap.html)).
 
 | # | Doc | Status | Effort | One-line |
 |---|---|---|---|---|
@@ -93,7 +94,7 @@ chain. Active board: [Specodex Orchestration](https://github.com/users/JimothyJo
 | 6 | [PYTHON_BACKEND](todo/PYTHON_BACKEND.md) | 🚧 Phase 0 codegen ✅ | 🔴 multi-week | Phase 1+: Express → FastAPI parallel-deploy. Gated on PHASE5_RECOVERY. |
 | 7 | [PYTHON_STRIPE](todo/PYTHON_STRIPE.md) | 🚧 layout scaffolded | 🟢 small | Drop the Rust billing Lambda for ~100 lines of Python. |
 | 8 | [API](todo/API.md) | 📐 paid programmatic surface | 🟡 medium | Stripe-metered curl-able API. Gated on Phase 5a SES + 5b WAF (5b ✅). |
-| 9 | GODMODE (active on the [orchestration board](https://github.com/users/JimothyJohn/projects/1); plan doc retired) | 📐 deferred | 🔴 large | One-page admin dashboard. Lands last on stable substrate. |
+| 9 | GODMODE (plan doc retired; revive in `todo/` when scheduled) | 📐 deferred | 🔴 large | One-page admin dashboard. Lands last on stable substrate. |
 
 CICD itself is healthy (chain green; full runbook in the `/cicd`
 skill at `.claude/skills/cicd/SKILL.md`) and has dropped off the

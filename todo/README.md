@@ -77,12 +77,12 @@ docs only when you're about to act on that work.
 
 ## How to use it
 
-1. **Starting a session?** Open the [Specodex Orchestration board](https://github.com/users/JimothyJohn/projects/1) — it's the source of truth for what's active, blocked, or queued.
+1. **Starting a session?** Skim the **churn plan** table at the bottom of this file (or the kanban at [docs/roadmap.html](../docs/roadmap.html)). One row = one PR; status emoji says whether it's ready, queued, or blocked.
 2. **About to touch a file?** Scan **Trigger conditions** at the bottom — if anything matches, the linked doc is queued and worth reading first.
 3. **Got an idle dev box overnight?** Pick from **Late Night** — curated tasks safe to run autonomously and easy to verify in the morning.
-4. **Deferring new work?** Add a `todo/<AREA>.md` with a `## Triggers` section, then create a card on the board referencing it. Add a row to **Trigger conditions** below if the doc has file-level triggers.
+4. **Deferring new work?** Add a `todo/<AREA>.md` with a `## Triggers` section. Add a row to **Trigger conditions** below if the doc has file-level triggers. Re-run `uv run python scripts/gen_roadmap.py` to refresh the kanban.
 
-> **Board access (CLI).** `gh project item-list 1 --owner JimothyJohn --format json`. Requires the `project` scope on the gh token. Full access pattern + field IDs in the auto-memory `reference_orchestration_board.md`.
+> **No GitHub Project board.** The Specodex Orchestration GH Project was deleted 2026-05-13 — it was duplicating this file and nobody was using it. Source of truth is `todo/` (this file + per-area docs); the kanban at `docs/roadmap.html` is a generated mirror.
 
 ---
 
@@ -109,9 +109,9 @@ the merged list above.
 
 ## Active work
 
-**Tracked on the [Specodex Orchestration board](https://github.com/users/JimothyJohn/projects/1).** Status, Priority, and Size live there now — this section is no longer the source of truth.
+Status lives in two places now: the **churn plan** table further down this file (one row per PR, with a status emoji), and the generated kanban at [docs/roadmap.html](../docs/roadmap.html) (a mirror of the same data, easier to skim).
 
-Each card body links back to its `todo/<AREA>.md` doc. To add new work, create a card on the board referencing the doc; if the work has file-level triggers, also add a row to **Trigger conditions** below.
+To add new work, drop a `todo/<AREA>.md` with the standard structure (H1 title, status blockquote, phased plan, optional `## Triggers` section); if the work has file-level triggers, add a row to **Trigger conditions** below. Re-run `uv run python scripts/gen_roadmap.py` to refresh the kanban.
 
 Active docs (10 total — down from 16 after the 2026-05-10 prune):
 

@@ -4230,15 +4230,18 @@ code, pre, .monospace {
   font-weight: 700;
 }
 
-/* Filter chips */
+/* Bauhaus phase 7e: 3 `!important`s removed from .filter-chip. Was
+ * defending against the broad multi-selector border rule at L4116
+ * (now :where()'d by PR #192) — `.filter-chip` selector specificity
+ * 10 wins automatically over the now-zero-specificity baseline. */
 .filter-chip {
   font-family: var(--font-mono);
   font-size: 0.85rem;
   font-weight: 500;
   letter-spacing: 0;
-  background: var(--bg-tertiary) !important;
-  border: 1px solid var(--border-color) !important;
-  padding: 0.4rem 0.8rem !important;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  padding: 0.4rem 0.8rem;
   position: relative;
 }
 
@@ -4316,17 +4319,19 @@ table td {
   letter-spacing: 0;
 }
 
-/* Input fields */
+/* Input fields — Bauhaus phase 7e dropped 5 `!important`s. Element
+ * selectors with attribute filters (specificity 2 for `input[type=...]`)
+ * win over the now-zero-specificity broad rule. */
 input[type="text"],
 input[type="search"],
 input[type="number"],
 select,
 textarea {
   font-family: var(--font-mono);
-  background: var(--bg-tertiary) !important;
-  border: 1px solid var(--border-color) !important;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
   color: var(--text-primary);
-  padding: 0.5rem 0.75rem !important;
+  padding: 0.5rem 0.75rem;
   font-weight: 400;
   font-size: 0.9rem;
 }
@@ -4334,20 +4339,23 @@ textarea {
 input:focus,
 select:focus,
 textarea:focus {
-  border-color: var(--accent-primary) !important;
+  border-color: var(--accent-primary);
   outline: none;
-  box-shadow: 
+  box-shadow:
     0 0 0 2px var(--bg-primary),
-    0 0 0 4px var(--accent-primary) !important;
+    0 0 0 4px var(--accent-primary);
 }
 
 /* Header divider — was a 3px solid accent + a 1px dashed accent stripe
  * underneath ("military rank bar"). Reduced to a single 1px hairline at
  * a softened opacity so the gold band no longer dominates the page; the
- * header still reads as separated from the toolbar without shouting. */
+ * header still reads as separated from the toolbar without shouting.
+ *
+ * Bauhaus phase 7e: dropped 1 `!important`. .header (specificity 10)
+ * beats earlier .header rules in this file by source order. */
 .header {
   position: relative;
-  border-bottom: 1px solid color-mix(in srgb, var(--accent-primary) 35%, transparent) !important;
+  border-bottom: 1px solid color-mix(in srgb, var(--accent-primary) 35%, transparent);
 }
 
 .header::after {
@@ -4365,16 +4373,18 @@ textarea:focus {
   gap: 0;
 }
 
-/* Military-spec card styling */
+/* Military-spec card styling — Bauhaus phase 7e dropped 2 `!important`s.
+ * .product-card (specificity 10) wins over the :where()'d broad rule
+ * baseline. */
 .product-card {
   position: relative;
   background: var(--card-bg);
-  border: 2px solid var(--border-color) !important;
+  border: 2px solid var(--border-color);
   padding: 1.5rem;
 }
 
 .product-card:hover {
-  border-color: var(--accent-primary) !important;
+  border-color: var(--accent-primary);
 }
 
 /* Attribute labels */
@@ -4393,24 +4403,27 @@ textarea:focus {
   color: var(--text-primary);
 }
 
-/* Theme toggle with utilitarian style */
+/* Theme toggle — Bauhaus phase 7e dropped 8 `!important`s across the
+ * three rules. .theme-toggle (specificity 10) wins over the
+ * :where()'d broad `button` rule baseline. The `svg` selector under
+ * .theme-toggle gets specificity 11 which beats anything generic. */
 .theme-toggle {
-  border: none !important;
-  background: var(--accent-primary) !important;
-  color: var(--bg-primary) !important;
-  padding: 0.45rem !important;
+  border: none;
+  background: var(--accent-primary);
+  color: var(--bg-primary);
+  padding: 0.45rem;
   width: 36px;
   height: 36px;
 }
 
 .theme-toggle:hover {
-  background: var(--accent-secondary) !important;
-  color: var(--bg-primary) !important;
+  background: var(--accent-secondary);
+  color: var(--bg-primary);
 }
 
 .theme-toggle svg {
-  width: 18px !important;
-  height: 18px !important;
+  width: 18px;
+  height: 18px;
 }
 
 /* Network status banner */
@@ -4425,12 +4438,14 @@ textarea:focus {
   margin-right: 0.5rem;
 }
 
-/* Modal with terminal window styling */
+/* Modal with terminal window styling — Bauhaus phase 7e dropped
+ * 2 `!important`s. .modal-content (specificity 10) wins over the
+ * :where()'d broad `.modal-content` rule baseline. */
 .modal-content {
-  border: 3px solid var(--border-color) !important;
-  box-shadow: 
+  border: 3px solid var(--border-color);
+  box-shadow:
     8px 8px 0 rgba(0, 0, 0, 0.2),
-    inset 2px 2px 0 rgba(255, 255, 255, 0.03) !important;
+    inset 2px 2px 0 rgba(255, 255, 255, 0.03);
 }
 
 .modal-content::before {

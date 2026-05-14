@@ -463,10 +463,12 @@ catalog the public-mode write block protects.
 
 **Operating-model shift.** `todo/README.md` becomes a "what's in the
 working tree right now" snapshot rather than a stable plan; active
-work moves onto a [GitHub Projects v2 board](https://github.com/users/JimothyJohn/projects/1)
-(user `JimothyJohn`, project #1). Initial card load on May 2:
+work briefly moves onto a GitHub Projects v2 board (user
+`JimothyJohn`, project #1). Initial card load on May 2:
 PHASE5_RECOVERY (P0), MODELGEN, SEO, MARKETING, DEDUPE, GODMODE,
-PYTHON_BACKEND, STYLE.
+PYTHON_BACKEND, STYLE. _(The board was deleted 2026-05-13 — the
+operating model swung back to `todo/` + a generated kanban at
+`docs/roadmap.html`. See the May 13 chapter below.)_
 
 ---
 
