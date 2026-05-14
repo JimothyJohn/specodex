@@ -244,7 +244,7 @@ Each one was a bug where the docstring said one thing and the code did another. 
 - **Bug fix → regression test FIRST.** When hypothesis catches a real bug, add an explicit example-based regression case to the sibling `test_<module>.py` file (e.g. `TestCoerceProtocolListEdgeCases`) **in addition to** the property test. The property test catches the contract violation; the explicit case pins the specific shape so it can't regress even if the hypothesis strategy drifts. Both stay forever.
 - **False positives.** When a property test fails on an input that's actually a legitimate edge case (e.g. user-supplied `'{'` as a frame_size value triggering a "starts with `{`" assertion designed to catch dict-repr leaks), tighten the assertion to match the bug's exact signature (`startswith("{'")` or `startswith('{"')`) — don't widen the input filter, which would hide future bug shapes.
 
-### What to test (current coverage map, 2026-05-10)
+### What to test (current coverage map, 2026-05-14)
 
 | Surface | Property test | Sibling example test |
 |---|---|---|
@@ -254,15 +254,16 @@ Each one was a bug where the docstring said one thing and the code did another. 
 | `coerce_protocol_string`, `_coerce_protocol_list`, `EncoderFeedback._coerce_legacy_freetext` | `test_encoder_coercers_property.py` | `test_encoder.py` |
 | `Gearhead.coerce_string_fields` | `test_gearhead_coerce_property.py` | (via `test_models_common.py`) |
 | `validate_url` (SSRF defense) | `test_url_safety_property.py` | `test_url_safety.py` |
-| `merge_per_page_products` | `test_merge_property.py` | (no example test) |
+| `merge_per_page_products` | `test_merge_property.py` | `test_merge.py` |
 | `double_tap.verifier` (`_encoder_is_ambiguous`, `verify`) | `test_double_tap_verifier_property.py` | `test_double_tap.py` |
+| `cli/processor.py:parse_datasheet_id_from_key` (upload-queue S3 key parsing) | `test_processor_property.py` | `test_processor.py` |
+| `specodex/integration/compat.py` field-compat helpers (`_scalar`, `_range`, `_check_*`, `_roll_up`) | `test_compat_property.py` | `test_integration.py` |
+| `specodex/spec_rules.py:validate_product` magnitude rules + identity check + duplicate pair | `test_spec_rules_property.py` | `test_spec_rules.py` |
+| `specodex/quality.py:score_product` + `filter_products` partition | `test_quality_property.py` | `test_quality.py` + `test_quality_boundary.py` |
 
-Untested adversarial surfaces (ordered by attack value):
+The 2026-05-14 sprint closed out the four "untested adversarial surfaces" from the 2026-05-10 callout (`cli/processor.py`, `compat.py`, `spec_rules.py`, `quality.py`) via PRs #149, #185, #202, #203. None of the four runs surfaced new bugs — every Hypothesis search confirmed the contract the example tests had already pinned. The boring-good outcome.
 
-- `cli/processor.py` upload-queue dispatch (S3 key parsing, manifest validation).
-- `specodex/integration/compat.py` field-compatibility checks (`_scalar`, `_range`, `_check_voltage_fits`).
-- `specodex/spec_rules.py:validate_product` magnitude rules.
-- `specodex/quality.py:score_product` quality scoring (well-defended but uncovered).
+When the next round of property-test gaps comes up, add them to the list above; don't leave the section empty for long.
 
 ## Post-deploy verification
 

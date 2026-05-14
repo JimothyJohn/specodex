@@ -4,6 +4,45 @@
 of what's left without opening each `todo/*.md`. Drill into the linked
 docs only when you're about to act on that work.
 
+> **Recently shipped (2026-05-14 sprint — closed out the property-test gaps).**
+> The four "untested adversarial surfaces" called out in CLAUDE.md's
+> 2026-05-10 Property-testing section are now all covered:
+> `cli/processor.py:parse_datasheet_id_from_key` (PR #149,
+> 2026-05-11), `specodex/integration/compat.py` helpers (PR #185,
+> 2026-05-13), `specodex/spec_rules.py:validate_product` (PR #202,
+> this sprint), and `specodex/quality.py:score_product` +
+> `filter_products` (PR #203, this sprint). None of the four runs
+> surfaced new bugs — Hypothesis confirmed the contract the example
+> tests had pinned. Two non-bug findings worth documenting: RobotArm
+> and Gearhead both ship with substantial Pydantic field defaults
+> (`degrees_of_freedom=6`, `ip_rating=54`, `gear_type='helical
+> planetary'`, `lubrication_type='Synthetic Lubricant'`) that
+> pre-populate enough spec fields to clear the 25% quality
+> threshold — scoped the threshold-baseline property to Motor +
+> Drive rather than chase the defaults.
+>
+> **Recently shipped (2026-05-11 → 2026-05-13 — BAUHAUS port wave).**
+> The full 10-phase Bauhaus design refresh planned in
+> [BAUHAUS.md](BAUHAUS.md) shipped end-to-end across ~40 PRs (#150
+> through #197): page-toolbar (#170), collapsible stat row (#171),
+> catalog table (#172), column-header section + sort + slider visuals
+> + perf (#173/#174/#175/#176/#177/#178/#179), filter rail
+> (#162) + filter chips (#161), modals (#164/#165/#182/#183),
+> BuildPage (#186), AdminPanel + DatasheetsPage + ProductManagement
+> (#188/#189/#190), and the seven-phase `!important` cluster sweep
+> (#192/#193/#194/#195/#196/#197). The slider "continuous-value"
+> interpretation (#180) was reverted (#181) — the actual intent was
+> never identified. Phase status lives in
+> [BAUHAUS_FOLLOWUP.md](BAUHAUS_FOLLOWUP.md).
+>
+> **Also shipped 2026-05-11 → 2026-05-13:** weekly DB drift audit
+> workflow (#152/#168), batch-drives runner + 12 vendor target
+> lists (5,294 drives ingested, #199), `React.memo` perf passes
+> on the column header (#198) + page-render (#200), CI dev-branch
+> staging deploy trigger (#191), and the gear-ratio always-on
+> column on motor view (#201). Smoke retry on transient AWS edge
+> deny (#169).
+>
 > **Recently shipped (2026-05-10 sprint — 21 PRs in one day).**
 > All of HARDENING Phase 3.1 (parse_gemini_response, common.py
 > BeforeValidators, find_spec_pages_by_text), Phase 3.3 (schema
@@ -88,22 +127,19 @@ docs only when you're about to act on that work.
 
 ## Working tree state
 
-Snapshot 2026-05-10 (end of the 21-PR sprint). **Stale within
-hours; re-run `git status` and `git worktree list` for ground
-truth.**
+Snapshot 2026-05-14 (end of the property-test gap closeout
+sprint). **Stale within hours; re-run `git status` and
+`git worktree list` for ground truth.**
 
-Master is at the post-PR-#116 cohort. Of the 21 sprint PRs:
-**13 merged**, **8 ready+CI-green and queued for Nick's review**:
-#117 (SCHEMA Phase 2 backfill CLI), #118 (Gearhead falsy-value
-fix), #119 (docs-sync 116–118), #120 (url_safety SSRF property
-tests), #121 (CLAUDE.md known-issues cleanup), #122 (merge
-invariants property tests), #123 (double_tap verifier property
-tests), #124 (CLAUDE.md property-test conventions).
+Master is at the post-PR-#201 cohort (gear-ratio always-on column).
+Open from this sprint: **#202** (`spec_rules.validate_product`
+property tests, draft + CI-green) and **#203**
+(`quality.score_product` property tests, draft + CI-green).
 
-Side-worktrees are now mostly stale (their branches merged earlier
-in the sprint). Run `git worktree list` for ground truth and
-`git worktree remove <path>` to prune any whose branch shows in
-the merged list above.
+The five side-worktrees from the 2026-05-10 sprint are all stale —
+their branches merged or were superseded by master. Run
+`git worktree list` for ground truth and `git worktree remove
+<path>` to prune.
 
 ---
 
@@ -113,14 +149,22 @@ Status lives in two places now: the **churn plan** table further down this file 
 
 To add new work, drop a `todo/<AREA>.md` with the standard structure (H1 title, status blockquote, phased plan, optional `## Triggers` section); if the work has file-level triggers, add a row to **Trigger conditions** below. Re-run `uv run python scripts/gen_roadmap.py` to refresh the kanban.
 
-Active docs (10 total — down from 16 after the 2026-05-10 prune):
+Active docs (11 total — BAUHAUS.md added 2026-05-12):
 
+- **BAUHAUS.md** — 10-phase UI refresh port from
+  `docs/design/bauhaus-catalog.html`. Phases 2–10 shipped end-to-end
+  across the 2026-05-11 → 2026-05-13 window. **Open:** the deferred
+  `!important` cluster refactor and a couple of unsettled visual
+  threads tracked in [BAUHAUS_FOLLOWUP.md](BAUHAUS_FOLLOWUP.md)
+  (filter-chip internals, slider "fine resolution" interpretation).
 - **HARDENING.md** — adversarial-by-default posture audit. 10 of 14
   phases shipped (1.1, 1.3, 2.1, 2.3, 2.4, 3.1×3, 3.3, 3.4, 4.1, 4.3).
-  **Open:** Phase 1.2 (`uv sync --locked` CI sweep), 2.2 (real-DAL
-  backend tests, L), 3.2 (atheris fuzz), 4.2 (lockfile-drift CI gate).
-  CLAUDE.md "Property testing — adversarial by default" section
-  (PR #124) lists 4 untested surfaces as the next-sprint queue.
+  The 2026-05-14 sprint closed out the four "untested adversarial
+  surfaces" (`cli/processor.py`, `compat.py`, `spec_rules.py`,
+  `quality.py`) via PRs #149/#185/#202/#203. **Open:** Phase 1.2
+  (`uv sync --locked` CI sweep), 2.2 (real-DAL backend tests, L),
+  3.2 (atheris fuzz), 4.2 (lockfile-drift CI gate). 1.2 + 4.2 touch
+  `.github/workflows/` so they're skip-list for autonomous sprints.
 - **SCHEMA_BREAKING_HARMONIZE.md** — what's left of the SCHEMA plan.
   Phases 1, 2 (CLI), 3, 4 all shipped; only the BREAKING type-
   harmonisation (`motor_type` → `MotorTechnology` literal +
@@ -221,11 +265,11 @@ Every PR ships with a per-PR HTML doc in `docs/requests/<n>.html`
 
 | # | PR scope | Doc | Status |
 |---|---|---|---|
-| 1 | **Property tests — `cli/processor.py` upload-queue dispatch + S3 key parsing** | HARDENING | 🟡 ready to PR |
-| 2 | **Property tests — `specodex/integration/compat.py` (`_scalar` / `_range` / `_check_*`)** | HARDENING | 🟡 ready to PR |
-| 3 | **Property tests — `specodex/spec_rules.py:validate_product` magnitude rules** | HARDENING | 🟡 ready to PR |
-| 4 | **Property tests — `specodex/quality.py:score_product`** | HARDENING | 🟡 ready to PR |
-| 5 | **HARDENING Phase 2.2** — real-DAL backend integration tests (L) | HARDENING | ⚪ queued |
+| 1 | **Property tests — `cli/processor.py` upload-queue dispatch + S3 key parsing** | HARDENING | ✅ shipped #149 |
+| 2 | **Property tests — `specodex/integration/compat.py` (`_scalar` / `_range` / `_check_*`)** | HARDENING | ✅ shipped #185 |
+| 3 | **Property tests — `specodex/spec_rules.py:validate_product` magnitude rules** | HARDENING | ✅ shipped #202 |
+| 4 | **Property tests — `specodex/quality.py:score_product`** | HARDENING | ✅ shipped #203 |
+| 5 | **HARDENING Phase 2.2** — real-DAL backend integration tests (L) | HARDENING | ⚪ queued (next-sprint top) |
 | 6 | **BUILD Phase 1** — requirements-first Build page (motion/stroke/speed/payload/orientation form → motion-system kit) | BUILD | ⚪ queued (independent, user-facing) |
 | 7 | **DB_CLEANUP Phase 2 decision** — populate vs drop `lead_time` / `warranty` / `msrp` (audit says drop; README says populate) | DB_CLEANUP | 🔴 needs sign-off |
 | 8 | **SCHEMA BREAKING harmonize** — `motor_type` → `MotorTechnology` literal + `ElectricCylinder.fieldbus` → `List[CommunicationProtocol]` + harmonize CLI. See [SCHEMA_BREAKING_HARMONIZE.md](SCHEMA_BREAKING_HARMONIZE.md). | SCHEMA_BREAKING_HARMONIZE | 🔴 needs sign-off |
@@ -355,7 +399,8 @@ If your current task matches any "trigger" entry, the linked doc is queued and w
 | Trigger (files / topics in your current task) | Surface |
 |---|---|
 | New parser, deserializer, coercer, or `BeforeValidator`; CodeQL log-injection or input-handling finding; user asks "fuzz", "property test", "input validation" | [HARDENING.md](HARDENING.md) + CLAUDE.md "Property testing — adversarial by default" |
-| `cli/processor.py`, `specodex/integration/compat.py`, `specodex/spec_rules.py`, `specodex/quality.py` | CLAUDE.md "Property testing" untested-surfaces list — these four are the next-sprint targets |
+| `cli/processor.py`, `specodex/integration/compat.py`, `specodex/spec_rules.py`, `specodex/quality.py` | Property tests shipped (PRs #149/#185/#202/#203). Treat the existing `test_<name>_property.py` files as the contract; new edits to these modules should keep those properties green |
+| `app/frontend/src/App.css`, design tokens (`--paper`, `--ink`, `--brass`, `--rule-*`, `--z-*`), Oswald/Plex Mono cascade, `.filter-chip-*`, `.column-header-*`, modal patterns, `!important` clusters; user asks "Bauhaus", "design refresh", "stencil headline", "manila", "field manual" | [BAUHAUS.md](BAUHAUS.md) — 10-phase port, [BAUHAUS_FOLLOWUP.md](BAUHAUS_FOLLOWUP.md) for what's still soft |
 | Touching `Motor.type`, `ElectricCylinder.motor_type`, `LinearActuator.motor_type`, or `ElectricCylinder.fieldbus`; user asks "harmonize motor types", "MotorTechnology literal", "BREAKING schema migration" | [SCHEMA_BREAKING_HARMONIZE.md](SCHEMA_BREAKING_HARMONIZE.md) — needs sign-off |
 | `specodex/models/common.py` (`MotorMountPattern`, `ProductType`), cross-product fields on motor/drive/gearhead/actuator; user asks "compatible motor", "matching drive", "device pairing", "integration" | SCHEMA — Phase 1, 2 (CLI), 3, 4 all shipped (PRs #87, #117, #89/#90/#92, #106). Recover the design rationale via `git log --diff-filter=D --follow -- todo/SCHEMA.md` if needed |
 | `app/frontend/src/components/Build*.tsx`, `/build` route, requirements form, system-assembler page; user asks "build page", "requirements-first", "motion class", "system assembler", "wizard" | [BUILD.md](BUILD.md) — Phase 1 unblocked |
