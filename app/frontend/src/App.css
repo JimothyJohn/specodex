@@ -1960,36 +1960,38 @@ button.secondary:hover {
 }
 
 /* Hard-divided close cell — matches the mock's `.filter-chip .close`
- * (border-left + stamp-red hover). The !important's defeat the global
- * button rule at App.css L4053/L4111/L4126 that paint every <button>
- * with accent-yellow background, accent-yellow border, and accent
- * box-shadow. Phase 7 will remove the upstream rule; until then the
- * !important's are the seam. */
+ * (border-left + stamp-red hover).
+ *
+ * Bauhaus phase 7c: 9 `!important`s removed. The upstream broad
+ * `button, .button` rule (L4187) was wrapped in `:where()` by PR
+ * #192 so its accent-yellow background + border-none + box-shadow
+ * are zero-specificity defaults; `.filter-remove` (class
+ * specificity 10) wins automatically. */
 .filter-remove {
   width: 22px;
   height: 22px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: transparent !important;
-  border: none !important;
-  border-left: 1px solid var(--border-color) !important;
+  background: transparent;
+  border: none;
+  border-left: 1px solid var(--border-color);
   border-radius: 0;
   font-size: 1.15rem;
   font-weight: 600;
-  color: var(--text-secondary) !important;
+  color: var(--text-secondary);
   cursor: pointer;
   transition: color 0.15s linear, background-color 0.15s linear;
   line-height: 1;
   flex-shrink: 0;
-  padding: 0 !important;
-  box-shadow: none !important;
+  padding: 0;
+  box-shadow: none;
 }
 
 .filter-remove:hover {
-  background: var(--danger) !important;
-  color: var(--bg-primary) !important;
-  box-shadow: none !important;
+  background: var(--danger);
+  color: var(--bg-primary);
+  box-shadow: none;
 }
 
 /* Primary CTA — the action a user almost always wants next on this
