@@ -285,7 +285,9 @@ def main(argv: list[str] | None = None) -> int:
         "started_at": started_at,
         "finished_at": finished_at,
         "table": table,
-        "targets_file": str(args.targets.relative_to(ROOT)),
+        "targets_file": str(args.targets.resolve().relative_to(ROOT))
+        if args.targets.resolve().is_relative_to(ROOT)
+        else str(args.targets),
         "total": len(records),
         "by_status": {},
         "results": records,
