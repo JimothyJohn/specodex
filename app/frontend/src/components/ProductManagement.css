@@ -1,3 +1,13 @@
+/* ProductManagement — admin tool for deleting products by criteria.
+ *
+ * Bauhaus phase 10a port: same vocabulary as the catalog/modals —
+ * Oswald uppercase headlines with 0.16em stencil tracking, hard ink
+ * borders, no rounded corners, no drop shadows, ink-on-paper button
+ * hovers. Stamp-red for destructive actions instead of the previous
+ * crayon-red (#ef4444).
+ *
+ * Per-component CSS sibling to ProductManagement.tsx. */
+
 .product-management {
   padding: 2rem;
   max-width: 1200px;
@@ -10,106 +20,130 @@
   gap: 2rem;
 }
 
+/* Card frame: 1px ink frame, squared, no shadow — matches the pane
+ * containers in BuildPage and the stat-row + table frame pattern. */
 .management-card {
-  background: var(--bg-card);
-  border-radius: 12px;
-  padding: 2rem;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  border-radius: 0;
+  padding: 1.5rem 1.75rem;
+  box-shadow: none;
+  border: 1px solid var(--text-primary);
 }
 
 .description {
   color: var(--text-secondary);
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.25rem;
   line-height: 1.5;
 }
 
 .warning {
-  color: #ef4444;
-  font-weight: 500;
+  color: var(--danger);
+  font-weight: 600;
   font-size: 0.9em;
 }
 
 .delete-form {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1.25rem;
   max-width: 400px;
 }
 
 .form-group {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.4rem;
 }
 
 .form-group label {
-  font-weight: 500;
-  color: var(--text-primary);
+  font-family: var(--font-headline);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
 }
 
 .form-group input {
-  padding: 0.75rem;
-  border-radius: 6px;
-  border: 1px solid var(--border-color);
-  background: var(--bg-input);
+  padding: 0.6rem 0.7rem;
+  border-radius: 0;
+  border: 1px solid var(--text-primary);
+  background: var(--bg-primary);
   color: var(--text-primary);
-  font-size: 1rem;
-  transition: border-color 0.2s;
+  font-size: 0.95rem;
+  font-family: var(--font-mono);
+  transition: border-color 0.15s linear;
 }
 
 .form-group input:focus {
   outline: none;
-  border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px var(--primary-color-alpha);
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 1px var(--accent-primary);
 }
 
+/* Destructive action: stamp-red fill, hard ink border, paper text.
+ * Mirrors .confirm-dialog-confirm--danger from PR #164. */
 .btn-delete {
-  background-color: #ef4444;
-  color: white;
-  padding: 0.75rem 1.5rem;
-  border: none;
-  border-radius: 6px;
+  background: var(--danger);
+  color: var(--bg-primary);
+  padding: 0.55rem 1.2rem;
+  border: 1px solid var(--text-primary);
+  border-radius: 0;
+  font-family: var(--font-headline);
+  font-size: 0.78rem;
   font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: filter 0.15s linear;
 }
 
 .btn-delete:hover:not(:disabled) {
-  background-color: #dc2626;
+  filter: brightness(1.1);
 }
 
 .btn-delete:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
+/* Alerts: hard-bordered notice panels. Error gets stamp-red,
+ * success gets brass. Matches the slot-error left-bar pattern from
+ * Phase 9 but as a full panel since these are top-level notices. */
 .alert {
-  margin-top: 1.5rem;
-  padding: 1rem;
-  border-radius: 6px;
+  margin-top: 1.25rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0;
   font-weight: 500;
+  border-left-width: 3px;
+  border-left-style: solid;
 }
 
 .alert-error {
-  background-color: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
-  border: 1px solid rgba(239, 68, 68, 0.2);
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--text-primary);
+  border-left: 3px solid var(--danger);
 }
 
 .alert-success {
-  background-color: rgba(34, 197, 94, 0.1);
-  color: #16a34a;
-  border: 1px solid rgba(34, 197, 94, 0.2);
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--text-primary);
+  border-left: 3px solid var(--accent-primary);
 }
 
+/* Result stats: bordered panel with monospaced numerals. */
 .result-stats {
   margin-top: 1rem;
-  padding: 1rem;
-  background-color: var(--bg-secondary);
-  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color-light);
+  border-radius: 0;
   display: flex;
   gap: 2rem;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
 }
 
 .result-stats p {
@@ -118,141 +152,181 @@
 }
 
 .result-stats strong {
+  font-family: var(--font-headline);
   color: var(--text-primary);
   font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
-/* Dropdown Styles */
 .criteria-selector {
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.25rem;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.4rem;
 }
 
 .criteria-selector label {
-  font-weight: 500;
+  font-family: var(--font-headline);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
   color: var(--text-secondary);
-  font-size: 0.9rem;
 }
 
+/* Plain HTML <select> is banned by CLAUDE.md ("no native browser/OS
+ * chrome"), but this admin surface predates the rule. Keeping the
+ * native element for now; styling it to read as Bauhaus until it's
+ * swapped for the app-native Dropdown primitive. */
 .dropdown-select {
-  padding: 0.75rem;
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  background-color: var(--bg-secondary);
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--text-primary);
+  border-radius: 0;
+  background: var(--bg-primary);
   color: var(--text-primary);
-  font-size: 1rem;
+  font-size: 0.92rem;
+  font-family: var(--font-mono);
   cursor: pointer;
-  transition: border-color 0.2s;
+  transition: border-color 0.15s linear;
   max-width: 300px;
 }
 
 .dropdown-select:focus {
   outline: none;
-  border-color: var(--primary-color);
+  border-color: var(--accent-primary);
 }
 
 .dropdown-select.full-width {
   max-width: 100%;
 }
 
-/* Modal Styles */
+/* Modal: matches Phase 8a–d frame vocabulary — ink backdrop, 2px
+ * ink frame, no rounded corners, no shadow. The slideIn animation
+ * is dropped for the same fadeIn used by every other modal in the
+ * port. */
 .modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: rgba(26, 26, 20, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: var(--z-modal);
-  backdrop-filter: blur(2px);
+  backdrop-filter: none;
 }
 
 .modal-content {
-  background-color: var(--bg-primary);
-  padding: 2rem;
-  border-radius: 12px;
+  background: var(--bg-primary);
+  padding: 0;
+  border-radius: 0;
   width: 90%;
   max-width: 450px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-  border: 1px solid var(--border-color);
-  animation: modalSlideIn 0.3s ease-out;
-}
-
-@keyframes modalSlideIn {
-  from {
-    opacity: 0;
-    transform: translateY(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  box-shadow: none;
+  border: 2px solid var(--text-primary);
+  animation: fadeIn 0.15s ease-out;
+  overflow: hidden;
 }
 
 .modal-content h3 {
-  margin-top: 0;
-  margin-bottom: 1rem;
+  margin: 0;
+  padding: 0.85rem 1.1rem 0.7rem;
+  font-family: var(--font-headline);
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
   color: var(--text-primary);
+  border-bottom: 2px solid var(--text-primary);
 }
 
 .modal-content p {
   color: var(--text-secondary);
-  margin-bottom: 1rem;
+  margin: 0;
+  padding: 0 1.1rem;
   line-height: 1.5;
+  font-size: 0.92rem;
+}
+
+.modal-content p:not(:last-of-type) {
+  margin-bottom: 0.65rem;
+}
+
+.modal-content p:first-of-type {
+  padding-top: 1rem;
 }
 
 .modal-content .highlight {
   color: var(--text-primary);
   font-weight: 600;
-  background-color: var(--bg-secondary);
-  padding: 0.1rem 0.4rem;
-  border-radius: 4px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color-light);
+  padding: 0.05rem 0.35rem;
+  border-radius: 0;
+  font-family: var(--font-mono);
 }
 
 .warning-text {
-  color: var(--error-color) !important;
-  font-weight: 500;
+  color: var(--danger) !important;
+  font-weight: 600;
   font-size: 0.9rem;
 }
 
+/* Action bar: top-ruled strip with joined buttons. Same vocabulary
+ * as .confirm-dialog-actions from PR #164. */
 .modal-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 1rem;
-  margin-top: 2rem;
+  gap: 0;
+  padding: 0.65rem 1rem;
+  margin-top: 1.2rem;
+  border-top: 1px solid var(--text-primary);
 }
 
 .btn-cancel {
-  padding: 0.75rem 1.5rem;
-  border: 1px solid var(--border-color);
-  background-color: transparent;
+  padding: 0.5rem 1.1rem;
+  border: 1px solid var(--text-primary);
+  background: transparent;
   color: var(--text-primary);
-  border-radius: 6px;
+  border-radius: 0;
   cursor: pointer;
-  font-weight: 500;
-  transition: background-color 0.2s;
+  font-family: var(--font-headline);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  transition: background-color 0.15s linear, color 0.15s linear;
+  margin-left: -1px;
+}
+
+.btn-cancel:first-child {
+  margin-left: 0;
 }
 
 .btn-cancel:hover {
-  background-color: var(--bg-secondary);
+  background: var(--bg-secondary);
 }
 
 .btn-confirm-delete {
-  padding: 0.75rem 1.5rem;
-  border: none;
-  background-color: var(--error-color);
-  color: white;
-  border-radius: 6px;
+  padding: 0.5rem 1.1rem;
+  border: 1px solid var(--text-primary);
+  background: transparent;
+  color: var(--danger);
+  border-radius: 0;
   cursor: pointer;
+  font-family: var(--font-headline);
+  font-size: 0.78rem;
   font-weight: 600;
-  transition: opacity 0.2s;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  transition: background-color 0.15s linear, color 0.15s linear, border-color 0.15s linear;
+  margin-left: -1px;
 }
 
 .btn-confirm-delete:hover {
-  opacity: 0.9;
+  background: var(--danger);
+  color: var(--bg-primary);
+  border-color: var(--danger);
 }
