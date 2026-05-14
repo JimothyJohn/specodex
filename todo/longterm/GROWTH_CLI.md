@@ -53,10 +53,13 @@ The pre-flight gate before pressing post on a high-traffic channel
   200 with the expected shape.
 - `./Quickstart bench` — offline quality run; flag any
   precision/recall regression vs `outputs/benchmarks/latest.json`.
-- `gh project item-list 1 --owner JimothyJohn` — flag any P0 card
-  in `In progress` / `In review` / `Backlog` status.
 - Git state — flag any uncommitted changes on master, or master not
   matching origin.
+
+(A GitHub Project P0-card check used to live here; the project was
+deleted 2026-05-13, so the stage was dropped from `cli/growth.py`.
+If you want a "queue check" again, grep `todo/README.md`'s churn
+plan for 🔴 sign-off rows.)
 
 Output is one of:
 
