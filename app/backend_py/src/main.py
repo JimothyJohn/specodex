@@ -19,6 +19,7 @@ from mangum import Mangum
 
 from app.backend_py.src.config import load as load_settings
 from app.backend_py.src.middleware.readonly import readonly_guard
+from app.backend_py.src.routes import admin as admin_routes
 from app.backend_py.src.routes import auth as auth_routes
 from app.backend_py.src.routes import compat as compat_routes
 from app.backend_py.src.routes import datasheets as datasheets_routes
@@ -27,6 +28,7 @@ from app.backend_py.src.routes import products as products_routes
 from app.backend_py.src.routes import projects as projects_routes
 from app.backend_py.src.routes import relations as relations_routes
 from app.backend_py.src.routes import search as search_routes
+from app.backend_py.src.routes import subscription as subscription_routes
 from app.backend_py.src.routes import upload as upload_routes
 
 
@@ -69,6 +71,8 @@ def create_app() -> FastAPI:
     app.include_router(projects_routes.router)
     app.include_router(auth_routes.router)
     app.include_router(upload_routes.router)
+    app.include_router(subscription_routes.router)
+    app.include_router(admin_routes.router)
 
     return app
 
