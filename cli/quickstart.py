@@ -533,6 +533,24 @@ def cmd_verify(args: argparse.Namespace) -> None:
             cwd=ROOT,
         )
 
+        # Billing Lambda (stripe_py/) — the Rust → Python port
+        # (todo/PYTHON_STRIPE.md, PYTHON_BACKEND.md Phase 4). It's a
+        # standalone uv project (its own pyproject + uv.lock, NOT a
+        # workspace member), so it runs in its own directory; `uv run`
+        # auto-syncs the stripe_py venv on first use.
+        info("Python: pytest stripe_py/tests/")
+        run(
+            [
+                "uv",
+                "run",
+                "pytest",
+                "tests/",
+                "-v",
+                f"--junitxml={reports_dir}/python-stripe-py.xml",
+            ],
+            cwd=ROOT / "stripe_py",
+        )
+
         if do_integration:
             info("Python: pytest tests/integration/")
             run(
