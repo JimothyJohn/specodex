@@ -736,10 +736,18 @@ def cmd_deploy(args: argparse.Namespace) -> None:
     run(["npm", "install", "--silent"], cwd=APP)
 
     info("Building frontend (public mode)")
+    # VITE_API_VERSION selects which backend the SPA talks to:
+    # 'v1' (Express, default) or 'v2' (Python FastAPI at /api/v2/*).
+    # See todo/PYTHON_BACKEND.md Phase 1.4 / Phase 2 cutover. The
+    # deploy env (app/.env.<stage>) can set it; default is v1.
     run(
         ["npm", "run", "build"],
         cwd=APP / "frontend",
-        env={"VITE_API_URL": "", "VITE_APP_MODE": "public"},
+        env={
+            "VITE_API_URL": "",
+            "VITE_APP_MODE": "public",
+            "VITE_API_VERSION": os.environ.get("VITE_API_VERSION", "v1"),
+        },
     )
 
     # Lambda bundle: tsc → dist/, then install prod deps into dist/ so the
