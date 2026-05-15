@@ -19,6 +19,7 @@ from typing import Any, Optional
 
 from specodex.config import SCHEMA_CHOICES
 from specodex.db.dynamo import DynamoDBClient
+from specodex.models.datasheet import Datasheet
 from specodex.models.product import ProductBase
 
 
@@ -258,3 +259,66 @@ class BackendDB:
 
     def delete_by_product_name(self, name: str) -> dict[str, int]:
         return self._delete_by_scan("product_name", name)
+
+    # ------------------------------------------------------------------
+    # Datasheet CRUD
+    # ------------------------------------------------------------------
+
+    def list_datasheets(self) -> list[Datasheet]:
+        return self._service.get_all_datasheets()
+
+    def datasheet_exists(self, url: str) -> bool:
+        return self._service.datasheet_exists(url)
+
+    def create_datasheet(self, datasheet: Datasheet) -> bool:
+        return self._service.create(datasheet)
+
+    def delete_datasheet(self, datasheet_id: str, product_type: str) -> bool:
+        """Delete a datasheet by ID + product_type.
+
+        DynamoDB's delete_item is idempotent; mirror Express by
+        doing a read-first existence check via scan-by-key so the
+        404 path stays honest.
+        """
+
+        table = self._service.table
+        pk = f"DATASHEET#{product_type.upper()}"
+        sk = f"DATASHEET#{datasheet_id}"
+        existing = table.get_item(Key={"PK": pk, "SK": sk}).get("Item")
+        if not existing:
+            return False
+        try:
+            table.delete_item(Key={"PK": pk, "SK": sk})
+            return True
+        except Exception:
+            return False
+
+    def update_datasheet(
+        self,
+        datasheet_id: str,
+        product_type: str,
+        updates: dict[str, Any],
+    ) -> bool:
+        """Partial update on a Datasheet — read-modify-write through
+        the Pydantic model so the validator re-runs on the merged
+        payload.
+        """
+
+        table = self._service.table
+        pk = f"DATASHEET#{product_type.upper()}"
+        sk = f"DATASHEET#{datasheet_id}"
+        existing = table.get_item(Key={"PK": pk, "SK": sk}).get("Item")
+        if not existing:
+            return False
+        # Drop the persistence-layer keys before round-tripping
+        # through the Pydantic model — Datasheet computes them as
+        # @property and rejects them as field inputs.
+        clean = {k: v for k, v in existing.items() if k not in ("PK", "SK")}
+        for protected in ("datasheet_id", "PK", "SK", "product_type"):
+            updates.pop(protected, None)
+        clean.update(updates)
+        try:
+            updated = Datasheet(**clean)
+        except Exception:
+            return False
+        return self._service.create(updated)
