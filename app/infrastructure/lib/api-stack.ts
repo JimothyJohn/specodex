@@ -8,6 +8,7 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 import { AppConfig } from './config';
 import * as path from 'path';
+import * as fs from 'fs';
 
 interface ApiStackProps extends cdk.StackProps {
   table: dynamodb.ITable;
@@ -105,6 +106,90 @@ export class ApiStack extends cdk.Stack {
       ],
       integration: writeIntegration,
     });
+
+    // ── Phase 1.3 (todo/PYTHON_BACKEND.md) — Python FastAPI Lambda
+    // mounted at /api/v2/*. Both stacks share table, bucket, SSM.
+    //
+    // The Python Lambda code is built into `app/backend_py/dist/` by
+    // `scripts/build_backend_py.sh` (run via
+    // `./Quickstart build-backend-py`). The CDK asset points at that
+    // pre-built directory — synth + diff don't need Docker, which is
+    // important for CI workflows that don't have Docker available.
+    // The build script DOES need Docker (or a matching Python 3.12
+    // runtime locally) so the Lambda's deps are the right wheels.
+    //
+    // If `app/backend_py/dist/` doesn't exist (or is empty), the
+    // Python Lambda construct is skipped entirely. v1 stays live;
+    // v2 routes 404. The deploy script must run the build first when
+    // deploying the v2 stack — `./Quickstart deploy` chains
+    // `build-backend-py` before `cdk deploy`.
+    const pyDistPath = path.join(__dirname, '../../backend_py/dist');
+    const pyDistReady =
+      fs.existsSync(pyDistPath) &&
+      fs.existsSync(path.join(pyDistPath, 'app', 'backend_py', 'src', 'main.py'));
+
+    if (pyDistReady) {
+      const pyHandler = new lambda.Function(this, 'ApiPyHandler', {
+        runtime: lambda.Runtime.PYTHON_3_12,
+        handler: 'app.backend_py.src.main.handler',
+        functionName: `specodex-api-py-${config.stage}`,
+        memorySize: 512,
+        timeout: cdk.Duration.seconds(30),
+        environment: {
+          STAGE: config.stage,
+          APP_MODE: 'public',
+          NODE_ENV: 'production',
+          DYNAMODB_TABLE_NAME: table.tableName,
+          UPLOAD_BUCKET: uploadBucket.bucketName,
+          AWS_ACCOUNT_ID: config.env.account,
+          SSM_PREFIX: config.ssmPrefix,
+        },
+        code: lambda.Code.fromAsset(pyDistPath, {
+          exclude: ['**/__pycache__', '**/*.pyc', '**/*.pyo'],
+        }),
+      });
+
+      table.grantReadWriteData(pyHandler);
+      uploadBucket.grantReadWrite(pyHandler);
+      pyHandler.addToRolePolicy(ssmPolicy);
+
+      const pyIntegration = new apigwIntegrations.HttpLambdaIntegration(
+        'ApiPyIntegration',
+        pyHandler,
+      );
+
+      // /api/v2/* → Python Lambda. Frontend's VITE_API_VERSION=v2
+      // flips requests to this path; v1 stays live alongside until
+      // Phase 3 (Express deletion) per Nick's "full cutover, no
+      // canary" answer recorded in todo/PYTHON_BACKEND.md §7.
+      this.api.addRoutes({
+        path: '/api/v2/{proxy+}',
+        methods: [
+          apigw.HttpMethod.GET,
+          apigw.HttpMethod.HEAD,
+          apigw.HttpMethod.POST,
+          apigw.HttpMethod.PUT,
+          apigw.HttpMethod.PATCH,
+          apigw.HttpMethod.DELETE,
+          apigw.HttpMethod.OPTIONS,
+        ],
+        integration: pyIntegration,
+      });
+
+      new cdk.CfnOutput(this, 'ApiV2Url', {
+        value: `${this.api.url || ''}api/v2/`,
+        description:
+          'Python FastAPI base URL (Phase 1.3, behind VITE_API_VERSION=v2)',
+      });
+    } else {
+      // Loud at synth time so a Nick running `cdk diff` sees the
+      // skip and can decide whether to build first.
+      // eslint-disable-next-line no-console
+      console.warn(
+        '[ApiStack] app/backend_py/dist/ missing — Python /api/v2 Lambda will NOT be deployed. ' +
+          'Run `./Quickstart build-backend-py` then re-run cdk diff/deploy to include it.',
+      );
+    }
 
     new cdk.CfnOutput(this, 'ApiUrl', { value: this.api.url || '' });
   }
