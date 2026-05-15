@@ -29,6 +29,15 @@ web-scraper = "specodex.web_scraper:main"
 [dependency-groups]
 dev = [
     "awslambdaric>=4.0.0",
+    # FastAPI backend (app/backend_py/) deps — needed so the parent
+    # test runner collects + runs app/backend_py/tests/ as part of
+    # `./Quickstart verify --only python`. app/backend_py/ keeps its
+    # own pyproject.toml for the standalone Lambda bundle; these
+    # mirror that list so one `uv sync` covers the whole monorepo.
+    "fastapi>=0.115.0",
+    "mangum>=0.17.0",
+    "python-jose[cryptography]>=3.3.0",
+    "email-validator>=2.0.0",
     # Time mocking — required by the "Testing — adversarial by default"
     # rule in ~/.claude/CLAUDE.md ("Determinism is non-negotiable").
     "freezegun>=1.5.0",
