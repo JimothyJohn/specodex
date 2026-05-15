@@ -1,12 +1,38 @@
 # PYTHON_BACKEND — TypeScript → Python migration for `app/backend/`
 
-> **Status:** 📐 planned. Phase 0 (codegen) is shipped; Phases 1-3 (FastAPI
-> cutover) are multi-week and **gated on PHASE5_RECOVERY landing first** so
-> the FastAPI auth surface mirrors the right Cognito shape.
+> **Status:** 🚧 in progress. Phase 0 (codegen) shipped. **Phase 1 is
+> code-complete** as of the 2026-05-14/15 sprint — the entire FastAPI
+> backend (`app/backend_py/`) is ported and tested: auth middleware,
+> all 11 Express route files, the CDK `/api/v2` wiring, and the
+> frontend `VITE_API_VERSION` switch. What's left is **operator-driven
+> deploy + cutover** (Phases 1.3-deploy, 2, 3) — none of it is code.
 >
-> **Date drafted:** 2026-05-02.
-> **Owner:** Nick. **Contributors welcome on Phase 0 only** — Phases 1+ need a
-> single hand on the rudder.
+> **Date drafted:** 2026-05-02. **Phase 1 code-complete:** 2026-05-15.
+> **Owner:** Nick. The remaining work (deploy v2, flip the flag, delete
+> Express) needs a single hand on the rudder.
+>
+> **What shipped (2026-05-14/15 sprint):**
+> - 1.1 Layout + scaffold — PR #205
+> - 1.2 Auth middleware (Cognito JWT, readonly guard, admin gate) — PR #206
+> - Products CRUD + aggregations — PR #207
+> - Datasheets + search + compat + relations routes — PR #208
+> - Projects + auth (Cognito proxy) + upload routes — PR #209
+> - Subscription (Stripe proxy) + admin routes — PR #210
+> - 1.3 CDK `ApiPyHandler` Lambda + `/api/v2/*` route — **DRAFT** PR #212
+>   (infra; conditionally synthesised — inert until `dist/` is built)
+> - 1.4 `VITE_API_VERSION` switch + `/api/v2` prefix-strip middleware — PR #213
+> - 1.5 backend_py tests wired into `./Quickstart verify` — PR #214
+> - Phase 4 — `stripe_py/` tests wired into verify — PR #215
+>
+> **What's left (operator-driven, no code):**
+> 1. Review + merge the CDK draft (#212).
+> 2. `./Quickstart build-backend-py` → `cdk deploy` → v2 Lambda live at `/api/v2/*`.
+> 3. Phase 2 cutover — set `VITE_API_VERSION=v2` in `app/.env.<stage>`, redeploy
+>    frontend. Full cutover, no canary (per §7).
+> 4. Phase 3 — once v2 is confirmed healthy, delete `app/backend/`,
+>    drop the Express Lambda from CDK, drop the `backend` CI job.
+> 5. Phase 4 deploy — CDK `RustFunction` → `PythonFunction` swap for
+>    the billing Lambda; the `stripe_py/` code is already ported.
 
 ---
 

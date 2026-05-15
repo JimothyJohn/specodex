@@ -19,6 +19,7 @@ from mangum import Mangum
 
 from app.backend_py.src.config import load as load_settings
 from app.backend_py.src.middleware.readonly import readonly_guard
+from app.backend_py.src.middleware.v2_prefix import strip_v2_prefix
 from app.backend_py.src.routes import admin as admin_routes
 from app.backend_py.src.routes import auth as auth_routes
 from app.backend_py.src.routes import compat as compat_routes
@@ -61,6 +62,13 @@ def create_app() -> FastAPI:
     # skip the registration entirely so write methods are unmolested.
     if settings.app_mode == "public":
         app.middleware("http")(readonly_guard)
+
+    # /api/v2 prefix strip runs OUTERMOST (registered last) so the
+    # path is already un-prefixed when the readonly guard checks it
+    # against its /api/upload + /api/auth + /api/projects allow-list.
+    # No-op when the request didn't carry the prefix (local dev,
+    # smoke tests hitting the app directly).
+    app.middleware("http")(strip_v2_prefix)
 
     app.include_router(health_routes.router)
     app.include_router(products_routes.router)

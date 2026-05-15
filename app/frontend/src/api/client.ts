@@ -35,6 +35,60 @@ import { CompatibilityReport } from '../types/compat';
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? '';
 
 /**
+ * API version switch — Phase 1.4 of the Express → FastAPI migration
+ * (todo/PYTHON_BACKEND.md).
+ *
+ * - `v1` (default): requests hit the Express Lambda at `/api/*`.
+ * - `v2`: requests hit the Python FastAPI Lambda at `/api/v2/*`.
+ *
+ * Resolution order:
+ *   1. `localStorage['api_version']` — per-browser soak override,
+ *      set by visiting the app with `?api=v2` (see resolveApiVersion).
+ *   2. `VITE_API_VERSION` build-time env — the deploy-wide default.
+ *   3. `'v1'` — hard fallback.
+ *
+ * The v2 rewrite is purely a path transform: `/api/<rest>` becomes
+ * `/api/v2/<rest>`. The FastAPI app's strip_v2_prefix middleware does
+ * the inverse, so application code on both ends is version-agnostic.
+ */
+const API_VERSION_KEY = 'api_version';
+
+function resolveApiVersion(): 'v1' | 'v2' {
+  // A `?api=v1|v2` query param pins the choice into localStorage so
+  // it survives navigation — the soak-testing entry point from
+  // todo/PYTHON_BACKEND.md §1.4.
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const fromQuery = params.get('api');
+    if (fromQuery === 'v1' || fromQuery === 'v2') {
+      window.localStorage.setItem(API_VERSION_KEY, fromQuery);
+      return fromQuery;
+    }
+    const stored = window.localStorage.getItem(API_VERSION_KEY);
+    if (stored === 'v1' || stored === 'v2') {
+      return stored;
+    }
+  } catch {
+    // SSR / no-DOM / privacy-mode localStorage — fall through to env.
+  }
+  const fromEnv = import.meta.env.VITE_API_VERSION;
+  return fromEnv === 'v2' ? 'v2' : 'v1';
+}
+
+/**
+ * Rewrite an `/api/...` endpoint to its `/api/v2/...` form when the
+ * resolved API version is `v2`. A no-op for v1 or for any endpoint
+ * that doesn't start with `/api/`.
+ */
+export function applyApiVersion(endpoint: string, version: 'v1' | 'v2'): string {
+  if (version !== 'v2') return endpoint;
+  if (endpoint === '/api' || endpoint.startsWith('/api/')) {
+    return '/api/v2' + endpoint.slice('/api'.length);
+  }
+  return endpoint;
+}
+
+/**
  * Default request timeout in milliseconds
  * Prevents requests from hanging indefinitely on slow connections
  */
@@ -74,6 +128,9 @@ class ApiClient {
   // singleton (not in React state) so the request layer doesn't have
   // to thread it through every call site.
   private authToken: string | null = null;
+  // Resolved once at construction — `v1` (Express) or `v2` (FastAPI).
+  // See resolveApiVersion / applyApiVersion above.
+  private readonly apiVersion: 'v1' | 'v2';
 
   /**
    * Create new API client instance
@@ -81,7 +138,10 @@ class ApiClient {
    */
   constructor(baseUrl: string = API_BASE_URL) {
     this.baseUrl = baseUrl;
-    console.log(`[ApiClient] Initialized with base URL: ${this.baseUrl}`);
+    this.apiVersion = resolveApiVersion();
+    console.log(
+      `[ApiClient] Initialized with base URL: ${this.baseUrl} (API ${this.apiVersion})`
+    );
   }
 
   /**
@@ -128,7 +188,11 @@ class ApiClient {
     options?: RequestInit & { timeout?: number }, // Extended options
     retryCount: number = 0
   ): Promise<ApiResponse<T>> {
-    const url = `${this.baseUrl}${endpoint}`;
+    // Rewrite /api/... → /api/v2/... when the client resolved to v2.
+    // No-op for v1. The FastAPI strip_v2_prefix middleware reverses
+    // this server-side, so callers stay version-agnostic.
+    const versionedEndpoint = applyApiVersion(endpoint, this.apiVersion);
+    const url = `${this.baseUrl}${versionedEndpoint}`;
     const method = options?.method || 'GET';
     const timeout = options?.timeout || DEFAULT_TIMEOUT;
 

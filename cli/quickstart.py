@@ -517,6 +517,40 @@ def cmd_verify(args: argparse.Namespace) -> None:
             cwd=ROOT,
         )
 
+        # FastAPI backend (app/backend_py/) — the Express → Python
+        # migration target (todo/PYTHON_BACKEND.md). Its deps are in
+        # the parent dev group so the same `uv run` env covers them.
+        info("Python: pytest app/backend_py/tests/")
+        run(
+            [
+                "uv",
+                "run",
+                "pytest",
+                "app/backend_py/tests/",
+                "-v",
+                f"--junitxml={reports_dir}/python-backend-py.xml",
+            ],
+            cwd=ROOT,
+        )
+
+        # Billing Lambda (stripe_py/) — the Rust → Python port
+        # (todo/PYTHON_STRIPE.md, PYTHON_BACKEND.md Phase 4). It's a
+        # standalone uv project (its own pyproject + uv.lock, NOT a
+        # workspace member), so it runs in its own directory; `uv run`
+        # auto-syncs the stripe_py venv on first use.
+        info("Python: pytest stripe_py/tests/")
+        run(
+            [
+                "uv",
+                "run",
+                "pytest",
+                "tests/",
+                "-v",
+                f"--junitxml={reports_dir}/python-stripe-py.xml",
+            ],
+            cwd=ROOT / "stripe_py",
+        )
+
         if do_integration:
             info("Python: pytest tests/integration/")
             run(
@@ -736,10 +770,18 @@ def cmd_deploy(args: argparse.Namespace) -> None:
     run(["npm", "install", "--silent"], cwd=APP)
 
     info("Building frontend (public mode)")
+    # VITE_API_VERSION selects which backend the SPA talks to:
+    # 'v1' (Express, default) or 'v2' (Python FastAPI at /api/v2/*).
+    # See todo/PYTHON_BACKEND.md Phase 1.4 / Phase 2 cutover. The
+    # deploy env (app/.env.<stage>) can set it; default is v1.
     run(
         ["npm", "run", "build"],
         cwd=APP / "frontend",
-        env={"VITE_API_URL": "", "VITE_APP_MODE": "public"},
+        env={
+            "VITE_API_URL": "",
+            "VITE_APP_MODE": "public",
+            "VITE_API_VERSION": os.environ.get("VITE_API_VERSION", "v1"),
+        },
     )
 
     # Lambda bundle: tsc → dist/, then install prod deps into dist/ so the
