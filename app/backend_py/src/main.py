@@ -18,6 +18,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from mangum import Mangum
 
 from app.backend_py.src.config import load as load_settings
+from app.backend_py.src.middleware.readonly import readonly_guard
 from app.backend_py.src.routes import health as health_routes
 from app.backend_py.src.routes import products as products_routes
 
@@ -46,6 +47,11 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
         allow_credentials=True,
     )
+
+    # Readonly guard only runs in public mode. Admin deployments
+    # skip the registration entirely so write methods are unmolested.
+    if settings.app_mode == "public":
+        app.middleware("http")(readonly_guard)
 
     app.include_router(health_routes.router)
     app.include_router(products_routes.router)

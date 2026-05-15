@@ -15,6 +15,13 @@ dependencies = [
     "mangum>=0.17.0",
     "boto3>=1.43.6",
     "pydantic>=2.13.4",
+    # Cognito JWT verification — drop-in for the aws-jwt-verify
+    # behaviour the Express middleware used. python-jose's
+    # cryptography extra brings PyCA's RSA backend.
+    "python-jose[cryptography]>=3.3.0",
+    # JWKS fetcher uses httpx (already in the parent monorepo's
+    # dependencies; pin matches).
+    "httpx>=0.27.0",
     # specodex itself is installed editable from the parent monorepo;
     # see README "Local dev" for the `uv pip install -e ../..` step
     # the scaffold expects before tests run.
