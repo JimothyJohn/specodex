@@ -181,9 +181,14 @@ Active docs (11 total — BAUHAUS.md added 2026-05-12):
   field-coverage audit recommends dropping; the original framing
   said populate. Re-decide before implementing.
 - **SEO.md**, **MARKETING.md** — public-launch readiness.
-- **PYTHON_BACKEND.md** (Phases 1–3) — FastAPI parallel deploy →
-  frontend cutover → Express deletion. Code-only; operator-driven
-  deploy.
+- **PYTHON_BACKEND.md** — **Phase 1 code-complete** (2026-05-15
+  sprint, PRs #205–#215). The entire FastAPI backend
+  (`app/backend_py/`) is ported + tested: auth middleware, all 11
+  Express routes, CDK `/api/v2` wiring (draft PR #212), the
+  `VITE_API_VERSION` switch. **Open:** deploy v2 (operator —
+  `./Quickstart build-backend-py` + `cdk deploy`), Phase 2 cutover
+  (flip `VITE_API_VERSION=v2`), Phase 3 (delete Express once v2 is
+  healthy). All operator-driven; no code left.
 - **PYTHON_STRIPE.md** (Phases 1.x → 2 → 3) — billing Lambda deploy
   + SSM cutover + Rust crate retirement. Code scaffolded; needs the
   operator-driven deploy.
@@ -279,9 +284,9 @@ Every PR ships with a per-PR HTML doc in `docs/requests/<n>.html`
 | 12 | **SEO Phase 1** — prerender + sitemap + per-product page rendering | SEO | ⚪ queued (multi-day, needs human PR for build config) |
 | 13 | **SEO Phase 2** — content scaffolding | SEO | ⚪ queued |
 | 14 | **MARKETING Phase 1** — public launch (Show HN, mailing list) | MARKETING | ⚪ queued |
-| 15 | **PYTHON_BACKEND Phase 1** — FastAPI parallel deploy | PYTHON_BACKEND | ⚪ queued |
-| 16 | **PYTHON_BACKEND Phase 2** — frontend cutover + soak | PYTHON_BACKEND | ⚪ queued |
-| 17 | **PYTHON_BACKEND Phase 3** — delete Express (retires `app/backend/src/types/models.ts` hand-edit) | PYTHON_BACKEND | ⚪ queued |
+| 15 | **PYTHON_BACKEND Phase 1** — FastAPI backend code-complete (PRs #205–#215); v2 deploy is operator-driven (`./Quickstart build-backend-py` + `cdk deploy`, CDK draft #212) | PYTHON_BACKEND | ✅ code shipped / 🔴 deploy = operator |
+| 16 | **PYTHON_BACKEND Phase 2** — frontend cutover (flip `VITE_API_VERSION=v2`, redeploy) | PYTHON_BACKEND | 🔴 operator-driven (needs v2 deployed first) |
+| 17 | **PYTHON_BACKEND Phase 3** — delete Express (retires `app/backend/src/types/models.ts` hand-edit) | PYTHON_BACKEND | 🔴 blocked on Phase 2 cutover |
 | 18 | **API.md** — paid programmatic access tier (depends on Stripe Phase 2 cutover + SES) | API | ⚪ queued |
 | 19 | **HARDENING Phase 3.2** — atheris fuzz target for PDF intake | HARDENING | ⚪ queued (heavier dep — needs LLVM/clang on macOS) |
 | 20 | **HARDENING Phase 1.2** — `uv sync --locked` sweep across CI workflows | HARDENING | ⚪ queued (touches `.github/workflows/` — needs human PR) |
