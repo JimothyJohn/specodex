@@ -517,6 +517,22 @@ def cmd_verify(args: argparse.Namespace) -> None:
             cwd=ROOT,
         )
 
+        # FastAPI backend (app/backend_py/) — the Express → Python
+        # migration target (todo/PYTHON_BACKEND.md). Its deps are in
+        # the parent dev group so the same `uv run` env covers them.
+        info("Python: pytest app/backend_py/tests/")
+        run(
+            [
+                "uv",
+                "run",
+                "pytest",
+                "app/backend_py/tests/",
+                "-v",
+                f"--junitxml={reports_dir}/python-backend-py.xml",
+            ],
+            cwd=ROOT,
+        )
+
         if do_integration:
             info("Python: pytest tests/integration/")
             run(
