@@ -1,0 +1,33 @@
+[project]
+name = "specodex-backend-py"
+version = "0.1.0"
+description = "FastAPI replacement for app/backend/ — Phase 1 of todo/PYTHON_BACKEND.md."
+readme = "README.md"
+requires-python = ">=3.12"
+
+# Keep this dependency list small and load-bearing. FastAPI + Mangum
+# bring in starlette, pydantic, anyio, sniffio — we already use
+# Pydantic v2 in the parent. boto3 + the specodex package are the only
+# things that talk to AWS, and specodex is installed editable so the
+# DAL stays the single source of truth.
+dependencies = [
+    "fastapi>=0.115.0",
+    "mangum>=0.17.0",
+    "boto3>=1.43.6",
+    "pydantic>=2.13.4",
+    # specodex itself is installed editable from the parent monorepo;
+    # see README "Local dev" for the `uv pip install -e ../..` step
+    # the scaffold expects before tests run.
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.0",
+    "pytest-asyncio>=0.24.0",
+    "httpx>=0.27.0",
+    "moto[dynamodb]>=5.2.1",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
