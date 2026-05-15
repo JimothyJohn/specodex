@@ -393,22 +393,31 @@ further:
 
 ---
 
-## 7. Open questions for Nick
+## 7. Open questions for Nick — answered 2026-05-14
 
-These need answers before Phase 1 kicks off. **Phase 0 is unblocked
-regardless.**
+All four questions answered. Decisions captured below so future
+sessions don't re-litigate them. **Phase 1 is now unblocked end-to-end.**
 
-1. **Calendar.** Is there a 2-week stretch between SEO/MARKETING and
-   GODMODE where Phase 1 is acceptable, or does it slot in only after
-   GODMODE ships?
-2. **Stretch on this code path.** Does the team (i.e., Nick + occasional
-   contributors) want to learn FastAPI on the critical path, or is the
-   parallel-deploy strategy acceptable?
-3. **Risk appetite for v2 traffic.** Phase 2 cutover is the riskiest
-   step. Should v2 carry 10% of traffic for a week before flipping the
-   default, or full cut-over with a kill-switch?
-4. **Authentic deprecation date for Express.** Phase 3 needs a hard
-   sunset. "When v2 is stable" → name a date.
+1. **Calendar.** No calendar gate. Phase 1 can land whenever the
+   code is ready — not waiting on SEO / MARKETING / GODMODE.
+2. **Stretch on this code path.** Parallel-deploy strategy is
+   acceptable. Don't learn FastAPI on the critical path; let v2
+   stand up alongside v1, soak, then flip.
+3. **Risk appetite for v2 traffic.** **Full cutover.** No 10% canary
+   week — there are no users to protect from a bad v2. Kill-switch
+   via `VITE_API_VERSION=v1` redeploy is the safety net. This
+   simplifies Phase 2 considerably; remove the canary-traffic
+   plumbing from any Phase 2 PR draft.
+4. **Express deprecation date.** No hard date. "When v2 is stable"
+   is the trigger — could be tomorrow, could be a year, the only
+   bar is exit criteria green and Phase 3 cleanup landed.
+
+**Implication for the scaffold (Phase 1.1, shipped via PR opened
+2026-05-14):** the FastAPI app stands up at `app/backend_py/` with
+its `/api/v2/...` namespacing reserved for the CDK wiring step.
+Routes already carry the Express-compatible `/api/products/...`
+prefix internally; the operator's CDK PR maps the Lambda's path
+to `/api/v2/*`.
 
 ---
 
