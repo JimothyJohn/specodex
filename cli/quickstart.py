@@ -1173,6 +1173,15 @@ def main() -> None:
         )
         return
 
+    if len(sys.argv) >= 2 and sys.argv[1] == "build-backend-py":
+        # Build the Python FastAPI Lambda asset into
+        # app/backend_py/dist/. CDK's api-stack.ts conditionally
+        # includes the /api/v2 Lambda only when that directory
+        # exists. See todo/PYTHON_BACKEND.md Phase 1.3.
+        info("Building Python FastAPI Lambda bundle (app/backend_py/dist/)")
+        run(["bash", "scripts/build_backend_py.sh"], cwd=ROOT)
+        return
+
     if len(sys.argv) >= 2 and sys.argv[1] == "gen-types":
         # Regenerate app/frontend/src/types/generated.ts from Pydantic models.
         # See todo/PYTHON_BACKEND.md for the rollout plan; pydantic2ts shells
