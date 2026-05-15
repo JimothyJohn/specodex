@@ -830,6 +830,16 @@ def cmd_deploy(args: argparse.Namespace) -> None:
         cwd=backend_dist,
     )
 
+    # Python FastAPI Lambda bundle (app/backend_py/dist/). CDK's
+    # api-stack.ts conditionally includes the /api/v2 Lambda only when
+    # this directory exists, so the build MUST run before cdk synth/
+    # deploy — otherwise the deploy silently ships v1 only.
+    # scripts/build_backend_py.sh uses Docker when available (correct
+    # Lambda wheels) and falls back to host pip otherwise. CI runners
+    # have Docker. See todo/PYTHON_BACKEND.md Phase 1.3.
+    info("Building Python FastAPI Lambda bundle (app/backend_py/dist/)")
+    run(["bash", "scripts/build_backend_py.sh"], cwd=ROOT)
+
     if cdk_toolkit_is_current(region):
         info(
             f"CDK toolkit current (>= v{_CDK_BOOTSTRAP_MIN_VERSION}) — skipping bootstrap"
