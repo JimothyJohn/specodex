@@ -15,6 +15,9 @@ dependencies = [
     "mangum>=0.17.0",
     "boto3>=1.43.6",
     "pydantic>=2.13.4",
+    # EmailStr support for the auth route bodies — pulls in
+    # email-validator at install time.
+    "pydantic[email]>=2.13.4",
     # Cognito JWT verification — drop-in for the aws-jwt-verify
     # behaviour the Express middleware used. python-jose's
     # cryptography extra brings PyCA's RSA backend.
