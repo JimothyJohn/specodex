@@ -20,132 +20,19 @@ Mirrors the contracts pinned in
 
 from __future__ import annotations
 
-import base64
-import time
-from typing import Any, Iterator
+from typing import Any
 
 import pytest
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import rsa
 from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
-from jose import jwt
 
-from app.backend_py.src.middleware import auth as auth_mod
 from app.backend_py.src.middleware.auth import (
     AuthedUser,
     optional_auth,
     require_auth,
     require_group,
 )
-
-
-# ---------------------------------------------------------------------------
-# RSA key fixture + JWKS shim
-# ---------------------------------------------------------------------------
-
-
-KEY_ID = "test-kid-1"
-USER_POOL_ID = "us-east-1_TEST"
-CLIENT_ID = "test-client-id"
-REGION = "us-east-1"
-
-
-def _b64url_uint(value: int) -> str:
-    n_bytes = value.to_bytes((value.bit_length() + 7) // 8, "big")
-    return base64.urlsafe_b64encode(n_bytes).rstrip(b"=").decode("ascii")
-
-
-@pytest.fixture(scope="module")
-def rsa_keys() -> dict[str, Any]:
-    """A fresh RSA keypair plus the matching public JWK."""
-
-    private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    public_numbers = private_key.public_key().public_numbers()
-    jwk = {
-        "kid": KEY_ID,
-        "kty": "RSA",
-        "alg": "RS256",
-        "use": "sig",
-        "n": _b64url_uint(public_numbers.n),
-        "e": _b64url_uint(public_numbers.e),
-    }
-    pem = private_key.private_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PrivateFormat.PKCS8,
-        encryption_algorithm=serialization.NoEncryption(),
-    ).decode("ascii")
-    return {"private_pem": pem, "jwk": jwk}
-
-
-@pytest.fixture
-def configured_env(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
-    monkeypatch.setenv("COGNITO_USER_POOL_ID", USER_POOL_ID)
-    monkeypatch.setenv("COGNITO_USER_POOL_CLIENT_ID", CLIENT_ID)
-    monkeypatch.setenv("AWS_REGION", REGION)
-    yield
-
-
-@pytest.fixture
-def patched_jwks(
-    rsa_keys: dict[str, Any],
-    monkeypatch: pytest.MonkeyPatch,
-) -> Iterator[None]:
-    """Patch the JWKS fetcher to return our in-process JWK.
-
-    Clears the lru_cache before AND after the test so other tests
-    in the module don't see a poisoned cache.
-    """
-
-    auth_mod._fetch_jwks.cache_clear()
-
-    def fake_fetch_jwks(region: str, user_pool_id: str) -> dict[str, Any]:
-        assert region == REGION
-        assert user_pool_id == USER_POOL_ID
-        return {"keys": [rsa_keys["jwk"]]}
-
-    monkeypatch.setattr(auth_mod, "_fetch_jwks", fake_fetch_jwks)
-    yield
-    auth_mod._fetch_jwks.cache_clear() if hasattr(
-        auth_mod._fetch_jwks, "cache_clear"
-    ) else None
-
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-
-def _make_token(
-    rsa_keys: dict[str, Any],
-    *,
-    sub: str = "test-user",
-    email: str = "test@example.com",
-    groups: list[str] | None = None,
-    expires_in: int = 3600,
-    audience: str = CLIENT_ID,
-    issuer: str | None = None,
-    token_use: str = "id",
-) -> str:
-    now = int(time.time())
-    if issuer is None:
-        issuer = f"https://cognito-idp.{REGION}.amazonaws.com/{USER_POOL_ID}"
-    claims = {
-        "sub": sub,
-        "email": email,
-        "cognito:groups": groups or [],
-        "iss": issuer,
-        "aud": audience,
-        "token_use": token_use,
-        "iat": now,
-        "exp": now + expires_in,
-    }
-    return jwt.encode(
-        claims,
-        rsa_keys["private_pem"],
-        algorithm="RS256",
-        headers={"kid": KEY_ID, "alg": "RS256"},
-    )
+from app.backend_py.tests.conftest import make_token as _make_token
 
 
 def _build_test_app() -> FastAPI:
