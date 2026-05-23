@@ -43,7 +43,7 @@
             <div class="hero-tag">▮▮▮ PYTHON BACKEND ▮▮▮</div>
             <h1 class="hero-title">PYTHON_BACKEND — TypeScript → Python migration for `app/backend/`</h1>
             <div class="doc-meta">
-                <span class="status-chip status-backlog">⚪ QUEUED</span>
+                <span class="status-chip status-signoff">🔴 OPERATOR-DRIVEN (NEEDS V2 DEPLOYED FIRST)</span>
                 <span class="doc-source"><code>todo/PYTHON_BACKEND.md</code></span>
             </div>
         </section>
@@ -51,12 +51,36 @@
         <article class="doc-body">
 <h1 id="python_backend-typescript-python-migration-for-appbackend">PYTHON_BACKEND — TypeScript → Python migration for <code>app/backend/</code></h1>
 <blockquote>
-<p><strong>Status:</strong> 📐 planned. Phase 0 (codegen) is shipped; Phases 1-3 (FastAPI
-cutover) are multi-week and <strong>gated on PHASE5_RECOVERY landing first</strong> so
-the FastAPI auth surface mirrors the right Cognito shape.</p>
-<p><strong>Date drafted:</strong> 2026-05-02.
-<strong>Owner:</strong> Nick. <strong>Contributors welcome on Phase 0 only</strong> — Phases 1+ need a
-single hand on the rudder.</p>
+<p><strong>Status:</strong> 🚧 in progress. Phase 0 (codegen) shipped. <strong>Phase 1 is
+code-complete</strong> as of the 2026-05-14/15 sprint — the entire FastAPI
+backend (<code>app/backend_py/</code>) is ported and tested: auth middleware,
+all 11 Express route files, the CDK <code>/api/v2</code> wiring, and the
+frontend <code>VITE_API_VERSION</code> switch. What's left is <strong>operator-driven
+deploy + cutover</strong> (Phases 1.3-deploy, 2, 3) — none of it is code.</p>
+<p><strong>Date drafted:</strong> 2026-05-02. <strong>Phase 1 code-complete:</strong> 2026-05-15.
+<strong>Owner:</strong> Nick. The remaining work (deploy v2, flip the flag, delete
+Express) needs a single hand on the rudder.</p>
+<p><strong>What shipped (2026-05-14/15 sprint):</strong>
+- 1.1 Layout + scaffold — PR #205
+- 1.2 Auth middleware (Cognito JWT, readonly guard, admin gate) — PR #206
+- Products CRUD + aggregations — PR #207
+- Datasheets + search + compat + relations routes — PR #208
+- Projects + auth (Cognito proxy) + upload routes — PR #209
+- Subscription (Stripe proxy) + admin routes — PR #210
+- 1.3 CDK <code>ApiPyHandler</code> Lambda + <code>/api/v2/*</code> route — <strong>DRAFT</strong> PR #212
+  (infra; conditionally synthesised — inert until <code>dist/</code> is built)
+- 1.4 <code>VITE_API_VERSION</code> switch + <code>/api/v2</code> prefix-strip middleware — PR #213
+- 1.5 backend_py tests wired into <code>./Quickstart verify</code> — PR #214
+- Phase 4 — <code>stripe_py/</code> tests wired into verify — PR #215</p>
+<p><strong>What's left (operator-driven, no code):</strong>
+1. Review + merge the CDK draft (#212).
+2. <code>./Quickstart build-backend-py</code> → <code>cdk deploy</code> → v2 Lambda live at <code>/api/v2/*</code>.
+3. Phase 2 cutover — set <code>VITE_API_VERSION=v2</code> in <code>app/.env.&lt;stage&gt;</code>, redeploy
+   frontend. Full cutover, no canary (per §7).
+4. Phase 3 — once v2 is confirmed healthy, delete <code>app/backend/</code>,
+   drop the Express Lambda from CDK, drop the <code>backend</code> CI job.
+5. Phase 4 deploy — CDK <code>RustFunction</code> → <code>PythonFunction</code> swap for
+   the billing Lambda; the <code>stripe_py/</code> code is already ported.</p>
 </blockquote>
 <hr>
 <h2 id="0-why-this-exists">0. Why this exists</h2>
@@ -292,6 +316,27 @@ testing. Once v2 is stable, the default flips.</p>
 <h2 id="phase-2-frontend-cutover">Phase 2 — Frontend cutover</h2>
 <p><strong>Goal:</strong> flip <code>VITE_API_VERSION</code> default to <code>v2</code>. v1 remains live as a
 fallback for one release cycle.</p>
+<h3 id="20-pre-cutover-code-fix-carry-over-from-v1-hardening-2026-05-23">2.0 Pre-cutover code fix (carry-over from v1 hardening, 2026-05-23)</h3>
+<p>The Express backend (v1) caught a Lambda 6 MB response-cap regression
+on the <code>/api/products</code> listing endpoint once the drives table crossed
+~12 k rows. Fixed in PR #225 by defaulting <code>limit=2000</code> server-side
+and adding a <code>truncated: boolean</code> to the response. <strong>The v2 FastAPI
+backend has the same defect</strong> at
+<code>app/backend_py/src/routes/products.py:67</code>:</p>
+<pre><code class="language-python">limit: Optional[int] = Query(None, ge=1, le=10_000),
+</code></pre>
+<p><code>None</code> means unbounded. Before flipping <code>VITE_API_VERSION=v2</code>, port
+the v1 fix to v2:</p>
+<ul>
+<li>Default <code>limit</code> to <code>2000</code> when the caller omits it.</li>
+<li>Slice the returned rows to enforce the total cap (FastAPI's
+  <code>db.list_by_type</code> may also overshoot for <code>type='all'</code>).</li>
+<li>Add <code>truncated: bool</code> to the response model.</li>
+<li>Add a contract test mirroring <code>app/backend/tests/products.contract.test.ts</code>
+  ("applies the default 2000-row cap" + "sets truncated=true when oversized").</li>
+</ul>
+<p>Without this, the day after the cutover staging will trip the same
+RequestEntityTooLarge error and roll back through the kill-switch.</p>
 <h3 id="21-steps">2.1 Steps</h3>
 <ol>
 <li>Bump <code>VITE_API_VERSION=v2</code> in <code>app/.env.dev</code>, then <code>app/.env.prod</code>.</li>
@@ -494,22 +539,30 @@ further:</p>
   runtime count is 2 (Python app-layer + TS UI/IaC), not 1.</li>
 </ul>
 <hr>
-<h2 id="7-open-questions-for-nick">7. Open questions for Nick</h2>
-<p>These need answers before Phase 1 kicks off. <strong>Phase 0 is unblocked
-regardless.</strong></p>
+<h2 id="7-open-questions-for-nick-answered-2026-05-14">7. Open questions for Nick — answered 2026-05-14</h2>
+<p>All four questions answered. Decisions captured below so future
+sessions don't re-litigate them. <strong>Phase 1 is now unblocked end-to-end.</strong></p>
 <ol>
-<li><strong>Calendar.</strong> Is there a 2-week stretch between SEO/MARKETING and
-   GODMODE where Phase 1 is acceptable, or does it slot in only after
-   GODMODE ships?</li>
-<li><strong>Stretch on this code path.</strong> Does the team (i.e., Nick + occasional
-   contributors) want to learn FastAPI on the critical path, or is the
-   parallel-deploy strategy acceptable?</li>
-<li><strong>Risk appetite for v2 traffic.</strong> Phase 2 cutover is the riskiest
-   step. Should v2 carry 10% of traffic for a week before flipping the
-   default, or full cut-over with a kill-switch?</li>
-<li><strong>Authentic deprecation date for Express.</strong> Phase 3 needs a hard
-   sunset. "When v2 is stable" → name a date.</li>
+<li><strong>Calendar.</strong> No calendar gate. Phase 1 can land whenever the
+   code is ready — not waiting on SEO / MARKETING / GODMODE.</li>
+<li><strong>Stretch on this code path.</strong> Parallel-deploy strategy is
+   acceptable. Don't learn FastAPI on the critical path; let v2
+   stand up alongside v1, soak, then flip.</li>
+<li><strong>Risk appetite for v2 traffic.</strong> <strong>Full cutover.</strong> No 10% canary
+   week — there are no users to protect from a bad v2. Kill-switch
+   via <code>VITE_API_VERSION=v1</code> redeploy is the safety net. This
+   simplifies Phase 2 considerably; remove the canary-traffic
+   plumbing from any Phase 2 PR draft.</li>
+<li><strong>Express deprecation date.</strong> No hard date. "When v2 is stable"
+   is the trigger — could be tomorrow, could be a year, the only
+   bar is exit criteria green and Phase 3 cleanup landed.</li>
 </ol>
+<p><strong>Implication for the scaffold (Phase 1.1, shipped via PR opened
+2026-05-14):</strong> the FastAPI app stands up at <code>app/backend_py/</code> with
+its <code>/api/v2/...</code> namespacing reserved for the CDK wiring step.
+Routes already carry the Express-compatible <code>/api/products/...</code>
+prefix internally; the operator's CDK PR maps the Lambda's path
+to <code>/api/v2/*</code>.</p>
 <hr>
 <h2 id="8-references">8. References</h2>
 <ul>
