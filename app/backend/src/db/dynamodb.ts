@@ -442,17 +442,57 @@ export class DynamoDBService {
   }
 
   /**
-   * Get all unique manufacturers
+   * Scan one product-type partition and emit the value at `attr` from each
+   * row. Only `attr` is fetched (via `ProjectionExpression`), so each row is
+   * tens of bytes instead of hundreds — important for the
+   * `getUniqueManufacturers` / `getUniqueNames` paths, which used to hydrate
+   * all 20k+ products into Lambda memory just to read one string per row.
+   * That blew the 10s smoke-test read timeout once the drives partition
+   * crossed ~12k rows.
+   *
+   * `attr` is a fixed column name controlled by callers in this file — never
+   * user input — so it goes straight into ProjectionExpression without
+   * needing ExpressionAttributeNames quoting.
+   */
+  private async collectDistinctAttr(
+    productType: ProductType,
+    attr: 'manufacturer' | 'product_name'
+  ): Promise<Set<string>> {
+    const values = new Set<string>();
+    const pk = `PRODUCT#${productType.toUpperCase()}`;
+    let lastKey: Record<string, AttributeValue> | undefined = undefined;
+    do {
+      const result: QueryCommandOutput = await this.client.send(
+        new QueryCommand({
+          TableName: this.tableName,
+          KeyConditionExpression: 'PK = :pk',
+          ExpressionAttributeValues: marshall({ ':pk': pk }),
+          ProjectionExpression: attr,
+          ExclusiveStartKey: lastKey,
+        })
+      );
+      for (const item of result.Items ?? []) {
+        const v = unmarshall(item)[attr];
+        if (typeof v === 'string' && v) values.add(v);
+      }
+      lastKey = result.LastEvaluatedKey;
+    } while (lastKey);
+    return values;
+  }
+
+  /**
+   * Get all unique manufacturers (across every product type).
    */
   async getUniqueManufacturers(): Promise<string[]> {
     try {
-      const allProducts = await this.listAll();
-      const manufacturers = new Set(
-        allProducts
-          .map(p => p.manufacturer)
-          .filter((f): f is string => !!f)
+      const perType = await Promise.all(
+        VALID_PRODUCT_TYPES.map(t =>
+          this.collectDistinctAttr(t as ProductType, 'manufacturer')
+        )
       );
-      return Array.from(manufacturers).sort();
+      const merged = new Set<string>();
+      for (const s of perType) for (const v of s) merged.add(v);
+      return Array.from(merged).sort();
     } catch (error) {
       console.error('Error getting unique manufacturers:', error);
       return [];
@@ -460,17 +500,18 @@ export class DynamoDBService {
   }
 
   /**
-   * Get all unique product names
+   * Get all unique product names (across every product type).
    */
   async getUniqueNames(): Promise<string[]> {
     try {
-      const allProducts = await this.listAll();
-      const names = new Set(
-        allProducts
-          .map(p => p.product_name)
-          .filter((n): n is string => !!n)
+      const perType = await Promise.all(
+        VALID_PRODUCT_TYPES.map(t =>
+          this.collectDistinctAttr(t as ProductType, 'product_name')
+        )
       );
-      return Array.from(names).sort();
+      const merged = new Set<string>();
+      for (const s of perType) for (const v of s) merged.add(v);
+      return Array.from(merged).sort();
     } catch (error) {
       console.error('Error getting unique names:', error);
       return [];
