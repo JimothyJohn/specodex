@@ -22,7 +22,6 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DIST_DIR="${REPO_ROOT}/app/backend_py/dist"
 SPECODEX_DIR="${REPO_ROOT}/specodex"
-BACKEND_PY_DIR="${REPO_ROOT}/app/backend_py"
 PYTHON_IMAGE="public.ecr.aws/sam/build-python3.12"
 
 # Versions match app/backend_py/pyproject.toml.
@@ -39,6 +38,29 @@ echo "==> Cleaning ${DIST_DIR}"
 rm -rf "${DIST_DIR}"
 mkdir -p "${DIST_DIR}/app"
 
+# Copy app/backend_py/ into the bundle EXCLUDING the dist/ output dir
+# itself (dist/ lives inside app/backend_py/, so a plain `cp -r` would
+# recurse into its own destination — "cannot copy a directory into
+# itself") and all dev-only artifacts (.venv is 98MB on its own and
+# would blow Lambda's 250MB unzipped size limit). tar streams the
+# tree and `--exclude` drops everything cleanly. Works with both
+# GNU tar (Docker image) and BSD tar (macOS).
+_copy_backend_py() {
+    # $1 = source parent dir (the `app/` that contains backend_py)
+    # $2 = dest parent dir   (the `<dist>/app/` to land backend_py in)
+    tar -C "$1" \
+        --exclude='backend_py/dist' \
+        --exclude='backend_py/tests' \
+        --exclude='backend_py/uv.lock' \
+        --exclude='backend_py/.venv' \
+        --exclude='backend_py/.pytest_cache' \
+        --exclude='backend_py/.ruff_cache' \
+        --exclude='backend_py/.mypy_cache' \
+        --exclude='__pycache__' \
+        --exclude='*.pyc' \
+        -cf - backend_py | tar -C "$2" -xf -
+}
+
 bundle_with_docker() {
     echo "==> Bundling with Docker (${PYTHON_IMAGE})"
     docker run --rm \
@@ -51,11 +73,18 @@ bundle_with_docker() {
             pip install --target /asset-output ${DEPS[*]} \
             && cp -r /asset-input/specodex /asset-output/ \
             && touch /asset-output/app/__init__.py \
-            && cp -r /asset-input/app/backend_py /asset-output/app/ \
-            && touch /asset-output/app/backend_py/__init__.py \
-            && rm -rf /asset-output/app/backend_py/tests \
-            && rm -f /asset-output/app/backend_py/uv.lock \
-            && rm -rf /asset-output/app/backend_py/dist
+            && tar -C /asset-input/app \
+                --exclude='backend_py/dist' \
+                --exclude='backend_py/tests' \
+                --exclude='backend_py/uv.lock' \
+                --exclude='backend_py/.venv' \
+                --exclude='backend_py/.pytest_cache' \
+                --exclude='backend_py/.ruff_cache' \
+                --exclude='backend_py/.mypy_cache' \
+                --exclude='__pycache__' \
+                --exclude='*.pyc' \
+                -cf - backend_py | tar -C /asset-output/app -xf - \
+            && touch /asset-output/app/backend_py/__init__.py
         "
 }
 
@@ -68,11 +97,8 @@ bundle_locally() {
 
     cp -r "${SPECODEX_DIR}" "${DIST_DIR}/"
     touch "${DIST_DIR}/app/__init__.py"
-    cp -r "${BACKEND_PY_DIR}" "${DIST_DIR}/app/"
+    _copy_backend_py "${REPO_ROOT}/app" "${DIST_DIR}/app"
     touch "${DIST_DIR}/app/backend_py/__init__.py"
-    rm -rf "${DIST_DIR}/app/backend_py/tests"
-    rm -f "${DIST_DIR}/app/backend_py/uv.lock"
-    rm -rf "${DIST_DIR}/app/backend_py/dist"
 }
 
 if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
