@@ -359,25 +359,51 @@ describe('DynamoDBService', () => {
   // ===================== Unique Values =====================
 
   describe('getUniqueManufacturers', () => {
-    it('should return sorted unique manufacturers', async () => {
-      jest.spyOn(db, 'listAll').mockResolvedValue([
-        { manufacturer: 'ABB' },
-        { manufacturer: 'Siemens' },
-        { manufacturer: 'ABB' },
-      ] as any[]);
+    it('should return sorted unique manufacturers (projection-only scan)', async () => {
+      // The implementation issues one Query per product type with
+      // ProjectionExpression='manufacturer'. Return a row on the first
+      // call, an empty page on every subsequent call so the result is
+      // deterministic regardless of VALID_PRODUCT_TYPES order/length.
+      let call = 0;
+      const mockSend = jest.fn().mockImplementation(async () => {
+        call += 1;
+        if (call === 1) {
+          return {
+            Items: [
+              { manufacturer: 'ABB' },
+              { manufacturer: 'Siemens' },
+              { manufacturer: 'ABB' },
+            ],
+          };
+        }
+        return { Items: [] };
+      });
+      (db as any).client = { send: mockSend };
 
       const result = await db.getUniqueManufacturers();
       expect(result).toEqual(['ABB', 'Siemens']);
+      // One Query per product type — verify we scan each partition.
+      expect(mockSend.mock.calls.length).toBeGreaterThanOrEqual(2);
     });
   });
 
   describe('getUniqueNames', () => {
-    it('should return sorted unique names', async () => {
-      jest.spyOn(db, 'listAll').mockResolvedValue([
-        { product_name: 'Motor B' },
-        { product_name: 'Motor A' },
-        { product_name: 'Motor B' },
-      ] as any[]);
+    it('should return sorted unique names (projection-only scan)', async () => {
+      let call = 0;
+      const mockSend = jest.fn().mockImplementation(async () => {
+        call += 1;
+        if (call === 1) {
+          return {
+            Items: [
+              { product_name: 'Motor B' },
+              { product_name: 'Motor A' },
+              { product_name: 'Motor B' },
+            ],
+          };
+        }
+        return { Items: [] };
+      });
+      (db as any).client = { send: mockSend };
 
       const result = await db.getUniqueNames();
       expect(result).toEqual(['Motor A', 'Motor B']);
