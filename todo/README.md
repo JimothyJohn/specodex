@@ -4,6 +4,40 @@
 of what's left without opening each `todo/*.md`. Drill into the linked
 docs only when you're about to act on that work.
 
+> **Recently shipped (2026-05-23 — deploy-chain unblocked + API
+> response-cap hardening, 3 PRs).** Master deploys had been failing
+> since 2026-05-15 — PR #217 wired `build-backend-py` into
+> `./Quickstart deploy`, but `build_backend_py.sh` had a latent
+> recursion bug (the v2 bundle path did `cp -r app/backend_py
+> app/backend_py/dist/app/`, which recurses the source into its own
+> destination because `DIST_DIR` lives inside the source dir) plus
+> a 98 MB `.venv/` leak that would have blown Lambda's 250 MB
+> unzipped limit. **PR #224** replaced `cp + rm` with a `tar |
+> tar --exclude` pipe and added excludes for `.venv`, `.pytest_cache`,
+> `.ruff_cache`, `.mypy_cache`, `__pycache__`, `*.pyc`. Bundle
+> dropped from 178 MB → 80 MB. Deploy Staging finally went green.
+>
+> Smoke Staging then caught a *second* class of bug that had been
+> latent for the same 8 days: `/api/products?type=drive` returned
+> 500 with `RequestEntityTooLarge` once the drives table crossed
+> ~12 k rows (PR #199's bulk-ingest sprint), and
+> `/api/products/manufacturers` timed out the smoke client by
+> hydrating every row through `listAll()` just to read one string
+> per row. **PR #225** capped the listing endpoint at 2000 rows by
+> default and added a `truncated: boolean` to the response.
+> **PR #226** rewrote the aggregation endpoints to use
+> `ProjectionExpression: 'manufacturer'`-style scans, ~10× faster
+> end-to-end. Master deploy `e85bc76` was the first fully-green
+> staging deploy since 2026-05-15.
+>
+> Follow-up flagged in #225, not blocking: `app/backend_py/src/
+> routes/products.py:67` has the same no-default-limit bug in the
+> v2 FastAPI backend. v2 isn't live yet (`VITE_API_VERSION` is
+> still `v1`); fix alongside the PYTHON_BACKEND Phase 2 cutover.
+> Prod hasn't tripped the 6 MB cap because its drive count is
+> ~2,849 (PR #199's ingest never got promoted past dev/staging);
+> next prod deploy carries the fixes through anyway.
+>
 > **Recently shipped (2026-05-14 sprint — closed out the property-test gaps).**
 > The four "untested adversarial surfaces" called out in CLAUDE.md's
 > 2026-05-10 Property-testing section are now all covered:
