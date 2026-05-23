@@ -240,6 +240,32 @@ testing. Once v2 is stable, the default flips.
 **Goal:** flip `VITE_API_VERSION` default to `v2`. v1 remains live as a
 fallback for one release cycle.
 
+### 2.0 Pre-cutover code fix (carry-over from v1 hardening, 2026-05-23)
+
+The Express backend (v1) caught a Lambda 6 MB response-cap regression
+on the `/api/products` listing endpoint once the drives table crossed
+~12 k rows. Fixed in PR #225 by defaulting `limit=2000` server-side
+and adding a `truncated: boolean` to the response. **The v2 FastAPI
+backend has the same defect** at
+`app/backend_py/src/routes/products.py:67`:
+
+```python
+limit: Optional[int] = Query(None, ge=1, le=10_000),
+```
+
+`None` means unbounded. Before flipping `VITE_API_VERSION=v2`, port
+the v1 fix to v2:
+
+- Default `limit` to `2000` when the caller omits it.
+- Slice the returned rows to enforce the total cap (FastAPI's
+  `db.list_by_type` may also overshoot for `type='all'`).
+- Add `truncated: bool` to the response model.
+- Add a contract test mirroring `app/backend/tests/products.contract.test.ts`
+  ("applies the default 2000-row cap" + "sets truncated=true when oversized").
+
+Without this, the day after the cutover staging will trip the same
+RequestEntityTooLarge error and roll back through the kill-switch.
+
 ### 2.1 Steps
 
 1. Bump `VITE_API_VERSION=v2` in `app/.env.dev`, then `app/.env.prod`.
