@@ -34,10 +34,12 @@ describe('GET /api/products — listing surface', () => {
     expect(res.body.error).not.toMatch(/at \S+\.ts/);
   });
 
-  it('limit=NaN is passed as undefined — does not crash', async () => {
+  it('limit=NaN falls back to the default cap — does not crash', async () => {
     (DynamoDBService.prototype.list as jest.Mock).mockResolvedValue([]);
     const res = await request(app).get('/api/products?limit=abc');
     expect(res.status).toBeLessThan(500);
+    // Default kicks in when limit can't be parsed.
+    expect((DynamoDBService.prototype.list as jest.Mock).mock.calls[0][1]).toBe(2000);
   });
 
   it('unknown type still returns 200 (route does not validate type)', async () => {
@@ -45,6 +47,42 @@ describe('GET /api/products — listing surface', () => {
     (DynamoDBService.prototype.list as jest.Mock).mockResolvedValue([]);
     const res = await request(app).get('/api/products?type=not-a-real-type');
     expect(res.status).toBe(200);
+  });
+
+  it('applies the default 2000-row cap when no limit param is given', async () => {
+    (DynamoDBService.prototype.list as jest.Mock).mockResolvedValue([]);
+    await request(app).get('/api/products?type=drive');
+    expect((DynamoDBService.prototype.list as jest.Mock).mock.calls[0][1]).toBe(2000);
+  });
+
+  it('respects an explicit numeric limit', async () => {
+    (DynamoDBService.prototype.list as jest.Mock).mockResolvedValue([]);
+    await request(app).get('/api/products?type=motor&limit=50');
+    expect((DynamoDBService.prototype.list as jest.Mock).mock.calls[0][1]).toBe(50);
+  });
+
+  it('sets truncated=true and slices to the cap when db returns more than the cap', async () => {
+    // db.list with type='all' applies Limit per-type and concatenates,
+    // so the route receives more than `limit` and must slice.
+    const oversized = Array.from({ length: 2500 }, (_, i) => ({
+      product_id: `p${i}`,
+      product_type: 'motor',
+      manufacturer: 'X',
+    }));
+    (DynamoDBService.prototype.list as jest.Mock).mockResolvedValue(oversized);
+    const res = await request(app).get('/api/products');
+    expect(res.status).toBe(200);
+    expect(res.body.data).toHaveLength(2000);
+    expect(res.body.count).toBe(2000);
+    expect(res.body.truncated).toBe(true);
+  });
+
+  it('sets truncated=false when db returns fewer rows than the cap', async () => {
+    (DynamoDBService.prototype.list as jest.Mock).mockResolvedValue([
+      { product_id: 'p1', product_type: 'motor', manufacturer: 'X' },
+    ]);
+    const res = await request(app).get('/api/products?type=motor');
+    expect(res.body.truncated).toBe(false);
   });
 });
 
