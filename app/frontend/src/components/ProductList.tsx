@@ -28,6 +28,7 @@ import Dropdown from './Dropdown';
 import FeedbackModal from './ui/FeedbackModal';
 import type { FeedbackCategory } from '../utils/feedback';
 import { ADJACENT_TYPES, BuildSlot, check as compatCheck } from '../utils/compat';
+import { rpmToLinearSpeed, torqueToThrust } from '../utils/linearMode';
 
 /**
  * The state slices ProductList resets when the user picks a new product
@@ -376,45 +377,10 @@ export default function ProductList() {
     return value;
   };
 
-  // Linear motion conversion helpers
+  // Linear motion conversion helpers — see utils/linearMode.ts for the
+  // extracted RPM→mm/s and Nm→N transforms.
   const isLinearMode = (appType === 'linear' || appType === 'z-axis') && linearTravel > 0;
   const GRAVITY = 9.81; // m/s²
-
-  // Convert RPM ValueUnit to linear speed (mm/s)
-  const rpmToLinearSpeed = (value: any): any => {
-    if (!value || !linearTravel) return value;
-    if (typeof value === 'object' && 'value' in value && typeof value.value === 'number') {
-      return { value: parseFloat(((value.value / 60) * linearTravel).toPrecision(4)), unit: 'mm/s' };
-    }
-    if (typeof value === 'object' && 'min' in value && 'max' in value) {
-      return {
-        min: value.min != null ? parseFloat(((value.min / 60) * linearTravel).toPrecision(4)) : value.min,
-        max: value.max != null ? parseFloat(((value.max / 60) * linearTravel).toPrecision(4)) : value.max,
-        unit: 'mm/s'
-      };
-    }
-    return value;
-  };
-
-  // Convert torque (Nm) ValueUnit to thrust force (N)
-  // F = T * 2π / lead (lead in meters). Assumes 100% screw efficiency —
-  // simpler default; revisit if real-world losses become material to the
-  // selection workflow.
-  const torqueToThrust = (value: any): any => {
-    if (!value || !linearTravel) return value;
-    const factor = (2 * Math.PI) / (linearTravel * 0.001);
-    if (typeof value === 'object' && 'value' in value && typeof value.value === 'number') {
-      return { value: parseFloat((value.value * factor).toPrecision(4)), unit: 'N' };
-    }
-    if (typeof value === 'object' && 'min' in value && 'max' in value) {
-      return {
-        min: value.min != null ? parseFloat((value.min * factor).toPrecision(4)) : value.min,
-        max: value.max != null ? parseFloat((value.max * factor).toPrecision(4)) : value.max,
-        unit: 'N'
-      };
-    }
-    return value;
-  };
 
   // Build-aware compat narrowing. When the user has anchored part of their
   // motion-system build and the active type is adjacent to one of those
@@ -454,10 +420,10 @@ export default function ProductList() {
     return compatNarrowed.map(p => {
       const copy = { ...p } as any;
       for (const key of SPEED_KEYS) {
-        if (copy[key]) copy[key] = rpmToLinearSpeed(copy[key]);
+        if (copy[key]) copy[key] = rpmToLinearSpeed(copy[key], linearTravel);
       }
       for (const key of TORQUE_KEYS) {
-        if (copy[key]) copy[key] = torqueToThrust(copy[key]);
+        if (copy[key]) copy[key] = torqueToThrust(copy[key], linearTravel);
       }
       return copy as Product;
     });
