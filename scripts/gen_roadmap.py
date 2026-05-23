@@ -34,6 +34,11 @@ COLUMNS: list[tuple[str, str, str]] = [
     ("signoff", "Needs Sign-off", "Blocked on an explicit human decision."),
     ("inflight", "In Flight", "Wave shipped; further waves open."),
     ("deferred", "Deferred", "Parked in todo/longterm/."),
+    (
+        "shipped",
+        "Shipped",
+        "Every churn row for this doc is ✅; the doc itself is overdue for deletion or pruning.",
+    ),
 ]
 
 
@@ -137,10 +142,17 @@ STATUS_EMOJI = {
 def parse_churn_table(readme_text: str) -> dict[str, tuple[str, str]]:
     """Return {DOC_TOKEN: (status_key, raw_label)}.
 
-    If a doc appears in multiple rows, the first (highest-priority) row
-    wins. README rows are ordered top-down by sprint priority.
+    A doc can appear in multiple churn rows (e.g. HARDENING is referenced
+    by every property-test row). Pick the first row whose status is NOT
+    "✅ shipped" — shipped rows are historical churn, not the doc's
+    current state. If every row for the doc is shipped, fall through to
+    the first row (the doc's churn list is genuinely done).
+
+    Before this rule, the "first row wins" pick on HARDENING returned
+    "✅ shipped #149" and the kanban rendered the card as already
+    complete even though 4 phases remained open.
     """
-    out: dict[str, tuple[str, str]] = {}
+    rows: dict[str, list[tuple[str, str, bool]]] = {}
     in_table = False
     for line in readme_text.splitlines():
         if "PR scope" in line and "Doc" in line and "Status" in line:
@@ -158,12 +170,23 @@ def parse_churn_table(readme_text: str) -> dict[str, tuple[str, str]]:
             continue
         doc = m.group("doc")
         raw_status = m.group("status").strip()
+        is_shipped = "✅" in raw_status
         key = next(
             (v for emoji, v in STATUS_EMOJI.items() if emoji in raw_status),
             "backlog",
         )
-        if doc not in out:
-            out[doc] = (key, raw_status)
+        rows.setdefault(doc, []).append((key, raw_status, is_shipped))
+
+    out: dict[str, tuple[str, str]] = {}
+    for doc, doc_rows in rows.items():
+        first_open = next(((k, label) for k, label, sh in doc_rows if not sh), None)
+        if first_open is not None:
+            out[doc] = first_open
+        else:
+            # Every churn row for this doc is ✅ shipped. Surface that
+            # honestly rather than picking a misleading status key.
+            _, label, _ = doc_rows[0]
+            out[doc] = ("shipped", label)
     return out
 
 
@@ -750,6 +773,7 @@ body[data-issue]::before {
 .status-chip.status-signoff  { background-color: var(--stamp);    color: var(--paper); border-color: var(--ink); }
 .status-chip.status-backlog  { background-color: var(--paper);    color: var(--ink); }
 .status-chip.status-deferred { background-color: var(--paper-shade); color: var(--ink-soft); }
+.status-chip.status-shipped  { background-color: #5C7A3A;        color: var(--paper); border-color: var(--ink); }
 
 /* ===== Per-doc page hero ===== */
 .doc-hero {

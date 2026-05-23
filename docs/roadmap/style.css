@@ -329,6 +329,7 @@ body[data-issue]::before {
 .status-chip.status-signoff  { background-color: var(--stamp);    color: var(--paper); border-color: var(--ink); }
 .status-chip.status-backlog  { background-color: var(--paper);    color: var(--ink); }
 .status-chip.status-deferred { background-color: var(--paper-shade); color: var(--ink-soft); }
+.status-chip.status-shipped  { background-color: #5C7A3A;        color: var(--paper); border-color: var(--ink); }
 
 /* ===== Per-doc page hero ===== */
 .doc-hero {

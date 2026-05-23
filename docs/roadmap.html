@@ -55,19 +55,10 @@
                 <span class="column-code">READY</span>
                 <h2 class="column-title">Ready</h2>
                 <p class="column-blurb">Ready to PR, no blockers.</p>
-                <span class="column-count">1</span>
+                <span class="column-count">0</span>
             </header>
             <ol class="kanban-stack">
-                <li>
-                    <a class="kanban-card" href="roadmap/hardening.html">
-                        <div class="card-head">
-                            <span class="card-source">todo/HARDENING.md</span>
-                            <span class="status-chip status-ready">🟡 READY TO PR</span>
-                        </div>
-                        <h3 class="card-title">HARDENING — adversarial-by-default testing posture</h3>
-                        <p class="card-summary">Audit date: 2026-05-09 Status (post-2026-05-10 sprint): 10 of 14 findings shipped; 4 remain.</p>
-                    </a>
-                </li>
+                <li class="empty">No cards in this column.</li>
             </ol>
         </section>
         <section class="kanban-column" aria-label="Backlog column">
@@ -90,6 +81,17 @@
                 </li>
 
                 <li>
+                    <a class="kanban-card" href="roadmap/hardening.html">
+                        <div class="card-head">
+                            <span class="card-source">todo/HARDENING.md</span>
+                            <span class="status-chip status-backlog">⚪ QUEUED (NEXT-SPRINT TOP)</span>
+                        </div>
+                        <h3 class="card-title">HARDENING — adversarial-by-default testing posture</h3>
+                        <p class="card-summary">Audit date: 2026-05-09 Status (post-2026-05-10 sprint): 10 of 14 findings shipped; 4 remain.</p>
+                    </a>
+                </li>
+
+                <li>
                     <a class="kanban-card" href="roadmap/marketing.html">
                         <div class="card-head">
                             <span class="card-source">todo/MARKETING.md</span>
@@ -108,17 +110,6 @@
                         </div>
                         <h3 class="card-title">Programmatic API access (paid)</h3>
                         <p class="card-summary">Status: 📐 not started. Depends on:</p>
-                    </a>
-                </li>
-
-                <li>
-                    <a class="kanban-card" href="roadmap/python-backend.html">
-                        <div class="card-head">
-                            <span class="card-source">todo/PYTHON_BACKEND.md</span>
-                            <span class="status-chip status-backlog">⚪ QUEUED</span>
-                        </div>
-                        <h3 class="card-title">PYTHON_BACKEND — TypeScript → Python migration for `app/backend/`</h3>
-                        <p class="card-summary">A code audit (in git history at todo/REFACTOR.md) flagged three structural taxes on the current architecture:</p>
                     </a>
                 </li>
 
@@ -150,7 +141,7 @@
                 <span class="column-code">SIGNOFF</span>
                 <h2 class="column-title">Needs Sign-off</h2>
                 <p class="column-blurb">Blocked on an explicit human decision.</p>
-                <span class="column-count">2</span>
+                <span class="column-count">3</span>
             </header>
             <ol class="kanban-stack">
                 <li>
@@ -161,6 +152,17 @@
                         </div>
                         <h3 class="card-title">DB schema cleanup — gameplan</h3>
                         <p class="card-summary">Driven by the field-coverage audit at outputs/audit_fields_dev_&lt;ts&gt;.md (re-runnable via uv run python -m cli.audit_fields --stage dev). The audit scans products-dev and tabulates, per product_type, the fraction of rows that have a populated value for every…</p>
+                    </a>
+                </li>
+
+                <li>
+                    <a class="kanban-card" href="roadmap/python-backend.html">
+                        <div class="card-head">
+                            <span class="card-source">todo/PYTHON_BACKEND.md</span>
+                            <span class="status-chip status-signoff">🔴 OPERATOR-DRIVEN (NEEDS V2 DEPLOYED FIRST)</span>
+                        </div>
+                        <h3 class="card-title">PYTHON_BACKEND — TypeScript → Python migration for `app/backend/`</h3>
+                        <p class="card-summary">A code audit (in git history at todo/REFACTOR.md) flagged three structural taxes on the current architecture:</p>
                     </a>
                 </li>
 
@@ -247,6 +249,17 @@
                         <p class="card-summary">Status: 📐 design-only as of 2026-05-09. No code lands until the scope below is signed off.</p>
                     </a>
                 </li>
+            </ol>
+        </section>
+        <section class="kanban-column" aria-label="Shipped column">
+            <header class="column-head">
+                <span class="column-code">SHIPPED</span>
+                <h2 class="column-title">Shipped</h2>
+                <p class="column-blurb">Every churn row for this doc is ✅; the doc itself is overdue for deletion or pruning.</p>
+                <span class="column-count">0</span>
+            </header>
+            <ol class="kanban-stack">
+                <li class="empty">No cards in this column.</li>
             </ol>
         </section>
     </main>
