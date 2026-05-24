@@ -51,6 +51,7 @@ test catches more cleanly than enumerated examples.
 from __future__ import annotations
 
 import logging
+import math
 from typing import Any, Type
 
 import pytest
@@ -247,10 +248,12 @@ class TestScoreBounded:
     def test_score_in_unit_interval(self, product: ProductBase) -> None:
         score, _, _, _ = score_product(product)
         assert 0.0 <= score <= 1.0
-        # Pin the no-NaN/inf invariant. Python's `==` is NaN-safe
-        # only via != NaN, but `0.0 <= NaN <= 1.0` is False, so the
-        # check above already excludes NaN. Inf would fail too.
-        assert score == score  # not NaN
+        # Belt-and-suspenders: pin no-NaN/no-inf explicitly. The bound
+        # check above already excludes both (0.0 <= NaN <= 1.0 is False,
+        # ditto inf), but `math.isfinite` makes the invariant readable
+        # and avoids the CodeQL `comparison-of-identical-expressions`
+        # warning that flagged the old `score == score` idiom.
+        assert math.isfinite(score)
 
 
 # ---------------------------------------------------------------------------
