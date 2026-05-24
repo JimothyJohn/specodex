@@ -189,7 +189,6 @@ def apply_where(product: ProductBase, field: str, op: str, value: str) -> bool:
         num_filter = float(value)
         is_numeric = True
     except ValueError:
-        num_filter = 0.0
         is_numeric = False
 
     if num_product is not None and is_numeric:
