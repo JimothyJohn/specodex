@@ -124,6 +124,22 @@ All 16 `app/backend/tests/*.test.ts` files do `jest.mock('../src/db/dynamodb')`.
 
 **Definition of done:** three tests run against DynamoDB Local in CI and pass; jest globalSetup boots/teardowns the local instance; follow-up card exists.
 
+**Status (2026-05-23):** ⏳ **partially shipped, follow-up open**.
+
+*What shipped:*
+- ✅ `@shelf/jest-dynamodb` wired in (`app/backend/jest.integration.config.js` + `jest-dynamodb-config.js`). globalSetup boots the jar; globalTeardown stops it. First run downloads ~30 MB; cached in `app/node_modules/dynamodb-local` thereafter.
+- ✅ `DynamoDBService` accepts optional `endpoint` + `credentials` overrides so tests can point at `http://localhost:8000` without changing prod construction.
+- ✅ `tests/integration/db.real-dal.test.ts` — 6 tests covering CRUD, paginated `list`, projection-only scan, sorted-set dedup across types, missing-row null. Runs in ~0.4 s after the jar boots.
+- ✅ `npm run test:integration` script + `./Quickstart verify --integration` adds the backend stage. Default verify stays fast (unit only); the `--integration` flag exercises the real DAL.
+- ✅ Java required (present by default on macOS, GitHub Actions ubuntu-latest, most dev VMs). `NODE_OPTIONS=--experimental-vm-modules` set in the script so the AWS SDK's dynamic-import retry path doesn't crash jest.
+
+*What's still open (file as 2.2.b):*
+- `search.contract.test.ts` migration to real-DAL (currently mocks `db.list` + `db.search`).
+- `routes.test.ts` migration to real-DAL (currently mocks the whole DAL module).
+- The contract round-trip test (step 4): seed a row → fetch → assert the returned shape parses cleanly against `generated.ts`'s `Motor` / `Drive` etc. without coercion.
+- The remaining 13 mocked tests (step 5). Each migration is mechanical given the foundation, but each test needs its own seed/cleanup so the diff is non-trivial — better split across PRs.
+- Wire `verify --integration` into the `Test Backend` CI job (currently runs unit only via plain `verify --only backend`). One-line workflow change; needs draft PR.
+
 ### 2.3 IDOR + cross-tenant auth tests (M, P1)
 
 Existing tests cover happy-path 200s and 401-on-no-token. None covers "user A's token requesting user B's data."

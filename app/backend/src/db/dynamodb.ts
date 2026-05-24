@@ -23,6 +23,20 @@ import { safeLog } from '../util/log';
 export interface DynamoDBConfig {
   tableName: string;
   region?: string;
+  /**
+   * Override the SDK endpoint. Only used by integration tests pointing
+   * at DynamoDB Local (`http://localhost:8000`); never set in
+   * prod/staging — the Lambda picks up the AWS service endpoint
+   * from the runtime config.
+   */
+  endpoint?: string;
+  /**
+   * Static credentials. Only used by integration tests against
+   * DynamoDB Local, which doesn't validate keys but rejects requests
+   * without any credentials. Prod relies on the Lambda execution
+   * role's auto-resolved credentials.
+   */
+  credentials?: { accessKeyId: string; secretAccessKey: string };
 }
 
 export class DynamoDBService {
@@ -33,6 +47,8 @@ export class DynamoDBService {
     this.tableName = config.tableName;
     this.client = new DynamoDBClient({
       region: config.region || process.env.AWS_REGION || 'us-east-1',
+      ...(config.endpoint ? { endpoint: config.endpoint } : {}),
+      ...(config.credentials ? { credentials: config.credentials } : {}),
     });
   }
 

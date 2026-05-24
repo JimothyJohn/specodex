@@ -572,6 +572,15 @@ def cmd_verify(args: argparse.Namespace) -> None:
         info("Backend: test")
         run(["npm", "test"], cwd=APP / "backend")
 
+        if do_integration:
+            # HARDENING Phase 2.2 — real-DAL tests against DynamoDB Local.
+            # @shelf/jest-dynamodb downloads the jar on first run; needs
+            # Java on PATH (present by default on macOS, GitHub Actions
+            # ubuntu-latest, and most dev VMs). Same `--integration` gate
+            # as the Python side so a clean `verify` stays fast.
+            info("Backend: test:integration (DynamoDB Local)")
+            run(["npm", "run", "test:integration"], cwd=APP / "backend")
+
         info("Backend: build")
         run(["npm", "run", "build"], cwd=APP / "backend")
 
