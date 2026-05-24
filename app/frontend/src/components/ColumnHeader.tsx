@@ -923,9 +923,16 @@ function ColumnHeader({
  *   - Callback refs (onFilterChange/onSort/onRemove/onUnitToggle/
  *     onResizeStart) — these are inline arrow functions in the
  *     parent so they change identity every render; checking them
- *     would defeat the memo. Their closures capture the same
- *     parent state, so the behaviour is stable across re-renders
- *     even though the function reference isn't.
+ *     would defeat the memo. **Callsites in the parent MUST use
+ *     the function-updater form of setState (`setFilters(prev => …)`,
+ *     `setSorts(prev => …)`) for any read of those slices.** When
+ *     memo skips a column's re-render, that column keeps its stale
+ *     callback, whose closure captured an older parent state. Reading
+ *     closure-captured `filters`/`sorts` and writing back the spread
+ *     wipes any sibling-column changes that landed between renders.
+ *     This was the bug behind "sorting a column resets the filters"
+ *     reported 2026-05-23 — see the comments on the relevant
+ *     setFilters/setSorts calls in ProductList.tsx.
  *
  * For non-slider columns (string/array filters with multi-select
  * popovers), `allFilters` IS load-bearing — the popover's option

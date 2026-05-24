@@ -827,54 +827,69 @@ export default function ProductList() {
     const allAttrs = mergeAttributesByKey(staticAttrs, derivedAttrs);
     const attributeMetadata = allAttrs.find(attr => attr.key === attribute);
 
-    const existingSortIndex = sorts.findIndex(s => s.attribute === attribute);
-
-    if (existingSortIndex !== -1) {
-      const existingSort = sorts[existingSortIndex];
-      if (existingSort.direction === 'asc') {
-        const newSorts = [...sorts];
-        newSorts[existingSortIndex] = { ...existingSort, direction: 'desc' };
-        setSorts(newSorts);
-      } else {
-        setSorts(sorts.filter((_, i) => i !== existingSortIndex));
+    // Function-updater form is load-bearing: this handler is passed to
+    // memo'd ColumnHeader instances via `onSort={() => handleColumnSort(...)}`.
+    // ColumnHeader's `arePropsEqual` intentionally ignores callback identity
+    // (see ColumnHeader.tsx near `function arePropsEqual`), so sibling
+    // columns keep their STALE `onSort` callback wrapping a STALE
+    // handleColumnSort, whose closures over `sorts`/`filters` are also
+    // stale. Reading from the React-provided `prev` argument inside the
+    // updater gets the latest state regardless of memo. Without this,
+    // clicking sort on column B after setting a value on column A's slider
+    // wiped column A's value (bug reported 2026-05-23, repro:
+    // PageUp on Rated Torque → click sort header on any other column →
+    // Rated Torque's value goes back to "any").
+    setSorts(prev => {
+      const existingSortIndex = prev.findIndex(s => s.attribute === attribute);
+      if (existingSortIndex !== -1) {
+        const existingSort = prev[existingSortIndex];
+        if (existingSort.direction === 'asc') {
+          const next = [...prev];
+          next[existingSortIndex] = { ...existingSort, direction: 'desc' };
+          return next;
+        }
+        return prev.filter((_, i) => i !== existingSortIndex);
       }
-    } else if (attributeMetadata) {
-      setSorts([...sorts, {
-        attribute: attribute,
-        direction: 'asc',
-        displayName: attributeMetadata.displayName
-      }]);
-    }
+      if (attributeMetadata) {
+        return [...prev, {
+          attribute: attribute,
+          direction: 'asc',
+          displayName: attributeMetadata.displayName,
+        }];
+      }
+      return prev;
+    });
 
     // Mirror the sort with a filter chip for the same spec, so the user can
     // narrow as well as order in one click. Skip if a filter for this
     // attribute (or its nested children, e.g. `rated_voltage.min`) is
     // already present, and skip when we can't resolve metadata.
-    if (
-      attributeMetadata &&
-      !filters.some(
+    if (!attributeMetadata) return;
+    const availableOperators = getAvailableOperators(products, attribute);
+    const hasComparison = availableOperators.some(
+      op => op === '>' || op === '>=' || op === '<' || op === '<=',
+    );
+    const defaultOperator = hasComparison
+      ? '>='
+      : availableOperators.length > 0
+        ? availableOperators[0]
+        : '=';
+    setFilters(prev => {
+      if (prev.some(
         f => f.attribute === attribute || f.attribute.startsWith(attribute + '.'),
-      )
-    ) {
-      const availableOperators = getAvailableOperators(products, attribute);
-      const hasComparison = availableOperators.some(
-        op => op === '>' || op === '>=' || op === '<' || op === '<=',
-      );
-      const defaultOperator = hasComparison
-        ? '>='
-        : availableOperators.length > 0
-          ? availableOperators[0]
-          : '=';
-      setFilters([
-        ...filters,
+      )) {
+        return prev;
+      }
+      return [
+        ...prev,
         {
           attribute: attribute,
           mode: 'include',
           operator: defaultOperator,
           displayName: attributeMetadata.displayName,
         },
-      ]);
-    }
+      ];
+    });
   };
 
   // Hide a column: drop any active sort for it, add it to the user
@@ -882,7 +897,11 @@ export default function ProductList() {
   // unit-bearing columns can stay visible again just by removing them
   // from userHiddenKeys).
   const handleRemoveColumn = (attribute: string) => {
-    setSorts(sorts.filter(s => s.attribute !== attribute));
+    // Function-updater form — see comment on handleColumnSort: this is
+    // wired to ColumnHeader via `onRemove={...}`, whose identity is
+    // ignored by the memo. Closure-read `sorts` would clobber sibling
+    // updates that landed between renders.
+    setSorts(prev => prev.filter(s => s.attribute !== attribute));
     setFilters(prev => prev.filter(f => f.attribute !== attribute));
     setUserHiddenKeys(prev => (prev.includes(attribute) ? prev : [...prev, attribute]));
     setUserRestoredKeys(prev => prev.filter(k => k !== attribute));
@@ -1194,14 +1213,25 @@ export default function ProductList() {
                       unitSystem={unitSystemFor(header.key)}
                       onUnitToggle={() => toggleColumnUnit(header.key)}
                       onFilterChange={(updated) => {
+                        // Function-updater form is load-bearing here:
+                        // ColumnHeader is memo'd with `arePropsEqual` that
+                        // intentionally ignores callback identity (see the
+                        // comment in ColumnHeader.tsx near `function
+                        // arePropsEqual`). When a sibling column's filter
+                        // value changes, OTHER columns skip re-render via
+                        // memo and keep their stale onFilterChange closures.
+                        // If we read `filters` from the closure, a later
+                        // append on a different column clobbers values set
+                        // on already-updated columns. Reading `prev` from
+                        // React gets the latest state regardless of memo.
                         if (updated == null) {
-                          setFilters(filters.filter(f => f !== filter));
+                          setFilters(prev => prev.filter(f => f !== filter));
                         } else if (filter) {
-                          setFilters(
-                            filters.map(f => (f === filter ? updated : f))
+                          setFilters(prev =>
+                            prev.map(f => (f === filter ? updated : f))
                           );
                         } else {
-                          setFilters([...filters, updated]);
+                          setFilters(prev => [...prev, updated]);
                         }
                       }}
                       onSort={() => handleColumnSort(header.key)}
