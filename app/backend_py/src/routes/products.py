@@ -61,15 +61,37 @@ def get_summary() -> dict[str, Any]:
     return {"success": True, "data": db.count()}
 
 
+#: Default cap for the listing endpoint when no ``limit`` is provided.
+#: Lambda's response payload is hard-capped at 6 MB. With motors at
+#: ~830 B/row and drives at ~510 B/row, 2000 rows = 1.0–1.7 MB
+#: depending on type, well under the limit. Mirrors the Express
+#: backend's PR #225 fix so v2 doesn't trip the same
+#: ``RequestEntityTooLarge`` the day after the
+#: ``VITE_API_VERSION=v2`` cutover.
+DEFAULT_LIST_LIMIT = 2000
+
+
 @router.get("")
 def list_products(
     type: str = Query("all"),
     limit: Optional[int] = Query(None, ge=1, le=10_000),
 ) -> dict[str, Any]:
     db = _db()
-    rows = db.list_by_type(type, limit=limit)
-    data = [row.model_dump(mode="json") for row in rows]
-    return {"success": True, "data": data, "count": len(data)}
+    effective_limit = limit if limit is not None else DEFAULT_LIST_LIMIT
+    # ``list_by_type`` applies the limit per-partition and concatenates
+    # for ``type='all'``; it already slices to ``[:limit]`` at the
+    # boundary but the slice is defensive here and lets us compute
+    # ``truncated`` consistently for both single-type and ``all``.
+    rows = db.list_by_type(type, limit=effective_limit)
+    truncated = len(rows) >= effective_limit
+    sliced = rows[:effective_limit] if truncated else rows
+    data = [row.model_dump(mode="json") for row in sliced]
+    return {
+        "success": True,
+        "data": data,
+        "count": len(data),
+        "truncated": truncated,
+    }
 
 
 @router.get("/{product_id}")

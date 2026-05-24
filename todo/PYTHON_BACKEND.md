@@ -240,31 +240,32 @@ testing. Once v2 is stable, the default flips.
 **Goal:** flip `VITE_API_VERSION` default to `v2`. v1 remains live as a
 fallback for one release cycle.
 
-### 2.0 Pre-cutover code fix (carry-over from v1 hardening, 2026-05-23)
+### 2.0 Pre-cutover code fix (carry-over from v1 hardening) ✅ shipped 2026-05-23
 
 The Express backend (v1) caught a Lambda 6 MB response-cap regression
 on the `/api/products` listing endpoint once the drives table crossed
 ~12 k rows. Fixed in PR #225 by defaulting `limit=2000` server-side
-and adding a `truncated: boolean` to the response. **The v2 FastAPI
-backend has the same defect** at
-`app/backend_py/src/routes/products.py:67`:
+and adding a `truncated: boolean` to the response. The v2 FastAPI
+backend had the same defect at
+`app/backend_py/src/routes/products.py:67` plus the matching
+`get_unique_manufacturers` / `get_unique_names` slowness (the v1
+PR #226 case). Both ported in the post-PR-#229 follow-up:
 
-```python
-limit: Optional[int] = Query(None, ge=1, le=10_000),
-```
+- ✅ Default `limit` set to `DEFAULT_LIST_LIMIT = 2000` when the
+  caller omits it. The route slices and sets `truncated: bool` in
+  the response — mirrors `/api/products` v1 contract.
+- ✅ `BackendDB.get_unique_manufacturers` and `get_unique_names`
+  rewritten to do per-partition projection-only scans via
+  `BackendDB._collect_distinct_attr`, dropping each row from ~500 B
+  to ~50 B over the wire. Same shape as v1's PR #226 fix.
+- ✅ Five new contract tests in `app/backend_py/tests/test_products.py`
+  pinning the default cap, the truncated flag (true on hit, false
+  below), and the spy-on-`db.list_by_type` "applies the default 2000"
+  contract.
 
-`None` means unbounded. Before flipping `VITE_API_VERSION=v2`, port
-the v1 fix to v2:
-
-- Default `limit` to `2000` when the caller omits it.
-- Slice the returned rows to enforce the total cap (FastAPI's
-  `db.list_by_type` may also overshoot for `type='all'`).
-- Add `truncated: bool` to the response model.
-- Add a contract test mirroring `app/backend/tests/products.contract.test.ts`
-  ("applies the default 2000-row cap" + "sets truncated=true when oversized").
-
-Without this, the day after the cutover staging will trip the same
-RequestEntityTooLarge error and roll back through the kill-switch.
+The cutover Phase 2 is now safe to flip `VITE_API_VERSION=v2`
+without immediately tripping the kill-switch on a `RequestEntityTooLarge`
+500 or a manufacturers-endpoint smoke timeout.
 
 ### 2.1 Steps
 
