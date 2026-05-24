@@ -295,3 +295,131 @@ class TestSmokeGetTransientRetry:
 
         assert mock_urlopen.call_count == 1
         mock_sleep.assert_not_called()
+
+
+class TestSmokeGetRunnerEgressSkip:
+    """`_smoke_get` raises pytest.skip — not an AssertionError — when the
+    failure signature is `x-deny-reason: host_not_allowed` AND no AWS
+    trace headers are present.
+
+    That combination is the fingerprint of a sandboxed runner's egress
+    proxy refusing the outbound call (e.g. host-allowlist policy on the
+    Anthropic cloud env that the daily prod smoke routine runs on);
+    the request never reached AWS, so it tells us nothing about prod.
+
+    Issue #187 spammed for 11 days (2026-05-13 → 2026-05-24) because the
+    previous behaviour failed-the-test on this signature, which the
+    routine read as a regression and opened/updated a `prod-smoke-fail`
+    issue on every daily run."""
+
+    def _make_http_error(
+        self, status: int, body: bytes, headers: dict[str, str]
+    ) -> HTTPError:
+        from io import BytesIO
+
+        return HTTPError(
+            url="https://www.specodex.com/health",
+            code=status,
+            msg="Forbidden",
+            hdrs=headers,  # type: ignore[arg-type]
+            fp=BytesIO(body),
+        )
+
+    def test_runner_egress_block_is_skipped_not_failed(self):
+        """403 + host_not_allowed + zero AWS trace headers → pytest.skip.
+
+        The routine's `./Quickstart smoke` exits 0 with skipped tests,
+        so the open `prod-smoke-fail` issue auto-closes on the next
+        green run instead of accumulating 11+ "still failing" comments
+        about runner-side infra."""
+        mod = _load_smoke_module()
+        _smoke_get = mod._smoke_get
+
+        err = self._make_http_error(
+            403,
+            b"Host not in allowlist",
+            {"x-deny-reason": "host_not_allowed", "content-type": "text/plain"},
+        )
+        with (
+            patch.object(mod, "urlopen", side_effect=err) as mock_urlopen,
+            patch.object(mod.time, "sleep") as mock_sleep,
+        ):
+            with pytest.raises(pytest.skip.Exception) as exc_info:
+                _smoke_get("/health", timeout=1)
+
+        msg = str(exc_info.value)
+        assert "RUNNER_EGRESS_BLOCKED" in msg
+        assert "path=/health" in msg
+        assert "x-deny-reason=host_not_allowed" in msg
+        # Skip happens immediately — no retry, no 30s sleep wasted per test.
+        assert mock_urlopen.call_count == 1
+        mock_sleep.assert_not_called()
+
+    def test_host_not_allowed_with_aws_trace_still_retries(self):
+        """Same deny-reason but WITH an AWS trace header → request did
+        reach AWS, so this is a real edge issue (issues #104, #151
+        signature). Keep the existing transient-retry path."""
+        mod = _load_smoke_module()
+        _smoke_get = mod._smoke_get
+
+        from io import BytesIO
+
+        attempt_headers = {
+            "x-deny-reason": "host_not_allowed",
+            "x-amz-cf-id": "cf-real-edge-trace",
+        }
+        err_first = self._make_http_error(
+            403, b"Host not in allowlist", attempt_headers
+        )
+        err_retry = HTTPError(
+            url=err_first.url,
+            code=err_first.code,
+            msg=err_first.msg,
+            hdrs=attempt_headers,  # type: ignore[arg-type]
+            fp=BytesIO(b"Host not in allowlist"),
+        )
+
+        with (
+            patch.object(mod, "urlopen", side_effect=[err_first, err_retry]),
+            patch.object(mod.time, "sleep") as mock_sleep,
+        ):
+            with pytest.raises(AssertionError) as exc_info:
+                _smoke_get("/health", timeout=1)
+
+        msg = str(exc_info.value)
+        # Real AWS failure surfaces as AssertionError, not skip.
+        assert "HTTP 403" in msg
+        assert "x-amz-cf-id=cf-real-edge-trace" in msg
+        # And the retry did fire.
+        mock_sleep.assert_called_once_with(mod._TRANSIENT_RETRY_DELAY_S)
+
+    def test_runner_egress_signature_with_apigw_requestid_does_not_skip(self):
+        """Belt-and-suspenders: any AWS trace header proves the request
+        reached AWS. apigw-requestid alone is enough to fall through to
+        the existing handlers, not skip as runner-egress."""
+        mod = _load_smoke_module()
+        _smoke_get = mod._smoke_get
+
+        from io import BytesIO
+
+        attempt_headers = {
+            "x-deny-reason": "host_not_allowed",
+            "apigw-requestid": "abc-123",
+        }
+        err_first = self._make_http_error(
+            403, b"Host not in allowlist", attempt_headers
+        )
+        err_retry = HTTPError(
+            url=err_first.url,
+            code=err_first.code,
+            msg=err_first.msg,
+            hdrs=attempt_headers,  # type: ignore[arg-type]
+            fp=BytesIO(b"Host not in allowlist"),
+        )
+
+        with (
+            patch.object(mod, "urlopen", side_effect=[err_first, err_retry]),
+            patch.object(mod.time, "sleep"),
+        ):
+            with pytest.raises(AssertionError):
+                _smoke_get("/health", timeout=1)
