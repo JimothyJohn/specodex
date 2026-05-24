@@ -12,7 +12,11 @@ import {
   mergeAttributesByKey,
   AttributeMetadata,
 } from './filters';
-import { COLUMN_ORDER, orderColumnAttributes } from './columnOrder';
+import {
+  COLUMN_ORDER,
+  orderColumnAttributes,
+  computeVisibleColumnAttributes,
+} from './columnOrder';
 import { Product } from './models';
 
 describe('Filter Logic', () => {
@@ -551,5 +555,175 @@ describe('orderColumnAttributes', () => {
     const snapshot = attrs.map(a => a.key);
     orderColumnAttributes(attrs, 'motor');
     expect(attrs.map(a => a.key)).toEqual(snapshot);
+  });
+});
+
+describe('computeVisibleColumnAttributes', () => {
+  // Helpers — terser construction for the tests below.
+  const nested = (key: string, displayName?: string): AttributeMetadata => ({
+    key,
+    displayName: displayName ?? key,
+    type: 'object',
+    applicableTypes: ['motor'],
+    nested: true,
+  });
+  const expert = (
+    key: string,
+    defaultVisible: boolean,
+    displayName?: string,
+  ): AttributeMetadata => ({
+    key,
+    displayName: displayName ?? key,
+    type: 'string',
+    applicableTypes: ['motor'],
+    defaultVisible,
+  });
+  const bare = (key: string, displayName?: string): AttributeMetadata => ({
+    key,
+    displayName: displayName ?? key,
+    type: 'string',
+    applicableTypes: ['motor'],
+  });
+
+  it('shows nested attrs by default, hides bare attrs by default', () => {
+    const attrs = [nested('rated_power'), bare('frame_size')];
+    const out = computeVisibleColumnAttributes(attrs, [], [], 10);
+    expect(out.map(a => a.key)).toEqual(['rated_power']);
+  });
+
+  it('respects defaultVisible=true (expert override on a bare type)', () => {
+    const attrs = [bare('frame_size'), expert('manufacturer', true)];
+    const out = computeVisibleColumnAttributes(attrs, [], [], 10);
+    expect(out.map(a => a.key)).toEqual(['manufacturer']);
+  });
+
+  it('respects defaultVisible=false (expert override hides a nested attr)', () => {
+    const attrs = [
+      nested('rated_power'),
+      { ...nested('peak_current'), defaultVisible: false },
+    ];
+    const out = computeVisibleColumnAttributes(attrs, [], [], 10);
+    expect(out.map(a => a.key)).toEqual(['rated_power']);
+  });
+
+  it('user-hidden keys are removed from the visible set', () => {
+    const attrs = [nested('rated_power'), nested('rated_torque')];
+    const out = computeVisibleColumnAttributes(attrs, ['rated_power'], [], 10);
+    expect(out.map(a => a.key)).toEqual(['rated_torque']);
+  });
+
+  it('user-restored keys override the bare-type-hidden default', () => {
+    const attrs = [nested('rated_power'), bare('frame_size')];
+    const out = computeVisibleColumnAttributes(attrs, [], ['frame_size'], 10);
+    expect(out.map(a => a.key).sort()).toEqual(['frame_size', 'rated_power']);
+  });
+
+  it('caps the default set at maxVisible', () => {
+    const attrs = Array.from({ length: 12 }, (_, i) => nested(`spec_${i}`));
+    const out = computeVisibleColumnAttributes(attrs, [], [], 10);
+    expect(out).toHaveLength(10);
+  });
+
+  // ───────────────────────────────────────────────────────────────────────
+  // REGRESSION — 2026-05-23: "Add specs isn't adding new columns".
+  //
+  // The pre-fix code did `shown.slice(0, MAX_VISIBLE_COLUMNS)`. When the
+  // default-visible set already filled the cap, restoring a bare-type
+  // column appended it past the cap and the slice dropped it silently.
+  // The handler ran, state updated, table didn't change — user saw a
+  // dead button.
+  //
+  // Contract: a user-restored key ALWAYS lands in the visible set, even
+  // when doing so pushes the total past `maxVisible`. The cap is a
+  // soft default; explicit user choice overrides it.
+  // ───────────────────────────────────────────────────────────────────────
+  it('user-restored attr always renders even when default set already fills the cap', () => {
+    // 10 nested attrs would-be-shown by default (fills the cap of 10).
+    const defaults = Array.from({ length: 10 }, (_, i) => nested(`spec_${i}`));
+    const restored = bare('frame_size');
+    const attrs = [...defaults, restored];
+    const out = computeVisibleColumnAttributes(attrs, [], ['frame_size'], 10);
+    expect(out.map(a => a.key)).toContain('frame_size');
+    // Restore is explicit; default slot count drops by one to keep
+    // user-explicit count + default count == cap when possible.
+    expect(out).toHaveLength(10);
+  });
+
+  it('multiple restores all survive — explicit-add count can exceed the cap', () => {
+    const defaults = Array.from({ length: 10 }, (_, i) => nested(`spec_${i}`));
+    const attrs = [
+      ...defaults,
+      bare('frame_size'),
+      bare('cooling'),
+      bare('mount_pattern'),
+    ];
+    const out = computeVisibleColumnAttributes(
+      attrs,
+      [],
+      ['frame_size', 'cooling', 'mount_pattern'],
+      10,
+    );
+    expect(out.map(a => a.key)).toEqual(
+      expect.arrayContaining(['frame_size', 'cooling', 'mount_pattern']),
+    );
+    // 3 explicit + 7 defaults = 10 (cap). Explicit takes priority.
+    expect(out).toHaveLength(10);
+  });
+
+  it('explicit restore takes priority over default-visible fill when cap is tight', () => {
+    // 10 nested defaults + 1 restored bare; cap is 8.
+    // Expect the bare attr in the output and exactly 7 of the 10 nested
+    // (the first 7 in input order, since input is already ordered).
+    const defaults = Array.from({ length: 10 }, (_, i) => nested(`spec_${i}`));
+    const attrs = [...defaults, bare('frame_size')];
+    const out = computeVisibleColumnAttributes(attrs, [], ['frame_size'], 8);
+    expect(out).toHaveLength(8);
+    expect(out.map(a => a.key)).toContain('frame_size');
+    // Defaults that survived are the first 7 in input order.
+    expect(out.filter(a => a.key !== 'frame_size').map(a => a.key)).toEqual([
+      'spec_0',
+      'spec_1',
+      'spec_2',
+      'spec_3',
+      'spec_4',
+      'spec_5',
+      'spec_6',
+    ]);
+  });
+
+  it('user-hidden wins over user-restored for the same key (defensive)', () => {
+    const attrs = [bare('frame_size')];
+    const out = computeVisibleColumnAttributes(
+      attrs,
+      ['frame_size'],
+      ['frame_size'],
+      10,
+    );
+    expect(out).toHaveLength(0);
+  });
+
+  it('preserves input ordering in the result', () => {
+    // Caller is expected to pre-sort via orderColumnAttributes. The
+    // helper must not reshuffle: output keys land in their input
+    // positions among the surviving set.
+    const attrs = [
+      nested('alpha'),
+      bare('charlie'), // hidden by default
+      nested('bravo'),
+      bare('delta'), // restored
+    ];
+    const out = computeVisibleColumnAttributes(attrs, [], ['delta'], 10);
+    expect(out.map(a => a.key)).toEqual(['alpha', 'bravo', 'delta']);
+  });
+
+  it('returns empty when all attrs are user-hidden', () => {
+    const attrs = [nested('rated_power'), nested('rated_torque')];
+    const out = computeVisibleColumnAttributes(
+      attrs,
+      ['rated_power', 'rated_torque'],
+      [],
+      10,
+    );
+    expect(out).toHaveLength(0);
   });
 });
