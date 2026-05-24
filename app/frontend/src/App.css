@@ -7385,20 +7385,20 @@ input.transmission-param-input {
  * document.body, fixed-positioned by the Tooltip component. STYLE.md
  * Phase 1.
  *
- * Sized small (13px text, 8px padding) so it reads as a hint, not a
+ * Sized small (11px text, 3px×6px padding) so it reads as a hint, not a
  * popover. Surface tokens match the popover/card vocabulary so the
  * tooltip family feels coherent in both themes. */
 .app-tooltip {
   font-family: var(--font-mono, monospace);
-  font-size: 13px;
-  line-height: 1.4;
+  font-size: 11px;
+  line-height: 1.3;
   color: var(--text-primary);
   background: var(--card-bg);
   border: 1px solid var(--border-color);
-  border-radius: 6px;
-  padding: 6px 9px;
-  max-width: 280px;
-  box-shadow: 0 4px 12px var(--shadow-md);
+  border-radius: 4px;
+  padding: 3px 6px;
+  max-width: 220px;
+  box-shadow: 0 2px 6px var(--shadow-md);
   z-index: var(--z-popover);
   /* The component sets pointerEvents:none inline so the tooltip never
    * intercepts the cursor; this rule just nails the visual contract. */
