@@ -328,23 +328,29 @@ Two long-lived branches drive deploys:
 
 Default flow for non-routine work in an interactive session:
 
-1. Branch off `dev` (or `master` for hotfix-shaped work).
+1. Branch off `dev`. **Never** branch off `master` for routine work —
+   the hotfix-direct-to-master escape valve is retired (2026-05-24).
 2. Commit + push the feature branch.
-3. Open a **non-draft** PR. Title says what changed; body says why.
-   - Targeting `dev`: when CI passes, merge → dev auto-deploys to
-     staging → eyeball the staging CloudFront URL → open a follow-up
-     PR `dev` → `master` to ship to prod.
-   - Targeting `master` directly (small/obvious changes, hotfixes):
-     when CI passes, merge → staging deploys → prod waits on Nick's
-     environment-approval click.
-4. Watch CI. When all required checks pass and there are no
-   conflicts, **merge it** — don't wait for Nick to click approve
-   on the *PR* (the prod-environment click is a separate gate that
-   stays).
+3. Open a **non-draft** PR with `--base dev`. Title says what changed;
+   body says why.
+4. Watch CI. When all required checks pass and there are no conflicts,
+   **merge it into `dev`** — auto-deploys to staging. Don't wait for
+   Nick to click approve on the *PR*; the PR click is theater for
+   `dev`-targeted work.
+5. **Stop there.** Promoting `dev` → `master` (and therefore to prod)
+   is Nick's call, not yours. Do not open `dev` → `master` PRs and do
+   not push directly to `master` — that's the deliberate prod-release
+   step Nick handles by hand.
 
-Nick approves every clean PR; the PR click is theater. The PR exists
-for CI gating and as a paper trail, not as a review gate. The
-production-environment click is the real gate.
+The two gates that enforce this:
+- `environment: production` on the `deploy-prod` job lists JimothyJohn
+  as the only required reviewer. Prod deploys hang on his click.
+- This rule lives in CLAUDE.md so the workflow doesn't drift back to
+  "ship straight to master" because it's faster in the moment.
+
+Nick approves every clean PR into `dev`; the production-environment
+click on the master path is the real gate, and that one is exclusively
+his.
 
 **Exception — hard-to-reverse blast radius.** Keep the PR draft and
 hand back when the diff touches `app/infrastructure/**` (CDK),
