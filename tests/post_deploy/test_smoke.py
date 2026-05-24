@@ -40,6 +40,25 @@ _TRACE_HEADERS = (
 _TRANSIENT_DENY_REASONS = frozenset({"host_not_allowed"})
 _TRANSIENT_RETRY_DELAY_S = 30
 
+# Headers that CloudFront / API Gateway / Lambda stamp on every response
+# they emit — even on 403/5xx. If none of these are present alongside a
+# `x-deny-reason: host_not_allowed`, the request never reached AWS and
+# was rejected by the runner's own egress proxy (sandboxed environments
+# enforce outbound host allowlists; `www.specodex.com` was not on the
+# Anthropic cloud env's allowlist between 2026-05-13 and 2026-05-24,
+# spamming issue #187 for 11 days with 16/17-failed runs that had
+# nothing to do with prod). Treating that case as a test failure files a
+# `prod-smoke-fail` issue against perfectly-healthy prod; treating it
+# as a runner-infra skip surfaces the runner problem without crying
+# wolf about the deploy.
+_AWS_TRACE_PROOF_HEADERS = (
+    "x-amz-cf-id",
+    "x-amz-cf-pop",
+    "apigw-requestid",
+    "x-amzn-requestid",
+    "x-cache",
+)
+
 
 def _smoke_get(path: str, *, timeout: int = 5, _retried: bool = False):
     """GET helper that on non-2xx attaches AWS trace headers to the error.
@@ -65,6 +84,18 @@ def _smoke_get(path: str, *, timeout: int = 5, _retried: bool = False):
         return urlopen(req, timeout=timeout)
     except HTTPError as exc:
         deny_reason = exc.headers.get("x-deny-reason") if exc.headers else None
+        has_aws_trace = (
+            any(exc.headers.get(h) for h in _AWS_TRACE_PROOF_HEADERS)
+            if exc.headers
+            else False
+        )
+        if deny_reason == "host_not_allowed" and not has_aws_trace:
+            pytest.skip(
+                f"RUNNER_EGRESS_BLOCKED path={path} "
+                f"x-deny-reason={deny_reason} body={exc.read(200)!r} "
+                "(no AWS trace headers — runner's egress proxy blocked "
+                "the outbound call; not a prod-side failure)"
+            )
         if not _retried and deny_reason in _TRANSIENT_DENY_REASONS:
             time.sleep(_TRANSIENT_RETRY_DELAY_S)
             resp = _smoke_get(path, timeout=timeout, _retried=True)
