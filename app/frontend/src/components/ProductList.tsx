@@ -27,7 +27,6 @@ import Dropdown from './Dropdown';
 import FeedbackModal from './ui/FeedbackModal';
 import type { FeedbackCategory } from '../utils/feedback';
 import { ADJACENT_TYPES, BuildSlot, check as compatCheck } from '../utils/compat';
-import { rpmToLinearSpeed, torqueToThrust } from '../utils/linearMode';
 
 /**
  * The state slices ProductList resets when the user picks a new product
@@ -37,9 +36,6 @@ import { rpmToLinearSpeed, torqueToThrust } from '../utils/linearMode';
  *       open across the type switch)
  *   L2: filters reset to the new type's curated defaults
  *   L3: sorts cleared
- *   plus appType/linearTravel/loadMass return to their rotary defaults
- *   so a chain of "linear motor / 50 mm travel" doesn't follow the user
- *   into a drive screen.
  *
  * `currentPage` is intentionally not in this bundle — the existing
  * `useEffect` that watches `filters, sorts, itemsPerPage` resets it to
@@ -50,9 +46,6 @@ export interface ProductListResetState {
   sorts: SortConfig[];
   selectedProduct: Product | null;
   clickPosition: { x: number; y: number } | null;
-  appType: 'rotary' | 'linear' | 'z-axis';
-  linearTravel: number;
-  loadMass: number;
 }
 
 export function defaultStateForType(type: ProductType): ProductListResetState {
@@ -61,9 +54,6 @@ export function defaultStateForType(type: ProductType): ProductListResetState {
     sorts: [],
     selectedProduct: null,
     clickPosition: null,
-    appType: 'rotary',
-    linearTravel: 0,
-    loadMass: 0,
   };
 }
 
@@ -152,9 +142,6 @@ export default function ProductList() {
   // stay individually restorable.
   const MAX_VISIBLE_COLUMNS = rowDensity === 'compact' ? 16 : 10;
   const [addColumnBtnRef, setAddColumnBtnRef] = useState<HTMLButtonElement | null>(null);
-  const [appType, setAppType] = useState<'rotary' | 'linear' | 'z-axis'>('rotary');
-  const [linearTravel, setLinearTravel] = useState<number>(0); // mm/rev
-  const [loadMass, setLoadMass] = useState<number>(0); // kg (for Z-axis gravity calc)
 
   // Floor widths (px) for the part-number column. Compact tightens
   // further than cozy on the assumption that part numbers will truncate
@@ -334,12 +321,9 @@ export default function ProductList() {
     setSorts(reset.sorts);
     setSelectedProduct(reset.selectedProduct);
     setClickPosition(reset.clickPosition);
-    setAppType(reset.appType);
-    setLinearTravel(reset.linearTravel);
-    setLoadMass(reset.loadMass);
   };
 
-  // Torque/speed keys — used for linear-mode display conversions.
+  // Torque/speed keys — driven by the per-row gear-ratio cascade below.
   const TORQUE_KEYS = ['rated_torque', 'peak_torque'];
   const SPEED_KEYS = ['rated_speed'];
 
@@ -371,11 +355,6 @@ export default function ProductList() {
     return value;
   };
 
-  // Linear motion conversion helpers — see utils/linearMode.ts for the
-  // extracted RPM→mm/s and Nm→N transforms.
-  const isLinearMode = (appType === 'linear' || appType === 'z-axis') && linearTravel > 0;
-  const GRAVITY = 9.81; // m/s²
-
   // Build-aware compat narrowing. When the user has anchored part of their
   // motion-system build and the active type is adjacent to one of those
   // anchors, drop products that strict-fail compat. Soft-partials (missing
@@ -405,24 +384,6 @@ export default function ProductList() {
 
   const compatHiddenCount = compatFilterActive ? products.length - compatNarrowed.length : 0;
 
-  // Linear-mode transform applied *before* filter/sort so the filter
-  // pane's sliders, the table cells, and the sort all operate on the
-  // same units (N / mm/s) when linear mode is on. Compat-check stays
-  // upstream because it expects canonical Nm/rpm.
-  const linearizedSource = useMemo(() => {
-    if (!isLinearMode) return compatNarrowed;
-    return compatNarrowed.map(p => {
-      const copy = { ...p } as any;
-      for (const key of SPEED_KEYS) {
-        if (copy[key]) copy[key] = rpmToLinearSpeed(copy[key], linearTravel);
-      }
-      for (const key of TORQUE_KEYS) {
-        if (copy[key]) copy[key] = torqueToThrust(copy[key], linearTravel);
-      }
-      return copy as Product;
-    });
-  }, [compatNarrowed, isLinearMode, linearTravel]);
-
   // Per-row gear ratio. Picks the smallest discrete ratio that lifts
   // each motor's rated/peak torque to clear the active torque filter,
   // then scales speed down by the same factor — every motor gets a
@@ -444,10 +405,10 @@ export default function ProductList() {
 
   const { gearedSource, gearMap } = useMemo(() => {
     if (productType !== 'motor' || torqueTargets.length === 0) {
-      return { gearedSource: linearizedSource, gearMap: new Map<string, number>() };
+      return { gearedSource: compatNarrowed, gearMap: new Map<string, number>() };
     }
     const map = new Map<string, number>();
-    const next = linearizedSource.map(p => {
+    const next = compatNarrowed.map(p => {
       let ratio = 1;
       for (const { key, target } of torqueTargets) {
         const motorVal = numericFromValue((p as any)[key]);
@@ -469,7 +430,7 @@ export default function ProductList() {
     });
     return { gearedSource: next, gearMap: map };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [linearizedSource, torqueTargets, productType]);
+  }, [compatNarrowed, torqueTargets, productType]);
 
   /* Gear ratio is always visible on the motor view, not gated on
    * `torqueTargets.length > 0`. Per-row value comes from gearMap
@@ -542,65 +503,13 @@ export default function ProductList() {
     return () => observer.disconnect();
   }, [isInfiniteMode, hasMoreCompact, itemsPerPage, paginatedProducts.length]);
 
-  // When the linear-mode flips (or travel changes the unit scale), the
-  // stored filter values for torque/speed are no longer comparable to
-  // the new product unit (Nm ↔ N, rpm ↔ mm/s). Clear values *and* swap
-  // each chip's displayName so the label matches the unit it now
-  // operates in (Rated Torque ↔ Rated Thrust, Rated Speed ↔ Linear
-  // Speed). The chip itself stays put.
-  useEffect(() => {
-    const linearLabel = (key: string): string | null => {
-      if (key === 'rated_torque') return 'Rated Thrust';
-      if (key === 'peak_torque') return 'Peak Thrust';
-      if (key === 'rated_speed') return 'Linear Speed';
-      return null;
-    };
-    const rotaryLabel = (key: string): string | null => {
-      if (key === 'rated_torque') return 'Rated Torque';
-      if (key === 'peak_torque') return 'Peak Torque';
-      if (key === 'rated_speed') return 'Rated Speed';
-      return null;
-    };
-    setFilters(current => {
-      let changed = false;
-      const next = current.map(f => {
-        const baseKey = f.attribute.split('.')[0];
-        if (!TORQUE_KEYS.includes(baseKey) && !SPEED_KEYS.includes(baseKey)) {
-          return f;
-        }
-        const targetName = isLinearMode ? linearLabel(baseKey) : rotaryLabel(baseKey);
-        const needsNameSwap = targetName !== null && targetName !== f.displayName;
-        const needsValueReset = f.value !== undefined;
-        if (!needsNameSwap && !needsValueReset) return f;
-        changed = true;
-        return {
-          ...f,
-          value: undefined,
-          displayName: targetName ?? f.displayName,
-        };
-      });
-      return changed ? next : current;
-    });
-  }, [isLinearMode, linearTravel]);
-
-  // Column headers with linear-mode label/unit overrides for SPEED_KEYS
-  // and TORQUE_KEYS (thrust/force view for linear actuators). Unit
-  // strings flip through `displayUnit()` so e.g. Nm → in·lb when the
-  // global unit toggle is set to imperial. Linear-mode units (mm/s, N)
-  // also flip for consistency.
+  // Column headers — label + unit per column. Unit strings flip through
+  // `displayUnit()` so e.g. Nm → in·lb when the per-column unit override
+  // is set to imperial.
   const getColumnHeaders = (): Array<{ key: string; label: string; unit: string | null }> => {
     return visibleColumnAttributes.map(attr => {
-      let label = attr.displayName;
-      let unit: string | null = attr.unit || null;
-      if (isLinearMode) {
-        if (SPEED_KEYS.includes(attr.key)) {
-          label = 'Linear Speed';
-          unit = 'mm/s';
-        } else if (TORQUE_KEYS.includes(attr.key)) {
-          label = attr.key === 'peak_torque' ? 'Peak Thrust' : 'Rated Thrust';
-          unit = 'N';
-        }
-      }
+      const label = attr.displayName;
+      const unit: string | null = attr.unit || null;
       return { key: attr.key, label, unit: unit ? displayUnit(unit, unitSystemFor(attr.key)) : null };
     });
   };
@@ -953,24 +862,24 @@ export default function ProductList() {
             </span>
           </div>
           <div className="page-toolbar-right">
-            {productType && linearizedSource.length > 0 && (
+            {productType && compatNarrowed.length > 0 && (
               <div className="page-toolbar-match">
                 <div className="page-toolbar-match-numbers">
                   <span className="page-toolbar-match-count">{filteredProducts.length}</span>
                   <span className="page-toolbar-match-divider">/</span>
-                  <span className="page-toolbar-match-total">{linearizedSource.length}</span>
+                  <span className="page-toolbar-match-total">{compatNarrowed.length}</span>
                   <span className="page-toolbar-match-label">matching</span>
                   <span className="page-toolbar-match-percent">
-                    {linearizedSource.length === 0
+                    {compatNarrowed.length === 0
                       ? '0%'
-                      : `${Math.round((filteredProducts.length / linearizedSource.length) * 100)}%`}
+                      : `${Math.round((filteredProducts.length / compatNarrowed.length) * 100)}%`}
                   </span>
                 </div>
                 <div className="page-toolbar-match-bar" aria-hidden="true">
                   <div
                     className="page-toolbar-match-bar-fill"
                     style={{
-                      width: `${linearizedSource.length === 0 ? 0 : (filteredProducts.length / linearizedSource.length) * 100}%`,
+                      width: `${compatNarrowed.length === 0 ? 0 : (filteredProducts.length / compatNarrowed.length) * 100}%`,
                     }}
                   />
                 </div>
@@ -992,84 +901,6 @@ export default function ProductList() {
             )}
           </div>
         </div>
-
-        {/* Linear / Z-axis controls for motors — moved out of the sidebar.
-         * The label above the buttons ("Motor application:") is intentional:
-         * without it, "Linear" reads as a *product type* rather than a
-         * motor-application mode. That conflation hides linear_actuator
-         * records from anyone who picks Motors and clicks Linear expecting
-         * to find actuators. The hint below the buttons (when Linear or
-         * Z-axis is active) deep-links to the Linear Actuators type so the
-         * user can switch in one click. Both are interim measures until
-         * Build Phase 1 PR-1 strips this control entirely; see
-         * todo/BUILD.md Part 5 for the full plan. */}
-        {productType === 'motor' && (
-          <div className="page-toolbar-transmission">
-            <div className="transmission-type-label">Motor application:</div>
-            <div className="transmission-type-row">
-              {(['rotary', 'linear', 'z-axis'] as const).map(t => (
-                <button
-                  key={t}
-                  className={`transmission-type-btn ${appType === t ? 'transmission-type-active' : ''}`}
-                  onClick={() => {
-                    setAppType(t);
-                    if (t === 'rotary') { setLinearTravel(0); setLoadMass(0); }
-                    if (t === 'linear') setLoadMass(0);
-                  }}
-                >
-                  {t === 'z-axis' ? 'Z-Axis' : t.charAt(0).toUpperCase() + t.slice(1)}
-                </button>
-              ))}
-            </div>
-            {(appType === 'linear' || appType === 'z-axis')
-              && categories.some(c => c.type === 'linear_actuator') && (
-              <div className="transmission-type-hint">
-                Looking for linear actuator products?{' '}
-                <button
-                  type="button"
-                  className="transmission-type-hint-link"
-                  onClick={() => handleProductTypeChange('linear_actuator')}
-                >
-                  Switch to Linear Actuators →
-                </button>
-              </div>
-            )}
-            {(appType === 'linear' || appType === 'z-axis') && (
-              <div className="transmission-param">
-                <label className="transmission-param-label">Linear Travel / Rev</label>
-                <div className="transmission-param-input-row">
-                  <input
-                    type="number"
-                    className="transmission-param-input"
-                    min={0}
-                    step={0.1}
-                    value={linearTravel || ''}
-                    placeholder="0"
-                    onChange={(e) => setLinearTravel(Math.max(0, Number(e.target.value) || 0))}
-                  />
-                  <span className="transmission-param-unit">mm/rev</span>
-                </div>
-              </div>
-            )}
-            {appType === 'z-axis' && (
-              <div className="transmission-param">
-                <label className="transmission-param-label">Load Mass</label>
-                <div className="transmission-param-input-row">
-                  <input
-                    type="number"
-                    className="transmission-param-input"
-                    min={0}
-                    step={0.1}
-                    value={loadMass || ''}
-                    placeholder="0"
-                    onChange={(e) => setLoadMass(Math.max(0, Number(e.target.value) || 0))}
-                  />
-                  <span className="transmission-param-unit">kg</span>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
 
         {error && (
           <div className="error" style={{ margin: '0.5rem 0' }}>
@@ -1196,7 +1027,7 @@ export default function ProductList() {
                       attribute={attribute}
                       label={header.label}
                       products={displayProducts}
-                      allProducts={linearizedSource}
+                      allProducts={compatNarrowed}
                       filter={filter}
                       allFilters={filters}
                       sortConfig={sortConfig}
@@ -1234,23 +1065,6 @@ export default function ProductList() {
                   );
                 });
               })()}
-              {/* Computed columns for Z-axis */}
-              {appType === 'z-axis' && isLinearMode && loadMass > 0 && (
-                <>
-                  <div className="product-grid-header-item computed-col" style={{ width: 70 }}>
-                    <div className="product-grid-header-label">Gravity</div>
-                    <div className="product-grid-header-unit">(N)</div>
-                  </div>
-                  <div className="product-grid-header-item computed-col" style={{ width: 80 }}>
-                    <div className="product-grid-header-label">Net Thrust</div>
-                    <div className="product-grid-header-unit">(N)</div>
-                  </div>
-                  <div className="product-grid-header-item computed-col" style={{ width: 80 }}>
-                    <div className="product-grid-header-label">Brake Hold</div>
-                    <div className="product-grid-header-unit">(N)</div>
-                  </div>
-                </>
-              )}
               {/* Restore-hidden-column button — only rendered when
                   there's something to restore. */}
               {hiddenColumnAttributes.length > 0 && (
@@ -1325,28 +1139,6 @@ export default function ProductList() {
                       </div>
                     );
                   })}
-
-                  {/* Z-axis computed values */}
-                  {appType === 'z-axis' && isLinearMode && loadMass > 0 && (() => {
-                    const gravityForce = parseFloat((loadMass * GRAVITY).toPrecision(4));
-                    const ratedThrustVal = (product as any).rated_torque;
-                    const thrustNum = ratedThrustVal && typeof ratedThrustVal === 'object' && 'value' in ratedThrustVal
-                      ? ratedThrustVal.value : null;
-                    const netThrust = thrustNum !== null ? parseFloat((thrustNum - gravityForce).toPrecision(4)) : null;
-                    return (
-                      <>
-                        <div className="spec-header-item computed-cell">
-                          <div className="spec-header-value">{gravityForce.toFixed(1)}</div>
-                        </div>
-                        <div className={`spec-header-item computed-cell ${netThrust !== null && netThrust < 0 ? 'computed-cell-warning' : ''}`}>
-                          <div className="spec-header-value">{netThrust !== null ? netThrust.toFixed(1) : '-'}</div>
-                        </div>
-                        <div className="spec-header-item computed-cell">
-                          <div className="spec-header-value">{gravityForce.toFixed(1)}</div>
-                        </div>
-                      </>
-                    );
-                  })()}
 
                 </div>
               ))}
