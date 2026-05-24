@@ -119,3 +119,55 @@ def test_list_products_respects_limit(seeded_client: TestClient) -> None:
     assert resp.status_code == 200
     payload = resp.json()
     assert payload["count"] == 1
+    # 2 seeded rows, limit=1 → result is truncated.
+    assert payload["truncated"] is True
+
+
+def test_list_products_default_not_truncated_on_small_table(
+    seeded_client: TestClient,
+) -> None:
+    # Default cap is 2000; only 2 rows seeded. Should never trip
+    # the truncated flag in this fixture.
+    resp = seeded_client.get("/api/products")
+    assert resp.status_code == 200
+    payload = resp.json()
+    assert payload["truncated"] is False
+
+
+def test_list_products_truncated_flag_false_below_limit(
+    seeded_client: TestClient,
+) -> None:
+    # Even with an explicit limit larger than the row count,
+    # truncated stays False because the result didn't hit the cap.
+    resp = seeded_client.get("/api/products?type=motor&limit=10")
+    assert resp.status_code == 200
+    payload = resp.json()
+    assert payload["count"] == 1
+    assert payload["truncated"] is False
+
+
+def test_list_products_default_limit_applied(
+    seeded_client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Pin the contract: when the caller omits ``limit``, the route
+    # passes DEFAULT_LIST_LIMIT (2000) down to ``db.list_by_type``.
+    # Mirrors the v1 backend's test "applies the default 2000-row cap".
+    from app.backend_py.src.routes import products as products_route
+
+    captured: dict[str, object] = {}
+    real_db = products_route._db()
+    original_list_by_type = real_db.list_by_type
+
+    def spy_list_by_type(t: str, limit=None):
+        captured["limit"] = limit
+        return original_list_by_type(t, limit=limit)
+
+    class _SpyDB:
+        list_by_type = staticmethod(spy_list_by_type)
+
+    monkeypatch.setattr(products_route, "_db", lambda: _SpyDB)
+
+    resp = seeded_client.get("/api/products?type=motor")
+    assert resp.status_code == 200
+    assert captured["limit"] == products_route.DEFAULT_LIST_LIMIT == 2000

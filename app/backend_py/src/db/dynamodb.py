@@ -131,17 +131,52 @@ class BackendDB:
     # Unique-attribute aggregations
     # ------------------------------------------------------------------
 
-    def _all_products(self) -> list[ProductBase]:
-        rows: list[ProductBase] = []
-        for model_class in SCHEMA_CHOICES.values():
-            rows.extend(self._service.list(model_class))
-        return rows
+    def _collect_distinct_attr(self, attr: str) -> set[str]:
+        """Scan each product-type partition and emit the value at ``attr``
+        from every row, via ``ProjectionExpression``.
+
+        Only ``attr`` is fetched, so each row is tens of bytes instead of
+        hundreds — important on the manufacturers / names paths, which
+        used to hydrate every product through ``_all_products`` just to
+        read one string per row. That blew the 10 s smoke read-timeout
+        once the drives partition crossed ~12 k rows on the v1 backend
+        (fixed in PR #226); applying the same fix here so the v2
+        backend doesn't trip the day after the ``VITE_API_VERSION=v2``
+        cutover.
+
+        ``attr`` is always a fixed column name controlled by callers
+        in this file — never user input — so it goes straight into
+        ``ProjectionExpression`` without needing
+        ``ExpressionAttributeNames`` quoting.
+        """
+
+        values: set[str] = set()
+        for product_type in SCHEMA_CHOICES:
+            pk = f"PRODUCT#{product_type.upper()}"
+            kwargs: dict[str, Any] = {
+                "KeyConditionExpression": "PK = :pk",
+                "ExpressionAttributeValues": {":pk": pk},
+                "ProjectionExpression": attr,
+            }
+            response = self._service.table.query(**kwargs)
+            for item in response.get("Items", []):
+                v = item.get(attr)
+                if isinstance(v, str) and v:
+                    values.add(v)
+            while "LastEvaluatedKey" in response:
+                kwargs["ExclusiveStartKey"] = response["LastEvaluatedKey"]
+                response = self._service.table.query(**kwargs)
+                for item in response.get("Items", []):
+                    v = item.get(attr)
+                    if isinstance(v, str) and v:
+                        values.add(v)
+        return values
 
     def get_unique_manufacturers(self) -> list[str]:
-        return sorted({p.manufacturer for p in self._all_products() if p.manufacturer})
+        return sorted(self._collect_distinct_attr("manufacturer"))
 
     def get_unique_names(self) -> list[str]:
-        return sorted({p.product_name for p in self._all_products() if p.product_name})
+        return sorted(self._collect_distinct_attr("product_name"))
 
     # ------------------------------------------------------------------
     # Mutations — create / update / delete
