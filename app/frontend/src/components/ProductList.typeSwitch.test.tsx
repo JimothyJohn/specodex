@@ -5,9 +5,9 @@
  * new product type. The bundle lives in `defaultStateForType`, which
  * `handleProductTypeChange` calls and applies setter-by-setter; testing
  * the bundle directly is enough to lock down L1–L3 of the spillover
- * bestiary, plus the linear-mode reset. L4 (`currentPage` reset) is
- * tested transitively — it's wired to a useEffect on `filters, sorts,
- * itemsPerPage`, and Phase 1's persistence-key tests already pin those.
+ * bestiary. L4 (`currentPage` reset) is tested transitively — it's wired
+ * to a useEffect on `filters, sorts, itemsPerPage`, and Phase 1's
+ * persistence-key tests already pin those.
  *
  * The full DOM-level test (open modal → switch type → modal gone) is a
  * follow-up; it adds little safety beyond the bundle test as long as
@@ -46,13 +46,6 @@ describe('defaultStateForType', () => {
     expect(defaultStateForType(null).sorts).toEqual([]);
   });
 
-  it('returns linear-mode to the rotary defaults', () => {
-    const reset = defaultStateForType('motor');
-    expect(reset.appType).toBe('rotary');
-    expect(reset.linearTravel).toBe(0);
-    expect(reset.loadMass).toBe(0);
-  });
-
   it('returns a fresh object each call (no shared state across switches)', () => {
     const a = defaultStateForType('motor');
     const b = defaultStateForType('motor');
@@ -65,7 +58,6 @@ describe('defaultStateForType', () => {
     const reset = defaultStateForType(null);
     expect(reset.selectedProduct).toBeNull();
     expect(reset.sorts).toEqual([]);
-    expect(reset.appType).toBe('rotary');
     // filters may be empty for null type; just assert it's an array
     expect(Array.isArray(reset.filters)).toBe(true);
   });

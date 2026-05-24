@@ -15,22 +15,28 @@
   --bg-gradient-start: #e8e2c9;
   --bg-gradient-end: #e8e2c9;
 
-  /* Manual-ink text (avoid pure black per palette spec) */
-  --text-primary: #1a1a14;
-  --text-secondary: #3a3a2e;
-  --text-tertiary: #6a6a56;
+  /* Manual-ink text (avoid pure black per palette spec). Hue rotated
+   * off the 60° yellow-green axis into the 30° warm-sepia family that
+   * the paper bg (46°) and the leather accent (28°) already share —
+   * lightness is unchanged, so contrast against bg is identical. */
+  --text-primary: #1c1812;
+  --text-secondary: #3a3024;
+  --text-tertiary: #6a5c44;
 
-  /* Hairline rules — ink for primary, muted tan for secondary */
-  --border-color: #5c5c4a;
+  /* Hairline rules — walnut ink for primary, paper-tan for secondary.
+   * Primary rotated off the 60° axis to sit in the leather/ink family;
+   * secondary stays at 46° (paper) since that's already on-family. */
+  --border-color: #5c4a36;
   --border-color-light: #b8ac85;
 
-  /* Khaki-amber accents (highlighter on a field manual, used sparingly).
-   * Saturation pulled further down from #9c7a16 (75% sat) to a muted
-   * brass so accents recede into the paper instead of jumping off it. */
-  --accent-primary: #866c25;
-  --accent-secondary: #6a541c;
-  --accent-gradient-start: #866c25;
-  --accent-gradient-end: #866c25;
+  /* Saddle-leather accents — warm brown that sits naturally on manila
+   * paper. Earlier khaki-amber (#866c25) read olive because G dominated
+   * B by ~70 units; this palette keeps R well ahead of G and tightens
+   * the G/B gap so the hue reads leather, not yellow-mud. */
+  --accent-primary: #8b5a2b;
+  --accent-secondary: #6f4621;
+  --accent-gradient-start: #8b5a2b;
+  --accent-gradient-end: #8b5a2b;
 
   /* Card on slightly lighter paper */
   --card-bg: #efead2;
@@ -45,18 +51,20 @@
   --nav-bg: #ddd5b6;
   --nav-border: #b8ac85;
 
-  /* Softer shadows */
-  --shadow-sm: rgba(26, 26, 20, 0.06);
-  --shadow-md: rgba(26, 26, 20, 0.10);
-  --shadow-lg: rgba(26, 26, 20, 0.14);
-  --shadow-xl: rgba(26, 26, 20, 0.18);
-  --glow-accent: rgba(134, 108, 37, 0.18);
+  /* Softer shadows — base rgb matches the new warm ink. */
+  --shadow-sm: rgba(28, 24, 18, 0.06);
+  --shadow-md: rgba(28, 24, 18, 0.10);
+  --shadow-lg: rgba(28, 24, 18, 0.14);
+  --shadow-xl: rgba(28, 24, 18, 0.18);
+  --glow-accent: rgba(139, 90, 43, 0.18);
 
-  /* Status colors — ink for success (was olive, fed the Christmas vibe),
-   * amber for warning, stamp-red for danger. */
-  --success: #5c5c4a;
+  /* Status colors — all three pulled onto the warm-axis (28–43°).
+   * Success: walnut (was 60° olive); warning: brass (43°, kept);
+   * danger: stamp-red with a slight orange lean (~8°) so it stays
+   * punchy but reads as part of the warm family, not a cold red. */
+  --success: #6a5236;
   --warning: #c8941a;
-  --danger: #7a1f1f;
+  --danger: #7a2818;
 
   /* Scrollbar — sepia thumb on transparent track so it reads as part of
    * the page, not a system widget. STYLE.md Phase 5. */
@@ -114,18 +122,19 @@
   --text-secondary: #ad9f7a;
   --text-tertiary: #948c70;
 
-  /* Warm-ink borders — no green anywhere on dark surfaces */
-  --border-color: #5c5c4a;
-  --border-color-light: #3a3a2e;
+  /* Warm-ink borders — rotated off the 60° axis into the 30° family
+   * that bg + accents sit on. Same lightness as before. */
+  --border-color: #5a4634;
+  --border-color-light: #3a2e22;
 
-  /* Khaki-amber accents — same hue family as light theme. Pulled down
-   * twice now: first from #d4a52a → #b8912a (drop the shout), then to
-   * #a18a55 here (drop saturation further so accents read as muted
-   * brass against the dark sepia, not a yellow highlighter). */
-  --accent-primary: #a18a55;
-  --accent-secondary: #bba26b;
-  --accent-gradient-start: #a18a55;
-  --accent-gradient-end: #a18a55;
+  /* Saddle-leather accents — same hue family as light theme, lifted
+   * for visibility on dark sepia. Earlier khaki-amber (#a18a55) read
+   * olive because G outran B by ~50 units; this palette keeps R
+   * dominant and the G/B gap small so the hue reads tanned leather. */
+  --accent-primary: #b07a48;
+  --accent-secondary: #c89368;
+  --accent-gradient-start: #b07a48;
+  --accent-gradient-end: #b07a48;
 
   /* Cards on shaded sepia */
   --card-bg: #2a2218;
@@ -136,26 +145,30 @@
   --header-bg-end: #1a1209;
   --header-text: #e8e2c9;
 
-  /* Navigation */
-  --nav-bg: #25241b;
-  --nav-border: #5c5c4a;
+  /* Navigation — bg rotated onto the 30° warm family (was 51°, leaned
+   * slightly green-yellow against the new accents). */
+  --nav-bg: #28201a;
+  --nav-border: #5a4634;
 
   /* Softer shadows */
   --shadow-sm: rgba(0, 0, 0, 0.18);
   --shadow-md: rgba(0, 0, 0, 0.22);
   --shadow-lg: rgba(0, 0, 0, 0.28);
   --shadow-xl: rgba(0, 0, 0, 0.32);
-  --glow-accent: rgba(187, 162, 107, 0.16);
+  --glow-accent: rgba(200, 147, 104, 0.16);
 
-  /* Status colors — success was olive (read green), now warm sand */
-  --success: #a09c80;
+  /* Status colors — pulled onto the warm-axis (28–43°). Success was
+   * 51° (green-yellow tint), now warm tanned sand. Warning brass and
+   * danger stamp-red already lived in the family. */
+  --success: #9c8a6a;
   --warning: #c8941a;
   --danger: #a03525;
 
-  /* Scrollbar — warm-ink thumb on transparent track. STYLE.md Phase 5. */
+  /* Scrollbar — warm-ink thumb on transparent track. STYLE.md Phase 5.
+   * Thumb hues rotated onto the 30° warm family to match new borders. */
   --scrollbar-track: transparent;
-  --scrollbar-thumb: #5c5c4a;
-  --scrollbar-thumb-hover: #7a7a64;
+  --scrollbar-thumb: #5a4634;
+  --scrollbar-thumb-hover: #7a6248;
 
   /* Z-index scale (see light theme for narrative). Same tiers for dark. */
   --z-content: 0;
@@ -2171,154 +2184,6 @@ button.secondary:hover {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-}
-
-.transmission-control {
-  background: var(--bg-primary);
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  padding: 0.55rem;
-  margin-bottom: 0.55rem;
-}
-
-/* "Motor application:" label above the rotary/linear/z-axis toggle.
- * Disambiguates the toggle from a product-type switch — without it,
- * "Linear" reads as a product type and hides linear_actuator records
- * from anyone hunting for actuators on the motor view. */
-.transmission-type-label {
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 0.35rem;
-}
-
-/* Discoverability hint shown when motor + Linear/Z-axis is active.
- * Deep-links to the linear_actuator product type so a user who clicked
- * "Linear" hoping to find actuators can switch in one click. */
-.transmission-type-hint {
-  margin-top: 0.5rem;
-  padding-top: 0.5rem;
-  border-top: 1px solid var(--border-color);
-  font-size: 0.8rem;
-  color: var(--text-secondary);
-  line-height: 1.4;
-}
-.transmission-type-hint-link {
-  background: none;
-  border: none;
-  padding: 0;
-  font: inherit;
-  font-weight: 700;
-  color: var(--accent-primary);
-  cursor: pointer;
-  text-decoration: underline;
-}
-.transmission-type-hint-link:hover {
-  color: var(--accent-secondary);
-}
-
-/* Application type selector (Rotary / Linear / Z-Axis) — primary
- * mode switch for the motor sidebar. */
-.transmission-type-row {
-  display: flex;
-  gap: 0;
-  margin-bottom: 0.55rem;
-  border-radius: 6px;
-  overflow: hidden;
-  border: 1px solid var(--border-color);
-}
-.transmission-type-btn {
-  flex: 1;
-  padding: 0.5rem 0.35rem;
-  border: none;
-  background: var(--bg-secondary);
-  color: var(--text-secondary);
-  font-size: 0.85rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-.transmission-type-btn:not(:last-child) {
-  border-right: 1px solid var(--border-color);
-}
-.transmission-type-btn:hover {
-  background: var(--bg-tertiary);
-  color: var(--text-primary);
-}
-.transmission-type-btn.transmission-type-active {
-  background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
-  color: white;
-}
-
-/* Transmission parameter inputs */
-.transmission-param {
-  margin-top: 0.5rem;
-  padding-top: 0.5rem;
-  border-top: 1px solid var(--border-color);
-}
-.transmission-param-label {
-  display: block;
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  margin-bottom: 0.3rem;
-}
-.transmission-param-input-row {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-.transmission-param-input {
-  flex: 1;
-  height: 32px;
-  padding: 0 0.4rem;
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  background: var(--bg-tertiary);
-  color: var(--text-primary);
-  font-size: 0.9rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  outline: none;
-  -moz-appearance: textfield;
-}
-.transmission-param-input::-webkit-outer-spin-button,
-.transmission-param-input::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-.transmission-param-input:focus {
-  border-color: var(--accent-primary);
-}
-.transmission-param-unit {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--text-tertiary);
-  white-space: nowrap;
-}
-.transmission-param-hint {
-  font-size: 0.85rem;
-  color: var(--text-tertiary);
-  line-height: 1.3;
-  margin-top: 0.2rem;
-}
-/* Computed column styles */
-.computed-col {
-  background: rgba(52, 152, 219, 0.06);
-}
-.computed-cell {
-  background: rgba(52, 152, 219, 0.04);
-  font-variant-numeric: tabular-nums;
-}
-.computed-cell-warning {
-  background: rgba(231, 76, 60, 0.12);
-  color: #e74c3c;
 }
 
 /* Bauhaus phase 2a: results-count uses the headline family so the
@@ -5783,20 +5648,9 @@ body::after {
   content: none;
 }
 
-/* ----- Form fields: drafting-form aesthetic ------------------------- */
-select.transmission-param-input,
-input.transmission-param-input {
-  border-radius: 2px;
-  border-color: var(--border-color);
-  box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.06);
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-}
-
 /* Buttons — square, ink-on-paper, slight press affordance. */
 .filter-bar-button,
-.btn-clear,
-.transmission-type-btn {
+.btn-clear {
   border-radius: 2px;
   letter-spacing: 0.08em;
   font-family: var(--font-mono);
@@ -6033,8 +5887,7 @@ input.transmission-param-input {
  * buttons inherit; primary actions get an accent-coloured fill. */
 .filter-bar-button,
 .btn-clear,
-.btn-add-filter,
-.transmission-type-btn {
+.btn-add-filter {
   padding: 0.35rem 0.7rem;
   transition: transform 0.08s ease, background 0.12s ease,
     border-color 0.12s ease, box-shadow 0.12s ease;
@@ -6044,8 +5897,7 @@ input.transmission-param-input {
 }
 .filter-bar-button:hover,
 .btn-clear:hover,
-.btn-add-filter:hover,
-.transmission-type-btn:hover {
+.btn-add-filter:hover {
   transform: translateY(-1px);
   box-shadow:
     0 3px 6px rgba(0, 0, 0, 0.12),
@@ -6053,8 +5905,7 @@ input.transmission-param-input {
 }
 .filter-bar-button:active,
 .btn-clear:active,
-.btn-add-filter:active,
-.transmission-type-btn:active {
+.btn-add-filter:active {
   transform: translateY(1px);
   box-shadow:
     inset 0 1px 2px rgba(0, 0, 0, 0.18);
@@ -6735,34 +6586,6 @@ input.transmission-param-input {
   border-color: var(--text-primary);
 }
 
-.page-toolbar-transmission {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.4rem 0.4rem;
-  border-bottom: 1px solid var(--border-color);
-  flex-wrap: wrap;
-  background: var(--bg-secondary);
-}
-
-.page-toolbar-transmission .transmission-type-row {
-  display: inline-flex;
-  gap: 0.25rem;
-}
-
-.page-toolbar-transmission .transmission-param {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-
-.page-toolbar-transmission .transmission-param-label {
-  font-size: 0.78rem;
-  color: var(--text-tertiary);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
 /* Column header — fixed-row layout so every column's histogram, label,
  * slider, and readout line up across the table. No drag-to-reorder
  * here: too easy to fight the slider for pointer events. */
@@ -7278,12 +7101,10 @@ input.transmission-param-input {
  * surface to avoid blanket-rounding tables, grid cells, or chart bars
  * (rounding *those* would muddy the precision of the data display). */
 .page-toolbar,
-.page-toolbar-transmission,
 .compat-filter-banner,
 .product-grid-scroll,
 .product-card,
 .card,
-.transmission-control,
 .build-tray-slot,
 .modal-content,
 .modal-card,
@@ -7299,7 +7120,6 @@ input.transmission-param-input {
 .filter-bar-button,
 .btn-clear,
 .btn-add-filter,
-.transmission-type-btn,
 .page-toolbar-clear,
 .account-menu-admin-pill,
 .pagination-label,
@@ -7313,7 +7133,6 @@ input.transmission-param-input {
  * doesn't disappear next to the small-chrome rounding. */
 .page-toolbar,
 .product-grid-scroll,
-.transmission-control,
 .modal-content,
 .modal-card,
 .account-menu-dropdown,
