@@ -97,3 +97,56 @@ export const orderColumnAttributes = (
     return a.displayName.localeCompare(b.displayName);
   });
 };
+
+/**
+ * Compute the columns the table actually renders, given the full attribute
+ * list (pre-ordered by `orderColumnAttributes`), the user's hide/restore
+ * choices, and the cap.
+ *
+ * Visibility rules (per-attribute, applied in order):
+ *   1. user explicitly hid it → out
+ *   2. user explicitly restored it → in (always — explicit-add contract)
+ *   3. `defaultVisible === true`  → in (per-attribute expert override)
+ *   4. `defaultVisible === false` → out (per-attribute expert override)
+ *   5. `nested === true` → in (ValueUnit/MinMaxUnit default)
+ *   6. otherwise → out (strings, booleans, arrays, bare numbers are
+ *      hidden by default; user has to opt into them)
+ *
+ * Then a cap: at most `maxVisible` columns render. **User-restored
+ * columns always render, even when they exceed the cap.** Without this
+ * carve-out, "Add spec" silently drops the user's column on the floor
+ * whenever the default-visible set already fills the cap — which is the
+ * common case (motor has 8 default-visibles, cap is 10 cozy). Bug
+ * reported 2026-05-23.
+ */
+export const computeVisibleColumnAttributes = (
+  columnAttributes: AttributeMetadata[],
+  userHiddenKeys: readonly string[],
+  userRestoredKeys: readonly string[],
+  maxVisible: number,
+): AttributeMetadata[] => {
+  const hiddenSet = new Set(userHiddenKeys);
+  const restoredSet = new Set(userRestoredKeys);
+
+  const wouldBeShown = columnAttributes.filter(a => {
+    if (hiddenSet.has(a.key)) return false;
+    if (restoredSet.has(a.key)) return true;
+    if (a.defaultVisible === true) return true;
+    if (a.defaultVisible === false) return false;
+    return a.nested === true;
+  });
+
+  // Partition: explicit restores always render; default-visibles fill
+  // remaining slots up to the cap.
+  const explicit = wouldBeShown.filter(a => restoredSet.has(a.key));
+  const others = wouldBeShown.filter(a => !restoredSet.has(a.key));
+  const remaining = Math.max(0, maxVisible - explicit.length);
+  const survivingKeys = new Set<string>([
+    ...explicit.map(a => a.key),
+    ...others.slice(0, remaining).map(a => a.key),
+  ]);
+
+  // Preserve the input order — callers rely on `orderColumnAttributes`
+  // having already sorted by COLUMN_ORDER.
+  return wouldBeShown.filter(a => survivingKeys.has(a.key));
+};

@@ -9,7 +9,7 @@ import { ProductType, Product } from '../types/models';
 import { FilterCriterion, SortConfig, applyFilters, sortProducts, getAttributesForType, deriveAttributesFromRecords, mergeAttributesByKey, AttributeMetadata, getAvailableOperators, buildDefaultFiltersForType } from '../types/filters';
 // Column order is authored in types/columnOrder.ts — edit that file to
 // change what columns appear and in what order.
-import { orderColumnAttributes } from '../types/columnOrder';
+import { orderColumnAttributes, computeVisibleColumnAttributes } from '../types/columnOrder';
 import { formatValue, computeAutoColumnWidths } from '../utils/formatting';
 import Tooltip from './ui/Tooltip';
 import { displayUnit, convertValueUnit, convertMinMaxUnit } from '../utils/unitConversion';
@@ -202,26 +202,21 @@ export default function ProductList() {
     return orderColumnAttributes(merged, productType);
   }, [productType, products, COLUMN_EXCLUDED_KEYS]);
 
-  // Columns actually rendered in the table. Default rule:
-  // - `userRestored` → always visible (explicit opt-in)
-  // - `userHidden`   → always hidden
-  // - `defaultVisible === true` → visible (expert override)
-  // - `defaultVisible === false` → hidden (expert override, e.g. a
-  //   ValueUnit motor spec that's motor-designer-only)
-  // - otherwise fall through to the kind-based default: ValueUnit /
-  //   MinMaxUnit (nested:true) visible, everything else hidden.
-  // Then clamp to MAX_VISIBLE_COLUMNS; columns past the cap spill into
-  // the restore dropdown.
-  const visibleColumnAttributes = useMemo<AttributeMetadata[]>(() => {
-    const shown = columnAttributes.filter(a => {
-      if (userHiddenKeys.includes(a.key)) return false;
-      if (userRestoredKeys.includes(a.key)) return true;
-      if (a.defaultVisible === true) return true;
-      if (a.defaultVisible === false) return false;
-      return a.nested === true;
-    });
-    return shown.slice(0, MAX_VISIBLE_COLUMNS);
-  }, [columnAttributes, userHiddenKeys, userRestoredKeys, MAX_VISIBLE_COLUMNS]);
+  // Columns actually rendered in the table. The visibility rules + cap
+  // live in `computeVisibleColumnAttributes` so the contract is unit-
+  // testable. User-restored columns always render (even past the cap)
+  // — without that carve-out, "Add spec" silently dropped the user's
+  // column whenever the default set already filled the cap.
+  const visibleColumnAttributes = useMemo<AttributeMetadata[]>(
+    () =>
+      computeVisibleColumnAttributes(
+        columnAttributes,
+        userHiddenKeys,
+        userRestoredKeys,
+        MAX_VISIBLE_COLUMNS,
+      ),
+    [columnAttributes, userHiddenKeys, userRestoredKeys, MAX_VISIBLE_COLUMNS],
+  );
 
   // Restore-dropdown candidates: everything the user could bring back —
   // explicit hides, cap overflow, and the hidden-by-default non-unit
