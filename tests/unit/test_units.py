@@ -1,5 +1,7 @@
 """Tests for unit normalization module."""
 
+import math
+
 import pytest
 
 from specodex.models.common import ValueUnit
@@ -176,6 +178,44 @@ class TestNormalizeUnitValue:
         val, unit = normalize_unit_value(8, "kHz")
         assert val == 8
         assert unit == "kHz"
+
+
+@pytest.mark.unit
+class TestNormalizeUnitValueEdgeCases:
+    """Pathological inputs that the property tests caught. Each case
+    pins the exact bug shape so it can't regress even if the
+    Hypothesis strategy drifts."""
+
+    def test_positive_infinity_does_not_raise(self):
+        """``_round_converted`` used to raise ``OverflowError`` on +inf
+        because ``math.floor(math.log10(inf))`` cannot convert inf to
+        int. Surfaced via
+        ``test_units_property.test_infinity_input_does_not_raise``."""
+        val, unit = normalize_unit_value(math.inf, "kW")
+        assert math.isinf(val) and val > 0
+        assert unit == "W"
+
+    def test_negative_infinity_does_not_raise(self):
+        val, unit = normalize_unit_value(-math.inf, "lb-ft")
+        assert math.isinf(val) and val < 0
+        assert unit == "Nm"
+
+    def test_nan_does_not_raise(self):
+        """``_round_converted`` used to raise ``ValueError`` on NaN
+        because ``math.floor(math.log10(nan))`` cannot convert NaN to
+        int. Surfaced via
+        ``test_units_property.test_nan_input_does_not_raise``."""
+        val, unit = normalize_unit_value(math.nan, "kW")
+        assert math.isnan(val)
+        assert unit == "W"
+
+    def test_multiplication_overflow_does_not_raise(self):
+        """Finite input × finite multiplier can overflow to inf
+        (e.g. 1e306 × 1e3 = 1e309 = inf). The inf is then handed to
+        ``_round_converted``, which used to raise."""
+        val, unit = normalize_unit_value(1e306, "kW")
+        assert math.isinf(val)
+        assert unit == "W"
 
 
 @pytest.mark.unit
