@@ -119,9 +119,7 @@ def test_returns_float_str_tuple(value: float, unit: str) -> None:
     value=st.floats(
         allow_nan=False, allow_infinity=False, min_value=-1e100, max_value=1e100
     ),
-    unit=st.text(min_size=0, max_size=10).filter(
-        lambda s: s.strip() not in _ALIAS_MAP
-    ),
+    unit=st.text(min_size=0, max_size=10).filter(lambda s: s.strip() not in _ALIAS_MAP),
 )
 @settings(max_examples=200)
 def test_unknown_unit_passes_through(value: float, unit: str) -> None:
