@@ -20,6 +20,7 @@ from specodex.relations import (
     _shaft_compatible,
     _value_gte,
     _value_in_range,
+    compatible_actuators,
     compatible_drives,
     compatible_gearheads,
     compatible_motors,
@@ -109,6 +110,9 @@ def _linear_actuator(
     *,
     name: str = "LA1",
     mounts: list[str] | None = None,
+    stroke_mm: float | None = None,
+    push_force_n: float | None = None,
+    linear_speed_mm_s: float | None = None,
 ) -> LinearActuator:
     if mounts is None:
         mounts = ["NEMA 23"]
@@ -118,6 +122,15 @@ def _linear_actuator(
         manufacturer=MFG,
         part_number=f"PN-{name}",
         compatible_motor_mounts=mounts,
+        stroke={"value": stroke_mm, "unit": "mm"} if stroke_mm is not None else None,
+        max_push_force=(
+            {"value": push_force_n, "unit": "N"} if push_force_n is not None else None
+        ),
+        max_linear_speed=(
+            {"value": linear_speed_mm_s, "unit": "mm/s"}
+            if linear_speed_mm_s is not None
+            else None
+        ),
     )
 
 
@@ -418,3 +431,92 @@ class TestCompatibleGearheads:
 
         result = compatible_gearheads(motor, [match, wrong_mount, wrong_shaft])
         assert [g.product_name for g in result] == ["match"]
+
+
+class TestCompatibleActuators:
+    def test_no_floors_returns_all(self):
+        # "Blank = no constraint applied" — with no floors set, every
+        # actuator passes, including ones with no spec fields on file.
+        a1 = _linear_actuator(name="A1", stroke_mm=200, push_force_n=300)
+        a2 = _linear_actuator(name="A2")  # no spec fields at all
+
+        result = compatible_actuators([a1, a2])
+
+        assert {a.product_name for a in result} == {"A1", "A2"}
+
+    def test_min_stroke_filters(self):
+        short = _linear_actuator(name="short", stroke_mm=150)
+        exact = _linear_actuator(name="exact", stroke_mm=200)
+        long = _linear_actuator(name="long", stroke_mm=400)
+
+        result = compatible_actuators([short, exact, long], min_stroke_mm=200)
+
+        # Boundary value (==) passes; below is excluded.
+        assert {a.product_name for a in result} == {"exact", "long"}
+
+    def test_min_peak_force_filters(self):
+        weak = _linear_actuator(name="weak", push_force_n=100)
+        strong = _linear_actuator(name="strong", push_force_n=500)
+
+        result = compatible_actuators([weak, strong], min_peak_force_n=200)
+
+        assert [a.product_name for a in result] == ["strong"]
+
+    def test_min_peak_velocity_filters(self):
+        slow = _linear_actuator(name="slow", linear_speed_mm_s=500)
+        fast = _linear_actuator(name="fast", linear_speed_mm_s=2000)
+
+        result = compatible_actuators([slow, fast], min_peak_velocity_mm_s=1000)
+
+        assert [a.product_name for a in result] == ["fast"]
+
+    def test_combined_floors_all_must_pass(self):
+        # Clears stroke + force but not velocity → excluded. Only the
+        # actuator that clears all three survives.
+        partial = _linear_actuator(
+            name="partial", stroke_mm=300, push_force_n=400, linear_speed_mm_s=500
+        )
+        full = _linear_actuator(
+            name="full", stroke_mm=300, push_force_n=400, linear_speed_mm_s=1500
+        )
+
+        result = compatible_actuators(
+            [partial, full],
+            min_stroke_mm=200,
+            min_peak_force_n=300,
+            min_peak_velocity_mm_s=1000,
+        )
+
+        assert [a.product_name for a in result] == ["full"]
+
+    def test_missing_field_excluded_when_floor_set(self):
+        # Precision over recall: a floor that's set excludes actuators
+        # missing the field the floor needs.
+        no_force = _linear_actuator(name="no_force", stroke_mm=300)
+
+        assert compatible_actuators([no_force], min_peak_force_n=100) == []
+
+    def test_unit_mismatch_excluded_when_floor_set(self):
+        # max_linear_speed is a generic ValueUnit (no canonical
+        # normalisation). A record carrying m/s is excluded when the
+        # floor is expressed in mm/s — comparing across units would be a
+        # silent precision bug.
+        wrong_unit = LinearActuator(
+            product_name="wrong_unit",
+            product_type="linear_actuator",
+            manufacturer=MFG,
+            part_number="PN-wrongUnit",
+            compatible_motor_mounts=["NEMA 23"],
+            max_linear_speed={"value": 2.0, "unit": "m/s"},
+        )
+
+        assert compatible_actuators([wrong_unit], min_peak_velocity_mm_s=1000) == []
+
+    def test_unset_floor_does_not_exclude_missing_field(self):
+        # An actuator with no force field is NOT excluded when only the
+        # stroke floor is set — unset dimensions apply no constraint.
+        no_force = _linear_actuator(name="no_force", stroke_mm=300)
+
+        result = compatible_actuators([no_force], min_stroke_mm=200)
+
+        assert [a.product_name for a in result] == ["no_force"]

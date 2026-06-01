@@ -125,6 +125,24 @@ def _shaft_compatible(
     return abs(motor_shaft.value - gearhead_input.value) <= 0.1
 
 
+def _meets_floor(value: Optional[ValueUnit], floor: float, unit: str) -> bool:
+    """True if `value` is present, in canonical `unit`, and >= `floor`.
+
+    Compares an actuator spec field against a numeric requirement floor
+    already expressed in canonical units (the Build derivation engine
+    emits mm / N / mm·s⁻¹). Typed family fields (`stroke`,
+    `max_push_force`) normalise aliases to canonical on construction, so
+    a unit other than `unit` means either a different physical quantity
+    or an un-normalised generic field — excluded either way, per this
+    module's precision-first rule.
+    """
+    if value is None or value.value is None or value.unit is None:
+        return False
+    if value.unit != unit:
+        return False
+    return value.value >= floor
+
+
 def _encoder_protocol_intersect(motor: Motor, drive: Drive) -> bool:
     """True if motor's encoder protocol is in drive's supported list.
 
@@ -155,6 +173,58 @@ def _encoder_protocol_intersect(motor: Motor, drive: Drive) -> bool:
 # ---------------------------------------------------------------------------
 # Public compatibility queries.
 # ---------------------------------------------------------------------------
+
+
+def compatible_actuators(
+    actuator_db: Iterable[LinearActuator],
+    *,
+    min_stroke_mm: Optional[float] = None,
+    min_peak_force_n: Optional[float] = None,
+    min_peak_velocity_mm_s: Optional[float] = None,
+) -> List[LinearActuator]:
+    """Linear actuators meeting the requirement floors Build derives.
+
+    The requirements-first entry point for Build's slot-fill sequence
+    (`todo/BUILD.md` Part 4): given the numeric constraints Build's
+    derivation engine produces from a motion application — minimum
+    stroke, peak thrust, peak velocity — return the actuators whose
+    ratings clear every supplied floor.
+
+    Each floor is optional and independent. A `None` floor applies no
+    constraint on that dimension (Build's "blank = no constraint
+    applied" rule). A floor that *is* set excludes any actuator missing
+    the corresponding field or carrying it in a non-canonical unit —
+    precision over recall, consistent with the rest of this module:
+    "compatible" must never include "we can't tell".
+
+    Field mapping:
+    - `min_stroke_mm`          → `stroke` (Length, canonical mm)
+    - `min_peak_force_n`       → `max_push_force` (Force, canonical N —
+      the carriage thrust rating)
+    - `min_peak_velocity_mm_s` → `max_linear_speed` (generic mm/s)
+
+    Orientation and duty cycle from the Build requirements are
+    deliberately NOT actuator filters: orientation is a derating hint
+    the downstream motor sizing consumes, and duty cycle is a
+    motor-thermal concept with no actuator-rating analogue. They belong
+    to the slots that can act on them, not here.
+    """
+    out: List[LinearActuator] = []
+    for a in actuator_db:
+        if min_stroke_mm is not None and not _meets_floor(
+            a.stroke, min_stroke_mm, "mm"
+        ):
+            continue
+        if min_peak_force_n is not None and not _meets_floor(
+            a.max_push_force, min_peak_force_n, "N"
+        ):
+            continue
+        if min_peak_velocity_mm_s is not None and not _meets_floor(
+            a.max_linear_speed, min_peak_velocity_mm_s, "mm/s"
+        ):
+            continue
+        out.append(a)
+    return out
 
 
 def compatible_motors(
