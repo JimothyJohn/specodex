@@ -73,7 +73,9 @@ def _decorated_placeholder(draw: st.DrawFn) -> str:
     else:
         # Mixed: flip each alpha char with 50% probability.
         flips = draw(st.lists(st.booleans(), min_size=len(base), max_size=len(base)))
-        cased = "".join(c.upper() if f and c.isalpha() else c for c, f in zip(base, flips))
+        cased = "".join(
+            c.upper() if f and c.isalpha() else c for c, f in zip(base, flips)
+        )
     left = draw(_WHITESPACE_RUNS)
     right = draw(_WHITESPACE_RUNS)
     return left + cased + right
@@ -149,8 +151,7 @@ class TestIsPlaceholderContract:
             result = is_placeholder(value)
         except Exception as exc:  # pragma: no cover — regression
             pytest.fail(
-                f"is_placeholder raised {type(exc).__name__}: {exc!r}\n"
-                f"input: {value!r}"
+                f"is_placeholder raised {type(exc).__name__}: {exc!r}\ninput: {value!r}"
             )
         assert isinstance(result, bool), (
             f"is_placeholder returned {type(result).__name__}, expected bool\n"
