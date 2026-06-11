@@ -262,6 +262,8 @@ Each one was a bug where the docstring said one thing and the code did another. 
 | `specodex/quality.py:score_product` + `filter_products` partition | `test_quality_property.py` | `test_quality.py` + `test_quality_boundary.py` |
 | `specodex/units.py:normalize_unit_value` (LLM-emitted value+unit canonicaliser) | `test_units_property.py` | `test_units.py` |
 | `specodex/ids.py:normalize_string` + `compute_product_id` (deterministic UUID5 generation) | `test_ids_property.py` | `test_ids.py` |
+| `specodex/placeholders.py:is_placeholder` (LLM "null"/"N/A" string filter) | `test_placeholders_property.py` | `test_placeholders.py` |
+| `specodex/pricing/extract.py:_parse_bare_decimal` + `_parse_money` + `_parse_json_loose` | `test_pricing_parsers_property.py` | `test_pricing.py` |
 
 The 2026-05-14 sprint closed out the four "untested adversarial surfaces" from the 2026-05-10 callout (`cli/processor.py`, `compat.py`, `spec_rules.py`, `quality.py`) via PRs #149, #185, #202, #203. None of the four runs surfaced new bugs — every Hypothesis search confirmed the contract the example tests had already pinned. The boring-good outcome.
 
