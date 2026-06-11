@@ -111,8 +111,7 @@ class TestNormalizeStringProperties:
             out = normalize_string(s)
         except Exception as exc:  # pragma: no cover — regression
             pytest.fail(
-                f"normalize_string raised {type(exc).__name__}: {exc!r}\n"
-                f"input: {s!r}"
+                f"normalize_string raised {type(exc).__name__}: {exc!r}\ninput: {s!r}"
             )
         assert isinstance(out, str), (
             f"normalize_string returned {type(out).__name__} (expected str)"
@@ -385,7 +384,9 @@ class TestFamilyPrefixProperties:
         mfg=_CATALOG_TEXT,
         fam=st.from_regex(r"[A-Za-z]{2,6}", fullmatch=True),
         # leftover must have ≥3 chars AND contain a digit to trigger collapse
-        leftover=st.from_regex(r"[A-Za-z0-9]{2,8}[0-9][A-Za-z0-9]{0,4}", fullmatch=True),
+        leftover=st.from_regex(
+            r"[A-Za-z0-9]{2,8}[0-9][A-Za-z0-9]{0,4}", fullmatch=True
+        ),
     )
     @settings(max_examples=200, deadline=None)
     def test_safety_constraint_satisfied_collapses(
@@ -448,9 +449,7 @@ class TestFamilyPrefixProperties:
         assume(norm_mfg and norm_fam and norm_leftover)
         # Confirm the leftover actually fails the safety check after
         # normalization (post-normalize the chars may have shifted).
-        assume(
-            len(norm_leftover) < 3 or not any(c.isdigit() for c in norm_leftover)
-        )
+        assume(len(norm_leftover) < 3 or not any(c.isdigit() for c in norm_leftover))
         # Avoid the case where leftover itself starts with family.
         assume(not norm_leftover.startswith(norm_fam))
 
