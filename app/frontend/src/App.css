@@ -2806,6 +2806,7 @@ button.secondary:hover {
   display: block;
   word-break: break-word;
   overflow-wrap: anywhere;
+  hyphens: auto;
   white-space: normal;
   letter-spacing: 0.06em;
   gap: 0.3rem;
@@ -6749,9 +6750,14 @@ body::after {
    * "Manufacturer" still clips to "MANUF…". Mirror the same wrap
    * treatment used on .filter-attribute: word-break + overflow-wrap,
    * no nowrap, no ellipsis. The header grows by ~17px on long labels
-   * — cheap given the column-header is already 208px tall. */
+   * — cheap given the column-header is already 208px tall.
+   *
+   * hyphens: auto so the unavoidable mid-word break in a single long
+   * word ("MANUFACTURER" at ~52px) renders as "MANUFAC-TURER" instead
+   * of a bare "MANUFACT/URER" split that reads like a layout bug. */
   word-break: break-word;
   overflow-wrap: anywhere;
+  hyphens: auto;
   min-width: 0;
 }
 

@@ -10,7 +10,7 @@ import { FilterCriterion, SortConfig, applyFilters, sortProducts, getAttributesF
 // Column order is authored in types/columnOrder.ts — edit that file to
 // change what columns appear and in what order.
 import { orderColumnAttributes, computeVisibleColumnAttributes } from '../types/columnOrder';
-import { formatValue, computeAutoColumnWidths } from '../utils/formatting';
+import { formatValue, formatNumber, formatRange, computeAutoColumnWidths } from '../utils/formatting';
 import Tooltip from './ui/Tooltip';
 import { displayUnit, convertValueUnit, convertMinMaxUnit } from '../utils/unitConversion';
 import { numericFromValue } from '../utils/filterValues';
@@ -520,16 +520,16 @@ export default function ProductList() {
   const extractNumericOnly = (value: any, sys: UnitSystem): string | null => {
     if (!value) return null;
 
-    if (typeof value === 'number') return String(value);
+    if (typeof value === 'number') return formatNumber(value);
     if (typeof value === 'string') return value;
 
     if (typeof value === 'object') {
       if ('value' in value && value.value !== null && value.value !== undefined) {
         if ('unit' in value) {
           const c = convertValueUnit(value, sys);
-          return String(c.value);
+          return formatNumber(c.value);
         }
-        return String(value.value);
+        return formatNumber(value.value);
       }
 
       const hasMin = 'min' in value && value.min !== null && value.min !== undefined;
@@ -538,21 +538,21 @@ export default function ProductList() {
       if (hasMin && hasMax) {
         if ('unit' in value) {
           const c = convertMinMaxUnit(value, sys);
-          return `${c.min}-${c.max}`;
+          return formatRange(c.min, c.max);
         }
-        return `${value.min}-${value.max}`;
+        return formatRange(value.min, value.max);
       } else if (hasMin) {
         if ('unit' in value) {
           const c = convertValueUnit({ value: value.min, unit: value.unit }, sys);
-          return String(c.value);
+          return formatNumber(c.value);
         }
-        return String(value.min);
+        return formatNumber(value.min);
       } else if (hasMax) {
         if ('unit' in value) {
           const c = convertValueUnit({ value: value.max, unit: value.unit }, sys);
-          return String(c.value);
+          return formatNumber(c.value);
         }
-        return String(value.max);
+        return formatNumber(value.max);
       }
     }
 
