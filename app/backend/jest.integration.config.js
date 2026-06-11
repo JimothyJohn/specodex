@@ -12,6 +12,10 @@
 module.exports = {
   preset: '@shelf/jest-dynamodb',
   testEnvironment: 'node',
+  // All suites share the single `specodex-test` table and truncate it in
+  // beforeEach — parallel workers race each other's seeds (manifested when
+  // the third suite landed). Serialize; the whole run is ~1s after boot.
+  maxWorkers: 1,
   roots: ['<rootDir>/tests/integration'],
   testMatch: ['**/?(*.)+(spec|test).ts'],
   transform: {
