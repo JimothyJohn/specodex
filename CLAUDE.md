@@ -430,8 +430,11 @@ explicitly named (see auto-memory `feedback_todo_longterm.md`).
 
 1. Pick a row from `todo/README.md`'s churn plan (the table at the
    bottom of the file) or scan the kanban at `docs/roadmap.html`.
-2. Branch off master as `auto/<area>-<short-slug>-<yyyymmdd>` (or
-   any descriptive name for human-driven work).
+2. Branch off dev as `auto/<area>-<short-slug>-<yyyymmdd>` (or
+   any descriptive name for human-driven work). Dev is the only
+   default base — see "Shipping a change" above; this line said
+   "master" until 2026-06-10 and the daily orchestrator was
+   dutifully opening master-based PRs because of it.
 3. Make the smallest correct change. Run `./Quickstart verify` or
    the relevant subset before committing.
 4. Push and open a PR. Default is non-draft when CI passes and the
