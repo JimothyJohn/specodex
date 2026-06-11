@@ -6,7 +6,7 @@
 | Phase | Status | Shipping PRs |
 |---|---|---|
 | 1.1 Activate `_test_security.py` | ✅ shipped | #95 |
-| 1.2 `uv sync --locked` CI sweep | ⚪ open | needs human PR (touches `.github/workflows/`) |
+| 1.2 `uv sync --locked` CI sweep | 🚧 draft PR open 2026-06-10 (9 sites × 5 workflows; Nick merges — workflow files) | — |
 | 1.3 Regression tests for log-injection #82/#83/#84 | ✅ shipped | #97 |
 | 2.1 SSRF defense for URL-fetching paths | ✅ shipped | #98 |
 | 2.2 Backend integration tests against real DAL (L) | ⚪ open | next-sprint queue |

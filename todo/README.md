@@ -323,7 +323,7 @@ Every PR ships with a per-PR HTML doc in `docs/requests/<n>.html`
 | 17 | **PYTHON_BACKEND Phase 3** — delete Express (retires `app/backend/src/types/models.ts` hand-edit) | PYTHON_BACKEND | 🔴 blocked on Phase 2 cutover |
 | 18 | **API.md** — paid programmatic access tier (depends on Stripe Phase 2 cutover + SES) | API | ⚪ queued |
 | 19 | **HARDENING Phase 3.2** — atheris fuzz target for PDF intake | HARDENING | ⚪ queued (heavier dep — needs LLVM/clang on macOS) |
-| 20 | **HARDENING Phase 1.2** — `uv sync --locked` sweep across CI workflows | HARDENING | ⚪ queued (touches `.github/workflows/` — needs human PR) |
+| 20 | **HARDENING Phase 1.2** — `uv sync --locked` sweep across CI workflows | HARDENING | 🚧 draft PR open 2026-06-10 — Nick merges (workflow files) |
 | 21 | **HARDENING Phase 4.2** — lockfile-drift gate post-install | HARDENING | ⚪ queued (touches CI — needs human PR) |
 
 **Status legend.** 🟡 = ready to PR now. ⚪ = queued, no blockers
