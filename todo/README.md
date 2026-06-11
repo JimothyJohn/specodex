@@ -308,7 +308,7 @@ Every PR ships with a per-PR HTML doc in `docs/requests/<n>.html`
 | 2 | **Property tests — `specodex/integration/compat.py` (`_scalar` / `_range` / `_check_*`)** | HARDENING | ✅ shipped #185 |
 | 3 | **Property tests — `specodex/spec_rules.py:validate_product` magnitude rules** | HARDENING | ✅ shipped #202 |
 | 4 | **Property tests — `specodex/quality.py:score_product`** | HARDENING | ✅ shipped #203 |
-| 5 | **HARDENING Phase 2.2** — real-DAL backend integration tests (L) | HARDENING | ⚪ queued (next-sprint top) |
+| 5 | **HARDENING Phase 2.2** — real-DAL backend integration tests (L) | HARDENING | ⏳ search half #246; routes + contract round-trip 2026-06-10. Remaining: 13 mocked-test sweep + CI `--integration` wiring |
 | 6 | **BUILD Phase 1** — requirements-first Build page (motion/stroke/speed/payload/orientation form → motion-system kit) | BUILD | ⚪ queued (independent, user-facing) |
 | 7 | **DB_CLEANUP Phase 2 decision** — populate vs drop `lead_time` / `warranty` / `msrp` (audit says drop; README says populate) | DB_CLEANUP | 🔴 needs sign-off |
 | 8 | **SCHEMA BREAKING harmonize** — `motor_type` → `MotorTechnology` literal + `ElectricCylinder.fieldbus` → `List[CommunicationProtocol]` + harmonize CLI. See [SCHEMA_BREAKING_HARMONIZE.md](SCHEMA_BREAKING_HARMONIZE.md). | SCHEMA_BREAKING_HARMONIZE | 🔴 needs sign-off |

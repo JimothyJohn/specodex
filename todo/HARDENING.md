@@ -134,9 +134,10 @@ All 16 `app/backend/tests/*.test.ts` files do `jest.mock('../src/db/dynamodb')`.
 - ✅ Java required (present by default on macOS, GitHub Actions ubuntu-latest, most dev VMs). `NODE_OPTIONS=--experimental-vm-modules` set in the script so the AWS SDK's dynamic-import retry path doesn't crash jest.
 
 *What's still open (file as 2.2.b):*
-- `search.contract.test.ts` migration to real-DAL (currently mocks `db.list` + `db.search`).
-- `routes.test.ts` migration to real-DAL (currently mocks the whole DAL module).
-- The contract round-trip test (step 4): seed a row → fetch → assert the returned shape parses cleanly against `generated.ts`'s `Motor` / `Drive` etc. without coercion.
+- ✅ `search.contract.test.ts` migration to real-DAL — shipped #246 (`tests/integration/search.real-dal.test.ts`).
+- ✅ `routes.test.ts` migration to real-DAL — shipped 2026-06-10 (`tests/integration/routes.real-dal.test.ts`: aggregation/CRUD/dedupe/datasheet routes end-to-end). Error-injection cases (DB throws → 500) deliberately stay in the mocked sibling.
+- ✅ The contract round-trip test (step 4) — same PR: fully-structured Motor (ValueUnit fields, explicit nulls) survives POST → DynamoDB → GET without coercion, typed against `generated.ts`'s `Motor`.
+- ✅ Latent race fixed in the same PR: all integration suites share the one `specodex-test` table and truncate in beforeEach; parallel jest workers raced each other's seeds once a third suite existed. `maxWorkers: 1` in `jest.integration.config.js`.
 - The remaining 13 mocked tests (step 5). Each migration is mechanical given the foundation, but each test needs its own seed/cleanup so the diff is non-trivial — better split across PRs.
 - Wire `verify --integration` into the `Test Backend` CI job (currently runs unit only via plain `verify --only backend`). One-line workflow change; needs draft PR.
 
