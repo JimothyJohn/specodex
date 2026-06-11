@@ -260,9 +260,12 @@ Each one was a bug where the docstring said one thing and the code did another. 
 | `specodex/integration/compat.py` field-compat helpers (`_scalar`, `_range`, `_check_*`, `_roll_up`) | `test_compat_property.py` | `test_integration.py` |
 | `specodex/spec_rules.py:validate_product` magnitude rules + identity check + duplicate pair | `test_spec_rules_property.py` | `test_spec_rules.py` |
 | `specodex/quality.py:score_product` + `filter_products` partition | `test_quality_property.py` | `test_quality.py` + `test_quality_boundary.py` |
+| `specodex/units.py:normalize_unit_value` (LLM-emitted value+unit canonicaliser) | `test_units_property.py` | `test_units.py` |
 | `specodex/ids.py:normalize_string` + `compute_product_id` (deterministic UUID5 generation) | `test_ids_property.py` | `test_ids.py` |
 
 The 2026-05-14 sprint closed out the four "untested adversarial surfaces" from the 2026-05-10 callout (`cli/processor.py`, `compat.py`, `spec_rules.py`, `quality.py`) via PRs #149, #185, #202, #203. None of the four runs surfaced new bugs — every Hypothesis search confirmed the contract the example tests had already pinned. The boring-good outcome.
+
+The 2026-05-25 round added `specodex/units.py:normalize_unit_value` and *did* surface a real bug: `_round_converted` raised `OverflowError` on ±inf and `ValueError` on NaN because `math.floor(math.log10(...))` can't convert non-finite floats to int. Multiplication overflow on finite inputs (e.g. `1e306 × 1e3 = inf`) hit the same path. The function sits between LLM JSON parsing and the `ValueUnit`/`MinMaxUnit` Pydantic validators (`specodex/models/common.py:314,362,365`), so a malformed Gemini payload with non-finite values would have taken the whole product row with it. Fix: short-circuit non-finite inputs in `_round_converted` before the `math.floor`.
 
 The 2026-05-26 round added `specodex/ids.py` (deterministic product-ID generation) — the only remaining `Optional[str]`-coercer surface in `specodex/` without a property-test companion after PR #242 covered `units.py`. No bugs surfaced; the documented sparsity rule, family-prefix safety constraint, and normalization-equivalence invariant all held under Hypothesis search.
 

@@ -130,10 +130,15 @@ def _convert_temperature(value: float, from_unit: str) -> float:
 def _round_converted(value: float) -> float:
     """Round converted values to avoid floating point noise.
 
-    Keeps up to 6 significant figures.
+    Keeps up to 6 significant figures. Non-finite inputs (NaN, ±inf) are
+    returned unchanged — ``math.floor(math.log10(...))`` raises on them
+    and rounding has no meaning. Surfaces if the multiplication step
+    overflows on a finite input (e.g. ``1e306 * 1e3``).
     """
     if value == 0:
         return 0.0
+    if not math.isfinite(value):
+        return value
     magnitude = math.floor(math.log10(abs(value)))
     precision = max(0, 5 - magnitude)
     return round(value, precision)
