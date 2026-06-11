@@ -34,7 +34,7 @@ jobs:
           cache-dependency-glob: "uv.lock"
 
       - name: Sync dependencies
-        run: uv sync --quiet
+        run: uv sync --locked --quiet
 
       # uv exports an installed-set requirements file with pinned versions
       # that pip-audit can audit directly. --no-emit-project skips the

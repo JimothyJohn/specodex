@@ -32,7 +32,7 @@ jobs:
           cache-dependency-glob: "uv.lock"
 
       - name: Install Python dependencies
-        run: uv sync --quiet
+        run: uv sync --locked --quiet
 
       - name: Snapshot baseline (latest.json before this run)
         run: |
