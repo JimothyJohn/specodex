@@ -69,6 +69,10 @@ interface ActuatorRecord {
   compatible_motor_mounts?: string[] | null;
   // ElectricCylinder: single integrated mount.
   motor_mount_pattern?: string | null;
+  // Requirements-narrowing fields (compatible_actuators floors).
+  stroke?: ValueUnit | null;
+  max_push_force?: ValueUnit | null;
+  max_linear_speed?: ValueUnit | null;
   [key: string]: unknown;
 }
 
@@ -114,6 +118,58 @@ function encoderIntersect(motor: MotorRecord, drive: DriveRecord): boolean {
   const driveProtos = drive.encoder_feedback_support;
   if (!motorProto || !driveProtos || driveProtos.length === 0) return false;
   return driveProtos.includes(motorProto);
+}
+
+/**
+ * Port of relations.py `_meets_floor`: present, in canonical `unit`,
+ * and >= `floor`. A different unit means a different physical quantity
+ * or an un-normalised field — excluded either way (precision over
+ * recall).
+ */
+function meetsFloor(
+  value: ValueUnit | null | undefined,
+  floor: number,
+  unit: string,
+): boolean {
+  if (!value || value.value == null || !value.unit) return false;
+  if (value.unit !== unit) return false;
+  return value.value >= floor;
+}
+
+/**
+ * Port of relations.py `compatible_actuators` — the requirements-first
+ * entry point for Build's slot-fill sequence (todo/BUILD.md Part 4).
+ * Each floor is optional and independent; an unset floor applies no
+ * constraint (Build's "blank = no constraint applied" rule). A set
+ * floor excludes actuators missing the field or carrying it in a
+ * non-canonical unit.
+ */
+function compatibleActuators(
+  actuatorDb: ActuatorRecord[],
+  floors: {
+    minStrokeMm?: number;
+    minPeakForceN?: number;
+    minPeakVelocityMmS?: number;
+  },
+): ActuatorRecord[] {
+  return actuatorDb.filter(a => {
+    if (floors.minStrokeMm != null && !meetsFloor(a.stroke, floors.minStrokeMm, 'mm')) {
+      return false;
+    }
+    if (
+      floors.minPeakForceN != null &&
+      !meetsFloor(a.max_push_force, floors.minPeakForceN, 'N')
+    ) {
+      return false;
+    }
+    if (
+      floors.minPeakVelocityMmS != null &&
+      !meetsFloor(a.max_linear_speed, floors.minPeakVelocityMmS, 'mm/s')
+    ) {
+      return false;
+    }
+    return true;
+  });
 }
 
 function compatibleMotors(
@@ -164,8 +220,46 @@ const ActuatorIdQuery = z.object({
   type: z.enum(['linear_actuator', 'electric_cylinder']),
 });
 
+// Floors arrive as query strings; coerce + reject negatives/NaN. All
+// optional — Build's progressive-narrowing rule. `min_duty_cycle` and
+// `orientation` are accepted for the BUILD.md ActuatorQuery contract
+// but deliberately don't filter: duty cycle is a motor-thermal concept
+// and orientation a downstream derating hint (see relations.py
+// compatible_actuators docstring).
+const ActuatorsQuery = z.object({
+  min_stroke_mm: z.coerce.number().nonnegative().optional(),
+  min_peak_force_n: z.coerce.number().nonnegative().optional(),
+  min_peak_velocity_mm_s: z.coerce.number().nonnegative().optional(),
+  min_duty_cycle: z.coerce.number().min(0).max(1).optional(),
+  orientation: z.enum(['horizontal', 'vertical']).optional(),
+});
+
 const MotorIdQuery = z.object({
   id: z.string().min(1),
+});
+
+router.get('/actuators', async (req: Request, res: Response): Promise<void> => {
+  const parsed = ActuatorsQuery.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({
+      success: false,
+      error: 'Invalid query parameters',
+      details: parsed.error.issues.map(i => `${i.path.join('.')}: ${i.message}`),
+    });
+    return;
+  }
+  const q = parsed.data;
+  console.log(
+    `[relations] actuators stroke>=${q.min_stroke_mm ?? '-'} force>=${q.min_peak_force_n ?? '-'} velocity>=${q.min_peak_velocity_mm_s ?? '-'}`,
+  );
+
+  const actuators = (await db.list('linear_actuator')) as unknown as ActuatorRecord[];
+  const matches = compatibleActuators(actuators, {
+    minStrokeMm: q.min_stroke_mm,
+    minPeakForceN: q.min_peak_force_n,
+    minPeakVelocityMmS: q.min_peak_velocity_mm_s,
+  });
+  res.json({ success: true, data: matches, count: matches.length, total: actuators.length });
 });
 
 router.get('/motors-for-actuator', async (req: Request, res: Response): Promise<void> => {
@@ -249,6 +343,8 @@ export const _predicates = {
   rangeWithin,
   shaftCompatible,
   encoderIntersect,
+  meetsFloor,
+  compatibleActuators,
   compatibleMotors,
   compatibleDrives,
   compatibleGearheads,
