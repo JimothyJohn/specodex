@@ -177,10 +177,20 @@ class PriceFetcher:
             logger.info("httpx error on %s: %s", url, e)
             return None
 
-        if resp.status_code == 429:
-            retry_after = int(resp.headers.get("Retry-After", "5"))
+        # 429 handling: up to 3 retries honoring Retry-After (capped at
+        # 30s each). A single retry was not enough in practice — the
+        # Mitsubishi store keeps 429ing for a while once it has flagged
+        # the client, and each premature give-up records a fake miss
+        # (observed live 2026-06-12: 54 429s → 93 "misses", 3 hits).
+        attempts = 0
+        while resp.status_code == 429 and attempts < 3:
+            attempts += 1
+            retry_after = min(int(resp.headers.get("Retry-After", "5") or "5"), 30)
             logger.info(
-                "429 from %s — sleeping %ds then retrying once", domain, retry_after
+                "429 from %s — sleeping %ds (retry %d/3)",
+                domain,
+                retry_after,
+                attempts,
             )
             time.sleep(retry_after)
             try:

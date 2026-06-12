@@ -308,6 +308,33 @@ def test_fetch_slash_append_redirect_is_not_a_miss(tmp_path: Path):
     assert "$3,130.00" in result.html
 
 
+@pytest.mark.usefixtures("_skip_ssrf_dns")
+def test_fetch_429_retries_until_success(tmp_path: Path, monkeypatch):
+    """Regression (2026-06-12): a single 429 retry wasn't enough — the
+    Mitsubishi store keeps throttling for a while, and giving up records
+    a fake miss. The fetcher now retries up to 3 times per Retry-After."""
+    import httpx
+
+    import specodex.pricing.fetch as fetch_mod
+
+    monkeypatch.setattr(fetch_mod.time, "sleep", lambda s: None)
+    calls = {"n": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/robots.txt":
+            return httpx.Response(404)
+        calls["n"] += 1
+        if calls["n"] <= 2:
+            return httpx.Response(429, headers={"Retry-After": "1"})
+        return httpx.Response(200, text="<html><body>price $500.00</body></html>")
+
+    fetcher = _mock_fetcher(tmp_path, handler)
+    result = fetcher.fetch("https://store.example/products/x100")
+    assert result is not None
+    assert "$500.00" in result.html
+    assert calls["n"] == 3
+
+
 # ── fetch: cache read/write ────────────────────────────────────────
 
 
