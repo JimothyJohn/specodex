@@ -51,10 +51,23 @@
         <article class="doc-body">
 <h1 id="pricing-populate-msrp-at-scale-from-public-price-sources">PRICING — populate <code>msrp</code> at scale from public price sources</h1>
 <blockquote>
-<p>📐 planned — devised 2026-06-11 from a live audit of the price-enrich
-cascade. If accepted, this resolves the DB_CLEANUP Phase 2
-"populate vs drop <code>msrp</code>" decision (README churn row 7) in favor of
-<strong>populate</strong> and supersedes that row.</p>
+<p>🚧 in progress — accepted by Nick 2026-06-12, resolving the
+DB_CLEANUP Phase 2 "populate vs drop <code>msrp</code>" decision as
+<strong>populate</strong>. Phase 1 shipped #268 (<code>./Quickstart price-book</code>);
+Phase 3 no-key items shipped #270. Phase 2 is blocked on Nick
+provisioning <code>SERPER_API_KEY</code>. Remaining: the per-vendor operator
+loop and the keyed Phase 2/3 items.</p>
+<p><strong>Phase 1 field note (2026-06-12).</strong> The ABB/Baldor 501 Index
+parses clean (6,890 rows → 6,817 in-band pairs) but joins 0 rows:
+it covers Baldor-Reliance NEMA <em>stock</em> motors, while our unpriced
+Baldor rows are BSM <em>servo</em> motors and our ABB rows are ACS/ACQ
+drives. Book-to-inventory fit is the whole game — check a vendor's
+unpriced part-number families <em>first</em>, then hunt the matching book
+(Baldor servo has its own price list; WEG's W22 rows carry
+frame-code part numbers that need investigation before its book
+helps; KB/Dart land with the simple-DC ingest). A live dry-run also
+caught frame-size codes (<code>R1</code>/<code>R2</code>) stored as part numbers joining
+against short catalog numbers — fixed with <code>MIN_JOIN_KEY_LEN = 4</code>.</p>
 </blockquote>
 <h2 id="evidence-2026-06-11-products-dev">Evidence (2026-06-11, products-dev)</h2>
 <p>Coverage: drive 70/13,295 (0.5%), motor 801/7,786 (10.3%), all other

@@ -1,9 +1,23 @@
 # PRICING — populate `msrp` at scale from public price sources
 
-> 📐 planned — devised 2026-06-11 from a live audit of the price-enrich
-> cascade. If accepted, this resolves the DB_CLEANUP Phase 2
-> "populate vs drop `msrp`" decision (README churn row 7) in favor of
-> **populate** and supersedes that row.
+> 🚧 in progress — accepted by Nick 2026-06-12, resolving the
+> DB_CLEANUP Phase 2 "populate vs drop `msrp`" decision as
+> **populate**. Phase 1 shipped #268 (`./Quickstart price-book`);
+> Phase 3 no-key items shipped #270. Phase 2 is blocked on Nick
+> provisioning `SERPER_API_KEY`. Remaining: the per-vendor operator
+> loop and the keyed Phase 2/3 items.
+>
+> **Phase 1 field note (2026-06-12).** The ABB/Baldor 501 Index
+> parses clean (6,890 rows → 6,817 in-band pairs) but joins 0 rows:
+> it covers Baldor-Reliance NEMA *stock* motors, while our unpriced
+> Baldor rows are BSM *servo* motors and our ABB rows are ACS/ACQ
+> drives. Book-to-inventory fit is the whole game — check a vendor's
+> unpriced part-number families *first*, then hunt the matching book
+> (Baldor servo has its own price list; WEG's W22 rows carry
+> frame-code part numbers that need investigation before its book
+> helps; KB/Dart land with the simple-DC ingest). A live dry-run also
+> caught frame-size codes (`R1`/`R2`) stored as part numbers joining
+> against short catalog numbers — fixed with `MIN_JOIN_KEY_LEN = 4`.
 
 ## Evidence (2026-06-11, products-dev)
 
