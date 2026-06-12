@@ -52,6 +52,11 @@ _DISTRIBUTOR_DOMAINS: dict[str, str] = {
     "newark.com": "Newark",
     "alliedelec.com": "Allied Electronics",
     "grainger.com": "Grainger",
+    # Magento storefront with direct lowercase-PN product slugs and
+    # server-rendered prices (verified live 2026-06-12). 404 on miss.
+    # NOTE: bodine-electric.com was probed and rejected — /products/<pn>
+    # 302s to the catalog page, which would body-fallback a wrong price.
+    "electromate.com": "Electromate",  # AMC, Galil, Maxon, Applied Motion
     # Kyklo-backed storefronts. Same JSON-LD Product.offers.price scheme
     # as shop1.us.mitsubishielectric.com; URL pattern is /products/{pn}
     # with a redirect to / when the part isn't carried (handled by the
@@ -219,6 +224,17 @@ def _distributor_candidates(part_number: str) -> List[Candidate]:
             url=f"https://www.grainger.com/search?searchQuery={pn}",
             source_type="distributor",
             source_name="Grainger",
+        ),
+        # Electromate (motion-control distributor: AMC, Galil, Maxon,
+        # Applied Motion, Copley accessories) serves product pages at
+        # the lowercase part-number slug with the price in static HTML
+        # (data-price-amount + $-text; JSON-LD sku is their internal id
+        # so the SKU guard falls through to regex — correct on a PDP).
+        # Unknown parts 404 cleanly.
+        Candidate(
+            url=f"https://www.electromate.com/{quote_plus(part_number.strip().lower())}",
+            source_type="distributor",
+            source_name="Electromate",
         ),
     ]
     # Kyklo-backed distributor storefronts — direct product pages. When the

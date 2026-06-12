@@ -79,3 +79,33 @@ class TestSerpBudgetCounter:
             stats=stats,
         )
         assert stats.serp_calls == 0
+
+
+class TestTiersRestriction:
+    def test_oem_only_drops_distributor_candidates(self, monkeypatch):
+        monkeypatch.setenv("SERPER_API_KEY", "test-key-not-real")
+        stats = RunStats()
+        cands = _iter_candidates(
+            manufacturer="Mitsubishi Electric",
+            part_number="HG-KR43",
+            use_serp=True,
+            serp_budget_remaining=10,
+            stats=stats,
+            tiers=frozenset({"oem"}),
+        )
+        assert cands, "Mitsubishi OEM store candidates expected"
+        assert all(c.source_type == "oem" for c in cands)
+        # serp excluded by the tier filter → no budget burned
+        assert stats.serp_calls == 0
+
+    def test_default_none_means_all_tiers(self):
+        stats = RunStats()
+        cands = _iter_candidates(
+            manufacturer="Mitsubishi Electric",
+            part_number="HG-KR43",
+            use_serp=False,
+            serp_budget_remaining=0,
+            stats=stats,
+            tiers=None,
+        )
+        assert {c.source_type for c in cands} >= {"oem", "distributor"}
