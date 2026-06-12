@@ -169,14 +169,22 @@ def _extract_microdata(tree: HTMLParser) -> Optional[Decimal]:
 
 
 def _parse_bare_decimal(text: str) -> Optional[Decimal]:
-    """Parse ``"1234.00"`` or ``"1,234.00"`` — no currency symbol required."""
+    """Parse ``"1234.00"`` or ``"1,234.00"`` — no currency symbol required.
+
+    Non-finite values are rejected: ``Decimal("NaN")`` / ``Decimal("inf")``
+    parse fine but blow up the ``PRICE_MIN <= v`` band comparison with
+    ``InvalidOperation`` downstream.
+    """
     cleaned = (text or "").strip().replace(",", "").lstrip("$").strip()
     if not cleaned:
         return None
     try:
-        return Decimal(cleaned)
+        val = Decimal(cleaned)
     except InvalidOperation:
         return None
+    if not val.is_finite():
+        return None
+    return val
 
 
 # ── Regex fallback (per-domain nudges) ──────────────────────────────

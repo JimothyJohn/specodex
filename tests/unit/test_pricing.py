@@ -128,6 +128,29 @@ def test_extract_empty_html_returns_none():
     assert extract_price("", "https://www.galco.com/x", "Acme", "X100") is None
 
 
+class TestParseBareDecimalNonFinite:
+    """Regression (2026-06-11): Decimal's constructor accepts "NaN"/"inf",
+    so _parse_bare_decimal returned non-finite Decimals and the band
+    comparison (`PRICE_MIN <= v`) raised InvalidOperation. Found by
+    test_pricebook_property.py; a page with itemprop price content="NaN"
+    crashed extract_price the same way. Non-finite → None, full stop."""
+
+    @pytest.mark.parametrize(
+        "raw", ["NaN", "nan", "-NaN", "sNaN", "inf", "Infinity", "-Infinity", "$NaN"]
+    )
+    def test_non_finite_returns_none(self, raw):
+        from specodex.pricing.extract import _parse_bare_decimal
+
+        assert _parse_bare_decimal(raw) is None
+
+    def test_microdata_nan_content_does_not_raise(self):
+        html = (
+            '<html><head><meta itemprop="price" content="NaN"></head>'
+            "<body>no price here</body></html>"
+        )
+        assert extract_price(html, "https://unknown.example/x", "Acme", "X1") is None
+
+
 def test_extract_no_price_signals_returns_none():
     html = "<html><body><h1>Page with no price anywhere</h1></body></html>"
     assert extract_price(html, "https://www.galco.com/x", "Acme", "X100") is None
