@@ -6819,23 +6819,38 @@ body::after {
   min-width: 0;
 }
 
-/* Compact column header — single-row layout that strips the histogram,
+/* Compact column header — two short rows that strip the histogram,
  * slider, and the dedicated value/operator/unit rows from the cozy
- * stack. Renders only the affordances the user can act on (sort label,
- * operator / mode toggle, value or substring input, unit, close).
- * Activated via the `compact-column-header` class on the column div,
- * emitted only by the compact JSX branch in ColumnHeader.tsx.
+ * stack: sortable label + close-X on top, the filter controls the
+ * user can act on (operator / mode toggle, value or substring input,
+ * unit) beneath. Activated via the `compact-column-header` class on
+ * the column div, emitted only by the compact JSX branch in
+ * ColumnHeader.tsx.
  *
  * For categorical (string/number/array) columns the popover trigger
  * and DistributionChart are also stripped — the inline substring
- * input + ⊕/⊖ mode toggle replaces both. */
+ * input + ⊕/⊖ mode toggle replaces both.
+ *
+ * The cell itself keeps the base display:table-cell — .product-grid is
+ * a CSS table, and a flex-displayed child of the table-row gets pulled
+ * out of the cell grid into a single anonymous cell (all headers stack
+ * vertically). The flex rows live on the inner .compact-header-row
+ * wrappers instead. */
 .product-grid-header-item.compact-column-header {
+  padding: 0.15rem 0.25rem;
+  min-height: 0;
+}
+
+.compact-column-header .compact-header-row {
   display: flex;
   flex-direction: row;
   align-items: center;
   gap: 0.2rem;
-  padding: 0.15rem 0.25rem;
-  min-height: 0;
+  min-width: 0;
+}
+
+.compact-column-header .compact-header-controls {
+  margin-top: 0.15rem;
 }
 
 .compact-column-header .compact-column-sort {
@@ -6844,6 +6859,19 @@ body::after {
   height: 20px;
   padding: 0 0.15rem;
   font-size: 0.7rem;
+}
+
+/* The cozy label wraps via word-break/overflow-wrap:anywhere (PR #159),
+ * which at compact widths degenerates into a stack of clipped single
+ * letters. Compact gets one line with an ellipsis instead; widen the
+ * column to read the full name. */
+.compact-column-header .column-header-label-text {
+  white-space: nowrap;
+  word-break: normal;
+  overflow-wrap: normal;
+  hyphens: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .compact-column-header .compact-readout-operator,
@@ -6860,8 +6888,11 @@ body::after {
   font-family: var(--font-mono, monospace);
 }
 
+/* Value box stretches to fill the controls row between the fixed
+ * operator and unit pills. */
 .compact-column-header .compact-readout-value,
 .compact-column-header .compact-readout-value-input {
+  flex: 1 1 auto;
   min-width: 36px;
   text-align: center;
 }
