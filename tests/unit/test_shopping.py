@@ -146,6 +146,33 @@ class TestShoppingPrice:
         monkeypatch.delenv("SERPER_API_KEY", raising=False)
         assert shopping_price("Yaskawa", "SGMJV-02AAA61") is None
 
+    def test_credit_exhaustion_trips_circuit_breaker(self, monkeypatch):
+        # Regression (2026-06-12): an 819-product sweep batch fired 819
+        # doomed queries after Serper ran out of credits mid-run. The
+        # first "Not enough credits" 400 must disable the tier for the
+        # rest of the process.
+        import httpx
+
+        import specodex.pricing.shopping as shopping_mod
+
+        shopping_mod.reset_circuit_breaker()
+        monkeypatch.setenv("SERPER_API_KEY", "test-key-not-real")
+        calls = {"n": 0}
+
+        def fake_post(*args, **kwargs):
+            calls["n"] += 1
+            return httpx.Response(
+                400,
+                text='{"message":"Not enough credits","statusCode":400}',
+                request=httpx.Request("POST", shopping_mod._SHOPPING_ENDPOINT),
+            )
+
+        monkeypatch.setattr(shopping_mod.httpx, "post", fake_post)
+        assert shopping_price("Yaskawa", "SGMJV-02AAA61") is None
+        assert shopping_price("Yaskawa", "SGM7J-A5AFC6S") is None
+        assert calls["n"] == 1, "second query must not reach the API"
+        shopping_mod.reset_circuit_breaker()
+
     def test_empty_inputs_return_none(self, monkeypatch):
         monkeypatch.setenv("SERPER_API_KEY", "test-key-not-real")
         assert shopping_price("", "X100") is None
