@@ -42,6 +42,19 @@ logger = logging.getLogger(__name__)
 
 _SHOPPING_ENDPOINT = "https://google.serper.dev/shopping"
 
+# Circuit breaker: once Serper says the account is out of credits,
+# every further query this process makes is doomed — flip this and
+# stop asking (observed live 2026-06-12: an 819-product batch burned
+# through 819 instant 400s after the credits ran out mid-sweep).
+_credits_exhausted = False
+
+
+def reset_circuit_breaker() -> None:
+    """Re-arm the shopping tier (tests / long-lived processes)."""
+    global _credits_exhausted
+    _credits_exhausted = False
+
+
 # Sources we never take prices from: marketplaces and auction sites are
 # gray-market/used territory regardless of what the title claims.
 _BANNED_SOURCE_PREFIXES = (
@@ -163,6 +176,9 @@ def shopping_price(
     Returns None (never raises) on missing key, transport errors, or
     when no offer survives the trust chain.
     """
+    global _credits_exhausted
+    if _credits_exhausted:
+        return None
     key = api_key or os.environ.get("SERPER_API_KEY")
     if not key:
         logger.debug("SERPER_API_KEY not set — shopping tier disabled")
@@ -177,6 +193,13 @@ def shopping_price(
             json={"q": f"{manufacturer} {part_number}", "num": 20},
             timeout=timeout_s,
         )
+        if resp.status_code == 400 and "credits" in resp.text.lower():
+            _credits_exhausted = True
+            logger.warning(
+                "Serper account is out of credits — shopping tier disabled "
+                "for the rest of this run (top up at serper.dev to resume)"
+            )
+            return None
         resp.raise_for_status()
         payload = resp.json()
     except (httpx.HTTPError, json.JSONDecodeError) as e:
