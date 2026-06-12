@@ -267,6 +267,27 @@ class TestDrive:
         with pytest.raises(ValidationError):
             Drive(product_name="Test", manufacturer=MFG, product_type="motor")
 
+    def test_drive_fieldbus_modbus_rtu_and_canopen(self):
+        # Regression (2026-06-12): a live Bardac P2 row carried
+        # ["ModbusRTU", "CANopen"] and was unreadable because the
+        # CommunicationProtocol literal lacked both protocols. They're
+        # real and common on VFD-class drives — added to the literal
+        # (canonical spellings; the DB row was rewritten to match).
+        drive = Drive(
+            product_name="P2 AC drive",
+            manufacturer=MFG,
+            fieldbus=["Modbus RTU", "CANopen"],
+        )
+        assert drive.fieldbus == ["Modbus RTU", "CANopen"]
+
+    def test_drive_fieldbus_non_canonical_spelling_still_rejected(self):
+        # "ModbusRTU" (no space) stays invalid on purpose — the fix is
+        # canonical enum values plus a data rewrite, not a spelling
+        # free-for-all. Gemini is constrained by response_schema, so
+        # only canonical spellings can enter going forward.
+        with pytest.raises(ValidationError):
+            Drive(product_name="Test", manufacturer=MFG, fieldbus=["ModbusRTU"])
+
 
 @pytest.mark.unit
 class TestGearhead:

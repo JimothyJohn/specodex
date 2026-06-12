@@ -457,7 +457,17 @@ export interface Drive {
   rated_power?: ValueUnit | null;
   switching_frequency?: (ValueUnit | null)[] | null;
   fieldbus?:
-    | ("EtherCAT" | "EtherNet/IP" | "PROFINET" | "Modbus TCP" | "POWERLINK" | "Sercos III" | "CC-Link IE")[]
+    | (
+        | "EtherCAT"
+        | "EtherNet/IP"
+        | "PROFINET"
+        | "Modbus TCP"
+        | "Modbus RTU"
+        | "CANopen"
+        | "POWERLINK"
+        | "Sercos III"
+        | "CC-Link IE"
+      )[]
     | null;
   encoder_feedback_support?:
     | (

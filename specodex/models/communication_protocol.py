@@ -8,6 +8,8 @@ CommunicationProtocol = Literal[
     "EtherNet/IP",
     "PROFINET",
     "Modbus TCP",
+    "Modbus RTU",
+    "CANopen",
     "POWERLINK",
     "Sercos III",
     "CC-Link IE",
