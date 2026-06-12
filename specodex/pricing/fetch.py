@@ -177,10 +177,20 @@ class PriceFetcher:
             logger.info("httpx error on %s: %s", url, e)
             return None
 
-        if resp.status_code == 429:
-            retry_after = int(resp.headers.get("Retry-After", "5"))
+        # 429 handling: up to 3 retries honoring Retry-After (capped at
+        # 30s each). A single retry was not enough in practice — the
+        # Mitsubishi store keeps 429ing for a while once it has flagged
+        # the client, and each premature give-up records a fake miss
+        # (observed live 2026-06-12: 54 429s → 93 "misses", 3 hits).
+        attempts = 0
+        while resp.status_code == 429 and attempts < 3:
+            attempts += 1
+            retry_after = min(int(resp.headers.get("Retry-After", "5") or "5"), 30)
             logger.info(
-                "429 from %s — sleeping %ds then retrying once", domain, retry_after
+                "429 from %s — sleeping %ds (retry %d/3)",
+                domain,
+                retry_after,
+                attempts,
             )
             time.sleep(retry_after)
             try:
@@ -192,20 +202,31 @@ class PriceFetcher:
             logger.info("HTTP %d on %s", resp.status_code, url)
             return None
 
-        # Redirect-to-root guard. Kyklo-backed stores (Mitsubishi, IEC
-        # Supply, Lakewood, etc.) send unknown part numbers to the site
-        # root, which still 200s but serves homepage JSON-LD for an
-        # unrelated product. Treat "requested a deep path, landed on /"
-        # as a miss so downstream extractors never see that HTML.
+        # Redirect-to-root/parent guard. Kyklo-backed stores (Mitsubishi,
+        # IEC Supply, Lakewood, etc.) send unknown part numbers to the
+        # site root; Bodine-style stores 302 unknown product slugs to the
+        # parent category (/products/n4603/ → /products/, observed live
+        # 2026-06-12). Both still 200 and serve unrelated products whose
+        # prices the body-text fallback would happily extract. Treat
+        # "requested a deep path, landed on / or on a parent prefix of
+        # the requested path" as a miss.
         requested_path = urlparse(url).path
         final_path = urlparse(str(resp.url)).path
-        if (
-            requested_path
-            and requested_path not in ("/", "")
-            and final_path in ("/", "", "/index.html")
-        ):
-            logger.info("redirected to root (not carried): %s → %s", url, resp.url)
-            return None
+        if requested_path and requested_path not in ("/", ""):
+            landed_on_root = final_path in ("/", "", "/index.html")
+            landed_on_parent = (
+                final_path != requested_path
+                and final_path.endswith("/")
+                and requested_path.startswith(final_path)
+            )
+            if landed_on_root or landed_on_parent:
+                logger.info(
+                    "redirected to %s (not carried): %s → %s",
+                    "root" if landed_on_root else "parent",
+                    url,
+                    resp.url,
+                )
+                return None
 
         html = resp.text
         if self._needs_js(html) and self._allow_playwright:

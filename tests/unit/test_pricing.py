@@ -248,6 +248,93 @@ def test_resolver_dedupes_by_url():
     assert len(urls) == len(set(urls))
 
 
+# ── fetch: redirect guards ─────────────────────────────────────────
+
+
+def _mock_fetcher(tmp_path: Path, handler) -> PriceFetcher:
+    import httpx
+
+    fetcher = PriceFetcher(cache_dir=tmp_path, rate_limit_s=0.0, allow_playwright=False)
+    fetcher._client.close()
+    fetcher._client = httpx.Client(
+        transport=httpx.MockTransport(handler), follow_redirects=True
+    )
+    return fetcher
+
+
+@pytest.fixture()
+def _skip_ssrf_dns(monkeypatch):
+    """validate_url does live DNS; mock-transport hosts don't resolve."""
+    import specodex.url_safety
+
+    monkeypatch.setattr(specodex.url_safety, "validate_url", lambda url: None)
+
+
+@pytest.mark.usefixtures("_skip_ssrf_dns")
+def test_fetch_redirect_to_parent_is_a_miss(tmp_path: Path):
+    """Regression (2026-06-12): bodine-electric.com 302s unknown product
+    slugs to the parent category (/products/n4603 → /products/), which
+    200s with other products' prices — the body fallback would extract
+    a wrong price. Parent-prefix landings must be treated as a miss."""
+    import httpx
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/robots.txt":
+            return httpx.Response(404)
+        if request.url.path == "/products/n4603":
+            return httpx.Response(302, headers={"location": "/products/"})
+        return httpx.Response(200, text="<html><body>$999.00</body></html>")
+
+    fetcher = _mock_fetcher(tmp_path, handler)
+    assert fetcher.fetch("https://store.example/products/n4603") is None
+
+
+@pytest.mark.usefixtures("_skip_ssrf_dns")
+def test_fetch_slash_append_redirect_is_not_a_miss(tmp_path: Path):
+    """The canonical trailing-slash 301 (electromate.com pattern) must
+    NOT trip the parent guard — the slashed URL is the same resource."""
+    import httpx
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/robots.txt":
+            return httpx.Response(404)
+        if request.url.path == "/dpranir-c100a400":
+            return httpx.Response(301, headers={"location": "/dpranir-c100a400/"})
+        return httpx.Response(200, text="<html><body>price $3,130.00</body></html>")
+
+    fetcher = _mock_fetcher(tmp_path, handler)
+    result = fetcher.fetch("https://store.example/dpranir-c100a400")
+    assert result is not None
+    assert "$3,130.00" in result.html
+
+
+@pytest.mark.usefixtures("_skip_ssrf_dns")
+def test_fetch_429_retries_until_success(tmp_path: Path, monkeypatch):
+    """Regression (2026-06-12): a single 429 retry wasn't enough — the
+    Mitsubishi store keeps throttling for a while, and giving up records
+    a fake miss. The fetcher now retries up to 3 times per Retry-After."""
+    import httpx
+
+    import specodex.pricing.fetch as fetch_mod
+
+    monkeypatch.setattr(fetch_mod.time, "sleep", lambda s: None)
+    calls = {"n": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/robots.txt":
+            return httpx.Response(404)
+        calls["n"] += 1
+        if calls["n"] <= 2:
+            return httpx.Response(429, headers={"Retry-After": "1"})
+        return httpx.Response(200, text="<html><body>price $500.00</body></html>")
+
+    fetcher = _mock_fetcher(tmp_path, handler)
+    result = fetcher.fetch("https://store.example/products/x100")
+    assert result is not None
+    assert "$500.00" in result.html
+    assert calls["n"] == 3
+
+
 # ── fetch: cache read/write ────────────────────────────────────────
 
 
