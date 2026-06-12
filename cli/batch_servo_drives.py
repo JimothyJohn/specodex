@@ -1,5 +1,5 @@
 """
-Batch ingest of servo / stepper drive datasheets into DynamoDB.
+Batch ingest of product datasheets into DynamoDB.
 
 Drives a list of (manufacturer, product_family, product_name, url) tuples
 through `specodex.scraper.process_datasheet` — the same path the S3 queue
@@ -11,6 +11,7 @@ Targets file shape:
 
     {
       "manufacturer": "Copley Controls",
+      "product_type": "drive",          # optional; default "drive"
       "targets": [
         {
           "slug": "accelnet-plus-panel-bpl",
@@ -23,9 +24,11 @@ Targets file shape:
       ]
     }
 
-`manufacturer` at the top level applies to every entry unless an entry
-overrides it. Any extra keys per entry (e.g. `bus`, `notes`) are kept in
-the per-catalog sidecar but ignored by the extractor.
+`manufacturer` and `product_type` at the top level apply to every entry
+unless an entry overrides them. `product_type` must be a key of
+`specodex.config.SCHEMA_CHOICES` (e.g. "drive", "motor", "contactor").
+Any extra keys per entry (e.g. `bus`, `notes`) are kept in the
+per-catalog sidecar but ignored by the extractor.
 
 Usage:
 
@@ -69,23 +72,30 @@ OUTPUT_DIR = ROOT / "outputs" / "drives"
 REPORT_PATH = ROOT / "outputs" / "batch_servo_drives_report.json"
 
 
-def _load_targets(path: Path) -> tuple[str | None, list[dict[str, Any]]]:
+DEFAULT_PRODUCT_TYPE = "drive"
+
+
+def _load_targets(path: Path) -> tuple[str | None, str, list[dict[str, Any]]]:
     """Parse a targets JSON file.
 
-    Returns (default_manufacturer, targets_list). The default mfg is the
-    top-level `manufacturer` key (or None); each target may override it.
+    Returns (default_manufacturer, default_product_type, targets_list).
+    The defaults are the top-level `manufacturer` / `product_type` keys
+    (mfg may be None; product_type falls back to "drive"); each target
+    may override either.
     """
     with path.open() as fh:
         data = json.load(fh)
     default_mfg = data.get("manufacturer")
+    default_product_type = data.get("product_type") or DEFAULT_PRODUCT_TYPE
     targets = list(data.get("targets") or [])
-    return default_mfg, targets
+    return default_mfg, default_product_type, targets
 
 
 def _filter(
     targets: list[dict[str, Any]],
     *,
     default_mfg: str | None,
+    default_product_type: str = DEFAULT_PRODUCT_TYPE,
     only: list[str] | None,
     manufacturer: str | None,
     limit: int | None,
@@ -97,7 +107,13 @@ def _filter(
             continue
         if only and t.get("slug") not in only:
             continue
-        out.append({**t, "_manufacturer": mfg})
+        out.append(
+            {
+                **t,
+                "_manufacturer": mfg,
+                "_product_type": t.get("product_type") or default_product_type,
+            }
+        )
     if limit is not None:
         out = out[:limit]
     return out
@@ -118,6 +134,7 @@ def _run_one(
     record = {
         "slug": slug,
         "manufacturer": target["_manufacturer"],
+        "product_type": target["_product_type"],
         "product_family": target.get("product_family"),
         "product_name": target.get("product_name"),
         "url": target["url"],
@@ -129,7 +146,7 @@ def _run_one(
         status = process_datasheet(
             client=client,
             api_key=api_key,
-            product_type="drive",
+            product_type=target["_product_type"],
             manufacturer=target["_manufacturer"],
             product_name=target.get("product_name")
             or target.get("product_family")
@@ -226,11 +243,12 @@ def main(argv: list[str] | None = None) -> int:
         print(f"error: targets file not found: {args.targets}", file=sys.stderr)
         return 2
 
-    default_mfg, raw_targets = _load_targets(args.targets)
+    default_mfg, default_product_type, raw_targets = _load_targets(args.targets)
     only = [s.strip() for s in args.only.split(",")] if args.only else None
     targets = _filter(
         raw_targets,
         default_mfg=default_mfg,
+        default_product_type=default_product_type,
         only=only,
         manufacturer=args.manufacturer,
         limit=args.limit,
@@ -240,10 +258,26 @@ def main(argv: list[str] | None = None) -> int:
         print("error: no targets matched the filter", file=sys.stderr)
         return 2
 
+    # Fail fast on a typo'd product_type — process_datasheet would
+    # otherwise KeyError on SCHEMA_CHOICES after the download started.
+    from specodex.config import SCHEMA_CHOICES
+
+    bad_types = sorted({t["_product_type"] for t in targets} - set(SCHEMA_CHOICES))
+    if bad_types:
+        print(
+            f"error: unknown product_type(s) {bad_types}; "
+            f"valid: {sorted(SCHEMA_CHOICES)}",
+            file=sys.stderr,
+        )
+        return 2
+
     if args.dry_run:
         print(f"Would extract {len(targets)} datasheet(s):")
         for t in targets:
-            print(f"  {t['slug']:40s} {t['_manufacturer']:20s} {t['url']}")
+            print(
+                f"  {t['slug']:40s} {t['_product_type']:12s} "
+                f"{t['_manufacturer']:20s} {t['url']}"
+            )
         return 0
 
     api_key = _ensure_api_key()
