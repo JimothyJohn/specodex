@@ -215,11 +215,11 @@ def _distributor_candidates(part_number: str) -> List[Candidate]:
             source_type="distributor",
             source_name="Galco",
         ),
-        Candidate(
-            url=f"https://www.newark.com/webapp/wcs/stores/servlet/Search?st={pn}",
-            source_type="distributor",
-            source_name="Newark",
-        ),
+        # Newark's search endpoint was dropped 2026-06-12: it timed out
+        # on 100% of observed requests (15s each, on every miss) and
+        # never produced a single hit — Newark is electronics-focused
+        # and barely carries industrial drives/motors. The domain stays
+        # in _DISTRIBUTOR_DOMAINS for SERP-result classification.
         Candidate(
             url=f"https://www.grainger.com/search?searchQuery={pn}",
             source_type="distributor",
