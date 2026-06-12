@@ -3,21 +3,45 @@
 > 🚧 in progress — accepted by Nick 2026-06-12, resolving the
 > DB_CLEANUP Phase 2 "populate vs drop `msrp`" decision as
 > **populate**. Phase 1 shipped #268 (`./Quickstart price-book`);
-> Phase 3 no-key items shipped #270. Phase 2 is blocked on Nick
-> provisioning `SERPER_API_KEY`. Remaining: the per-vendor operator
-> loop and the keyed Phase 2/3 items.
+> Phase 3 no-key items shipped #270; **Phase 2 (Serper `/shopping`
+> tier) shipped 2026-06-12** — `SERPER_API_KEY` turned out to be in
+> the shell environment all along (just not in `.env`), so the tier
+> went live the same day. Remaining: finish the backfill sweeps and
+> keep the per-vendor source map below current.
 >
 > **Phase 1 field note (2026-06-12).** The ABB/Baldor 501 Index
 > parses clean (6,890 rows → 6,817 in-band pairs) but joins 0 rows:
 > it covers Baldor-Reliance NEMA *stock* motors, while our unpriced
 > Baldor rows are BSM *servo* motors and our ABB rows are ACS/ACQ
-> drives. Book-to-inventory fit is the whole game — check a vendor's
-> unpriced part-number families *first*, then hunt the matching book
-> (Baldor servo has its own price list; WEG's W22 rows carry
-> frame-code part numbers that need investigation before its book
-> helps; KB/Dart land with the simple-DC ingest). A live dry-run also
-> caught frame-size codes (`R1`/`R2`) stored as part numbers joining
-> against short catalog numbers — fixed with `MIN_JOIN_KEY_LEN = 4`.
+> drives. Baldor's servo "price list" lead (BR1202) turned out to be
+> the *specs* catalog — its number-dense pages are torque/RPM tables,
+> which is exactly why `find_price_pages` requires price words AND
+> dollar density before sending a page to the LLM. The only servo
+> price list found (CA1202) is from 2011 — stale data, skipped.
+> **Verdict: with current part-number hygiene, no public price book
+> matches our inventory. OEM stores + the shopping tier are the
+> productive paths; price-book stays useful for vendors whose
+> catalogs we ingest fresh (Worldwide Electric and US Motors prove
+> the pattern).** A live dry-run also caught frame-size codes
+> (`R1`/`R2`) stored as part numbers joining against short catalog
+> numbers — fixed with `MIN_JOIN_KEY_LEN = 4`.
+
+## Per-vendor source map (live results, 2026-06-12)
+
+| Vendor (unpriced) | Working source | Observed yield / notes |
+|---|---|---|
+| Mitsubishi (1,571) | `shop1.us.mitsubishielectric.com` JSON-LD (oem) | 6/12 pilot; store 429s hard — needs `--rate-limit 6` + the 3x Retry-After loop; misses are descriptive/fragment PNs |
+| AMC (1,169) | Electromate direct slug (distributor) + shopping fallback | ~18-30% Electromate, shopping covers part of the rest |
+| Yaskawa (1,191) | shopping tier | 4/10 pilot, sane medians; `-OY` (Omron-Yaskawa) variants miss |
+| Delta/Fuji/Hitachi/ABB/Siemens/AB/Parker (~7,800) | shopping tier (sweep running) | DrivesWarehouse search ignores its query param — rejected; Galco 403s the honest UA — rejected |
+| Bodine (316) | shopping only | their store 302s unknown slugs to the parent category — direct-slug pattern REJECTED (and the fetcher now treats parent-redirects as misses) |
+| WEG (598) | none | stored PNs are frame codes (`K39 W22`), not catalog numbers — unfixable at the pricing layer; needs PN hygiene at ingest |
+| Pittman/ElectroCraft/STOBER/Tolomatic (~1,615) | shopping (low expectations) | custom/quote-only vendors |
+
+**Operational learnings encoded in code:** Newark search cut (100%
+timeout, 0 hits ever); robots-dead tiers cut (#270); parent-redirect
+guard in `fetch.py`; 429 retry loop; `--tiers` + `--rate-limit` +
+`--max-shopping-calls` flags on `price-enrich`.
 
 ## Evidence (2026-06-11, products-dev)
 
