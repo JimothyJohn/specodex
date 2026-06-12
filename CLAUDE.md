@@ -26,6 +26,10 @@ Everything goes through `./Quickstart <command>`. It's a bash shim that delegate
                                   Writes <type>.py + <type>.md (reasoning doc
                                   with source citations).
     ./Quickstart price-enrich     Backfill MSRP on existing products
+    ./Quickstart price-book PB    Backfill MSRP in bulk from a public price book
+                                  (XLSX or PDF, path or URL). Dry-run first:
+                                  --manufacturer <substr> --dry-run prints the
+                                  join table. See todo/PRICING.md Phase 1.
     ./Quickstart ingest-report    Group ingest-log quality-fails by manufacturer
                                   for vendor outreach. --email-template emits
                                   a ready-to-send email body per manufacturer.
