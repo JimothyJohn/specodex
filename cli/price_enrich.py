@@ -33,9 +33,8 @@ from decimal import Decimal
 from pathlib import Path
 from typing import List, Optional, Type
 
+from specodex.config import SCHEMA_CHOICES
 from specodex.db.dynamo import DynamoDBClient
-from specodex.models.drive import Drive
-from specodex.models.motor import Motor
 from specodex.models.product import ProductBase
 from specodex.pricing.extract import classify_url, extract_price
 from specodex.pricing.fetch import PriceFetcher
@@ -50,16 +49,26 @@ logger = logging.getLogger(__name__)
 ROOT = Path(__file__).resolve().parent.parent
 CACHE_DIR = ROOT / "outputs" / "price_cache"
 
-PRODUCT_CLASSES: dict[str, Type[ProductBase]] = {
-    "drive": Drive,
-    "motor": Motor,
-}
+# Every concrete product model is enrichable — auto-discovered, same
+# registry the extraction pipeline uses (was a hand-list of drive+motor,
+# which left gearhead/robot_arm/electric_cylinder/linear_actuator at 0%).
+PRODUCT_CLASSES: dict[str, Type[ProductBase]] = dict(SCHEMA_CHOICES)
+
+# Part numbers with option placeholders ("21G11*F960JNONNNNN") are
+# catalog templates, not orderable SKUs — no store will ever match them.
+_TEMPLATED_PN_CHARS = frozenset("*?#")
+
+
+def is_templated_part_number(pn: str) -> bool:
+    """True when the part number is a catalog option-template, not a SKU."""
+    return any(ch in _TEMPLATED_PN_CHARS for ch in pn)
 
 
 @dataclass
 class RunStats:
     scanned: int = 0
     skipped_no_pn: int = 0
+    skipped_templated_pn: int = 0
     skipped_has_price: int = 0
     resolved: int = 0
     fetched: int = 0
@@ -72,7 +81,8 @@ class RunStats:
     def summary(self) -> str:
         return (
             f"scanned={self.scanned} priced_already={self.skipped_has_price} "
-            f"no_pn={self.skipped_no_pn} extracted={self.extracted} "
+            f"no_pn={self.skipped_no_pn} templated_pn={self.skipped_templated_pn} "
+            f"extracted={self.extracted} "
             f"written={self.written} llm={self.llm_calls} serp={self.serp_calls} "
             f"failures={len(self.failures)}"
         )
@@ -95,6 +105,10 @@ def _iter_candidates(
     """
     direct = resolve_candidates(manufacturer, part_number, use_serp=False)
     if not use_serp or serp_budget_remaining <= 0:
+        return direct
+    if not os.environ.get("SERPER_API_KEY"):
+        # serp_candidates no-ops without a key — don't burn the budget
+        # counter on queries that never happened.
         return direct
     stats.serp_calls += 1
     serp = serp_candidates(manufacturer, part_number)
@@ -174,6 +188,14 @@ def _process_product(
         stats.skipped_no_pn += 1
         logger.info(
             "skip %s/%s — no part_number", product.manufacturer, product.product_name
+        )
+        return
+    if is_templated_part_number(pn):
+        stats.skipped_templated_pn += 1
+        logger.info(
+            "skip %s/%s — templated part number (option placeholder)",
+            product.manufacturer,
+            pn,
         )
         return
 

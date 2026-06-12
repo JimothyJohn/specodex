@@ -207,15 +207,39 @@ def test_resolver_mitsubishi_oem_store():
     assert any(_host_matches(c.url, "shop1.us.mitsubishielectric.com") for c in oems)
 
 
-def test_resolver_ordering_oem_before_distributor_before_aggregator():
+def test_resolver_ordering_oem_before_distributor():
     cands = resolve_candidates("Oriental Motor", "BLV510N10F", use_serp=False)
     tiers = [c.source_type for c in cands]
     # All OEM indices come before any distributor index
     oem_idx = [i for i, t in enumerate(tiers) if t == "oem"]
     dist_idx = [i for i, t in enumerate(tiers) if t == "distributor"]
-    agg_idx = [i for i, t in enumerate(tiers) if t == "aggregator"]
     assert max(oem_idx) < min(dist_idx)
-    assert max(dist_idx) < min(agg_idx)
+
+
+def test_resolver_no_robots_disallowed_search_candidates():
+    """Regression (2026-06-11): Wolf Automation, Motion Industries, Allied,
+    Radwell, and PLC Center disallow their search endpoints in robots.txt,
+    so every candidate we generated for them was dead weight on every run.
+    The domains stay in the classification allowlists (SERP-organic product
+    pages may be robots-allowed); only the direct search URLs are retired."""
+    cands = resolve_candidates("Acme", "X100", use_serp=False)
+    dead_search_domains = (
+        "wolfautomation.com",
+        "motionindustries.com",
+        "alliedelec.com",
+        "radwell.com",
+        "plccenter.com",
+    )
+    for c in cands:
+        for domain in dead_search_domains:
+            assert not _host_matches(c.url, domain), (
+                f"robots-disallowed search candidate resurfaced: {c.url}"
+            )
+    # No direct aggregator-tier candidates remain at all.
+    assert not any(c.source_type == "aggregator" for c in cands)
+    # The classification allowlist is untouched.
+    assert source_type_for_domain("www.radwell.com") == "aggregator"
+    assert source_type_for_domain("www.wolfautomation.com") == "distributor"
 
 
 def test_resolver_dedupes_by_url():

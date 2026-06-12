@@ -198,6 +198,11 @@ def _oem_candidates(manufacturer: str, part_number: str) -> List[Candidate]:
 
 
 def _distributor_candidates(part_number: str) -> List[Candidate]:
+    # Wolf Automation, Motion Industries, and Allied Electronics search
+    # endpoints are robots.txt-disallowed (verified live 2026-06-11) and
+    # we respect robots — their direct search candidates are gone. The
+    # domains stay in _DISTRIBUTOR_DOMAINS so SERP-organic product-detail
+    # URLs on them (often robots-allowed) still classify and extract.
     pn = quote_plus(part_number.strip())
     out: List[Candidate] = [
         Candidate(
@@ -206,24 +211,9 @@ def _distributor_candidates(part_number: str) -> List[Candidate]:
             source_name="Galco",
         ),
         Candidate(
-            url=f"https://www.wolfautomation.com/search/?q={pn}",
-            source_type="distributor",
-            source_name="Wolf Automation",
-        ),
-        Candidate(
-            url=f"https://www.motionindustries.com/search?searchTerm={pn}",
-            source_type="distributor",
-            source_name="Motion Industries",
-        ),
-        Candidate(
             url=f"https://www.newark.com/webapp/wcs/stores/servlet/Search?st={pn}",
             source_type="distributor",
             source_name="Newark",
-        ),
-        Candidate(
-            url=f"https://www.alliedelec.com/search/?searchTerm={pn}",
-            source_type="distributor",
-            source_name="Allied Electronics",
         ),
         Candidate(
             url=f"https://www.grainger.com/search?searchQuery={pn}",
@@ -245,23 +235,14 @@ def _distributor_candidates(part_number: str) -> List[Candidate]:
     return out
 
 
-# ── Tier 3: aggregator search URLs ──────────────────────────────────
-
-
-def _aggregator_candidates(part_number: str) -> List[Candidate]:
-    pn = quote_plus(part_number.strip())
-    return [
-        Candidate(
-            url=f"https://www.radwell.com/en-US/search?Query={pn}",
-            source_type="aggregator",
-            source_name="Radwell International",
-        ),
-        Candidate(
-            url=f"https://www.plccenter.com/en-US/search?Query={pn}",
-            source_type="aggregator",
-            source_name="PLC Center",
-        ),
-    ]
+# ── Tier 3: aggregators ─────────────────────────────────────────────
+#
+# Radwell and PLC Center search endpoints are robots.txt-disallowed
+# (verified live 2026-06-11), so there are no direct aggregator search
+# candidates anymore. _AGGREGATOR_DOMAINS remains as a classification
+# allowlist: SERP-organic product-detail URLs on those domains are
+# still fetched (the fetcher robots-checks the final URL) and tagged
+# with the aggregator tier.
 
 
 # ── Tier 4: Serper SERP fallback ────────────────────────────────────
@@ -335,7 +316,9 @@ def resolve_candidates(
 ) -> List[Candidate]:
     """Return ordered candidate URLs across all tiers.
 
-    Ordering: OEM direct → distributor search → aggregator search → SERP.
+    Ordering: OEM direct → distributor search → SERP. (Aggregator search
+    endpoints were retired 2026-06-11 — robots.txt-disallowed; aggregator
+    pages now arrive only via SERP-organic product URLs.)
     The caller walks in order and stops at the first successful price.
     """
     if not manufacturer or not part_number:
@@ -344,7 +327,6 @@ def resolve_candidates(
     out: List[Candidate] = []
     out.extend(_oem_candidates(manufacturer, part_number))
     out.extend(_distributor_candidates(part_number))
-    out.extend(_aggregator_candidates(part_number))
     if use_serp:
         out.extend(serp_candidates(manufacturer, part_number, api_key=serper_api_key))
 
