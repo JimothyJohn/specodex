@@ -43,7 +43,7 @@
             <div class="hero-tag">▮▮▮ DB CLEANUP ▮▮▮</div>
             <h1 class="hero-title">DB schema cleanup — gameplan</h1>
             <div class="doc-meta">
-                <span class="status-chip status-signoff">🔴 NEEDS SIGN-OFF</span>
+                <span class="status-chip status-shipped">✅ RESOLVED 2026-06-12: POPULATE, VIA PRICING.MD (ACCEPTED BY NICK)</span>
                 <span class="doc-source"><code>todo/DB_CLEANUP.md</code></span>
             </div>
         </section>
@@ -129,10 +129,14 @@ They're cheap to keep (Optional fields with no extractor cost) and
 the path to populating them is a separate workstream, not a model
 cleanup.</p>
 <h3 id="msrp-msrp_source_url-msrp_fetched_at-on-productbase-keep"><code>msrp</code> / <code>msrp_source_url</code> / <code>msrp_fetched_at</code> on <code>ProductBase</code> — keep</h3>
-<p><code>./Quickstart price-enrich</code> exists and does populate these (drive
-shows 0.7% on <code>msrp</code> — a small but real signal that enrichment is
-sometimes running). Removing them would tear out the price-enrich
-contract. Keep until / unless that workstream is explicitly retired.</p>
+<p><strong>Decision resolved 2026-06-12: populate.</strong> Nick accepted
+<a href="PRICING.md">PRICING.md</a> — the populate workstream. <code>./Quickstart
+price-book</code> (bulk, #268) joined the crawler path (<code>price-enrich</code>,
+salvaged in #270) as the mechanisms. The Phase 2 framing below is
+superseded by that doc.</p>
+<p>(Historical context: drive showed 0.7% on <code>msrp</code> at audit time; the
+2026-06-11 investigation showed those prices came from catalog-PDF
+ingest, not the crawler.)</p>
 <h3 id="linear_actuator-over-spec-defer"><code>linear_actuator</code> over-spec — defer</h3>
 <p>13/43 declared fields at 0%. Sample is only 46 PRODUCT# rows so the
 threshold-based call is shaky; before dropping fields like
