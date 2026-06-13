@@ -335,6 +335,69 @@ def test_fetch_429_retries_until_success(tmp_path: Path, monkeypatch):
     assert calls["n"] == 3
 
 
+@pytest.mark.usefixtures("_skip_ssrf_dns")
+def test_fetch_circuit_breaks_on_sustained_429(tmp_path: Path, monkeypatch):
+    """Regression (2026-06-12): a hard-blocked store (Mitsubishi) 429'd
+    1,816 times over a 14-hour run, ~90s per product, 0 hits. After N
+    consecutive 429s the fetcher must abandon the domain and stop
+    hitting the network for it."""
+    import httpx
+
+    import specodex.pricing.fetch as fetch_mod
+
+    monkeypatch.setattr(fetch_mod.time, "sleep", lambda s: None)
+    calls = {"n": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/robots.txt":
+            return httpx.Response(404)
+        calls["n"] += 1
+        return httpx.Response(429, headers={"Retry-After": "1"})
+
+    fetcher = _mock_fetcher(tmp_path, handler)
+    fetcher._max_consecutive_429 = 3
+
+    # Each fetch exhausts its 3 inner retries (4 GETs) and counts one
+    # toward the breaker. After 3 such products the domain trips.
+    for i in range(3):
+        assert fetcher.fetch(f"https://blocked.example/p{i}") is None
+    assert "blocked.example" in fetcher._blocked_domains
+
+    calls_before = calls["n"]
+    # Subsequent fetches short-circuit with no network at all.
+    assert fetcher.fetch("https://blocked.example/p99") is None
+    assert calls["n"] == calls_before
+
+
+@pytest.mark.usefixtures("_skip_ssrf_dns")
+def test_fetch_429_streak_resets_on_success(tmp_path: Path, monkeypatch):
+    """A success between 429s must reset the streak — only *consecutive*
+    429s indicate a block, not intermittent throttling."""
+    import httpx
+
+    import specodex.pricing.fetch as fetch_mod
+
+    monkeypatch.setattr(fetch_mod.time, "sleep", lambda s: None)
+    state = {"throttle": True}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/robots.txt":
+            return httpx.Response(404)
+        if state["throttle"]:
+            return httpx.Response(429, headers={"Retry-After": "1"})
+        return httpx.Response(200, text="<html><body>$50.00</body></html>")
+
+    fetcher = _mock_fetcher(tmp_path, handler)
+    fetcher._max_consecutive_429 = 3
+
+    fetcher.fetch("https://store.example/p0")  # one 429 product
+    assert fetcher._consecutive_429.get("store.example") == 1
+    state["throttle"] = False
+    fetcher.fetch("https://store.example/p1")  # success resets
+    assert "store.example" not in fetcher._consecutive_429
+    assert "store.example" not in fetcher._blocked_domains
+
+
 # ── fetch: cache read/write ────────────────────────────────────────
 
 

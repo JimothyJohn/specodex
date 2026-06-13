@@ -62,6 +62,7 @@ class PriceFetcher:
         rate_limit_s: float = 1.0,
         timeout_s: float = 15.0,
         allow_playwright: bool = True,
+        max_consecutive_429: int = 8,
     ) -> None:
         self.cache_dir = cache_dir
         self.cache_dir.mkdir(parents=True, exist_ok=True)
@@ -75,6 +76,16 @@ class PriceFetcher:
         )
         self._allow_playwright = allow_playwright
         self._pw = None  # lazy
+        # Per-domain circuit breaker. Once a host has 429'd this many
+        # times in a row it has hard-blocked us — every further request
+        # is doomed, so stop asking for the rest of this fetcher's life.
+        # Without this, a flagged store (shop1.us.mitsubishielectric.com,
+        # observed 2026-06-12) spends ~90s per product cycling retries
+        # and records a fake miss — a 14-hour run produced 0 hits and
+        # 1,816 429s before it was killed by hand.
+        self._max_consecutive_429 = max_consecutive_429
+        self._consecutive_429: Dict[str, int] = {}
+        self._blocked_domains: set[str] = set()
 
     # ── caching ────────────────────────────────────────────────────
 
@@ -169,6 +180,12 @@ class PriceFetcher:
             return None
 
         domain = urlparse(url).netloc
+
+        # Circuit breaker: this host has hard-blocked us — skip without
+        # touching the network (and without burning the rate-limit wait).
+        if domain in self._blocked_domains:
+            return None
+
         self._bucket.wait(domain)
 
         try:
@@ -198,9 +215,30 @@ class PriceFetcher:
             except httpx.HTTPError:
                 return None
 
+        if resp.status_code == 429:
+            # Still throttled after all retries. Count it toward the
+            # per-domain breaker; trip it once the host has done this
+            # max_consecutive_429 times in a row.
+            n = self._consecutive_429.get(domain, 0) + 1
+            self._consecutive_429[domain] = n
+            if n >= self._max_consecutive_429:
+                self._blocked_domains.add(domain)
+                logger.warning(
+                    "%s 429'd %d times in a row — circuit-breaking this "
+                    "domain for the rest of the run (it has hard-blocked us)",
+                    domain,
+                    n,
+                )
+            logger.info("HTTP 429 on %s", url)
+            return None
+
         if resp.status_code >= 400:
             logger.info("HTTP %d on %s", resp.status_code, url)
             return None
+
+        # A non-429 response means the host is talking to us again —
+        # reset its consecutive-429 streak.
+        self._consecutive_429.pop(domain, None)
 
         # Redirect-to-root/parent guard. Kyklo-backed stores (Mitsubishi,
         # IEC Supply, Lakewood, etc.) send unknown part numbers to the
