@@ -409,4 +409,120 @@ describe('DynamoDBService', () => {
       expect(result).toEqual(['Motor A', 'Motor B']);
     });
   });
+
+  // ===================== listPage (cursor pagination) =====================
+
+  describe('listPage', () => {
+    const row = (id: string) => ({
+      product_id: id,
+      product_type: 'motor',
+      manufacturer: 'X',
+    });
+
+    it('returns items with no next when the type fits in one DynamoDB page', async () => {
+      const mockSend = jest
+        .fn()
+        .mockResolvedValue({ Items: [row('p1'), row('p2')] });
+      (db as any).client = { send: mockSend };
+
+      const page = await db.listPage('motor', 10);
+      expect(page.items).toHaveLength(2);
+      expect(page.next).toBeUndefined();
+      expect(mockSend).toHaveBeenCalledTimes(1);
+    });
+
+    it('returns next {type, key} when the limit is hit with rows remaining', async () => {
+      const lek = { PK: { S: 'PRODUCT#MOTOR' }, SK: { S: 'PRODUCT#p2' } };
+      const mockSend = jest
+        .fn()
+        .mockResolvedValue({ Items: [row('p1'), row('p2')], LastEvaluatedKey: lek });
+      (db as any).client = { send: mockSend };
+
+      const page = await db.listPage('motor', 2);
+      expect(page.items).toHaveLength(2);
+      expect(page.next).toEqual({ type: 'motor', key: lek });
+    });
+
+    it('keeps querying within a type when DynamoDB pages are short of the limit', async () => {
+      // DynamoDB's Limit caps rows *scanned* per request, so a page can
+      // come back short with a LastEvaluatedKey; listPage must loop.
+      const lek = { SK: { S: 'PRODUCT#p1' } };
+      const mockSend = jest
+        .fn()
+        .mockResolvedValueOnce({ Items: [row('p1')], LastEvaluatedKey: lek })
+        .mockResolvedValueOnce({ Items: [row('p2')] });
+      (db as any).client = { send: mockSend };
+
+      const page = await db.listPage('motor', 10);
+      expect(page.items).toHaveLength(2);
+      expect(page.next).toBeUndefined();
+      expect(mockSend).toHaveBeenCalledTimes(2);
+    });
+
+    it("walks to the following type when type='all' and the first type exhausts", async () => {
+      const mockSend = jest
+        .fn()
+        .mockResolvedValueOnce({ Items: [row('a1')] }) // first type, exhausted
+        .mockResolvedValue({ Items: [] }); // every remaining type empty
+      (db as any).client = { send: mockSend };
+
+      const page = await db.listPage('all', 10);
+      expect(page.items).toHaveLength(1);
+      expect(page.next).toBeUndefined();
+      // One query per product type in the sequence.
+      expect(mockSend.mock.calls.length).toBeGreaterThan(1);
+    });
+
+    it("emits a key-less next at an exact type boundary on type='all'", async () => {
+      // First type returns exactly `limit` rows with no LastEvaluatedKey:
+      // the page is full but the listing isn't done — next points at the
+      // following type with no key.
+      const mockSend = jest
+        .fn()
+        .mockResolvedValueOnce({ Items: [row('a1'), row('a2')] });
+      (db as any).client = { send: mockSend };
+
+      const page = await db.listPage('all', 2);
+      expect(page.items).toHaveLength(2);
+      expect(page.next).toBeDefined();
+      expect(page.next!.key).toBeUndefined();
+      expect(typeof page.next!.type).toBe('string');
+      expect(mockSend).toHaveBeenCalledTimes(1);
+    });
+
+    it('resumes from a start point', async () => {
+      const startKey = { SK: { S: 'PRODUCT#p42' } };
+      const mockSend = jest.fn().mockResolvedValue({ Items: [row('p43')] });
+      (db as any).client = { send: mockSend };
+
+      // QueryCommand is auto-mocked (no .input on instances), so assert
+      // on the constructor call args instead.
+      const { QueryCommand } = jest.requireMock('@aws-sdk/client-dynamodb');
+      (QueryCommand as jest.Mock).mockClear();
+
+      const page = await db.listPage('motor', 10, { type: 'motor', key: startKey as any });
+      expect(page.items).toHaveLength(1);
+      const input = (QueryCommand as jest.Mock).mock.calls[0][0];
+      expect(input.ExclusiveStartKey).toEqual(startKey);
+    });
+
+    it('throws when the start type is not part of the listing', async () => {
+      const mockSend = jest.fn();
+      (db as any).client = { send: mockSend };
+
+      await expect(
+        db.listPage('motor', 10, { type: 'drive' })
+      ).rejects.toThrow(/not part of this listing/);
+      expect(mockSend).not.toHaveBeenCalled();
+    });
+
+    it('propagates DynamoDB errors instead of swallowing them', async () => {
+      // Contrast with list(), which returns [] on error: a paginated
+      // caller must be able to tell "empty page" from "failed page".
+      const mockSend = jest.fn().mockRejectedValue(new Error('throttled'));
+      (db as any).client = { send: mockSend };
+
+      await expect(db.listPage('motor', 10)).rejects.toThrow('throttled');
+    });
+  });
 });

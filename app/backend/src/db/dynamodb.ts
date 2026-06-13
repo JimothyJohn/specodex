@@ -39,6 +39,15 @@ export interface DynamoDBConfig {
   credentials?: { accessKeyId: string; secretAccessKey: string };
 }
 
+/**
+ * One resumable page of a product listing (see listPage).
+ * `next` is the resume point; absent when the listing is exhausted.
+ */
+export interface ProductListPage {
+  items: Product[];
+  next?: { type: string; key?: Record<string, AttributeValue> };
+}
+
 export class DynamoDBService {
   private client: DynamoDBClient;
   private tableName: string;
@@ -298,6 +307,77 @@ export class DynamoDBService {
    */
   async listAll(limit?: number): Promise<Product[]> {
     return this.list('all', limit);
+  }
+
+  /**
+   * List one resumable page of products.
+   *
+   * Unlike `list` (which walks every DynamoDB page internally and
+   * returns the whole result), this returns at most `limit` items plus
+   * a `next` resume point. For type='all' the listing walks
+   * VALID_PRODUCT_TYPES in order and `next.type` records which type the
+   * page stopped in; `next.key` is the raw LastEvaluatedKey within that
+   * type (absent when the page ended exactly on a type boundary).
+   *
+   * Errors propagate to the caller (the route maps them to a 500) —
+   * swallowing them here would make an empty page indistinguishable
+   * from a failed one and break the client's "no cursor = done" rule.
+   */
+  async listPage(
+    productType: ProductType = 'all',
+    limit: number,
+    start?: { type: string; key?: Record<string, AttributeValue> }
+  ): Promise<ProductListPage> {
+    const typeSequence: string[] =
+      productType === 'all' ? [...VALID_PRODUCT_TYPES] : [productType];
+
+    let startIdx = 0;
+    if (start?.type) {
+      startIdx = typeSequence.indexOf(start.type);
+      if (startIdx === -1) {
+        throw new Error('cursor type is not part of this listing');
+      }
+    }
+
+    const items: Product[] = [];
+    let key = start?.key;
+
+    for (let i = startIdx; i < typeSequence.length; i++) {
+      const t = typeSequence[i];
+      const typeUpper = t.toUpperCase();
+      const pk =
+        t === 'datasheet' ? `DATASHEET#${typeUpper}` : `PRODUCT#${typeUpper}`;
+
+      do {
+        const result: QueryCommandOutput = await this.client.send(
+          new QueryCommand({
+            TableName: this.tableName,
+            KeyConditionExpression: 'PK = :pk',
+            ExpressionAttributeValues: marshall({ ':pk': pk }),
+            Limit: limit - items.length,
+            ExclusiveStartKey: key,
+          })
+        );
+
+        for (const item of result.Items ?? []) {
+          items.push(this.deserializeProduct(unmarshall(item)));
+        }
+        key = result.LastEvaluatedKey;
+
+        if (items.length >= limit) {
+          if (key) {
+            return { items, next: { type: t, key } };
+          }
+          // Type exhausted exactly at the cap — resume at the next
+          // type, or report the listing complete if this was the last.
+          const nextType = typeSequence[i + 1];
+          return nextType ? { items, next: { type: nextType } } : { items };
+        }
+      } while (key);
+      // key is undefined here, so the next type starts from the top.
+    }
+
+    return { items };
   }
 
   /**

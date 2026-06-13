@@ -105,6 +105,14 @@ const MAX_RETRIES = 3;
 const INITIAL_RETRY_DELAY = 1000; // 1 second
 
 /**
+ * Upper bound on cursor-following in listProducts. 25 pages × the
+ * backend's 2000-row default cap = 50k rows, far above any current
+ * type's count — this exists to bound the loop against a backend bug
+ * that returns cursors forever, not as a practical ceiling.
+ */
+const MAX_LIST_PAGES = 25;
+
+/**
  * Standard API response wrapper
  * All backend endpoints return this format for consistency
  */
@@ -113,6 +121,8 @@ interface ApiResponse<T> {
   data?: T;            // Response data (present on success)
   error?: string;      // Error message (present on failure)
   count?: number;      // Optional count (used by list endpoints)
+  truncated?: boolean; // List endpoints: true when more pages exist
+  cursor?: string | null; // List endpoints: opaque resume token; null = done
 }
 
 /**
@@ -361,23 +371,53 @@ class ApiClient {
    * Performance: ~100-500ms depending on product count (DynamoDB query)
    */
   async listProducts(type: Exclude<ProductType, null> = 'all', limit?: number): Promise<Product[]> {
-    const params = new URLSearchParams();
-    if (type !== 'datasheet') {
-      params.append('type', type);
+    // Datasheets live on a separate, non-paginated endpoint.
+    if (type === 'datasheet') {
+      const response = await this.request<Product[]>('/api/datasheets');
+      if (!response.data) {
+        throw new Error('No products data received');
+      }
+      return response.data;
     }
+
+    // An explicit limit is a single bounded request (e.g. CompatChecker
+    // sampling 100 rows) — no paging.
     if (limit) {
-      params.append('limit', limit.toString());
+      const params = new URLSearchParams({ type, limit: limit.toString() });
+      const response = await this.request<Product[]>(`/api/products?${params}`);
+      if (!response.data) {
+        throw new Error('No products data received');
+      }
+      console.log(`[ApiClient] Received ${response.data.length} products of type '${type}'`);
+      return response.data;
     }
 
-    const endpoint = type === 'datasheet' ? '/api/datasheets' : `/api/products?${params}`;
-    const response = await this.request<Product[]>(endpoint);
-
-    if (!response.data) {
-      throw new Error('No products data received');
+    // No limit: follow the cursor until the listing is exhausted so
+    // client-side filters and the table see the same row count as the
+    // categories endpoint. Each page is the backend's default cap
+    // (2000 rows); MAX_LIST_PAGES bounds the loop if the backend keeps
+    // returning cursors. A backend that doesn't send `cursor` (the v2
+    // FastAPI path, for now) degrades to the old single-page behavior.
+    const all: Product[] = [];
+    let cursor: string | null = null;
+    for (let page = 0; page < MAX_LIST_PAGES; page++) {
+      const params = new URLSearchParams({ type });
+      if (cursor) {
+        params.append('cursor', cursor);
+      }
+      const response = await this.request<Product[]>(`/api/products?${params}`);
+      if (!response.data) {
+        throw new Error('No products data received');
+      }
+      all.push(...response.data);
+      cursor = response.cursor ?? null;
+      if (!cursor) {
+        break;
+      }
     }
 
-    console.log(`[ApiClient] Received ${response.data.length} products of type '${type}'`);
-    return response.data;
+    console.log(`[ApiClient] Received ${all.length} products of type '${type}'`);
+    return all;
   }
 
   /**

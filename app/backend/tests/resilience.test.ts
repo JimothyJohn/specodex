@@ -13,25 +13,25 @@ describe('Edge Cases: Malformed Inputs', () => {
   beforeEach(() => jest.clearAllMocks());
 
   it('GET /api/products?limit=NaN returns products (NaN coerces gracefully)', async () => {
-    (DynamoDBService.prototype.list as jest.Mock).mockResolvedValue([]);
+    (DynamoDBService.prototype.listPage as jest.Mock).mockResolvedValue({ items: [] });
     const response = await request(app).get('/api/products?limit=abc');
     expect(response.status).toBe(200);
   });
 
   it('GET /api/products?limit=-1 does not crash', async () => {
-    (DynamoDBService.prototype.list as jest.Mock).mockResolvedValue([]);
+    (DynamoDBService.prototype.listPage as jest.Mock).mockResolvedValue({ items: [] });
     const response = await request(app).get('/api/products?limit=-1');
     expect(response.status).toBe(200);
   });
 
   it('GET /api/products?limit=0 does not crash', async () => {
-    (DynamoDBService.prototype.list as jest.Mock).mockResolvedValue([]);
+    (DynamoDBService.prototype.listPage as jest.Mock).mockResolvedValue({ items: [] });
     const response = await request(app).get('/api/products?limit=0');
     expect(response.status).toBe(200);
   });
 
   it('GET /api/products?type= (empty string) returns 200', async () => {
-    (DynamoDBService.prototype.list as jest.Mock).mockResolvedValue([]);
+    (DynamoDBService.prototype.listPage as jest.Mock).mockResolvedValue({ items: [] });
     const response = await request(app).get('/api/products?type=');
     expect(response.status).toBe(200);
   });
@@ -95,7 +95,7 @@ describe('DynamoDB Connectivity Failures', () => {
   beforeEach(() => jest.clearAllMocks());
 
   it('GET /api/products returns 500 when DB throws', async () => {
-    (DynamoDBService.prototype.list as jest.Mock).mockRejectedValue(
+    (DynamoDBService.prototype.listPage as jest.Mock).mockRejectedValue(
       new Error('Connection refused')
     );
     const response = await request(app).get('/api/products');
@@ -256,7 +256,7 @@ describe('Concurrent Request Handling', () => {
   beforeEach(() => jest.clearAllMocks());
 
   it('handles 20 concurrent list requests', async () => {
-    (DynamoDBService.prototype.list as jest.Mock).mockResolvedValue([]);
+    (DynamoDBService.prototype.listPage as jest.Mock).mockResolvedValue({ items: [] });
 
     const requests = Array.from({ length: 20 }, () =>
       request(app).get('/api/products?type=motor')
@@ -267,7 +267,7 @@ describe('Concurrent Request Handling', () => {
   });
 
   it('handles mixed read/write requests concurrently', async () => {
-    (DynamoDBService.prototype.list as jest.Mock).mockResolvedValue([]);
+    (DynamoDBService.prototype.listPage as jest.Mock).mockResolvedValue({ items: [] });
     (DynamoDBService.prototype.create as jest.Mock).mockResolvedValue(true);
     (DynamoDBService.prototype.count as jest.Mock).mockResolvedValue({ total: 0 });
 

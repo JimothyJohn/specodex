@@ -66,7 +66,7 @@ describe('API routes work for all product types', () => {
           SK: `PRODUCT#${type}-001`,
         },
       ];
-      (DynamoDBService.prototype.list as jest.Mock).mockResolvedValue(mockProducts);
+      (DynamoDBService.prototype.listPage as jest.Mock).mockResolvedValue({ items: mockProducts });
 
       const response = await request(app).get(`/api/products?type=${type}`);
       expect(response.status).toBe(200);
