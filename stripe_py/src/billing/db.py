@@ -70,6 +70,44 @@ class UsersDb:
             },
         )
 
+    # --- API keys -----------------------------------------------------
+    #
+    # API-key records live in the same table under a synthetic partition
+    # key ``apikey#<sha256-hex>`` so no extra table or GSI is needed.
+    # Verification is a direct get_item on the hash (O(1), no scan), and
+    # the prefix can never collide with a Cognito sub. Only the hash is
+    # stored — the plaintext key is shown to the user once and is
+    # unrecoverable, so a table leak doesn't expose usable keys.
+
+    @staticmethod
+    def _apikey_pk(key_hash: str) -> str:
+        return f"apikey#{key_hash}"
+
+    def put_api_key(self, key_hash: str, owner_user_id: str, created_at: str) -> None:
+        self.client.put_item(
+            TableName=self.table_name,
+            Item={
+                "user_id": {"S": self._apikey_pk(key_hash)},
+                "owner_user_id": {"S": owner_user_id},
+                "created_at": {"S": created_at},
+            },
+            # Don't clobber an existing record on the astronomically
+            # unlikely hash collision — surface it instead of silently
+            # reassigning a live key to a new owner.
+            ConditionExpression="attribute_not_exists(user_id)",
+        )
+
+    def get_api_key_owner(self, key_hash: str) -> str | None:
+        resp = self.client.get_item(
+            TableName=self.table_name,
+            Key={"user_id": {"S": self._apikey_pk(key_hash)}},
+        )
+        item = resp.get("Item")
+        if not item:
+            return None
+        owner = item.get("owner_user_id")
+        return owner.get("S") if owner else None
+
 
 def _record_from_item(item: dict[str, Any]) -> UserRecord:
     def get_s(key: str, default: str | None = None) -> str | None:

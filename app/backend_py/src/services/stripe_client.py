@@ -93,6 +93,72 @@ def create_checkout_session(user_id: str) -> dict[str, Any]:
     return resp.json()
 
 
+def create_api_key(user_id: str) -> str:
+    """Mint a per-query API key for a user. Returns the plaintext key
+    once (only its hash is stored upstream). Raises if billing isn't
+    configured — write-shaped request, explicit failure."""
+
+    base = _base_url()
+    if base is None:
+        raise RuntimeError("Stripe billing is not configured")
+    resp = httpx.post(
+        f"{base.rstrip('/')}/apikey",
+        json={"user_id": user_id},
+        timeout=5.0,
+    )
+    if resp.status_code >= 400:
+        try:
+            message = resp.json().get(
+                "error", f"API key creation failed: {resp.status_code}"
+            )
+        except Exception:
+            message = f"API key creation failed: {resp.status_code}"
+        raise RuntimeError(message)
+    return resp.json()["api_key"]
+
+
+def verify_api_key(api_key: str) -> dict[str, Any]:
+    """Resolve a presented key to ``{valid, user_id?, subscription_status?}``.
+
+    Returns ``{"valid": False}`` when billing isn't configured or for an
+    unknown key. Raises only on a transport error so the paygate can
+    fail open by catching — distinguishing a rejected key from an outage.
+    """
+
+    base = _base_url()
+    if base is None:
+        return {"valid": False}
+    resp = httpx.post(
+        f"{base.rstrip('/')}/apikey/verify",
+        json={"api_key": api_key},
+        timeout=5.0,
+    )
+    if resp.status_code >= 400:
+        raise RuntimeError(f"API key verification failed: {resp.status_code}")
+    return resp.json()
+
+
+def report_query_usage(user_id: str, quantity: int) -> bool:
+    """Report N billable queries. Best-effort — returns False on any
+    failure and never raises, so it can't break a served response."""
+
+    if not _enabled():
+        return False
+    try:
+        resp = httpx.post(
+            f"{_base_url().rstrip('/')}/usage/query",
+            json={"user_id": user_id, "quantity": quantity},
+            timeout=5.0,
+        )
+        if resp.status_code >= 400:
+            logger.error("Query usage reporting failed: %s", resp.status_code)
+            return False
+        return bool(resp.json().get("recorded", False))
+    except Exception as exc:
+        logger.error("Failed to report query usage: %s", exc)
+        return False
+
+
 def report_usage(user_id: str, tokens: int) -> Optional[dict[str, Any]]:
     """Fire-and-forget usage report. Returns None on any failure so
     the caller never has to handle billing-side errors.

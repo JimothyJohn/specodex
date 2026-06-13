@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Charge programmatic API consumers per query, metered through the existing Stripe subscription. The browsable public website is untouched — it sends no API key a">
+    <meta name="theme-color" content="#3A2C1C">
+    <title>Specodex — PAYGATE — per-query Stripe charging for the API</title>
+    <link rel="icon" type="image/svg+xml" href="../logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-issue="PAYGATE — PER-QUERY STRI">
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="band">
+        <div class="band-inner">
+            <a class="band-brand" href="../index.html">
+                <svg class="band-mark" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <rect width="120" height="120" fill="#E8E2C9"/>
+                    <rect x="14" y="14" width="92" height="92" fill="none" stroke="#1A1A14" stroke-width="3"/>
+                    <rect x="14" y="14" width="92" height="22" fill="#3A2C1C"/>
+                    <rect x="62" y="60" width="40" height="10" fill="#A88A1C"/>
+                    <line x1="14" y1="56" x2="106" y2="56" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="74" x2="106" y2="74" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="92" x2="106" y2="92" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="60" y1="36" x2="60" y2="106" stroke="#1A1A14" stroke-width="2"/>
+                </svg>
+                <span class="wordmark">SPECODEX</span>
+            </a>
+            <nav class="band-nav" aria-label="Section">
+                <a href="../index.html">Catalog</a>
+                <a href="../roadmap.html">Roadmap</a>
+                <a href="https://github.com/JimothyJohn/specodex/blob/master/todo/PAYGATE.md" rel="noreferrer">Source</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="doc-hero">
+            <div class="hero-tag">▮▮▮ PAYGATE ▮▮▮</div>
+            <h1 class="hero-title">PAYGATE — per-query Stripe charging for the API</h1>
+            <div class="doc-meta">
+                <span class="status-chip status-backlog">BACKLOG</span>
+                <span class="doc-source"><code>todo/PAYGATE.md</code></span>
+            </div>
+        </section>
+
+        <article class="doc-body">
+<h1 id="paygate-per-query-stripe-charging-for-the-api">PAYGATE — per-query Stripe charging for the API</h1>
+<blockquote>
+<p>🔴 needs sign-off — code complete, test-mode, <strong>dormant</strong> until a Stripe
+query meter/price is configured. Draft PR; activation steps are Nick's.</p>
+</blockquote>
+<p>Charge programmatic API consumers per query, metered through the
+existing Stripe subscription. The browsable public website is
+untouched — it sends no API key and stays free.</p>
+<h2 id="decisions-chosen-2026-06-13">Decisions (chosen 2026-06-13)</h2>
+<ul>
+<li><strong>Billing model:</strong> metered subscription. Each billable query reports
+  +1 usage to a Stripe <strong>query meter</strong> via the billing Lambda's
+  <code>/usage/query</code>, invoiced at period end. Reuses the existing
+  metered-subscription plumbing.</li>
+<li><strong>Gate:</strong> API keys. A request carrying <code>X-API-Key</code> is verified →
+  must have an active subscription → served → metered. No header →
+  the existing free, anonymous, read-only public path (the UI).</li>
+<li><strong>Billable endpoints:</strong> <code>/api/v1/search</code> and <code>/api/v1/relations/*</code>
+  only. Product/datasheet listing stays free.</li>
+</ul>
+<h2 id="what-shipped-in-this-pr-test-mode-dormant">What shipped in this PR (test-mode, dormant)</h2>
+<p>Feature-flagged by <code>STRIPE_QUERY_PRICE_ID</code> on the billing Lambda. While
+unset: checkout adds no query line item, <code>/usage/query</code> records
+nothing, and the paygate still serves keyed requests but meters zero.</p>
+<p><strong>Billing Lambda (<code>stripe_py/</code>)</strong>
+- <code>config.stripe_query_price_id</code> (optional env <code>STRIPE_QUERY_PRICE_ID</code>)
+  + <code>per_query_billing_enabled</code>.
+- <code>POST /apikey</code> — mint a key for an existing user (hash stored, plaintext
+  returned once). <code>POST /apikey/verify</code> — resolve key → owner + live
+  subscription status. <code>POST /usage/query</code> — report N queries to the
+  query-priced subscription item.
+- API-key records live in the <code>datasheetminer-users</code> table under a
+  synthetic <code>apikey#&lt;sha256&gt;</code> PK — <strong>no new table or GSI.</strong>
+- Checkout adds the query price as a second metered line item when the
+  flag is on.</p>
+<p><strong>Backends (Express v1 live + FastAPI v2 mirror, at parity)</strong>
+- <code>apiKeyPaygate</code> middleware on search + relations: no key → free;
+  unknown key → 401; valid + no active sub → <strong>402</strong>; valid + active →
+  served, then +1 metered <strong>after a &lt;400 response</strong> (failed queries
+  aren't billed). Billing outage → <strong>fail open</strong> to free (never 500s
+  the read API).
+- <code>POST /api/apikeys</code> — authed (Cognito JWT) mint route; identity from
+  the token, never the body. Exempted from the public-mode readonly guard.
+- Stripe clients gain <code>createApiKey</code> / <code>verifyApiKey</code> / <code>reportQueryUsage</code>.</p>
+<p>Tests: billing Lambda +30 (apikeys, query_usage, router); Express +11;
+FastAPI v2 +9. All adversarial paths covered (key forgery, hash-as-key,
+IDOR, deleted-owner, no-sub 402, failed-query-not-metered, outage
+fail-open).</p>
+<h2 id="activation-nicks-steps-not-done-here">Activation — Nick's steps (not done here)</h2>
+<ol>
+<li><strong>Stripe dashboard (test mode):</strong> create a metered <strong>Meter</strong> for
+   queries and a recurring metered <strong>Price</strong> on the existing product.
+   Note the price id (<code>price_...</code>).</li>
+<li><strong>Billing Lambda env:</strong> add <code>STRIPE_QUERY_PRICE_ID=price_...</code> to the
+   deploy <code>--environment</code> block (see <code>stripe_py/README.md</code>). No CDK
+   change — the billing Lambda is deployed outside CDK by design.</li>
+<li><strong>Re-checkout:</strong> existing subscribers predate the query line item;
+   they need a new checkout (or a Stripe-side subscription-item add) to
+   gain the query meter. New subscribers get both items automatically.</li>
+<li><strong>Mint a key:</strong> <code>POST /api/apikeys</code> with a Cognito token → returns
+   <code>sk_query_...</code> once.</li>
+<li><strong>Verify metering</strong> in the Stripe test dashboard, then plan the
+   live-mode flip as a <strong>separate</strong> exercise (the test-mode hard guard
+   in <code>config.py</code> blocks live keys until deliberately lifted).</li>
+</ol>
+<h2 id="follow-ups-not-blocking">Follow-ups (not blocking)</h2>
+<ul>
+<li><strong>Direct DynamoDB read for verify/meter.</strong> The paygate does two
+  billing-Lambda hops per metered query (verify + usage). Fine for
+  launch; cache verify results or read the users table directly if
+  search latency matters.</li>
+<li><strong>Per-key revocation + listing.</strong> Today a key lives until the table
+  row is deleted by hand. Add <code>DELETE /api/apikeys/:id</code> + a list view
+  when self-serve key management is needed.</li>
+<li><strong>Rate-limit the free anonymous path</strong> if programmatic users route
+  around the paygate by simply not sending a key (the paygate charges
+  key holders; it doesn't <em>force</em> keys). Product call, not a bug.</li>
+<li><strong>Pre-existing bug (separate):</strong> the Express <code>reportUsage</code> sends
+  <code>{user_id, tokens}</code> but the Lambda's <code>UsageRequest</code> wants
+  <code>{input_tokens, output_tokens}</code> — token metering silently no-ops
+  today. Out of scope here; flag for a token-metering fix.</li>
+</ul>
+        </article>
+    </main>
+
+    <footer>
+        <div class="footer-inner">
+            <a class="footer-link" href="../roadmap.html">← Back to roadmap</a>
+            <span class="footer-rule" aria-hidden="true"></span>
+            <a class="footer-link" href="https://github.com/JimothyJohn/specodex/blob/master/todo/PAYGATE.md" rel="noreferrer">Edit on GitHub</a>
+        </div>
+    </footer>
+</body>
+</html>
