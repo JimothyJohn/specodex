@@ -28,6 +28,22 @@ import FeedbackModal from './ui/FeedbackModal';
 import type { FeedbackCategory } from '../utils/feedback';
 import { ADJACENT_TYPES, BuildSlot, check as compatCheck } from '../utils/compat';
 
+// Human labels for the `availability` enum (the "Lead Time" column).
+// The raw values are schema.org ItemAvailability tokens; the table
+// shouldn't show `in_stock` to a buyer. Unknown / null values fall
+// through to an empty cell (rendered as N/A by the table).
+const AVAILABILITY_LABELS: Record<string, string> = {
+  in_stock: 'In Stock',
+  back_order: 'Back-order',
+  out_of_stock: 'Out of Stock',
+  pre_order: 'Pre-order',
+  limited: 'Limited',
+  discontinued: 'Discontinued',
+};
+
+const humanizeAvailability = (value: unknown): string =>
+  typeof value === 'string' ? AVAILABILITY_LABELS[value] ?? value : '';
+
 /**
  * The state slices ProductList resets when the user picks a new product
  * type. Extracted so the spillover bestiary (FRONTEND_TESTING.md) is
@@ -167,6 +183,8 @@ export default function ProductList() {
         'product_type',
         'msrp_source_url',
         'msrp_fetched_at',
+        'availability_source_url',
+        'availability_fetched_at',
       ]),
     [],
   );
@@ -1125,7 +1143,7 @@ export default function ProductList() {
                           backgroundColor: cellColor
                         }}
                       >
-                        <div className="spec-header-value">{numericValue || formatValue(productValue, 0, 5, cellSys)}</div>
+                        <div className="spec-header-value">{attrKey === 'availability' ? humanizeAvailability(productValue) : (numericValue || formatValue(productValue, 0, 5, cellSys))}</div>
                       </div>
                     );
                   })}

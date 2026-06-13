@@ -11,6 +11,7 @@ import {
   deriveAttributesFromRecords,
   mergeAttributesByKey,
   AttributeMetadata,
+  getAttributesForType,
 } from './filters';
 import {
   COLUMN_ORDER,
@@ -725,5 +726,68 @@ describe('computeVisibleColumnAttributes', () => {
       10,
     );
     expect(out).toHaveLength(0);
+  });
+});
+
+describe('commercial columns (price + lead time)', () => {
+  // The real product types — datasheet is a listing record, not a
+  // ProductBase, so it carries neither price nor availability.
+  const PRODUCT_TYPES = [
+    'motor',
+    'drive',
+    'robot_arm',
+    'gearhead',
+    'contactor',
+    'electric_cylinder',
+  ] as const;
+
+  it.each(PRODUCT_TYPES)(
+    'exposes msrp (Price) + availability (Lead Time) as default-visible for %s',
+    (type) => {
+      const attrs = getAttributesForType(type);
+      const msrp = attrs.find((a) => a.key === 'msrp');
+      const avail = attrs.find((a) => a.key === 'availability');
+
+      expect(msrp).toBeDefined();
+      expect(msrp?.displayName).toBe('Price');
+      expect(msrp?.defaultVisible).toBe(true);
+      expect(msrp?.nested).toBe(true);
+
+      expect(avail).toBeDefined();
+      expect(avail?.displayName).toBe('Lead Time');
+      expect(avail?.defaultVisible).toBe(true);
+    },
+  );
+
+  it('renders price + lead time immediately after manufacturer for every type', () => {
+    for (const type of PRODUCT_TYPES) {
+      const order = COLUMN_ORDER[type] ?? [];
+      const mfg = order.indexOf('manufacturer');
+      expect(mfg).toBeGreaterThanOrEqual(0);
+      expect(order[mfg + 1]).toBe('msrp');
+      expect(order[mfg + 2]).toBe('availability');
+    }
+  });
+
+  it('forces both columns visible past the nested-only default rule', () => {
+    // availability is a bare string — it would be hidden by the default
+    // rule (rule 6) without the defaultVisible override.
+    const attrs = getAttributesForType('motor');
+    const visible = computeVisibleColumnAttributes(attrs, [], [], 50);
+    const keys = visible.map((a) => a.key);
+    expect(keys).toContain('msrp');
+    expect(keys).toContain('availability');
+  });
+
+  it('mixed "all" view leads with price + lead time', () => {
+    const attrs = getAttributesForType('all');
+    expect(attrs.some((a) => a.key === 'msrp')).toBe(true);
+    expect(attrs.some((a) => a.key === 'availability')).toBe(true);
+  });
+
+  it('datasheet listings carry neither commercial column', () => {
+    const attrs = getAttributesForType('datasheet');
+    expect(attrs.some((a) => a.key === 'msrp')).toBe(false);
+    expect(attrs.some((a) => a.key === 'availability')).toBe(false);
   });
 });

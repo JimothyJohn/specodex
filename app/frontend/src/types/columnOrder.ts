@@ -29,6 +29,12 @@
 //   `part_number` is pinned as the leading column by ProductList.tsx and
 //   is excluded from this list — don't put it here.
 //
+//   `msrp` (Price) and `availability` (Lead Time) lead every type right
+//   after `manufacturer`. They're the two buyer-facing commercial columns
+//   and are forced default-visible in filters.ts (commercialAttributes).
+//   `availability` is the honest lead-time signal — the numeric `lead_time`
+//   field has no populator, so the populated stock snapshot stands in for it.
+//
 // =============================================================================
 
 import type { ProductType } from './models';
@@ -39,6 +45,8 @@ export const COLUMN_ORDER: Partial<
 > = {
   motor: [
     'manufacturer',
+    'msrp',
+    'availability',
     'rated_power',
     'rated_torque',
     'rated_speed',
@@ -47,6 +55,8 @@ export const COLUMN_ORDER: Partial<
   ],
   drive: [
     'manufacturer',
+    'msrp',
+    'availability',
     'rated_power',
     'input_voltage',
     'input_voltage_phases',
@@ -55,18 +65,26 @@ export const COLUMN_ORDER: Partial<
   ],
   robot_arm: [
     'manufacturer',
+    'msrp',
+    'availability',
     // e.g. 'payload', 'reach', 'degrees_of_freedom', 'pose_repeatability', 'max_tcp_speed',
   ],
   gearhead: [
     'manufacturer',
+    'msrp',
+    'availability',
     // e.g. 'gear_ratio', 'gear_type', 'rated_torque', 'peak_torque', 'backlash', 'efficiency',
   ],
   contactor: [
     'manufacturer',
+    'msrp',
+    'availability',
     // e.g. 'ie_ac3_400v', 'motor_power_ac3_400v_kw', 'motor_power_ac3_480v_hp',
   ],
   electric_cylinder: [
     'manufacturer',
+    'msrp',
+    'availability',
     // e.g. 'stroke', 'max_push_force', 'continuous_force', 'max_linear_speed', 'rated_voltage',
   ],
   datasheet: [
