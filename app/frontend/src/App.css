@@ -2524,8 +2524,20 @@ button.secondary:hover {
  * still spans 100% via `min-width` on .product-grid. */
 .product-grid-scroll {
   width: 100%;
-  overflow-x: auto;
+  /* Single scrollport for BOTH axes. Sticky headers pin to the nearest
+   * scrolling ancestor, so vertical scrolling must happen here (not on
+   * .results-main or the window) for the header row to stick. The
+   * max-height bounds the grid to the viewport minus the app header +
+   * page toolbar stack above it (~140px measured); the global
+   * *::-webkit-scrollbar theme covers the scrollbars. */
+  overflow: auto;
+  max-height: calc(100dvh - 150px);
 }
+
+/* Sticky column headers: position: sticky lives on the cell rules
+ * themselves (.product-grid-header-part / .product-grid-header-item
+ * below) — sticky on the display: table-row wrapper is unreliable
+ * across browsers, on table-cells it isn't. */
 
 /* Row density.
  *
@@ -2604,10 +2616,11 @@ button.secondary:hover {
   color: currentColor;
 }
 
-/* Infinite-scroll sentinel (compact mode). Sits below the last row;
- * once it enters the viewport, the IntersectionObserver bumps the
- * revealed-row count by another itemsPerPage. The status text doubles
- * as an "end of results" marker once everything is loaded. */
+/* Infinite-scroll sentinel (both densities). Sits below the last row
+ * inside .product-grid-scroll; once it enters the viewport, the
+ * IntersectionObserver bumps the revealed-row count by another
+ * itemsPerPage. The status text doubles as an "end of results" marker
+ * once everything is loaded. */
 .infinite-scroll-sentinel {
   display: flex;
   justify-content: center;
@@ -2638,7 +2651,11 @@ button.secondary:hover {
   border-collapse: separate;
   border-spacing: 0;
   border: 1px solid var(--text-primary);
-  overflow: hidden;
+  /* clip, not hidden: overflow: hidden makes this box the sticky
+   * containing scrollport and the headers would pin to the grid
+   * itself (i.e. never move). clip clips the same paint overflow
+   * without creating a scroll container. */
+  overflow: clip;
   margin: 0;
 }
 
@@ -2666,7 +2683,10 @@ button.secondary:hover {
   border-top: 1px solid var(--text-primary);
   border-bottom: 2px solid var(--text-primary);
   border-right: 1px solid var(--border-color-light);
-  position: relative;
+  /* Sticky within .product-grid-scroll — see .product-grid-header-part. */
+  position: sticky;
+  top: 0;
+  z-index: var(--z-toolbar);
   background: var(--bg-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2881,7 +2901,13 @@ button.secondary:hover {
 
 .product-grid-header-part {
   display: table-cell;
-  position: relative;
+  /* Sticky within .product-grid-scroll (the single scrollport). A
+   * sticky box is positioned, so the absolute col-resize-handle keeps
+   * anchoring exactly as it did under position: relative. The opaque
+   * --bg-secondary fill stops rows ghosting through underneath. */
+  position: sticky;
+  top: 0;
+  z-index: var(--z-toolbar);
   font-size: 0.82rem;
   font-weight: 600;
   color: var(--text-secondary);
