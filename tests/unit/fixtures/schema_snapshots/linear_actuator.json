@@ -1,5 +1,8 @@
 {
   "actuation_mechanism": null,
+  "availability": null,
+  "availability_fetched_at": null,
+  "availability_source_url": null,
   "backlash": null,
   "cleanroom_class": null,
   "compatible_motor_mounts": null,

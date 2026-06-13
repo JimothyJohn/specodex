@@ -35,6 +35,13 @@ _META_FIELDS = frozenset(
         # the datasheet — the LLM extraction will almost never populate
         # it, so counting it as a "spec" would unfairly tank every score.
         "lead_time",
+        # Availability is a per-seller stock snapshot scraped from
+        # distributor pages (availability-enrich), never from the
+        # datasheet — same rationale as lead_time. Its provenance fields
+        # are pure metadata.
+        "availability",
+        "availability_source_url",
+        "availability_fetched_at",
     }
 )
 

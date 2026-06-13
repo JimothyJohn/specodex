@@ -24,6 +24,21 @@ class TestSpecFields:
         for meta in ("product_id", "product_type", "manufacturer", "PK", "SK"):
             assert meta not in fields
 
+    def test_commercial_metadata_excluded_from_specs(self):
+        # msrp/availability provenance + the distributor-sourced
+        # logistics fields are not datasheet specs and must not count
+        # toward the LLM-extraction quality score.
+        fields = spec_fields_for_model(Drive)
+        for meta in (
+            "lead_time",
+            "availability",
+            "availability_source_url",
+            "availability_fetched_at",
+            "msrp_source_url",
+            "msrp_fetched_at",
+        ):
+            assert meta not in fields
+
     def test_motor_includes_specs(self):
         fields = spec_fields_for_model(Motor)
         assert "rated_voltage" in fields

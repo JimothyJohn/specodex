@@ -1,4 +1,7 @@
 {
+  "availability": null,
+  "availability_fetched_at": null,
+  "availability_source_url": null,
   "backlash": null,
   "datasheet_url": null,
   "dimensions": null,
