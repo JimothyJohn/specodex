@@ -118,7 +118,7 @@ describe('API Routes', () => {
         { product_id: '1', product_type: 'motor', PK: 'PRODUCT#MOTOR', SK: 'PRODUCT#1' },
         { product_id: '2', product_type: 'drive', PK: 'PRODUCT#DRIVE', SK: 'PRODUCT#2' },
       ];
-      (DynamoDBService.prototype.list as jest.Mock).mockResolvedValue(mockProducts);
+      (DynamoDBService.prototype.listPage as jest.Mock).mockResolvedValue({ items: mockProducts });
 
       const response = await request(app).get('/api/products');
       expect(response.status).toBe(200);
@@ -130,7 +130,7 @@ describe('API Routes', () => {
       const mockMotors = [
         { product_id: '1', product_type: 'motor', PK: 'PRODUCT#MOTOR', SK: 'PRODUCT#1' },
       ];
-      (DynamoDBService.prototype.list as jest.Mock).mockResolvedValue(mockMotors);
+      (DynamoDBService.prototype.listPage as jest.Mock).mockResolvedValue({ items: mockMotors });
 
       const response = await request(app).get('/api/products?type=motor');
       expect(response.status).toBe(200);
@@ -139,11 +139,11 @@ describe('API Routes', () => {
     });
 
     it('should pass limit parameter', async () => {
-      (DynamoDBService.prototype.list as jest.Mock).mockResolvedValue([]);
+      (DynamoDBService.prototype.listPage as jest.Mock).mockResolvedValue({ items: [] });
 
       const response = await request(app).get('/api/products?type=motor&limit=5');
       expect(response.status).toBe(200);
-      expect(DynamoDBService.prototype.list).toHaveBeenCalledWith('motor', 5);
+      expect(DynamoDBService.prototype.listPage).toHaveBeenCalledWith('motor', 5, undefined);
     });
   });
 

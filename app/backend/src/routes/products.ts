@@ -4,8 +4,10 @@
  */
 
 import { Router, Request, Response } from 'express';
+import { AttributeValue } from '@aws-sdk/client-dynamodb';
 import { DynamoDBService } from '../db/dynamodb';
 import { Product, ProductType } from '../types/models';
+import { VALID_PRODUCT_TYPES } from '../config/productTypes';
 import { v4 as uuidv4 } from 'uuid';
 import config from '../config';
 
@@ -100,11 +102,79 @@ router.get('/summary', async (_req: Request, res: Response) => {
  * The default cap exists because Lambda's response payload is capped at
  * 6 MB and a full 'drive' listing (12k+ rows × ~500 B/row) blows past it,
  * 500-ing the request. 2000 rows = ~1–1.7 MB depending on type, well
- * under the limit. Callers that need more should paginate (no cursor
- * surfaced yet — follow-up for the v2 backend, which is the supported
- * paginated path) or pass a higher explicit `limit`.
+ * under the limit. Callers that need more pass the response's `cursor`
+ * back as ?cursor= to fetch the next page; `cursor: null` means the
+ * listing is exhausted.
  */
 const DEFAULT_LIST_LIMIT = 2000;
+
+/**
+ * Cursors are attacker-controlled input, so decoding is strict: the
+ * payload must be base64url JSON of `{type, key?}` where `type` is a
+ * known product type and every `key` attribute is a marshalled scalar
+ * ({S: string} or {N: string} — all a DynamoDB PK/SK can be). Anything
+ * else throws CursorError, which the route maps to a 400.
+ */
+const MAX_CURSOR_LENGTH = 4096;
+
+class CursorError extends Error {}
+
+function encodeCursor(next: {
+  type: string;
+  key?: Record<string, AttributeValue>;
+}): string {
+  return Buffer.from(JSON.stringify(next)).toString('base64url');
+}
+
+function decodeCursor(
+  raw: unknown
+): { type: string; key?: Record<string, AttributeValue> } | undefined {
+  if (raw === undefined) return undefined;
+  if (
+    typeof raw !== 'string' ||
+    raw.length === 0 ||
+    raw.length > MAX_CURSOR_LENGTH
+  ) {
+    throw new CursorError('invalid cursor');
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(Buffer.from(raw, 'base64url').toString('utf8'));
+  } catch {
+    throw new CursorError('invalid cursor');
+  }
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    throw new CursorError('invalid cursor');
+  }
+  const { type, key } = parsed as { type?: unknown; key?: unknown };
+  if (
+    typeof type !== 'string' ||
+    !(VALID_PRODUCT_TYPES as readonly string[]).includes(type)
+  ) {
+    throw new CursorError('invalid cursor');
+  }
+  if (key === undefined) {
+    return { type };
+  }
+  if (typeof key !== 'object' || key === null || Array.isArray(key)) {
+    throw new CursorError('invalid cursor');
+  }
+  for (const value of Object.values(key)) {
+    const entries =
+      typeof value === 'object' && value !== null && !Array.isArray(value)
+        ? Object.entries(value)
+        : null;
+    if (!entries || entries.length !== 1) {
+      throw new CursorError('invalid cursor');
+    }
+    const [attrType, attrValue] = entries[0];
+    if ((attrType !== 'S' && attrType !== 'N') || typeof attrValue !== 'string') {
+      throw new CursorError('invalid cursor');
+    }
+  }
+  return { type, key: key as Record<string, AttributeValue> };
+}
+
 router.get('/', async (req: Request, res: Response): Promise<void> => {
   try {
     const type = (req.query.type as ProductType) || 'all';
@@ -119,18 +189,30 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
     // Accept any product type - no validation needed
     // The database will return empty array if type doesn't exist
 
-    // db.list applies Limit per-type; for type='all' it queries every
-    // type with the same Limit and concatenates, so the total can
-    // overshoot. Slice after to enforce a true total cap.
-    const products = await db.list(type, limit);
-    const truncated = products.length > limit;
-    const data = truncated ? products.slice(0, limit) : products;
+    let start;
+    try {
+      start = decodeCursor(req.query.cursor as string | undefined);
+    } catch (err) {
+      if (err instanceof CursorError) {
+        res.status(400).json({ success: false, error: 'Invalid cursor' });
+        return;
+      }
+      throw err;
+    }
+    // A cursor minted for one type filter cannot resume a different one.
+    if (start && type !== 'all' && start.type !== type) {
+      res.status(400).json({ success: false, error: 'Invalid cursor' });
+      return;
+    }
+
+    const page = await db.listPage(type, limit, start);
 
     res.json({
       success: true,
-      data,
-      count: data.length,
-      truncated,
+      data: page.items,
+      count: page.items.length,
+      truncated: Boolean(page.next),
+      cursor: page.next ? encodeCursor(page.next) : null,
     });
   } catch (error) {
     console.error('Error listing products:', error);

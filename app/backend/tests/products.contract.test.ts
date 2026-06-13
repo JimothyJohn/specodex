@@ -17,17 +17,22 @@ beforeEach(() => {
   jest.clearAllMocks();
 });
 
+/** Build a base64url cursor the way the route does. */
+const cursorOf = (next: { type: string; key?: Record<string, unknown> }) =>
+  Buffer.from(JSON.stringify(next)).toString('base64url');
+
 describe('GET /api/products — listing surface', () => {
   it('returns 200 with empty array when no products', async () => {
-    (DynamoDBService.prototype.list as jest.Mock).mockResolvedValue([]);
+    (DynamoDBService.prototype.listPage as jest.Mock).mockResolvedValue({ items: [] });
     const res = await request(app).get('/api/products');
     expect(res.status).toBe(200);
     expect(res.body.data).toEqual([]);
     expect(res.body.count).toBe(0);
+    expect(res.body.cursor).toBeNull();
   });
 
   it('500 on DB failure — JSON error body', async () => {
-    (DynamoDBService.prototype.list as jest.Mock).mockRejectedValue(new Error('boom'));
+    (DynamoDBService.prototype.listPage as jest.Mock).mockRejectedValue(new Error('boom'));
     const res = await request(app).get('/api/products');
     expect(res.status).toBe(500);
     expect(res.body).toHaveProperty('success', false);
@@ -35,54 +40,110 @@ describe('GET /api/products — listing surface', () => {
   });
 
   it('limit=NaN falls back to the default cap — does not crash', async () => {
-    (DynamoDBService.prototype.list as jest.Mock).mockResolvedValue([]);
+    (DynamoDBService.prototype.listPage as jest.Mock).mockResolvedValue({ items: [] });
     const res = await request(app).get('/api/products?limit=abc');
     expect(res.status).toBeLessThan(500);
     // Default kicks in when limit can't be parsed.
-    expect((DynamoDBService.prototype.list as jest.Mock).mock.calls[0][1]).toBe(2000);
+    expect((DynamoDBService.prototype.listPage as jest.Mock).mock.calls[0][1]).toBe(2000);
   });
 
   it('unknown type still returns 200 (route does not validate type)', async () => {
     // Documents current policy: type validation happens at search, not list.
-    (DynamoDBService.prototype.list as jest.Mock).mockResolvedValue([]);
+    (DynamoDBService.prototype.listPage as jest.Mock).mockResolvedValue({ items: [] });
     const res = await request(app).get('/api/products?type=not-a-real-type');
     expect(res.status).toBe(200);
   });
 
   it('applies the default 2000-row cap when no limit param is given', async () => {
-    (DynamoDBService.prototype.list as jest.Mock).mockResolvedValue([]);
+    (DynamoDBService.prototype.listPage as jest.Mock).mockResolvedValue({ items: [] });
     await request(app).get('/api/products?type=drive');
-    expect((DynamoDBService.prototype.list as jest.Mock).mock.calls[0][1]).toBe(2000);
+    expect((DynamoDBService.prototype.listPage as jest.Mock).mock.calls[0][1]).toBe(2000);
   });
 
   it('respects an explicit numeric limit', async () => {
-    (DynamoDBService.prototype.list as jest.Mock).mockResolvedValue([]);
+    (DynamoDBService.prototype.listPage as jest.Mock).mockResolvedValue({ items: [] });
     await request(app).get('/api/products?type=motor&limit=50');
-    expect((DynamoDBService.prototype.list as jest.Mock).mock.calls[0][1]).toBe(50);
+    expect((DynamoDBService.prototype.listPage as jest.Mock).mock.calls[0][1]).toBe(50);
   });
 
-  it('sets truncated=true and slices to the cap when db returns more than the cap', async () => {
-    // db.list with type='all' applies Limit per-type and concatenates,
-    // so the route receives more than `limit` and must slice.
-    const oversized = Array.from({ length: 2500 }, (_, i) => ({
-      product_id: `p${i}`,
-      product_type: 'motor',
-      manufacturer: 'X',
-    }));
-    (DynamoDBService.prototype.list as jest.Mock).mockResolvedValue(oversized);
-    const res = await request(app).get('/api/products');
+  it('sets truncated=true and returns a cursor when more pages exist', async () => {
+    (DynamoDBService.prototype.listPage as jest.Mock).mockResolvedValue({
+      items: [{ product_id: 'p1', product_type: 'motor', manufacturer: 'X' }],
+      next: { type: 'motor', key: { PK: { S: 'PRODUCT#MOTOR' }, SK: { S: 'PRODUCT#p1' } } },
+    });
+    const res = await request(app).get('/api/products?type=motor');
     expect(res.status).toBe(200);
-    expect(res.body.data).toHaveLength(2000);
-    expect(res.body.count).toBe(2000);
     expect(res.body.truncated).toBe(true);
+    expect(typeof res.body.cursor).toBe('string');
+    // The cursor round-trips through the route's own encoding.
+    const decoded = JSON.parse(Buffer.from(res.body.cursor, 'base64url').toString('utf8'));
+    expect(decoded.type).toBe('motor');
+    expect(decoded.key.SK).toEqual({ S: 'PRODUCT#p1' });
   });
 
-  it('sets truncated=false when db returns fewer rows than the cap', async () => {
-    (DynamoDBService.prototype.list as jest.Mock).mockResolvedValue([
-      { product_id: 'p1', product_type: 'motor', manufacturer: 'X' },
-    ]);
+  it('sets truncated=false and cursor=null when the listing is exhausted', async () => {
+    (DynamoDBService.prototype.listPage as jest.Mock).mockResolvedValue({
+      items: [{ product_id: 'p1', product_type: 'motor', manufacturer: 'X' }],
+    });
     const res = await request(app).get('/api/products?type=motor');
     expect(res.body.truncated).toBe(false);
+    expect(res.body.cursor).toBeNull();
+  });
+
+  it('passes a valid cursor through to db.listPage as the start point', async () => {
+    (DynamoDBService.prototype.listPage as jest.Mock).mockResolvedValue({ items: [] });
+    const cursor = cursorOf({
+      type: 'motor',
+      key: { PK: { S: 'PRODUCT#MOTOR' }, SK: { S: 'PRODUCT#p42' } },
+    });
+    const res = await request(app).get(`/api/products?type=motor&cursor=${cursor}`);
+    expect(res.status).toBe(200);
+    const start = (DynamoDBService.prototype.listPage as jest.Mock).mock.calls[0][2];
+    expect(start.type).toBe('motor');
+    expect(start.key.SK).toEqual({ S: 'PRODUCT#p42' });
+  });
+
+  // Cursors are attacker-controlled input. Every malformed shape must
+  // 400 (never 500, never reach DynamoDB).
+  describe('cursor hardening', () => {
+    const badCursors: Array<[string, string]> = [
+      ['garbage base64', '!!!not-base64!!!'],
+      ['valid base64 of non-JSON', Buffer.from('not json').toString('base64url')],
+      ['JSON array instead of object', Buffer.from('[1,2]').toString('base64url')],
+      ['missing type', cursorOf({ type: undefined as unknown as string })],
+      ['unknown type', cursorOf({ type: 'warp_drive' })],
+      ['key with non-scalar attribute', cursorOf({ type: 'motor', key: { PK: { M: {} } } })],
+      ['key with multi-entry attribute', cursorOf({ type: 'motor', key: { PK: { S: 'a', N: '1' } } })],
+      ['key with non-string attribute value', cursorOf({ type: 'motor', key: { PK: { S: 7 } } })],
+      ['key as array', cursorOf({ type: 'motor', key: [1] as unknown as Record<string, unknown> })],
+      ['oversized cursor', 'A'.repeat(5000)],
+    ];
+
+    it.each(badCursors)('%s → 400', async (_name, cursor) => {
+      (DynamoDBService.prototype.listPage as jest.Mock).mockResolvedValue({ items: [] });
+      const res = await request(app).get(
+        `/api/products?type=motor&cursor=${encodeURIComponent(cursor)}`
+      );
+      expect(res.status).toBe(400);
+      expect(res.body.success).toBe(false);
+      expect(DynamoDBService.prototype.listPage).not.toHaveBeenCalled();
+    });
+
+    it('cursor minted for another type filter → 400', async () => {
+      (DynamoDBService.prototype.listPage as jest.Mock).mockResolvedValue({ items: [] });
+      const cursor = cursorOf({ type: 'drive' });
+      const res = await request(app).get(`/api/products?type=motor&cursor=${cursor}`);
+      expect(res.status).toBe(400);
+      expect(DynamoDBService.prototype.listPage).not.toHaveBeenCalled();
+    });
+
+    it('type-scoped cursor is accepted on a type=all listing', async () => {
+      (DynamoDBService.prototype.listPage as jest.Mock).mockResolvedValue({ items: [] });
+      const cursor = cursorOf({ type: 'drive' });
+      const res = await request(app).get(`/api/products?cursor=${cursor}`);
+      expect(res.status).toBe(200);
+      expect((DynamoDBService.prototype.listPage as jest.Mock).mock.calls[0][2].type).toBe('drive');
+    });
   });
 });
 
