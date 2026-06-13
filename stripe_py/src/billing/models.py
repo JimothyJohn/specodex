@@ -60,5 +60,42 @@ class StatusResponse(BaseModel):
     stripe_customer_id: str | None = None
 
 
+# --- Per-query API-key billing ----------------------------------------
+
+
+class ApiKeyCreateRequest(BaseModel):
+    # The Cognito sub of the authenticated user minting the key. The
+    # backend extracts this from a verified JWT — the billing Lambda
+    # trusts it the same way /checkout trusts the user_id it's handed.
+    user_id: str
+
+
+class ApiKeyCreateResponse(BaseModel):
+    # Plaintext key, returned exactly once. Only its SHA-256 hash is
+    # stored, so it cannot be recovered after this response.
+    api_key: str
+
+
+class ApiKeyVerifyRequest(BaseModel):
+    api_key: str
+
+
+class ApiKeyVerifyResponse(BaseModel):
+    valid: bool
+    user_id: str | None = None
+    subscription_status: SubscriptionStatus = SubscriptionStatus.NONE
+
+
+class QueryUsageRequest(BaseModel):
+    user_id: str
+    # Number of billable queries to report. Default 1 = one API call.
+    quantity: int = Field(ge=0, default=1)
+
+
+class QueryUsageResponse(BaseModel):
+    quantity: int
+    recorded: bool
+
+
 class ErrorResponse(BaseModel):
     error: str

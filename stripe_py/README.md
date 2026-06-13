@@ -32,8 +32,6 @@ toolchain for 500 lines of code is the textbook polyglot tax. See
 
 ## Endpoints
 
-Identical to `../stripe/README.md`:
-
 | Method | Path | Description |
 |--------|------|-------------|
 | `POST` | `/checkout` | Create Stripe Checkout session → returns URL |
@@ -41,9 +39,19 @@ Identical to `../stripe/README.md`:
 | `POST` | `/usage` | Report token usage (called by your backend) |
 | `GET`  | `/status/{user_id}` | Check subscription status |
 | `GET`  | `/health` | Health check |
+| `POST` | `/apikey` | Mint a per-query API key for a user → returns plaintext key once |
+| `POST` | `/apikey/verify` | Resolve a presented key → `{valid, user_id?, subscription_status?}` |
+| `POST` | `/usage/query` | Report N billable queries (per-query billing) |
 
-DynamoDB schema is unchanged from the Rust impl — same table name, same
-attributes. Phase 2 cutover is purely the SSM URL flip.
+The first five are parity with `../stripe/README.md`; the last three
+are the per-query paygate (see `todo/PAYGATE.md`). API-key records share
+the `datasheetminer-users` table under an `apikey#<sha256>` partition
+key — no new table. The three paygate endpoints are **dormant** until
+`STRIPE_QUERY_PRICE_ID` is set (below): `/usage/query` records nothing
+and checkout adds no query line item while it's unset.
+
+DynamoDB schema is otherwise unchanged from the Rust impl. Phase 2
+cutover is purely the SSM URL flip.
 
 ## Local development
 
@@ -76,6 +84,11 @@ Rust deploy. CDK ownership is a deferred Phase 3 §3.2 follow-up.
       --role <execution-role-arn> \
       --environment 'Variables={STRIPE_SECRET_KEY=sk_test_...,STRIPE_WEBHOOK_SECRET=whsec_...,STRIPE_PRICE_ID=price_...,USERS_TABLE_NAME=datasheetminer-users,FRONTEND_URL=https://www.specodex.com}' \
       --region us-east-1
+
+    # To enable per-query billing (todo/PAYGATE.md), add the query
+    # meter's price id to the env block:
+    #   STRIPE_QUERY_PRICE_ID=price_<query meter price>
+    # Optional; while unset the paygate endpoints stay dormant.
 
     aws lambda create-function-url-config \
       --function-name datasheetminer-payments-py \

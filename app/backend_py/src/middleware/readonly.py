@@ -32,8 +32,9 @@ _WRITE_ALLOWED_PATHS = frozenset({"/api/upload", "/api/upload/"})
 # Path prefixes exempt from readonly. Auth endpoints (register,
 # login, password reset) need POST in public mode but don't mutate
 # product data — the user table is Cognito's. Projects are per-user
-# data; the route enforces ownership via require_auth.
-_WRITE_ALLOWED_PREFIXES = ("/api/auth/", "/api/projects")
+# data; the route enforces ownership via require_auth. API-key minting
+# (POST) writes only to the billing users table, auth-gated in-route.
+_WRITE_ALLOWED_PREFIXES = ("/api/auth/", "/api/projects", "/api/apikeys")
 
 
 async def readonly_guard(

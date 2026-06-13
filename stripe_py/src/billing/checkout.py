@@ -45,13 +45,20 @@ def create_checkout_session(
             )
         )
 
+    # Token price is always present; the query price joins as a second
+    # metered item only when per-query billing is configured, so a paid
+    # subscription carries one item per usage stream.
+    line_items: list[dict[str, str]] = [{"price": config.stripe_price_id}]
+    if config.per_query_billing_enabled:
+        line_items.append({"price": config.stripe_query_price_id})
+
     session = stripe.checkout.Session.create(
         api_key=config.stripe_secret_key,
         mode="subscription",
         customer=customer_id,
         success_url=config.frontend_url,
         cancel_url=config.frontend_url,
-        line_items=[{"price": config.stripe_price_id}],
+        line_items=line_items,
     )
     if not session.get("url"):
         raise CheckoutError("No checkout URL returned")

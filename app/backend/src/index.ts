@@ -13,9 +13,11 @@ import productsRouter from './routes/products';
 import datasheetsRouter from './routes/datasheets';
 import uploadRouter from './routes/upload';
 import subscriptionRouter from './routes/subscription';
+import apiKeysRouter from './routes/apikeys';
 import searchRouter from './routes/search';
 import compatRouter from './routes/compat';
 import relationsRouter from './routes/relations';
+import { apiKeyPaygate } from './middleware/apiKeyPaygate';
 import docsRouter from './routes/docs';
 import adminRouter from './routes/admin';
 import authRouter from './routes/auth';
@@ -72,11 +74,16 @@ app.use('/api/projects', projectsRouter);
 app.use('/api/products', productsRouter);
 app.use('/api/datasheets', datasheetsRouter);
 app.use('/api/subscription', subscriptionRouter);
-app.use('/api/v1/search', searchRouter);
+// API-key minting for per-query billing (auth-gated inside the router).
+app.use('/api/apikeys', apiKeysRouter);
+// Per-query paygate: meters search + relations when an X-API-Key header
+// is present; no header → free public/UI path (see middleware). Mounted
+// only on the billable read routes, not products/datasheets.
+app.use('/api/v1/search', apiKeyPaygate, searchRouter);
 app.use('/api/v1/compat', compatRouter);
 // Device-relations API — typed compatibility queries (Phase 3b of
 // SCHEMA Phase 3; see todo/SCHEMA.md Part 3 and todo/BUILD.md Part 4).
-app.use('/api/v1/relations', relationsRouter);
+app.use('/api/v1/relations', apiKeyPaygate, relationsRouter);
 app.use('/api/admin', requireAuth, adminOnly, adminRouter);
 app.use('/api', docsRouter);
 
