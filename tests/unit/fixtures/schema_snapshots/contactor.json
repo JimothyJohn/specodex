@@ -1,6 +1,9 @@
 {
   "altitude_max": null,
   "auxiliary_contact_configuration": null,
+  "availability": null,
+  "availability_fetched_at": null,
+  "availability_source_url": null,
   "breaking_capacity": null,
   "certifications": null,
   "coil_dropout_factor": null,

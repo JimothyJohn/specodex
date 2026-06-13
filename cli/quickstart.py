@@ -20,6 +20,9 @@ Usage:
                                   (try: ./Quickstart price-enrich --help)
     ./Quickstart price-book       Backfill MSRP from a public price book (XLSX/PDF)
                                   (try: ./Quickstart price-book --help)
+    ./Quickstart availability-enrich  Backfill stock availability (schema.org
+                                  ItemAvailability) from distributor pages
+                                  (try: ./Quickstart availability-enrich --help)
     ./Quickstart ingest-report    Group ingest-log quality-fails by manufacturer
                                   (try: ./Quickstart ingest-report --help)
     ./Quickstart audit-dedupes    DEDUPE — scan dev DB for prefix-drift duplicates.
@@ -1152,6 +1155,13 @@ def main() -> None:
     if len(sys.argv) >= 2 and sys.argv[1] == "price-book":
         run(
             ["uv", "run", "python", "-m", "cli.price_book", *sys.argv[2:]],
+            cwd=ROOT,
+        )
+        return
+
+    if len(sys.argv) >= 2 and sys.argv[1] == "availability-enrich":
+        run(
+            ["uv", "run", "python", "-m", "cli.availability_enrich", *sys.argv[2:]],
             cwd=ROOT,
         )
         return

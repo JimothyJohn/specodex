@@ -1,4 +1,7 @@
 {
+  "availability": null,
+  "availability_fetched_at": null,
+  "availability_source_url": null,
   "axial_load_force_rating": null,
   "datasheet_url": null,
   "dimensions": null,
