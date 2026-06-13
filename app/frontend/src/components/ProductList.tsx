@@ -37,9 +37,10 @@ import { ADJACENT_TYPES, BuildSlot, check as compatCheck } from '../utils/compat
  *   L2: filters reset to the new type's curated defaults
  *   L3: sorts cleared
  *
- * `currentPage` is intentionally not in this bundle — the existing
- * `useEffect` that watches `filters, sorts, itemsPerPage` resets it to
- * 1 transitively when this bundle is applied.
+ * The infinite-scroll window (`revealedRows`) is intentionally not in
+ * this bundle — the existing `useEffect` that watches
+ * `filters, sorts, itemsPerPage, rowDensity, productType` resets it
+ * transitively when this bundle is applied.
  */
 export interface ProductListResetState {
   filters: FilterCriterion[];
@@ -71,17 +72,14 @@ export default function ProductList() {
   // or "filtered to zero" (no_match) without splitting into two modals.
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [feedbackCategory, setFeedbackCategory] = useState<FeedbackCategory>('no_match');
-  // Page size is density-driven. Cozy paginates 25/page (calm scan);
-  // compact uses infinite scroll with a 50-row initial window that
-  // grows as the user nears the bottom. The "ask the user via a picker"
-  // option was rejected in scoping — density already encodes the
-  // viewing intent.
+  // Both densities use infinite scroll; the reveal step is
+  // density-driven (compact rows are shorter, so a step has to be
+  // bigger to outrun the viewport). The discrete cozy pager retired
+  // 2026-06: one scroll model, sticky headers, no page buttons.
   const itemsPerPage = rowDensity === 'compact' ? 50 : 25;
-  const [currentPage, setCurrentPage] = useState<number>(1);
-  // Infinite-scroll window for compact. Counts rows revealed past the
-  // initial 50; reset whenever the data set or density changes. Cozy
-  // ignores this state entirely.
-  const [compactRevealed, setCompactRevealed] = useState<number>(0);
+  // Infinite-scroll window: rows revealed past the initial step.
+  // Reset whenever the data set, density, or product type changes.
+  const [revealedRows, setRevealedRows] = useState<number>(0);
   // Column visibility model — two sets, because default visibility
   // depends on the attribute's *kind*:
   //
@@ -456,52 +454,46 @@ export default function ProductList() {
   // same as before.
   const displayProducts = sortedProducts;
 
-  // Pagination is density-driven. Cozy slices a fixed window per page
-  // (`currentPage`); compact reveals the first 50 then grows by 50 as
-  // the user scrolls (`compactRevealed`).
-  const isInfiniteMode = rowDensity === 'compact';
-  const compactWindowSize = itemsPerPage + compactRevealed;
-  const paginatedProducts = useMemo(() => {
-    if (isInfiniteMode) {
-      return displayProducts.slice(0, compactWindowSize);
-    }
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    return displayProducts.slice(startIndex, endIndex);
-  }, [displayProducts, currentPage, itemsPerPage, isInfiniteMode, compactWindowSize]);
+  // Infinite-scroll window: reveal the first step, grow by another
+  // step each time the sentinel nears the viewport.
+  const windowSize = itemsPerPage + revealedRows;
+  const paginatedProducts = useMemo(
+    () => displayProducts.slice(0, windowSize),
+    [displayProducts, windowSize]
+  );
 
-  const totalPages = Math.ceil(displayProducts.length / itemsPerPage);
-  const hasMoreCompact = isInfiniteMode && compactWindowSize < displayProducts.length;
+  const hasMoreRows = windowSize < displayProducts.length;
 
-  // Reset to page 1 / window 0 when the data shape changes underneath us.
-  // `rowDensity` is in the dep list because flipping modes mid-scroll
-  // must reset both axes — otherwise a user on page 5 of cozy flipping
-  // to compact sees the compact slice starting at index 100.
+  // Reset the window when the data shape changes underneath us.
+  // `rowDensity`/`itemsPerPage` are in the dep list because flipping
+  // density mid-scroll changes the step size; `productType` because a
+  // 5000-row window carried into a freshly selected type would render
+  // it all in one frame.
   useEffect(() => {
-    setCurrentPage(1);
-    setCompactRevealed(0);
-  }, [filters, sorts, itemsPerPage, rowDensity]);
+    setRevealedRows(0);
+  }, [filters, sorts, itemsPerPage, rowDensity, productType]);
 
-  // IntersectionObserver-driven reveal for compact mode. The sentinel
-  // sits below the last row; once it enters the viewport, we bump the
-  // revealed count by another `itemsPerPage`. Capped at the data length
-  // so the observer doesn't run forever past the end of the list.
+  // IntersectionObserver-driven reveal. The sentinel sits below the
+  // last row inside the grid's scroll container; once it enters the
+  // viewport, we bump the revealed count by another `itemsPerPage`.
+  // The effect re-arms after each reveal (paginatedProducts.length dep)
+  // so a tall viewport keeps revealing until the sentinel leaves view.
   const loadMoreSentinelRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
-    if (!isInfiniteMode || !hasMoreCompact) return;
+    if (!hasMoreRows) return;
     const node = loadMoreSentinelRef.current;
     if (!node) return;
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries.some(e => e.isIntersecting)) {
-          setCompactRevealed(prev => prev + itemsPerPage);
+          setRevealedRows(prev => prev + itemsPerPage);
         }
       },
       { rootMargin: '200px' },
     );
     observer.observe(node);
     return () => observer.disconnect();
-  }, [isInfiniteMode, hasMoreCompact, itemsPerPage, paginatedProducts.length]);
+  }, [hasMoreRows, itemsPerPage, paginatedProducts.length]);
 
   // Column headers — label + unit per column. Unit strings flip through
   // `displayUnit()` so e.g. Nm → in·lb when the per-column unit override
@@ -855,9 +847,7 @@ export default function ProductList() {
             <span className="results-count">
               {displayProducts.length === 0
                 ? '0'
-                : isInfiniteMode
-                  ? `1-${paginatedProducts.length}`
-                  : `${(currentPage - 1) * itemsPerPage + 1}-${Math.min(currentPage * itemsPerPage, displayProducts.length)}`
+                : `1-${paginatedProducts.length}`
               } of {displayProducts.length}
             </span>
           </div>
@@ -1143,50 +1133,27 @@ export default function ProductList() {
                 </div>
               ))}
             </div>
-            </div>
 
-            {/* Pagination / infinite-scroll affordance. Cozy uses
-                discrete paging; compact streams via an IntersectionObserver
-                sentinel that triggers a window expansion as the user
-                nears the bottom. */}
-            {!isInfiniteMode && totalPages > 1 && (
-              <div className="pagination-nav">
-                <button
-                  className="pagination-btn"
-                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                  disabled={currentPage === 1}
-                >
-                  ← Previous
-                </button>
-                <span className="pagination-info">
-                  Page {currentPage} of {totalPages}
+            {/* Infinite-scroll affordance. Lives INSIDE the grid's
+                scroll container so the IntersectionObserver fires as
+                the user nears the bottom of the grid's own scrollport
+                (the headers stick to the same scrollport). */}
+            <div
+              ref={loadMoreSentinelRef}
+              className="infinite-scroll-sentinel"
+              aria-hidden="true"
+            >
+              {hasMoreRows ? (
+                <span className="infinite-scroll-status">
+                  Loading more… ({paginatedProducts.length} of {displayProducts.length})
                 </span>
-                <button
-                  className="pagination-btn"
-                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                  disabled={currentPage === totalPages}
-                >
-                  Next →
-                </button>
-              </div>
-            )}
-            {isInfiniteMode && (
-              <div
-                ref={loadMoreSentinelRef}
-                className="infinite-scroll-sentinel"
-                aria-hidden="true"
-              >
-                {hasMoreCompact ? (
-                  <span className="infinite-scroll-status">
-                    Loading more… ({paginatedProducts.length} of {displayProducts.length})
-                  </span>
-                ) : displayProducts.length > 0 ? (
-                  <span className="infinite-scroll-status">
-                    End of {displayProducts.length} results
-                  </span>
-                ) : null}
-              </div>
-            )}
+              ) : displayProducts.length > 0 ? (
+                <span className="infinite-scroll-status">
+                  End of {displayProducts.length} results
+                </span>
+              ) : null}
+            </div>
+            </div>
           </>
         )}
       </main>
