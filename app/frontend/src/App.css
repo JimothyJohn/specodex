@@ -6882,20 +6882,27 @@ body::after {
 .compact-column-header .compact-column-sort {
   flex: 1 1 0;
   min-width: 0;
-  height: 20px;
+  min-height: 20px;
+  align-items: flex-start;
   padding: 0 0.15rem;
   font-size: 0.7rem;
 }
 
 /* The cozy label wraps via word-break/overflow-wrap:anywhere (PR #159),
  * which at compact widths degenerates into a stack of clipped single
- * letters. Compact gets one line with an ellipsis instead; widen the
- * column to read the full name. */
+ * letters. Compact clamps to two lines instead: a single ellipsis line
+ * dropped "MANUFACTURER" to "MANUF…", losing the column identity. Two
+ * lines fit "MANU- / FACTURER" (and most two-word labels land one word
+ * per line), with an ellipsis only on the genuinely huge outliers.
+ * Widen the column to read those in full. */
 .compact-column-header .column-header-label-text {
-  white-space: nowrap;
-  word-break: normal;
-  overflow-wrap: normal;
-  hyphens: none;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  hyphens: auto;
   overflow: hidden;
   text-overflow: ellipsis;
 }
