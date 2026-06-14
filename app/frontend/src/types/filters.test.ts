@@ -15,6 +15,7 @@ import {
 } from './filters';
 import {
   COLUMN_ORDER,
+  DEFAULT_LEADING_ORDER,
   orderColumnAttributes,
   computeVisibleColumnAttributes,
 } from './columnOrder';
@@ -739,7 +740,35 @@ describe('commercial columns (price + lead time)', () => {
     'gearhead',
     'contactor',
     'electric_cylinder',
+    // Derivation-only type (no static getXxxAttributes list): still must
+    // surface price + lead time pinned far-left. Regression guard for the
+    // 2026-06-13 scramble where it had no COLUMN_ORDER entry.
+    'linear_actuator',
   ] as const;
+
+  // Mirrors how ProductList assembles the rendered column set: static
+  // type attrs + record-derived attrs, minus identity/bookkeeping keys,
+  // ordered, then capped. This is the end-to-end "what actually renders"
+  // check — getAttributesForType alone doesn't catch a positioning bug.
+  const RENDER_EXCLUDED = new Set([
+    'part_number', 'datasheet_url', 'pages', 'PK', 'SK', 'product_id',
+    'product_type', 'msrp_source_url', 'msrp_fetched_at',
+    'availability_source_url', 'availability_fetched_at',
+  ]);
+  const pricedRecord = (type: string) => ({
+    PK: `PRODUCT#${type}`, SK: 'PRODUCT#x', product_id: 'x',
+    product_type: type, part_number: 'PN-1', manufacturer: 'ACME',
+    msrp: { value: 1234, unit: 'USD' }, availability: 'in_stock',
+  });
+  const renderedColumnKeys = (type: typeof PRODUCT_TYPES[number]) => {
+    const merged = mergeAttributesByKey(
+      getAttributesForType(type),
+      deriveAttributesFromRecords([pricedRecord(type)], type),
+    ).filter((a) => !RENDER_EXCLUDED.has(a.key));
+    return computeVisibleColumnAttributes(
+      orderColumnAttributes(merged, type), [], [], 10,
+    ).map((a) => a.key);
+  };
 
   it.each(PRODUCT_TYPES)(
     'exposes msrp (Price) + availability (Lead Time) as default-visible for %s',
@@ -766,6 +795,38 @@ describe('commercial columns (price + lead time)', () => {
       expect(mfg).toBeGreaterThanOrEqual(0);
       expect(order[mfg + 1]).toBe('msrp');
       expect(order[mfg + 2]).toBe('availability');
+    }
+  });
+
+  it.each(PRODUCT_TYPES)(
+    'renders Price + Lead Time adjacent and far-left (after manufacturer) for %s',
+    (type) => {
+      const keys = renderedColumnKeys(type);
+      const mfg = keys.indexOf('manufacturer');
+      const price = keys.indexOf('msrp');
+      const lead = keys.indexOf('availability');
+      // Both present, adjacent (price then lead), and leading the spec
+      // columns — i.e. right after the (here-excluded) part_number +
+      // manufacturer, nothing wedged between or after into the specs.
+      expect(price).toBeGreaterThanOrEqual(0);
+      expect(lead).toBe(price + 1);
+      expect(price).toBe(mfg + 1);
+    },
+  );
+
+  it('pins commercial columns far-left for an unlisted type via DEFAULT_LEADING_ORDER', () => {
+    expect(DEFAULT_LEADING_ORDER).toEqual(['manufacturer', 'msrp', 'availability']);
+    // Simulate a future derivation-only type with no COLUMN_ORDER entry by
+    // dropping linear_actuator's key, then asserting the fallback orders it.
+    const saved = COLUMN_ORDER.linear_actuator;
+    delete COLUMN_ORDER.linear_actuator;
+    try {
+      const keys = renderedColumnKeys('linear_actuator');
+      const mfg = keys.indexOf('manufacturer');
+      expect(keys[mfg + 1]).toBe('msrp');
+      expect(keys[mfg + 2]).toBe('availability');
+    } finally {
+      COLUMN_ORDER.linear_actuator = saved;
     }
   });
 
