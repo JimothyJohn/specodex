@@ -5811,7 +5811,7 @@ body::after {
  * points up-left at the picker; copy stays in sentence case, regular
  * weight. No animation. Calm, inviting, not a stamped-CAD callout. */
 .empty-state-minimal {
-  padding: 3rem 0 2.5rem 1rem;
+  padding: 0.5rem 0 2.5rem 2.75rem;
   color: var(--text-secondary);
   display: flex;
   justify-content: flex-start;
