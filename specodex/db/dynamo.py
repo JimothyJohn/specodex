@@ -16,13 +16,9 @@ from uuid import UUID
 import boto3  # type: ignore
 from botocore.exceptions import ClientError  # type: ignore
 
-from specodex.config import REGION, TABLE_NAME
+from specodex.config import REGION, SCHEMA_CHOICES, TABLE_NAME
 from specodex.models.datasheet import Datasheet
-from specodex.models.drive import Drive
-from specodex.models.gearhead import Gearhead
-from specodex.models.motor import Motor
 from specodex.models.product import ProductBase
-from specodex.models.robot_arm import RobotArm
 
 
 # Type variable for Pydantic models
@@ -527,11 +523,15 @@ class DynamoDBClient:
                 items.extend(response.get("Items", []))
 
             results: List[ProductBase] = []
+            # Map every product_type to its model class from the auto-
+            # discovery registry, keyed by each model's own product_type
+            # literal. Built from SCHEMA_CHOICES so a new model file (a
+            # drop-in product type) is covered automatically. The previous
+            # hardcoded 4-entry map silently dropped contactor /
+            # electric_cylinder / linear_actuator from every scan result.
             model_map: Dict[str, Type[ProductBase]] = {
-                "motor": Motor,
-                "drive": Drive,
-                "gearhead": Gearhead,
-                "robot_arm": RobotArm,
+                cls.model_fields["product_type"].default: cls
+                for cls in SCHEMA_CHOICES.values()
             }
 
             for item in items:
