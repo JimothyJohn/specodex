@@ -272,10 +272,11 @@ The remaining order, ranked by leverage / unblocked-ness:
    `./Quickstart admin -- backfill-motor-mounts --stage dev --apply`
    on dev, verifies, then promotes. The script is shipped (PR #117);
    running it is one operator action.
-5. **DB_CLEANUP Phase 2 decision** — the field-coverage audit's
-   recommendation conflicts with the README's previous framing.
-   Decide whether to populate or drop `lead_time` / `warranty` /
-   `msrp` before implementing either.
+5. **DB_CLEANUP Phase 2 decision** — ✅ resolved 2026-06-12:
+   **populate**. Nick accepted [PRICING.md](PRICING.md), the populate
+   path for `msrp` (Phases 1 + 3 shipped same day, #268 + #270).
+   `lead_time` / `warranty` stay per the earlier "keep" instruction;
+   their population path is PRICING Phase 2+ territory.
 6. **PYTHON_STRIPE 1.x deploy → 2 cutover → 3 delete Rust crate.**
    Operator-driven deploy chain.
 7. **SEO Phase 1** — prerender + sitemap + per-product page
@@ -308,9 +309,13 @@ Every PR ships with a per-PR HTML doc in `docs/requests/<n>.html`
 | 2 | **Property tests — `specodex/integration/compat.py` (`_scalar` / `_range` / `_check_*`)** | HARDENING | ✅ shipped #185 |
 | 3 | **Property tests — `specodex/spec_rules.py:validate_product` magnitude rules** | HARDENING | ✅ shipped #202 |
 | 4 | **Property tests — `specodex/quality.py:score_product`** | HARDENING | ✅ shipped #203 |
-| 5 | **HARDENING Phase 2.2** — real-DAL backend integration tests (L) | HARDENING | ⚪ queued (next-sprint top) |
-| 6 | **BUILD Phase 1** — requirements-first Build page (motion/stroke/speed/payload/orientation form → motion-system kit) | BUILD | ⚪ queued (independent, user-facing) |
-| 7 | **DB_CLEANUP Phase 2 decision** — populate vs drop `lead_time` / `warranty` / `msrp` (audit says drop; README says populate) | DB_CLEANUP | 🔴 needs sign-off |
+| 5 | **HARDENING Phase 2.2** — real-DAL backend integration tests (L) | HARDENING | ⏳ search half #246; routes + contract round-trip 2026-06-10. Remaining: 13 mocked-test sweep + CI `--integration` wiring |
+| 6 | **BUILD Phase 1** — requirements-first Build page (motion/stroke/speed/payload/orientation form → motion-system kit) | BUILD | 🚧 PR 1A nearly done: `compatible_actuators` (#247) + Express `/api/v1/relations/actuators` (#262). 1A remainder: `_distribution_position` histogram block. Then 1B strip-down → 1C page → 1D redirect |
+| 7 | **DB_CLEANUP Phase 2 decision** — populate vs drop `lead_time` / `warranty` / `msrp` | DB_CLEANUP | ✅ resolved 2026-06-12: populate, via PRICING.md (accepted by Nick) |
+| 7a | **PRICING Phase 1** — price-book ingestion CLI (`./Quickstart price-book`, XLSX + PDF, enrich-only join) | PRICING | ✅ shipped #268 |
+| 7b | **PRICING Phase 3 (no-key items)** — prune robots-dead resolver tiers, enrich all product types, templated-PN skip, serp-counter fix | PRICING | ✅ shipped #270 |
+| 7c | **PRICING Phase 2** — Serper `/shopping` tier | PRICING | ⏸ blocked: needs Nick to provision `SERPER_API_KEY` |
+| 7d | **PRICING operator loop** — match public price books to inventory (WEG, KB/Dart after their ingests; Baldor 501 verified no-overlap) and run `price-book` per vendor | PRICING | ⚪ queued (operator-driven) |
 | 8 | **SCHEMA BREAKING harmonize** — `motor_type` → `MotorTechnology` literal + `ElectricCylinder.fieldbus` → `List[CommunicationProtocol]` + harmonize CLI. See [SCHEMA_BREAKING_HARMONIZE.md](SCHEMA_BREAKING_HARMONIZE.md). | SCHEMA_BREAKING_HARMONIZE | 🔴 needs sign-off |
 | 9 | **PYTHON_STRIPE Phase 1.x deploy** — billing Lambda goes live on dev, dev round-trip, soak | PYTHON_STRIPE | ⚪ queued (operator-driven deploy) |
 | 10 | **PYTHON_STRIPE Phase 2** — SSM cutover + 7-day soak | PYTHON_STRIPE | ⚪ queued |
@@ -323,7 +328,7 @@ Every PR ships with a per-PR HTML doc in `docs/requests/<n>.html`
 | 17 | **PYTHON_BACKEND Phase 3** — delete Express (retires `app/backend/src/types/models.ts` hand-edit) | PYTHON_BACKEND | 🔴 blocked on Phase 2 cutover |
 | 18 | **API.md** — paid programmatic access tier (depends on Stripe Phase 2 cutover + SES) | API | ⚪ queued |
 | 19 | **HARDENING Phase 3.2** — atheris fuzz target for PDF intake | HARDENING | ⚪ queued (heavier dep — needs LLVM/clang on macOS) |
-| 20 | **HARDENING Phase 1.2** — `uv sync --locked` sweep across CI workflows | HARDENING | ⚪ queued (touches `.github/workflows/` — needs human PR) |
+| 20 | **HARDENING Phase 1.2** — `uv sync --locked` sweep across CI workflows | HARDENING | ✅ shipped #261 |
 | 21 | **HARDENING Phase 4.2** — lockfile-drift gate post-install | HARDENING | ⚪ queued (touches CI — needs human PR) |
 
 **Status legend.** 🟡 = ready to PR now. ⚪ = queued, no blockers

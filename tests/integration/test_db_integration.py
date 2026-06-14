@@ -14,6 +14,7 @@ import boto3
 import moto
 import pytest
 
+from specodex.config import SCHEMA_CHOICES
 from specodex.db.dynamo import DynamoDBClient
 from specodex.models.datasheet import Datasheet
 from specodex.models.drive import Drive
@@ -288,3 +289,35 @@ class TestDeleteDuplicates:
 
         remaining = client.list(Motor)
         assert len(remaining) == 2
+
+
+def test_list_all_returns_every_discovered_product_type(db_setup):
+    """``list_all`` must deserialize every auto-discovered product type.
+
+    Regression for the hardcoded ``model_map`` in ``DynamoDBClient.list_all``
+    that only knew motor / drive / gearhead / robot_arm — it silently dropped
+    contactor, electric_cylinder, and linear_actuator from every scan (they
+    were written to DynamoDB but invisible to any caller of ``list_all``).
+    The map now derives from ``SCHEMA_CHOICES``, so this asserts the full
+    registry round-trips and will fail the moment a new type is dropped again.
+    """
+    client = db_setup
+
+    expected: set[str] = set()
+    for model_cls in SCHEMA_CHOICES.values():
+        product_type_value = model_cls.model_fields["product_type"].default
+        assert (
+            client.create(
+                model_cls(
+                    product_name=f"{product_type_value} sample", manufacturer="ACME"
+                )
+            )
+            is True
+        )
+        expected.add(product_type_value)
+
+    # Sanity: we're actually exercising the previously-dropped types.
+    assert {"contactor", "electric_cylinder", "linear_actuator"} <= expected
+
+    got = {p.product_type for p in client.list_all()}
+    assert got == expected, f"list_all dropped product types: {sorted(expected - got)}"

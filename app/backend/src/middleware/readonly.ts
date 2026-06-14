@@ -19,7 +19,10 @@ const WRITE_ALLOWED_PATHS = new Set(['/upload', '/upload/']);
 // password reset, etc.) need POST in public mode but don't mutate
 // product data — the user table is Cognito's, not ours. Projects are
 // per-user data; the route enforces ownership via requireAuth.
-const WRITE_ALLOWED_PREFIXES = ['/auth/', '/projects'];
+// API-key minting is a POST but writes only to the billing users table
+// (not product data) and is auth-gated inside the router, same as
+// projects.
+const WRITE_ALLOWED_PREFIXES = ['/auth/', '/projects', '/apikeys'];
 
 export function readonlyGuard(req: Request, res: Response, next: NextFunction): void {
   if (ALLOWED_METHODS.has(req.method)) {

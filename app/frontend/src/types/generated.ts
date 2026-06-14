@@ -58,6 +58,18 @@ export interface Contactor {
    * ISO 8601 timestamp when MSRP was last fetched.
    */
   msrp_fetched_at?: string | null;
+  /**
+   * Stock availability observed at a distributor, mapped from schema.org ItemAvailability. This is a per-seller, point-in-time snapshot — NOT an intrinsic product lead time (no honest public numeric lead time exists per part). Read it with availability_source_url + availability_fetched_at for provenance; it goes stale. Populated by availability-enrich.
+   */
+  availability?: ("in_stock" | "back_order" | "out_of_stock" | "pre_order" | "limited" | "discontinued") | null;
+  /**
+   * URL the availability status was scraped from.
+   */
+  availability_source_url?: string | null;
+  /**
+   * ISO 8601 timestamp when availability was last fetched.
+   */
+  availability_fetched_at?: string | null;
   warranty?: ValueUnit | null;
   /**
    * Expected delivery / lead time for the product. Typically a ValueUnit with unit='days' (e.g. {'value': 30, 'unit': 'days'}). Sourced from manufacturer or distributor data, not the datasheet.
@@ -434,6 +446,18 @@ export interface Drive {
    * ISO 8601 timestamp when MSRP was last fetched.
    */
   msrp_fetched_at?: string | null;
+  /**
+   * Stock availability observed at a distributor, mapped from schema.org ItemAvailability. This is a per-seller, point-in-time snapshot — NOT an intrinsic product lead time (no honest public numeric lead time exists per part). Read it with availability_source_url + availability_fetched_at for provenance; it goes stale. Populated by availability-enrich.
+   */
+  availability?: ("in_stock" | "back_order" | "out_of_stock" | "pre_order" | "limited" | "discontinued") | null;
+  /**
+   * URL the availability status was scraped from.
+   */
+  availability_source_url?: string | null;
+  /**
+   * ISO 8601 timestamp when availability was last fetched.
+   */
+  availability_fetched_at?: string | null;
   warranty?: ValueUnit | null;
   /**
    * Expected delivery / lead time for the product. Typically a ValueUnit with unit='days' (e.g. {'value': 30, 'unit': 'days'}). Sourced from manufacturer or distributor data, not the datasheet.
@@ -457,7 +481,17 @@ export interface Drive {
   rated_power?: ValueUnit | null;
   switching_frequency?: (ValueUnit | null)[] | null;
   fieldbus?:
-    | ("EtherCAT" | "EtherNet/IP" | "PROFINET" | "Modbus TCP" | "POWERLINK" | "Sercos III" | "CC-Link IE")[]
+    | (
+        | "EtherCAT"
+        | "EtherNet/IP"
+        | "PROFINET"
+        | "Modbus TCP"
+        | "Modbus RTU"
+        | "CANopen"
+        | "POWERLINK"
+        | "Sercos III"
+        | "CC-Link IE"
+      )[]
     | null;
   encoder_feedback_support?:
     | (
@@ -538,6 +572,18 @@ export interface ElectricCylinder {
    * ISO 8601 timestamp when MSRP was last fetched.
    */
   msrp_fetched_at?: string | null;
+  /**
+   * Stock availability observed at a distributor, mapped from schema.org ItemAvailability. This is a per-seller, point-in-time snapshot — NOT an intrinsic product lead time (no honest public numeric lead time exists per part). Read it with availability_source_url + availability_fetched_at for provenance; it goes stale. Populated by availability-enrich.
+   */
+  availability?: ("in_stock" | "back_order" | "out_of_stock" | "pre_order" | "limited" | "discontinued") | null;
+  /**
+   * URL the availability status was scraped from.
+   */
+  availability_source_url?: string | null;
+  /**
+   * ISO 8601 timestamp when availability was last fetched.
+   */
+  availability_fetched_at?: string | null;
   warranty?: ValueUnit | null;
   /**
    * Expected delivery / lead time for the product. Typically a ValueUnit with unit='days' (e.g. {'value': 30, 'unit': 'days'}). Sourced from manufacturer or distributor data, not the datasheet.
@@ -828,6 +874,18 @@ export interface Gearhead {
    * ISO 8601 timestamp when MSRP was last fetched.
    */
   msrp_fetched_at?: string | null;
+  /**
+   * Stock availability observed at a distributor, mapped from schema.org ItemAvailability. This is a per-seller, point-in-time snapshot — NOT an intrinsic product lead time (no honest public numeric lead time exists per part). Read it with availability_source_url + availability_fetched_at for provenance; it goes stale. Populated by availability-enrich.
+   */
+  availability?: ("in_stock" | "back_order" | "out_of_stock" | "pre_order" | "limited" | "discontinued") | null;
+  /**
+   * URL the availability status was scraped from.
+   */
+  availability_source_url?: string | null;
+  /**
+   * ISO 8601 timestamp when availability was last fetched.
+   */
+  availability_fetched_at?: string | null;
   warranty?: ValueUnit | null;
   /**
    * Expected delivery / lead time for the product. Typically a ValueUnit with unit='days' (e.g. {'value': 30, 'unit': 'days'}). Sourced from manufacturer or distributor data, not the datasheet.
@@ -1048,6 +1106,18 @@ export interface LinearActuator {
    * ISO 8601 timestamp when MSRP was last fetched.
    */
   msrp_fetched_at?: string | null;
+  /**
+   * Stock availability observed at a distributor, mapped from schema.org ItemAvailability. This is a per-seller, point-in-time snapshot — NOT an intrinsic product lead time (no honest public numeric lead time exists per part). Read it with availability_source_url + availability_fetched_at for provenance; it goes stale. Populated by availability-enrich.
+   */
+  availability?: ("in_stock" | "back_order" | "out_of_stock" | "pre_order" | "limited" | "discontinued") | null;
+  /**
+   * URL the availability status was scraped from.
+   */
+  availability_source_url?: string | null;
+  /**
+   * ISO 8601 timestamp when availability was last fetched.
+   */
+  availability_fetched_at?: string | null;
   warranty?: ValueUnit | null;
   /**
    * Expected delivery / lead time for the product. Typically a ValueUnit with unit='days' (e.g. {'value': 30, 'unit': 'days'}). Sourced from manufacturer or distributor data, not the datasheet.
@@ -1267,6 +1337,18 @@ export interface Motor {
    * ISO 8601 timestamp when MSRP was last fetched.
    */
   msrp_fetched_at?: string | null;
+  /**
+   * Stock availability observed at a distributor, mapped from schema.org ItemAvailability. This is a per-seller, point-in-time snapshot — NOT an intrinsic product lead time (no honest public numeric lead time exists per part). Read it with availability_source_url + availability_fetched_at for provenance; it goes stale. Populated by availability-enrich.
+   */
+  availability?: ("in_stock" | "back_order" | "out_of_stock" | "pre_order" | "limited" | "discontinued") | null;
+  /**
+   * URL the availability status was scraped from.
+   */
+  availability_source_url?: string | null;
+  /**
+   * ISO 8601 timestamp when availability was last fetched.
+   */
+  availability_fetched_at?: string | null;
   warranty?: ValueUnit | null;
   /**
    * Expected delivery / lead time for the product. Typically a ValueUnit with unit='days' (e.g. {'value': 30, 'unit': 'days'}). Sourced from manufacturer or distributor data, not the datasheet.
@@ -1381,6 +1463,18 @@ export interface ProductBase {
    * ISO 8601 timestamp when MSRP was last fetched.
    */
   msrp_fetched_at?: string | null;
+  /**
+   * Stock availability observed at a distributor, mapped from schema.org ItemAvailability. This is a per-seller, point-in-time snapshot — NOT an intrinsic product lead time (no honest public numeric lead time exists per part). Read it with availability_source_url + availability_fetched_at for provenance; it goes stale. Populated by availability-enrich.
+   */
+  availability?: ("in_stock" | "back_order" | "out_of_stock" | "pre_order" | "limited" | "discontinued") | null;
+  /**
+   * URL the availability status was scraped from.
+   */
+  availability_source_url?: string | null;
+  /**
+   * ISO 8601 timestamp when availability was last fetched.
+   */
+  availability_fetched_at?: string | null;
   warranty?: ValueUnit | null;
   /**
    * Expected delivery / lead time for the product. Typically a ValueUnit with unit='days' (e.g. {'value': 30, 'unit': 'days'}). Sourced from manufacturer or distributor data, not the datasheet.
@@ -1436,6 +1530,18 @@ export interface RobotArm {
    * ISO 8601 timestamp when MSRP was last fetched.
    */
   msrp_fetched_at?: string | null;
+  /**
+   * Stock availability observed at a distributor, mapped from schema.org ItemAvailability. This is a per-seller, point-in-time snapshot — NOT an intrinsic product lead time (no honest public numeric lead time exists per part). Read it with availability_source_url + availability_fetched_at for provenance; it goes stale. Populated by availability-enrich.
+   */
+  availability?: ("in_stock" | "back_order" | "out_of_stock" | "pre_order" | "limited" | "discontinued") | null;
+  /**
+   * URL the availability status was scraped from.
+   */
+  availability_source_url?: string | null;
+  /**
+   * ISO 8601 timestamp when availability was last fetched.
+   */
+  availability_fetched_at?: string | null;
   warranty?: ValueUnit | null;
   /**
    * Expected delivery / lead time for the product. Typically a ValueUnit with unit='days' (e.g. {'value': 30, 'unit': 'days'}). Sourced from manufacturer or distributor data, not the datasheet.

@@ -20,6 +20,12 @@ interface UsageResponse {
   tokens: number;
 }
 
+interface ApiKeyVerifyResult {
+  valid: boolean;
+  user_id?: string;
+  subscription_status?: string;
+}
+
 class StripeService {
   private baseUrl: string;
 
@@ -83,6 +89,74 @@ class StripeService {
     }
 
     return (await res.json()) as CheckoutResponse;
+  }
+
+  /**
+   * Mint a per-query API key for a user (must have a billing record).
+   * Returns the plaintext key once; only its hash is stored upstream.
+   */
+  async createApiKey(userId: string): Promise<string> {
+    if (!this.enabled) {
+      throw new Error('Stripe billing is not configured');
+    }
+    const res = await fetch(`${this.baseUrl}/apikey`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: userId }),
+    });
+    if (!res.ok) {
+      const err = (await res.json().catch(() => ({ error: 'Unknown error' }))) as any;
+      throw new Error(err.error || `API key creation failed: ${res.status}`);
+    }
+    const body = (await res.json()) as { api_key: string };
+    return body.api_key;
+  }
+
+  /**
+   * Verify a presented API key and return its owner + subscription
+   * status. Returns {valid:false} for an unknown key. Throws only on a
+   * billing-service transport error so the paygate can distinguish a
+   * rejected key (fail closed) from an outage (fail open) by catching.
+   */
+  async verifyApiKey(apiKey: string): Promise<ApiKeyVerifyResult> {
+    if (!this.enabled) {
+      // Billing not configured → treat every key as a non-subscribed
+      // passthrough; the paygate decides what that means.
+      return { valid: false };
+    }
+    const res = await fetch(`${this.baseUrl}/apikey/verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ api_key: apiKey }),
+    });
+    if (!res.ok) {
+      throw new Error(`API key verification failed: ${res.status}`);
+    }
+    return (await res.json()) as ApiKeyVerifyResult;
+  }
+
+  /**
+   * Report N billable queries for a user. Best-effort: a reporting
+   * failure is logged but never blocks the already-served response.
+   */
+  async reportQueryUsage(userId: string, quantity: number): Promise<boolean> {
+    if (!this.enabled) return false;
+    try {
+      const res = await fetch(`${this.baseUrl}/usage/query`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId, quantity }),
+      });
+      if (!res.ok) {
+        console.error(`Query usage reporting failed: ${res.status}`);
+        return false;
+      }
+      const body = (await res.json()) as { recorded: boolean };
+      return body.recorded;
+    } catch (e) {
+      console.error('Failed to report query usage:', e);
+      return false;
+    }
   }
 
   /**

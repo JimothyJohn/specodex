@@ -1,0 +1,16 @@
+{
+  "_comment": "Simple brushed-DC drives (SCR/PWM speed controls) — the low-complexity end of the drive spectrum. All URLs downloaded + page-checked with find_spec_pages_by_text on 2026-06-10. pages lists are 0-indexed. Known dead ends from discovery: parker.com /content/dam/* URLs serve HTML to non-browser agents (use the mirror below); mdacontrols.com Sprint 340/680/1220 manual PDF is structurally corrupt (MuPDF syntax errors) — do not re-add.",
+  "_source": "WebSearch discovery 2026-06-10; vendor sites + distributor mirrors (galco, spectechind, datasheetarchive)",
+  "targets": [
+    { "slug": "kb-kbmm",                "manufacturer": "KB Electronics", "product_family": "KBMM",            "product_name": "KBMM-125/225",      "url": "https://spectechind.com/Documents/KB/kbmm125-data.pdf" },
+    { "slug": "kb-kbwm",                "manufacturer": "KB Electronics", "product_family": "KBWM",            "product_name": "KBWM-120/240",      "url": "https://assets.ctfassets.net/qp8rp917jhxs/36TQNOE7cM1C7puZ09X8Ws/8319793b69b356e3001425a3181276c9/KBWM_datasheet_KB_Electronics.pdf" },
+    { "slug": "kb-kbic",                "manufacturer": "KB Electronics", "product_family": "KBIC",            "product_name": "KBIC-120/240",      "url": "https://acim.nidec.com/drives/control-techniques/-/media/Project/Nidec/KB/Documents/DC-Drives/Manuals/kbic_manual.pdf" },
+    { "slug": "kb-dc-selection-guide",  "manufacturer": "KB Electronics", "product_family": "Compact DC Drives", "product_name": "KBIC/KBMM/KBMG/KBRG/KBWM/KBPC/KBRC", "url": "https://acim.nidec.com/drives/control-techniques/-/media/Project/Nidec/KB/Documents/DC-Drives/Data-Sheets/DCSelectionGuide.pdf", "pages": [1, 2, 3, 5, 6, 7, 8, 9] },
+    { "slug": "dart-250g",              "manufacturer": "Dart Controls",  "product_family": "250 Series",      "product_name": "250G",              "url": "https://docs.galco.com/techdoc/dart/250g_cp.pdf" },
+    { "slug": "dart-125",               "manufacturer": "Dart Controls",  "product_family": "125 Series",      "product_name": "125D/125DV",        "url": "https://www.dartcontrols.com/app/uploads/2018/06/LT131-3837B-1-1.pdf" },
+    { "slug": "minarik-mm23000c",       "manufacturer": "Minarik Drives", "product_family": "MM23000C Series", "product_name": "MM23001C/MM23401C", "url": "https://datasheet.datasheetarchive.com/originals/crawler/minarikdrives.com/769f22013ca09eb7192d537a87c37fa4.pdf" },
+    { "slug": "baldor-bc140",           "manufacturer": "Baldor",         "product_family": "BC Series",       "product_name": "BC140",             "url": "https://www.baldor.com/mvc/downloadcenter/files/mn703" },
+    { "slug": "sprint-400-800-1200",    "manufacturer": "Sprint Electric", "product_family": "400/800/1200 Series", "product_name": "400/800/1200", "url": "https://www.sprint-electric.com/wp-content/uploads/2018/02/HG105270EN00-issue-1-400_800_1200-web.pdf" },
+    { "slug": "parker-analog-dc",       "manufacturer": "Parker SSD",     "product_family": "Analog DC Drives", "product_name": "506/507/508, 512C, 514C", "url": "https://primakaryalajumandiri.com/wp-content/uploads/2020/05/Parker-Analog-DC-Drives-Catalog-1.pdf" }
+  ]
+}

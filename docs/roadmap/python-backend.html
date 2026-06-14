@@ -316,27 +316,31 @@ testing. Once v2 is stable, the default flips.</p>
 <h2 id="phase-2-frontend-cutover">Phase 2 — Frontend cutover</h2>
 <p><strong>Goal:</strong> flip <code>VITE_API_VERSION</code> default to <code>v2</code>. v1 remains live as a
 fallback for one release cycle.</p>
-<h3 id="20-pre-cutover-code-fix-carry-over-from-v1-hardening-2026-05-23">2.0 Pre-cutover code fix (carry-over from v1 hardening, 2026-05-23)</h3>
+<h3 id="20-pre-cutover-code-fix-carry-over-from-v1-hardening-shipped-2026-05-23">2.0 Pre-cutover code fix (carry-over from v1 hardening) ✅ shipped 2026-05-23</h3>
 <p>The Express backend (v1) caught a Lambda 6 MB response-cap regression
 on the <code>/api/products</code> listing endpoint once the drives table crossed
 ~12 k rows. Fixed in PR #225 by defaulting <code>limit=2000</code> server-side
-and adding a <code>truncated: boolean</code> to the response. <strong>The v2 FastAPI
-backend has the same defect</strong> at
-<code>app/backend_py/src/routes/products.py:67</code>:</p>
-<pre><code class="language-python">limit: Optional[int] = Query(None, ge=1, le=10_000),
-</code></pre>
-<p><code>None</code> means unbounded. Before flipping <code>VITE_API_VERSION=v2</code>, port
-the v1 fix to v2:</p>
+and adding a <code>truncated: boolean</code> to the response. The v2 FastAPI
+backend had the same defect at
+<code>app/backend_py/src/routes/products.py:67</code> plus the matching
+<code>get_unique_manufacturers</code> / <code>get_unique_names</code> slowness (the v1
+PR #226 case). Both ported in the post-PR-#229 follow-up:</p>
 <ul>
-<li>Default <code>limit</code> to <code>2000</code> when the caller omits it.</li>
-<li>Slice the returned rows to enforce the total cap (FastAPI's
-  <code>db.list_by_type</code> may also overshoot for <code>type='all'</code>).</li>
-<li>Add <code>truncated: bool</code> to the response model.</li>
-<li>Add a contract test mirroring <code>app/backend/tests/products.contract.test.ts</code>
-  ("applies the default 2000-row cap" + "sets truncated=true when oversized").</li>
+<li>✅ Default <code>limit</code> set to <code>DEFAULT_LIST_LIMIT = 2000</code> when the
+  caller omits it. The route slices and sets <code>truncated: bool</code> in
+  the response — mirrors <code>/api/products</code> v1 contract.</li>
+<li>✅ <code>BackendDB.get_unique_manufacturers</code> and <code>get_unique_names</code>
+  rewritten to do per-partition projection-only scans via
+  <code>BackendDB._collect_distinct_attr</code>, dropping each row from ~500 B
+  to ~50 B over the wire. Same shape as v1's PR #226 fix.</li>
+<li>✅ Five new contract tests in <code>app/backend_py/tests/test_products.py</code>
+  pinning the default cap, the truncated flag (true on hit, false
+  below), and the spy-on-<code>db.list_by_type</code> "applies the default 2000"
+  contract.</li>
 </ul>
-<p>Without this, the day after the cutover staging will trip the same
-RequestEntityTooLarge error and roll back through the kill-switch.</p>
+<p>The cutover Phase 2 is now safe to flip <code>VITE_API_VERSION=v2</code>
+without immediately tripping the kill-switch on a <code>RequestEntityTooLarge</code>
+500 or a manufacturers-endpoint smoke timeout.</p>
 <h3 id="21-steps">2.1 Steps</h3>
 <ol>
 <li>Bump <code>VITE_API_VERSION=v2</code> in <code>app/.env.dev</code>, then <code>app/.env.prod</code>.</li>

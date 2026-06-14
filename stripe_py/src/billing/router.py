@@ -8,16 +8,21 @@ from typing import Any
 
 from pydantic import ValidationError
 
+from .apikeys import ApiKeyError, create_api_key, verify_api_key
 from .checkout import CheckoutError, create_checkout_session
 from .config import Config
 from .db import UsersDb
 from .models import (
+    ApiKeyCreateRequest,
+    ApiKeyVerifyRequest,
     CheckoutRequest,
     ErrorResponse,
+    QueryUsageRequest,
     StatusResponse,
     SubscriptionStatus,
     UsageRequest,
 )
+from .query_usage import QueryUsageError, report_query_usage
 from .usage import UsageError, report_usage
 from .webhook import WebhookError, handle_webhook
 
@@ -46,6 +51,12 @@ def dispatch(
         return _handle_webhook(config, db, headers, body)
     if method == "POST" and path == "/usage":
         return _handle_usage(config, db, body)
+    if method == "POST" and path == "/usage/query":
+        return _handle_query_usage(config, db, body)
+    if method == "POST" and path == "/apikey":
+        return _handle_apikey_create(db, body)
+    if method == "POST" and path == "/apikey/verify":
+        return _handle_apikey_verify(db, body)
     if method == "GET" and path.startswith("/status/"):
         user_id = path[len("/status/") :]
         return _handle_status(db, user_id)
@@ -86,6 +97,37 @@ def _handle_usage(config: Config, db: UsersDb, body: str) -> HttpResponse:
         return HttpResponse(200, report_usage(config, db, request).model_dump())
     except UsageError as e:
         return HttpResponse(400, ErrorResponse(error=str(e)).model_dump())
+
+
+def _handle_query_usage(config: Config, db: UsersDb, body: str) -> HttpResponse:
+    try:
+        request = QueryUsageRequest.model_validate_json(body)
+    except ValidationError as e:
+        return HttpResponse(400, ErrorResponse(error=f"Invalid request: {e}").model_dump())
+    try:
+        return HttpResponse(200, report_query_usage(config, db, request).model_dump())
+    except QueryUsageError as e:
+        return HttpResponse(400, ErrorResponse(error=str(e)).model_dump())
+
+
+def _handle_apikey_create(db: UsersDb, body: str) -> HttpResponse:
+    try:
+        request = ApiKeyCreateRequest.model_validate_json(body)
+    except ValidationError as e:
+        return HttpResponse(400, ErrorResponse(error=f"Invalid request: {e}").model_dump())
+    try:
+        return HttpResponse(200, create_api_key(db, request).model_dump())
+    except ApiKeyError as e:
+        return HttpResponse(400, ErrorResponse(error=str(e)).model_dump())
+
+
+def _handle_apikey_verify(db: UsersDb, body: str) -> HttpResponse:
+    try:
+        request = ApiKeyVerifyRequest.model_validate_json(body)
+    except ValidationError as e:
+        return HttpResponse(400, ErrorResponse(error=f"Invalid request: {e}").model_dump())
+    # verify_api_key never raises on a bad key — it returns valid=False.
+    return HttpResponse(200, verify_api_key(db, request).model_dump())
 
 
 def _handle_status(db: UsersDb, user_id: str) -> HttpResponse:

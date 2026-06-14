@@ -629,6 +629,45 @@ export const getElectricCylinderAttributes = (): AttributeMetadata[] => [
   { key: 'weight', displayName: 'Weight', type: 'object', applicableTypes: ['electric_cylinder'], nested: true, unit: 'kg', defaultVisible: false },
 ];
 
+// =====================================================================
+// Commercial columns (price + lead time)
+// =====================================================================
+//
+// Every ProductBase carries `msrp` (list price, populated by
+// price-enrich) and `availability` (the *honest* lead-time signal —
+// schema.org stock status scraped by availability-enrich). The
+// `availability` field docstring in specodex/models/product.py is
+// explicit that "no honest public numeric lead time exists per part,"
+// so the populated stock snapshot — not the near-always-empty numeric
+// `lead_time` field — is what surfaces under the "Lead Time" column.
+//
+// These two are forced default-visible (`defaultVisible: true`) for
+// every concrete product type and the 'all' view, and pinned to the
+// far left (right after Part Number + Manufacturer) by columnOrder.ts.
+// They render even when null (cell shows N/A) so the buyer-facing
+// columns are always present, not just when a record happens to be
+// enriched.
+export const commercialAttributes = (
+  productType: string,
+): AttributeMetadata[] => [
+  {
+    key: 'msrp',
+    displayName: 'Price',
+    type: 'object',
+    applicableTypes: [productType],
+    nested: true,
+    unit: 'USD',
+    defaultVisible: true,
+  },
+  {
+    key: 'availability',
+    displayName: 'Lead Time',
+    type: 'string',
+    applicableTypes: [productType],
+    defaultVisible: true,
+  },
+];
+
 /**
  * Get all attributes for a specific product type
  *
@@ -655,13 +694,15 @@ export const getAttributesForType = (productType: ProductType): AttributeMetadat
   // Handle null productType (no selection)
   if (productType === null) return [];
 
-  // Fast path: type-specific attributes
-  if (productType === 'motor') return getMotorAttributes();
-  if (productType === 'drive') return getDriveAttributes();
-  if (productType === 'robot_arm') return getRobotArmAttributes();
-  if (productType === 'gearhead') return getGearheadAttributes();
-  if (productType === 'contactor') return getContactorAttributes();
-  if ((productType as string) === 'electric_cylinder') return getElectricCylinderAttributes();
+  // Fast path: type-specific attributes. Every real product type leads
+  // with the two commercial columns (price + lead time); `datasheet` is
+  // a listing record, not a ProductBase, so it has neither.
+  if (productType === 'motor') return [...commercialAttributes('motor'), ...getMotorAttributes()];
+  if (productType === 'drive') return [...commercialAttributes('drive'), ...getDriveAttributes()];
+  if (productType === 'robot_arm') return [...commercialAttributes('robot_arm'), ...getRobotArmAttributes()];
+  if (productType === 'gearhead') return [...commercialAttributes('gearhead'), ...getGearheadAttributes()];
+  if (productType === 'contactor') return [...commercialAttributes('contactor'), ...getContactorAttributes()];
+  if ((productType as string) === 'electric_cylinder') return [...commercialAttributes('electric_cylinder'), ...getElectricCylinderAttributes()];
   if (productType === 'datasheet') return getDatasheetAttributes();
 
   // ===== COMPUTE COMMON ATTRIBUTES =====
@@ -743,7 +784,9 @@ export const getAttributesForType = (productType: ProductType): AttributeMetadat
   });
 
   console.log(`[filters] Found ${commonAttrs.length} common attributes for 'all' type`);
-  return commonAttrs;
+  // Price + lead time are common to every concrete product type, so the
+  // mixed 'all' view leads with them too.
+  return [...commercialAttributes('all'), ...commonAttrs];
 };
 
 /**
@@ -824,6 +867,8 @@ const DERIVATION_EXCLUDED_KEYS: ReadonlySet<string> = new Set([
   'pages',
   'msrp_source_url',
   'msrp_fetched_at',
+  'availability_source_url',
+  'availability_fetched_at',
 ]);
 
 function toDisplayName(snake: string): string {

@@ -488,14 +488,25 @@ function ColumnHeader({
     });
   };
 
-  // Compact path: single-row layout with no histogram and no slider.
-  // Strips the column header down to the affordances the user can
-  // act on (sort label, operator/mode, value/text, unit, close) so
-  // the table gets the vertical pixels back. The cozy path below
-  // keeps the full histogram + slider stack.
+  // Compact path: two short rows with no histogram and no slider —
+  // sortable label + close-X on top, the filter controls the user can
+  // act on (operator/mode, value/text, unit) beneath. Originally a
+  // single row, but at compact's ~90px default column width the pills
+  // claim the whole cell and the label ellipsizes to one letter; the
+  // second row keeps every column identifiable while still returning
+  // ~160px of the cozy stack's vertical pixels.
+  //
+  // The outer div must stay display:table-cell (.product-grid is a CSS
+  // table; a flex child of a table-row gets ejected into one shared
+  // anonymous cell and every header stacks vertically), so the flex
+  // rows live on the inner .compact-header-row wrappers instead.
   if (isCompact) {
+    const hasControls =
+      (isSliderEligible && rangeInfo != null) ||
+      (!isSliderEligible && multiSelectOptions.length > 0);
     return (
       <div className={headerClasses + ' compact-column-header'} style={{ width }}>
+        <div className="compact-header-row">
         <Tooltip content="Click to sort • click again to reverse, again to clear">
           <button
             type="button"
@@ -513,6 +524,32 @@ function ColumnHeader({
           </button>
         </Tooltip>
 
+        <Tooltip content="Hide column">
+          <button
+            className="column-remove-btn compact-column-remove-btn"
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemove();
+            }}
+          >
+            <svg
+              width="10"
+              height="10"
+              viewBox="0 0 10 10"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              aria-hidden="true"
+            >
+              <path d="M2 2 L8 8 M8 2 L2 8" />
+            </svg>
+          </button>
+        </Tooltip>
+        </div>
+
+        {hasControls && (
+        <div className="compact-header-row compact-header-controls">
         {isSliderEligible && rangeInfo && (
           <>
             <Tooltip content={`Operator ${operator} — click to flip (>= ↔ <)`}>
@@ -615,29 +652,8 @@ function ColumnHeader({
             />
           </>
         )}
-
-        <Tooltip content="Hide column">
-          <button
-            className="column-remove-btn compact-column-remove-btn"
-            onClick={(e) => {
-              e.stopPropagation();
-              onRemove();
-            }}
-          >
-            <svg
-              width="10"
-              height="10"
-              viewBox="0 0 10 10"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              aria-hidden="true"
-            >
-              <path d="M2 2 L8 8 M8 2 L2 8" />
-            </svg>
-          </button>
-        </Tooltip>
+        </div>
+        )}
 
         <div
           className="col-resize-handle"

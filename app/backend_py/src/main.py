@@ -18,6 +18,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from mangum import Mangum
 
 from app.backend_py.src.config import load as load_settings
+from app.backend_py.src.middleware.paygate import paygate
 from app.backend_py.src.middleware.readonly import readonly_guard
 from app.backend_py.src.middleware.v2_prefix import strip_v2_prefix
 from app.backend_py.src.routes import admin as admin_routes
@@ -29,6 +30,7 @@ from app.backend_py.src.routes import products as products_routes
 from app.backend_py.src.routes import projects as projects_routes
 from app.backend_py.src.routes import relations as relations_routes
 from app.backend_py.src.routes import search as search_routes
+from app.backend_py.src.routes import apikeys as apikeys_routes
 from app.backend_py.src.routes import subscription as subscription_routes
 from app.backend_py.src.routes import upload as upload_routes
 
@@ -63,6 +65,13 @@ def create_app() -> FastAPI:
     if settings.app_mode == "public":
         app.middleware("http")(readonly_guard)
 
+    # Per-query paygate: meters search + relations when an X-API-Key
+    # header is present; no header → free public path. Registered inner
+    # to strip_v2_prefix (below) so it reads the un-prefixed path and
+    # can bill only on a <400 response. Runs in every mode (it's keyed
+    # on the header, not APP_MODE).
+    app.middleware("http")(paygate)
+
     # /api/v2 prefix strip runs OUTERMOST (registered last) so the
     # path is already un-prefixed when the readonly guard checks it
     # against its /api/upload + /api/auth + /api/projects allow-list.
@@ -80,6 +89,7 @@ def create_app() -> FastAPI:
     app.include_router(auth_routes.router)
     app.include_router(upload_routes.router)
     app.include_router(subscription_routes.router)
+    app.include_router(apikeys_routes.router)
     app.include_router(admin_routes.router)
 
     return app

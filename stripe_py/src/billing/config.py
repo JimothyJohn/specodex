@@ -23,10 +23,20 @@ class Config:
     stripe_price_id: str
     users_table_name: str
     frontend_url: str
+    # Optional metered price for per-API-query charging. When unset, the
+    # per-query paygate is dormant: checkout adds no query line item and
+    # /usage/query reports nothing. Set STRIPE_QUERY_PRICE_ID to a
+    # metered price to switch it on. Keeping it optional means the
+    # existing token-only deploy keeps working untouched.
+    stripe_query_price_id: str | None = None
 
     @property
     def is_test_mode(self) -> bool:
         return self.stripe_secret_key.startswith("sk_test_")
+
+    @property
+    def per_query_billing_enabled(self) -> bool:
+        return bool(self.stripe_query_price_id)
 
 
 def _required(name: str) -> str:
@@ -43,6 +53,7 @@ def load_config() -> Config:
         stripe_price_id=_required("STRIPE_PRICE_ID"),
         users_table_name=os.environ.get("USERS_TABLE_NAME", "datasheetminer-users"),
         frontend_url=os.environ.get("FRONTEND_URL", "http://localhost:3000"),
+        stripe_query_price_id=os.environ.get("STRIPE_QUERY_PRICE_ID") or None,
     )
     if not config.is_test_mode:
         raise ConfigError(

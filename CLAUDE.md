@@ -26,6 +26,10 @@ Everything goes through `./Quickstart <command>`. It's a bash shim that delegate
                                   Writes <type>.py + <type>.md (reasoning doc
                                   with source citations).
     ./Quickstart price-enrich     Backfill MSRP on existing products
+    ./Quickstart price-book PB    Backfill MSRP in bulk from a public price book
+                                  (XLSX or PDF, path or URL). Dry-run first:
+                                  --manufacturer <substr> --dry-run prints the
+                                  join table. See todo/PRICING.md Phase 1.
     ./Quickstart ingest-report    Group ingest-log quality-fails by manufacturer
                                   for vendor outreach. --email-template emits
                                   a ready-to-send email body per manufacturer.
@@ -261,10 +265,15 @@ Each one was a bug where the docstring said one thing and the code did another. 
 | `specodex/spec_rules.py:validate_product` magnitude rules + identity check + duplicate pair | `test_spec_rules_property.py` | `test_spec_rules.py` |
 | `specodex/quality.py:score_product` + `filter_products` partition | `test_quality_property.py` | `test_quality.py` + `test_quality_boundary.py` |
 | `specodex/units.py:normalize_unit_value` (LLM-emitted value+unit canonicaliser) | `test_units_property.py` | `test_units.py` |
+| `specodex/ids.py:normalize_string` + `compute_product_id` (deterministic UUID5 generation) | `test_ids_property.py` | `test_ids.py` |
+| `specodex/placeholders.py:is_placeholder` (LLM "null"/"N/A" string filter) | `test_placeholders_property.py` | `test_placeholders.py` |
+| `specodex/pricing/extract.py:_parse_bare_decimal` + `_parse_money` + `_parse_json_loose` | `test_pricing_parsers_property.py` | `test_pricing.py` |
 
 The 2026-05-14 sprint closed out the four "untested adversarial surfaces" from the 2026-05-10 callout (`cli/processor.py`, `compat.py`, `spec_rules.py`, `quality.py`) via PRs #149, #185, #202, #203. None of the four runs surfaced new bugs — every Hypothesis search confirmed the contract the example tests had already pinned. The boring-good outcome.
 
 The 2026-05-25 round added `specodex/units.py:normalize_unit_value` and *did* surface a real bug: `_round_converted` raised `OverflowError` on ±inf and `ValueError` on NaN because `math.floor(math.log10(...))` can't convert non-finite floats to int. Multiplication overflow on finite inputs (e.g. `1e306 × 1e3 = inf`) hit the same path. The function sits between LLM JSON parsing and the `ValueUnit`/`MinMaxUnit` Pydantic validators (`specodex/models/common.py:314,362,365`), so a malformed Gemini payload with non-finite values would have taken the whole product row with it. Fix: short-circuit non-finite inputs in `_round_converted` before the `math.floor`.
+
+The 2026-05-26 round added `specodex/ids.py` (deterministic product-ID generation) — the only remaining `Optional[str]`-coercer surface in `specodex/` without a property-test companion after PR #242 covered `units.py`. No bugs surfaced; the documented sparsity rule, family-prefix safety constraint, and normalization-equivalence invariant all held under Hypothesis search.
 
 When the next round of property-test gaps comes up, add them to the list above; don't leave the section empty for long.
 
@@ -331,23 +340,29 @@ Two long-lived branches drive deploys:
 
 Default flow for non-routine work in an interactive session:
 
-1. Branch off `dev` (or `master` for hotfix-shaped work).
+1. Branch off `dev`. **Never** branch off `master` for routine work —
+   the hotfix-direct-to-master escape valve is retired (2026-05-24).
 2. Commit + push the feature branch.
-3. Open a **non-draft** PR. Title says what changed; body says why.
-   - Targeting `dev`: when CI passes, merge → dev auto-deploys to
-     staging → eyeball the staging CloudFront URL → open a follow-up
-     PR `dev` → `master` to ship to prod.
-   - Targeting `master` directly (small/obvious changes, hotfixes):
-     when CI passes, merge → staging deploys → prod waits on Nick's
-     environment-approval click.
-4. Watch CI. When all required checks pass and there are no
-   conflicts, **merge it** — don't wait for Nick to click approve
-   on the *PR* (the prod-environment click is a separate gate that
-   stays).
+3. Open a **non-draft** PR with `--base dev`. Title says what changed;
+   body says why.
+4. Watch CI. When all required checks pass and there are no conflicts,
+   **merge it into `dev`** — auto-deploys to staging. Don't wait for
+   Nick to click approve on the *PR*; the PR click is theater for
+   `dev`-targeted work.
+5. **Stop there.** Promoting `dev` → `master` (and therefore to prod)
+   is Nick's call, not yours. Do not open `dev` → `master` PRs and do
+   not push directly to `master` — that's the deliberate prod-release
+   step Nick handles by hand.
 
-Nick approves every clean PR; the PR click is theater. The PR exists
-for CI gating and as a paper trail, not as a review gate. The
-production-environment click is the real gate.
+The two gates that enforce this:
+- `environment: production` on the `deploy-prod` job lists JimothyJohn
+  as the only required reviewer. Prod deploys hang on his click.
+- This rule lives in CLAUDE.md so the workflow doesn't drift back to
+  "ship straight to master" because it's faster in the moment.
+
+Nick approves every clean PR into `dev`; the production-environment
+click on the master path is the real gate, and that one is exclusively
+his.
 
 **Exception — hard-to-reverse blast radius.** Keep the PR draft and
 hand back when the diff touches `app/infrastructure/**` (CDK),
@@ -424,8 +439,11 @@ explicitly named (see auto-memory `feedback_todo_longterm.md`).
 
 1. Pick a row from `todo/README.md`'s churn plan (the table at the
    bottom of the file) or scan the kanban at `docs/roadmap.html`.
-2. Branch off master as `auto/<area>-<short-slug>-<yyyymmdd>` (or
-   any descriptive name for human-driven work).
+2. Branch off dev as `auto/<area>-<short-slug>-<yyyymmdd>` (or
+   any descriptive name for human-driven work). Dev is the only
+   default base — see "Shipping a change" above; this line said
+   "master" until 2026-06-10 and the daily orchestrator was
+   dutifully opening master-based PRs because of it.
 3. Make the smallest correct change. Run `./Quickstart verify` or
    the relevant subset before committing.
 4. Push and open a PR. Default is non-draft when CI passes and the

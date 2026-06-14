@@ -169,14 +169,22 @@ def _extract_microdata(tree: HTMLParser) -> Optional[Decimal]:
 
 
 def _parse_bare_decimal(text: str) -> Optional[Decimal]:
-    """Parse ``"1234.00"`` or ``"1,234.00"`` — no currency symbol required."""
+    """Parse ``"1234.00"`` or ``"1,234.00"`` — no currency symbol required.
+
+    Non-finite values are rejected: ``Decimal("NaN")`` / ``Decimal("inf")``
+    parse fine but blow up the ``PRICE_MIN <= v`` band comparison with
+    ``InvalidOperation`` downstream.
+    """
     cleaned = (text or "").strip().replace(",", "").lstrip("$").strip()
     if not cleaned:
         return None
     try:
-        return Decimal(cleaned)
+        val = Decimal(cleaned)
     except InvalidOperation:
         return None
+    if not val.is_finite():
+        return None
+    return val
 
 
 # ── Regex fallback (per-domain nudges) ──────────────────────────────
@@ -364,3 +372,87 @@ def extract_price(
 def classify_url(url: str) -> Optional[SourceType]:
     """Map URL → ``source_type``. Convenience for callers."""
     return source_type_for_domain(urlparse(url).netloc)
+
+
+# ── Availability (schema.org ItemAvailability) ──────────────────────
+#
+# Distributor JSON-LD offers carry an ``availability`` field whose value
+# is a schema.org ItemAvailability URL (e.g. ``https://schema.org/InStock``).
+# This is a per-seller, point-in-time stock snapshot — see the
+# ``availability`` field docstring on ``ProductBase``. We extract it from
+# the same validated offer the price comes from, with the same SKU guard.
+
+# schema.org token (lowercased final path segment) → our enum value.
+_AVAILABILITY_MAP: dict[str, str] = {
+    "instock": "in_stock",
+    "instoreonly": "in_stock",
+    "onlineonly": "in_stock",
+    "backorder": "back_order",
+    "outofstock": "out_of_stock",
+    "soldout": "out_of_stock",
+    "preorder": "pre_order",
+    "presale": "pre_order",
+    "limitedavailability": "limited",
+    "discontinued": "discontinued",
+}
+
+AvailabilityStatus = Literal[
+    "in_stock",
+    "back_order",
+    "out_of_stock",
+    "pre_order",
+    "limited",
+    "discontinued",
+]
+
+
+def _normalize_availability(raw: Any) -> Optional[str]:
+    """schema.org availability value → our enum, or None if unrecognized."""
+    if not raw:
+        return None
+    token = str(raw).rstrip("/").rsplit("/", 1)[-1].strip().lower()
+    return _AVAILABILITY_MAP.get(token)
+
+
+def extract_availability(
+    html: str, url: str, part_number: str = ""
+) -> Optional[AvailabilityStatus]:
+    """Extract schema.org stock availability from a product page's JSON-LD.
+
+    Returns one of the ``AvailabilityStatus`` values or None. Applies the
+    same SKU guard as price extraction so a redirect-to-home page can't
+    leak an unrelated product's availability. When a page carries several
+    matching offers with different statuses, the first recognized one
+    wins (single-product pages don't realistically disagree with
+    themselves).
+    """
+    if not html:
+        return None
+    tree = HTMLParser(html)
+    for node in tree.css('script[type="application/ld+json"]'):
+        data = _parse_json_loose(node.text() or "")
+        if data is None:
+            continue
+        nodes: List[dict] = []
+        _walk_jsonld(data, nodes)
+        for d in nodes:
+            if d.get("@type") not in ("Product", "IndividualProduct", "ProductModel"):
+                continue
+            sku_candidates = (d.get("sku"), d.get("mpn"), d.get("productID"))
+            if (
+                part_number
+                and any(sku_candidates)
+                and not any(_sku_matches(s, part_number) for s in sku_candidates)
+            ):
+                continue
+            offers = d.get("offers")
+            if not offers:
+                continue
+            offers_iter = offers if isinstance(offers, list) else [offers]
+            for offer in offers_iter:
+                if not isinstance(offer, dict):
+                    continue
+                status = _normalize_availability(offer.get("availability"))
+                if status is not None:
+                    return status  # type: ignore[return-value]
+    return None

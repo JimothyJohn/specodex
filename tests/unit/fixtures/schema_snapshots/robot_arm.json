@@ -1,4 +1,7 @@
 {
+  "availability": null,
+  "availability_fetched_at": null,
+  "availability_source_url": null,
   "cleanroom_class": "ISO Class 5",
   "controller": null,
   "datasheet_url": null,

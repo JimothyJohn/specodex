@@ -128,6 +128,29 @@ def test_extract_empty_html_returns_none():
     assert extract_price("", "https://www.galco.com/x", "Acme", "X100") is None
 
 
+class TestParseBareDecimalNonFinite:
+    """Regression (2026-06-11): Decimal's constructor accepts "NaN"/"inf",
+    so _parse_bare_decimal returned non-finite Decimals and the band
+    comparison (`PRICE_MIN <= v`) raised InvalidOperation. Found by
+    test_pricebook_property.py; a page with itemprop price content="NaN"
+    crashed extract_price the same way. Non-finite → None, full stop."""
+
+    @pytest.mark.parametrize(
+        "raw", ["NaN", "nan", "-NaN", "sNaN", "inf", "Infinity", "-Infinity", "$NaN"]
+    )
+    def test_non_finite_returns_none(self, raw):
+        from specodex.pricing.extract import _parse_bare_decimal
+
+        assert _parse_bare_decimal(raw) is None
+
+    def test_microdata_nan_content_does_not_raise(self):
+        html = (
+            '<html><head><meta itemprop="price" content="NaN"></head>'
+            "<body>no price here</body></html>"
+        )
+        assert extract_price(html, "https://unknown.example/x", "Acme", "X1") is None
+
+
 def test_extract_no_price_signals_returns_none():
     html = "<html><body><h1>Page with no price anywhere</h1></body></html>"
     assert extract_price(html, "https://www.galco.com/x", "Acme", "X100") is None
@@ -184,21 +207,195 @@ def test_resolver_mitsubishi_oem_store():
     assert any(_host_matches(c.url, "shop1.us.mitsubishielectric.com") for c in oems)
 
 
-def test_resolver_ordering_oem_before_distributor_before_aggregator():
+def test_resolver_ordering_oem_before_distributor():
     cands = resolve_candidates("Oriental Motor", "BLV510N10F", use_serp=False)
     tiers = [c.source_type for c in cands]
     # All OEM indices come before any distributor index
     oem_idx = [i for i, t in enumerate(tiers) if t == "oem"]
     dist_idx = [i for i, t in enumerate(tiers) if t == "distributor"]
-    agg_idx = [i for i, t in enumerate(tiers) if t == "aggregator"]
     assert max(oem_idx) < min(dist_idx)
-    assert max(dist_idx) < min(agg_idx)
+
+
+def test_resolver_no_robots_disallowed_search_candidates():
+    """Regression (2026-06-11): Wolf Automation, Motion Industries, Allied,
+    Radwell, and PLC Center disallow their search endpoints in robots.txt,
+    so every candidate we generated for them was dead weight on every run.
+    The domains stay in the classification allowlists (SERP-organic product
+    pages may be robots-allowed); only the direct search URLs are retired."""
+    cands = resolve_candidates("Acme", "X100", use_serp=False)
+    dead_search_domains = (
+        "wolfautomation.com",
+        "motionindustries.com",
+        "alliedelec.com",
+        "radwell.com",
+        "plccenter.com",
+    )
+    for c in cands:
+        for domain in dead_search_domains:
+            assert not _host_matches(c.url, domain), (
+                f"robots-disallowed search candidate resurfaced: {c.url}"
+            )
+    # No direct aggregator-tier candidates remain at all.
+    assert not any(c.source_type == "aggregator" for c in cands)
+    # The classification allowlist is untouched.
+    assert source_type_for_domain("www.radwell.com") == "aggregator"
+    assert source_type_for_domain("www.wolfautomation.com") == "distributor"
 
 
 def test_resolver_dedupes_by_url():
     cands = resolve_candidates("Acme", "X100", use_serp=False)
     urls = [c.url for c in cands]
     assert len(urls) == len(set(urls))
+
+
+# ── fetch: redirect guards ─────────────────────────────────────────
+
+
+def _mock_fetcher(tmp_path: Path, handler) -> PriceFetcher:
+    import httpx
+
+    fetcher = PriceFetcher(cache_dir=tmp_path, rate_limit_s=0.0, allow_playwright=False)
+    fetcher._client.close()
+    fetcher._client = httpx.Client(
+        transport=httpx.MockTransport(handler), follow_redirects=True
+    )
+    return fetcher
+
+
+@pytest.fixture()
+def _skip_ssrf_dns(monkeypatch):
+    """validate_url does live DNS; mock-transport hosts don't resolve."""
+    import specodex.url_safety
+
+    monkeypatch.setattr(specodex.url_safety, "validate_url", lambda url: None)
+
+
+@pytest.mark.usefixtures("_skip_ssrf_dns")
+def test_fetch_redirect_to_parent_is_a_miss(tmp_path: Path):
+    """Regression (2026-06-12): bodine-electric.com 302s unknown product
+    slugs to the parent category (/products/n4603 → /products/), which
+    200s with other products' prices — the body fallback would extract
+    a wrong price. Parent-prefix landings must be treated as a miss."""
+    import httpx
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/robots.txt":
+            return httpx.Response(404)
+        if request.url.path == "/products/n4603":
+            return httpx.Response(302, headers={"location": "/products/"})
+        return httpx.Response(200, text="<html><body>$999.00</body></html>")
+
+    fetcher = _mock_fetcher(tmp_path, handler)
+    assert fetcher.fetch("https://store.example/products/n4603") is None
+
+
+@pytest.mark.usefixtures("_skip_ssrf_dns")
+def test_fetch_slash_append_redirect_is_not_a_miss(tmp_path: Path):
+    """The canonical trailing-slash 301 (electromate.com pattern) must
+    NOT trip the parent guard — the slashed URL is the same resource."""
+    import httpx
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/robots.txt":
+            return httpx.Response(404)
+        if request.url.path == "/dpranir-c100a400":
+            return httpx.Response(301, headers={"location": "/dpranir-c100a400/"})
+        return httpx.Response(200, text="<html><body>price $3,130.00</body></html>")
+
+    fetcher = _mock_fetcher(tmp_path, handler)
+    result = fetcher.fetch("https://store.example/dpranir-c100a400")
+    assert result is not None
+    assert "$3,130.00" in result.html
+
+
+@pytest.mark.usefixtures("_skip_ssrf_dns")
+def test_fetch_429_retries_until_success(tmp_path: Path, monkeypatch):
+    """Regression (2026-06-12): a single 429 retry wasn't enough — the
+    Mitsubishi store keeps throttling for a while, and giving up records
+    a fake miss. The fetcher now retries up to 3 times per Retry-After."""
+    import httpx
+
+    import specodex.pricing.fetch as fetch_mod
+
+    monkeypatch.setattr(fetch_mod.time, "sleep", lambda s: None)
+    calls = {"n": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/robots.txt":
+            return httpx.Response(404)
+        calls["n"] += 1
+        if calls["n"] <= 2:
+            return httpx.Response(429, headers={"Retry-After": "1"})
+        return httpx.Response(200, text="<html><body>price $500.00</body></html>")
+
+    fetcher = _mock_fetcher(tmp_path, handler)
+    result = fetcher.fetch("https://store.example/products/x100")
+    assert result is not None
+    assert "$500.00" in result.html
+    assert calls["n"] == 3
+
+
+@pytest.mark.usefixtures("_skip_ssrf_dns")
+def test_fetch_circuit_breaks_on_sustained_429(tmp_path: Path, monkeypatch):
+    """Regression (2026-06-12): a hard-blocked store (Mitsubishi) 429'd
+    1,816 times over a 14-hour run, ~90s per product, 0 hits. After N
+    consecutive 429s the fetcher must abandon the domain and stop
+    hitting the network for it."""
+    import httpx
+
+    import specodex.pricing.fetch as fetch_mod
+
+    monkeypatch.setattr(fetch_mod.time, "sleep", lambda s: None)
+    calls = {"n": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/robots.txt":
+            return httpx.Response(404)
+        calls["n"] += 1
+        return httpx.Response(429, headers={"Retry-After": "1"})
+
+    fetcher = _mock_fetcher(tmp_path, handler)
+    fetcher._max_consecutive_429 = 3
+
+    # Each fetch exhausts its 3 inner retries (4 GETs) and counts one
+    # toward the breaker. After 3 such products the domain trips.
+    for i in range(3):
+        assert fetcher.fetch(f"https://blocked.example/p{i}") is None
+    assert "blocked.example" in fetcher._blocked_domains
+
+    calls_before = calls["n"]
+    # Subsequent fetches short-circuit with no network at all.
+    assert fetcher.fetch("https://blocked.example/p99") is None
+    assert calls["n"] == calls_before
+
+
+@pytest.mark.usefixtures("_skip_ssrf_dns")
+def test_fetch_429_streak_resets_on_success(tmp_path: Path, monkeypatch):
+    """A success between 429s must reset the streak — only *consecutive*
+    429s indicate a block, not intermittent throttling."""
+    import httpx
+
+    import specodex.pricing.fetch as fetch_mod
+
+    monkeypatch.setattr(fetch_mod.time, "sleep", lambda s: None)
+    state = {"throttle": True}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/robots.txt":
+            return httpx.Response(404)
+        if state["throttle"]:
+            return httpx.Response(429, headers={"Retry-After": "1"})
+        return httpx.Response(200, text="<html><body>$50.00</body></html>")
+
+    fetcher = _mock_fetcher(tmp_path, handler)
+    fetcher._max_consecutive_429 = 3
+
+    fetcher.fetch("https://store.example/p0")  # one 429 product
+    assert fetcher._consecutive_429.get("store.example") == 1
+    state["throttle"] = False
+    fetcher.fetch("https://store.example/p1")  # success resets
+    assert "store.example" not in fetcher._consecutive_429
+    assert "store.example" not in fetcher._blocked_domains
 
 
 # ── fetch: cache read/write ────────────────────────────────────────

@@ -58,6 +58,75 @@ beforeEach(() => {
   jest.clearAllMocks();
 });
 
+describe('GET /api/v1/relations/actuators', () => {
+  const la = (id: string, over: Record<string, unknown>) => ({
+    product_id: id,
+    product_type: 'linear_actuator',
+    stroke: { value: 300, unit: 'mm' },
+    max_push_force: { value: 200, unit: 'N' },
+    max_linear_speed: { value: 500, unit: 'mm/s' },
+    ...over,
+  });
+
+  it('returns the full catalogue when no floors are set (blank = no constraint)', async () => {
+    mockList([la('a-1', {}), la('a-2', { stroke: null })]);
+    const res = await request(app).get('/api/v1/relations/actuators');
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.count).toBe(2);
+    expect(res.body.total).toBe(2);
+  });
+
+  it('applies each floor independently and reports total alongside count', async () => {
+    mockList([
+      la('long-strong', {}),
+      la('short', { stroke: { value: 100, unit: 'mm' } }),
+      la('weak', { max_push_force: { value: 50, unit: 'N' } }),
+    ]);
+    const res = await request(app).get(
+      '/api/v1/relations/actuators?min_stroke_mm=200&min_peak_force_n=175',
+    );
+    expect(res.status).toBe(200);
+    expect(res.body.count).toBe(1);
+    expect(res.body.total).toBe(3);
+    expect(res.body.data[0].product_id).toBe('long-strong');
+  });
+
+  it('excludes rows missing the field or in a non-canonical unit when a floor is set', async () => {
+    mockList([
+      la('no-stroke', { stroke: null }),
+      la('inches', { stroke: { value: 12, unit: 'in' } }),
+      la('ok', {}),
+    ]);
+    const res = await request(app).get('/api/v1/relations/actuators?min_stroke_mm=1');
+    expect(res.status).toBe(200);
+    expect(res.body.count).toBe(1);
+    expect(res.body.data[0].product_id).toBe('ok');
+  });
+
+  it('accepts but does not filter on min_duty_cycle and orientation', async () => {
+    mockList([la('a-1', {})]);
+    const res = await request(app).get(
+      '/api/v1/relations/actuators?min_duty_cycle=0.5&orientation=vertical',
+    );
+    expect(res.status).toBe(200);
+    expect(res.body.count).toBe(1);
+  });
+
+  it('rejects negative floors, out-of-range duty cycle, and bad orientation', async () => {
+    for (const qs of [
+      'min_stroke_mm=-1',
+      'min_peak_force_n=abc',
+      'min_duty_cycle=1.5',
+      'orientation=diagonal',
+    ]) {
+      const res = await request(app).get(`/api/v1/relations/actuators?${qs}`);
+      expect(res.status).toBe(400);
+      expect(res.body.success).toBe(false);
+    }
+  });
+});
+
 describe('GET /api/v1/relations/motors-for-actuator', () => {
   it('returns 400 when id is missing', async () => {
     const res = await request(app).get('/api/v1/relations/motors-for-actuator?type=linear_actuator');
@@ -176,6 +245,38 @@ describe('Predicates (port of specodex/relations.py)', () => {
     expect(
       _predicates.shaftCompatible({ value: 14.0, unit: 'mm' }, { value: 15.0, unit: 'mm' }),
     ).toBe(false);
+  });
+
+  it('meetsFloor requires presence, canonical unit, and >= floor', () => {
+    expect(_predicates.meetsFloor({ value: 200, unit: 'mm' }, 200, 'mm')).toBe(true);
+    expect(_predicates.meetsFloor({ value: 199.9, unit: 'mm' }, 200, 'mm')).toBe(false);
+    expect(_predicates.meetsFloor({ value: 12, unit: 'in' }, 1, 'mm')).toBe(false);
+    expect(_predicates.meetsFloor(null, 0, 'mm')).toBe(false);
+    expect(_predicates.meetsFloor({ value: null, unit: 'mm' }, 0, 'mm')).toBe(false);
+  });
+
+  it('compatibleActuators mirrors the Python floor semantics', () => {
+    const rows = [
+      {
+        product_id: 'full',
+        product_type: 'linear_actuator' as const,
+        stroke: { value: 300, unit: 'mm' },
+        max_push_force: { value: 200, unit: 'N' },
+        max_linear_speed: { value: 500, unit: 'mm/s' },
+      },
+      {
+        product_id: 'sparse',
+        product_type: 'linear_actuator' as const,
+      },
+    ];
+    // No floors → everything passes, sparse rows included.
+    expect(_predicates.compatibleActuators(rows, {})).toHaveLength(2);
+    // Any set floor excludes the sparse row.
+    expect(
+      _predicates.compatibleActuators(rows, { minPeakVelocityMmS: 100 }).map(r => r.product_id),
+    ).toEqual(['full']);
+    // Floor above the rating excludes the full row too.
+    expect(_predicates.compatibleActuators(rows, { minPeakForceN: 201 })).toHaveLength(0);
   });
 
   it('encoderIntersect requires motor protocol in drive list', () => {

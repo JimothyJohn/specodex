@@ -140,7 +140,7 @@
     "/api/products": {
       "get": {
         "summary": "List products",
-        "description": "List all products, optionally filtered by type with a result limit.",
+        "description": "List all products, optionally filtered by type with a result limit. Paginated: when more rows exist the response carries an opaque `cursor` to pass back as ?cursor=; `cursor: null` means the listing is exhausted.",
         "operationId": "listProducts",
         "tags": ["Products"],
         "parameters": [
@@ -153,13 +153,19 @@
           {
             "name": "limit",
             "in": "query",
-            "description": "Maximum number of results",
+            "description": "Maximum number of results per page (default 2000)",
             "schema": { "type": "integer" }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "Opaque resume token from a prior response's `cursor` field. Invalid or tampered cursors return 400.",
+            "schema": { "type": "string" }
           }
         ],
         "responses": {
           "200": {
-            "description": "Product list",
+            "description": "Product list page",
             "content": {
               "application/json": {
                 "schema": {
@@ -170,7 +176,23 @@
                       "type": "array",
                       "items": { "$ref": "#/components/schemas/Product" }
                     },
-                    "count": { "type": "integer" }
+                    "count": { "type": "integer" },
+                    "truncated": { "type": "boolean", "description": "True when more pages exist" },
+                    "cursor": { "type": "string", "nullable": true, "description": "Resume token for the next page; null when exhausted" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid cursor",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "error": { "type": "string" }
                   }
                 }
               }

@@ -33,9 +33,8 @@ from decimal import Decimal
 from pathlib import Path
 from typing import List, Optional, Type
 
+from specodex.config import SCHEMA_CHOICES
 from specodex.db.dynamo import DynamoDBClient
-from specodex.models.drive import Drive
-from specodex.models.motor import Motor
 from specodex.models.product import ProductBase
 from specodex.pricing.extract import classify_url, extract_price
 from specodex.pricing.fetch import PriceFetcher
@@ -44,22 +43,33 @@ from specodex.pricing.resolver import (
     resolve_candidates,
     serp_candidates,
 )
+from specodex.pricing.shopping import shopping_price
 
 logger = logging.getLogger(__name__)
 
 ROOT = Path(__file__).resolve().parent.parent
 CACHE_DIR = ROOT / "outputs" / "price_cache"
 
-PRODUCT_CLASSES: dict[str, Type[ProductBase]] = {
-    "drive": Drive,
-    "motor": Motor,
-}
+# Every concrete product model is enrichable — auto-discovered, same
+# registry the extraction pipeline uses (was a hand-list of drive+motor,
+# which left gearhead/robot_arm/electric_cylinder/linear_actuator at 0%).
+PRODUCT_CLASSES: dict[str, Type[ProductBase]] = dict(SCHEMA_CHOICES)
+
+# Part numbers with option placeholders ("21G11*F960JNONNNNN") are
+# catalog templates, not orderable SKUs — no store will ever match them.
+_TEMPLATED_PN_CHARS = frozenset("*?#")
+
+
+def is_templated_part_number(pn: str) -> bool:
+    """True when the part number is a catalog option-template, not a SKU."""
+    return any(ch in _TEMPLATED_PN_CHARS for ch in pn)
 
 
 @dataclass
 class RunStats:
     scanned: int = 0
     skipped_no_pn: int = 0
+    skipped_templated_pn: int = 0
     skipped_has_price: int = 0
     resolved: int = 0
     fetched: int = 0
@@ -67,13 +77,17 @@ class RunStats:
     written: int = 0
     llm_calls: int = 0
     serp_calls: int = 0
+    shopping_calls: int = 0
+    shopping_hits: int = 0
     failures: list[str] = field(default_factory=list)
 
     def summary(self) -> str:
         return (
             f"scanned={self.scanned} priced_already={self.skipped_has_price} "
-            f"no_pn={self.skipped_no_pn} extracted={self.extracted} "
+            f"no_pn={self.skipped_no_pn} templated_pn={self.skipped_templated_pn} "
+            f"extracted={self.extracted} "
             f"written={self.written} llm={self.llm_calls} serp={self.serp_calls} "
+            f"shopping={self.shopping_hits}/{self.shopping_calls} "
             f"failures={len(self.failures)}"
         )
 
@@ -88,13 +102,28 @@ def _iter_candidates(
     use_serp: bool,
     serp_budget_remaining: int,
     stats: RunStats,
+    tiers: Optional[frozenset[str]] = None,
 ) -> List[Candidate]:
     """Resolve candidate URLs, deferring SERP queries until after the
     deterministic tiers so we don't burn SERP budget on products that the
     distributor URLs already cover.
+
+    ``tiers`` restricts which source tiers produce candidates (e.g.
+    ``{"oem"}`` for a vendor whose official store answers definitively —
+    the 2026-06-12 Mitsubishi pilot showed distributor fallbacks never
+    rescue an OEM-store miss but cost ~40s per product walking dead
+    candidates). ``None`` means all tiers.
     """
     direct = resolve_candidates(manufacturer, part_number, use_serp=False)
+    if tiers is not None:
+        direct = [c for c in direct if c.source_type in tiers]
     if not use_serp or serp_budget_remaining <= 0:
+        return direct
+    if tiers is not None and "serp" not in tiers:
+        return direct
+    if not os.environ.get("SERPER_API_KEY"):
+        # serp_candidates no-ops without a key — don't burn the budget
+        # counter on queries that never happened.
         return direct
     stats.serp_calls += 1
     serp = serp_candidates(manufacturer, part_number)
@@ -168,12 +197,22 @@ def _process_product(
     llm_budget: int,
     serp_budget: int,
     stats: RunStats,
+    tiers: Optional[frozenset[str]] = None,
+    shopping_budget: int = 0,
 ) -> None:
     pn = product.part_number
     if not pn:
         stats.skipped_no_pn += 1
         logger.info(
             "skip %s/%s — no part_number", product.manufacturer, product.product_name
+        )
+        return
+    if is_templated_part_number(pn):
+        stats.skipped_templated_pn += 1
+        logger.info(
+            "skip %s/%s — templated part number (option placeholder)",
+            product.manufacturer,
+            pn,
         )
         return
 
@@ -183,20 +222,41 @@ def _process_product(
         use_serp=use_serp,
         serp_budget_remaining=serp_budget - stats.serp_calls,
         stats=stats,
+        tiers=tiers,
     )
-    if not candidates:
+    if not candidates and shopping_budget <= 0:
         stats.failures.append(f"no-candidates:{product.manufacturer}:{pn}")
         return
     stats.resolved += 1
 
-    found = _try_candidates(
-        product=product,
-        fetcher=fetcher,
-        candidates=candidates,
-        allow_llm=allow_llm,
-        llm_budget_remaining=llm_budget,
-        stats=stats,
+    found = (
+        _try_candidates(
+            product=product,
+            fetcher=fetcher,
+            candidates=candidates,
+            allow_llm=allow_llm,
+            llm_budget_remaining=llm_budget,
+            stats=stats,
+        )
+        if candidates
+        else None
     )
+    if found is None and stats.shopping_calls < shopping_budget:
+        # Shopping tier: one structured query, no fetching. Street
+        # price, median over trusted offers (specodex.pricing.shopping).
+        stats.shopping_calls += 1
+        shopped = shopping_price(product.manufacturer, pn)
+        if shopped is not None:
+            stats.shopping_hits += 1
+            found = (
+                shopped.price_usd,
+                Candidate(
+                    url=shopped.source_url,
+                    source_type="serp",
+                    source_name=f"Google Shopping ({shopped.source_name})",
+                ),
+                "shopping",
+            )
     if found is None:
         logger.info(
             "miss %s / %s (%s candidates tried)",
@@ -248,6 +308,9 @@ def run(
     allow_llm: bool,
     max_llm_calls: int,
     max_serp_calls: int,
+    tiers: Optional[frozenset[str]] = None,
+    max_shopping_calls: int = 0,
+    rate_limit_s: float = 1.0,
 ) -> int:
     model_cls = PRODUCT_CLASSES.get(product_type)
     if model_cls is None:
@@ -287,7 +350,7 @@ def run(
     )
 
     started = time.monotonic()
-    with PriceFetcher(cache_dir=CACHE_DIR) as fetcher:
+    with PriceFetcher(cache_dir=CACHE_DIR, rate_limit_s=rate_limit_s) as fetcher:
         for p in filtered:
             _process_product(
                 product=p,
@@ -299,6 +362,8 @@ def run(
                 llm_budget=max_llm_calls,
                 serp_budget=max_serp_calls,
                 stats=stats,
+                tiers=tiers,
+                shopping_budget=max_shopping_calls,
             )
 
     elapsed = time.monotonic() - started
@@ -362,8 +427,45 @@ def main() -> None:
         default=100,
         help="Hard cap on Serper SERP queries per run (default 100)",
     )
+    parser.add_argument(
+        "--rate-limit",
+        type=float,
+        default=1.0,
+        help=(
+            "Seconds between requests per domain (default 1.0). Raise it "
+            "when a store 429s — shop1.us.mitsubishielectric.com needs "
+            "~2.5s (observed 2026-06-12)."
+        ),
+    )
+    parser.add_argument(
+        "--max-shopping-calls",
+        type=int,
+        default=0,
+        help=(
+            "Hard cap on Serper /shopping queries per run (default 0 = "
+            "disabled). Tried only after all direct candidates miss. "
+            "Costs real money per query; returns a street-price median "
+            "over trusted offers."
+        ),
+    )
+    parser.add_argument(
+        "--tiers",
+        default=None,
+        help=(
+            "Comma-separated source tiers to try (oem,distributor,serp). "
+            "Default: all. Use --tiers oem for vendors whose official "
+            "store answers definitively — misses stop ~20x faster."
+        ),
+    )
 
     args = parser.parse_args()
+
+    tiers: Optional[frozenset[str]] = None
+    if args.tiers:
+        tiers = frozenset(t.strip() for t in args.tiers.split(",") if t.strip())
+        valid = {"oem", "distributor", "aggregator", "serp"}
+        if not tiers <= valid:
+            parser.error(f"unknown tier(s): {sorted(tiers - valid)}")
 
     rc = run(
         product_type=args.product_type,
@@ -374,6 +476,9 @@ def main() -> None:
         allow_llm=not args.no_llm,
         max_llm_calls=args.max_llm_calls,
         max_serp_calls=args.max_serp_calls,
+        tiers=tiers,
+        max_shopping_calls=args.max_shopping_calls,
+        rate_limit_s=args.rate_limit,
     )
     sys.exit(rc)
 

@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, BeforeValidator, Field
@@ -94,6 +94,33 @@ class ProductBase(BaseModel):
     )
     msrp_fetched_at: Optional[str] = Field(
         None, description="ISO 8601 timestamp when MSRP was last fetched."
+    )
+    availability: Optional[
+        Literal[
+            "in_stock",
+            "back_order",
+            "out_of_stock",
+            "pre_order",
+            "limited",
+            "discontinued",
+        ]
+    ] = Field(
+        None,
+        description=(
+            "Stock availability observed at a distributor, mapped from "
+            "schema.org ItemAvailability. This is a per-seller, "
+            "point-in-time snapshot — NOT an intrinsic product lead time "
+            "(no honest public numeric lead time exists per part). Read it "
+            "with availability_source_url + availability_fetched_at for "
+            "provenance; it goes stale. Populated by availability-enrich."
+        ),
+    )
+    availability_source_url: Optional[str] = Field(
+        None,
+        description="URL the availability status was scraped from.",
+    )
+    availability_fetched_at: Optional[str] = Field(
+        None, description="ISO 8601 timestamp when availability was last fetched."
     )
     warranty: Optional[ValueUnit] = None
     lead_time: Optional[ValueUnit] = Field(

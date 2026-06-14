@@ -10,7 +10,7 @@ import { FilterCriterion, SortConfig, applyFilters, sortProducts, getAttributesF
 // Column order is authored in types/columnOrder.ts — edit that file to
 // change what columns appear and in what order.
 import { orderColumnAttributes, computeVisibleColumnAttributes } from '../types/columnOrder';
-import { formatValue, computeAutoColumnWidths } from '../utils/formatting';
+import { formatValue, formatNumber, formatRange, computeAutoColumnWidths } from '../utils/formatting';
 import Tooltip from './ui/Tooltip';
 import { displayUnit, convertValueUnit, convertMinMaxUnit } from '../utils/unitConversion';
 import { numericFromValue } from '../utils/filterValues';
@@ -23,12 +23,26 @@ import {
 import ColumnHeader from './ColumnHeader';
 import ProductDetailModal from './ProductDetailModal';
 import AttributeSelector from './AttributeSelector';
-import CatalogStatRow from './CatalogStatRow';
 import Dropdown from './Dropdown';
 import FeedbackModal from './ui/FeedbackModal';
 import type { FeedbackCategory } from '../utils/feedback';
 import { ADJACENT_TYPES, BuildSlot, check as compatCheck } from '../utils/compat';
-import { rpmToLinearSpeed, torqueToThrust } from '../utils/linearMode';
+
+// Human labels for the `availability` enum (the "Lead Time" column).
+// The raw values are schema.org ItemAvailability tokens; the table
+// shouldn't show `in_stock` to a buyer. Unknown / null values fall
+// through to an empty cell (rendered as N/A by the table).
+const AVAILABILITY_LABELS: Record<string, string> = {
+  in_stock: 'In Stock',
+  back_order: 'Back-order',
+  out_of_stock: 'Out of Stock',
+  pre_order: 'Pre-order',
+  limited: 'Limited',
+  discontinued: 'Discontinued',
+};
+
+const humanizeAvailability = (value: unknown): string =>
+  typeof value === 'string' ? AVAILABILITY_LABELS[value] ?? value : '';
 
 /**
  * The state slices ProductList resets when the user picks a new product
@@ -38,22 +52,17 @@ import { rpmToLinearSpeed, torqueToThrust } from '../utils/linearMode';
  *       open across the type switch)
  *   L2: filters reset to the new type's curated defaults
  *   L3: sorts cleared
- *   plus appType/linearTravel/loadMass return to their rotary defaults
- *   so a chain of "linear motor / 50 mm travel" doesn't follow the user
- *   into a drive screen.
  *
- * `currentPage` is intentionally not in this bundle — the existing
- * `useEffect` that watches `filters, sorts, itemsPerPage` resets it to
- * 1 transitively when this bundle is applied.
+ * The infinite-scroll window (`revealedRows`) is intentionally not in
+ * this bundle — the existing `useEffect` that watches
+ * `filters, sorts, itemsPerPage, rowDensity, productType` resets it
+ * transitively when this bundle is applied.
  */
 export interface ProductListResetState {
   filters: FilterCriterion[];
   sorts: SortConfig[];
   selectedProduct: Product | null;
   clickPosition: { x: number; y: number } | null;
-  appType: 'rotary' | 'linear' | 'z-axis';
-  linearTravel: number;
-  loadMass: number;
 }
 
 export function defaultStateForType(type: ProductType): ProductListResetState {
@@ -62,9 +71,6 @@ export function defaultStateForType(type: ProductType): ProductListResetState {
     sorts: [],
     selectedProduct: null,
     clickPosition: null,
-    appType: 'rotary',
-    linearTravel: 0,
-    loadMass: 0,
   };
 }
 
@@ -82,17 +88,14 @@ export default function ProductList() {
   // or "filtered to zero" (no_match) without splitting into two modals.
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [feedbackCategory, setFeedbackCategory] = useState<FeedbackCategory>('no_match');
-  // Page size is density-driven. Cozy paginates 25/page (calm scan);
-  // compact uses infinite scroll with a 50-row initial window that
-  // grows as the user nears the bottom. The "ask the user via a picker"
-  // option was rejected in scoping — density already encodes the
-  // viewing intent.
+  // Both densities use infinite scroll; the reveal step is
+  // density-driven (compact rows are shorter, so a step has to be
+  // bigger to outrun the viewport). The discrete cozy pager retired
+  // 2026-06: one scroll model, sticky headers, no page buttons.
   const itemsPerPage = rowDensity === 'compact' ? 50 : 25;
-  const [currentPage, setCurrentPage] = useState<number>(1);
-  // Infinite-scroll window for compact. Counts rows revealed past the
-  // initial 50; reset whenever the data set or density changes. Cozy
-  // ignores this state entirely.
-  const [compactRevealed, setCompactRevealed] = useState<number>(0);
+  // Infinite-scroll window: rows revealed past the initial step.
+  // Reset whenever the data set, density, or product type changes.
+  const [revealedRows, setRevealedRows] = useState<number>(0);
   // Column visibility model — two sets, because default visibility
   // depends on the attribute's *kind*:
   //
@@ -153,9 +156,6 @@ export default function ProductList() {
   // stay individually restorable.
   const MAX_VISIBLE_COLUMNS = rowDensity === 'compact' ? 16 : 10;
   const [addColumnBtnRef, setAddColumnBtnRef] = useState<HTMLButtonElement | null>(null);
-  const [appType, setAppType] = useState<'rotary' | 'linear' | 'z-axis'>('rotary');
-  const [linearTravel, setLinearTravel] = useState<number>(0); // mm/rev
-  const [loadMass, setLoadMass] = useState<number>(0); // kg (for Z-axis gravity calc)
 
   // Floor widths (px) for the part-number column. Compact tightens
   // further than cozy on the assumption that part numbers will truncate
@@ -183,6 +183,8 @@ export default function ProductList() {
         'product_type',
         'msrp_source_url',
         'msrp_fetched_at',
+        'availability_source_url',
+        'availability_fetched_at',
       ]),
     [],
   );
@@ -335,12 +337,9 @@ export default function ProductList() {
     setSorts(reset.sorts);
     setSelectedProduct(reset.selectedProduct);
     setClickPosition(reset.clickPosition);
-    setAppType(reset.appType);
-    setLinearTravel(reset.linearTravel);
-    setLoadMass(reset.loadMass);
   };
 
-  // Torque/speed keys — used for linear-mode display conversions.
+  // Torque/speed keys — driven by the per-row gear-ratio cascade below.
   const TORQUE_KEYS = ['rated_torque', 'peak_torque'];
   const SPEED_KEYS = ['rated_speed'];
 
@@ -372,11 +371,6 @@ export default function ProductList() {
     return value;
   };
 
-  // Linear motion conversion helpers — see utils/linearMode.ts for the
-  // extracted RPM→mm/s and Nm→N transforms.
-  const isLinearMode = (appType === 'linear' || appType === 'z-axis') && linearTravel > 0;
-  const GRAVITY = 9.81; // m/s²
-
   // Build-aware compat narrowing. When the user has anchored part of their
   // motion-system build and the active type is adjacent to one of those
   // anchors, drop products that strict-fail compat. Soft-partials (missing
@@ -406,24 +400,6 @@ export default function ProductList() {
 
   const compatHiddenCount = compatFilterActive ? products.length - compatNarrowed.length : 0;
 
-  // Linear-mode transform applied *before* filter/sort so the filter
-  // pane's sliders, the table cells, and the sort all operate on the
-  // same units (N / mm/s) when linear mode is on. Compat-check stays
-  // upstream because it expects canonical Nm/rpm.
-  const linearizedSource = useMemo(() => {
-    if (!isLinearMode) return compatNarrowed;
-    return compatNarrowed.map(p => {
-      const copy = { ...p } as any;
-      for (const key of SPEED_KEYS) {
-        if (copy[key]) copy[key] = rpmToLinearSpeed(copy[key], linearTravel);
-      }
-      for (const key of TORQUE_KEYS) {
-        if (copy[key]) copy[key] = torqueToThrust(copy[key], linearTravel);
-      }
-      return copy as Product;
-    });
-  }, [compatNarrowed, isLinearMode, linearTravel]);
-
   // Per-row gear ratio. Picks the smallest discrete ratio that lifts
   // each motor's rated/peak torque to clear the active torque filter,
   // then scales speed down by the same factor — every motor gets a
@@ -445,10 +421,10 @@ export default function ProductList() {
 
   const { gearedSource, gearMap } = useMemo(() => {
     if (productType !== 'motor' || torqueTargets.length === 0) {
-      return { gearedSource: linearizedSource, gearMap: new Map<string, number>() };
+      return { gearedSource: compatNarrowed, gearMap: new Map<string, number>() };
     }
     const map = new Map<string, number>();
-    const next = linearizedSource.map(p => {
+    const next = compatNarrowed.map(p => {
       let ratio = 1;
       for (const { key, target } of torqueTargets) {
         const motorVal = numericFromValue((p as any)[key]);
@@ -470,7 +446,7 @@ export default function ProductList() {
     });
     return { gearedSource: next, gearMap: map };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [linearizedSource, torqueTargets, productType]);
+  }, [compatNarrowed, torqueTargets, productType]);
 
   /* Gear ratio is always visible on the motor view, not gated on
    * `torqueTargets.length > 0`. Per-row value comes from gearMap
@@ -496,112 +472,54 @@ export default function ProductList() {
   // same as before.
   const displayProducts = sortedProducts;
 
-  // Pagination is density-driven. Cozy slices a fixed window per page
-  // (`currentPage`); compact reveals the first 50 then grows by 50 as
-  // the user scrolls (`compactRevealed`).
-  const isInfiniteMode = rowDensity === 'compact';
-  const compactWindowSize = itemsPerPage + compactRevealed;
-  const paginatedProducts = useMemo(() => {
-    if (isInfiniteMode) {
-      return displayProducts.slice(0, compactWindowSize);
-    }
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    return displayProducts.slice(startIndex, endIndex);
-  }, [displayProducts, currentPage, itemsPerPage, isInfiniteMode, compactWindowSize]);
+  // Infinite-scroll window: reveal the first step, grow by another
+  // step each time the sentinel nears the viewport.
+  const windowSize = itemsPerPage + revealedRows;
+  const paginatedProducts = useMemo(
+    () => displayProducts.slice(0, windowSize),
+    [displayProducts, windowSize]
+  );
 
-  const totalPages = Math.ceil(displayProducts.length / itemsPerPage);
-  const hasMoreCompact = isInfiniteMode && compactWindowSize < displayProducts.length;
+  const hasMoreRows = windowSize < displayProducts.length;
 
-  // Reset to page 1 / window 0 when the data shape changes underneath us.
-  // `rowDensity` is in the dep list because flipping modes mid-scroll
-  // must reset both axes — otherwise a user on page 5 of cozy flipping
-  // to compact sees the compact slice starting at index 100.
+  // Reset the window when the data shape changes underneath us.
+  // `rowDensity`/`itemsPerPage` are in the dep list because flipping
+  // density mid-scroll changes the step size; `productType` because a
+  // 5000-row window carried into a freshly selected type would render
+  // it all in one frame.
   useEffect(() => {
-    setCurrentPage(1);
-    setCompactRevealed(0);
-  }, [filters, sorts, itemsPerPage, rowDensity]);
+    setRevealedRows(0);
+  }, [filters, sorts, itemsPerPage, rowDensity, productType]);
 
-  // IntersectionObserver-driven reveal for compact mode. The sentinel
-  // sits below the last row; once it enters the viewport, we bump the
-  // revealed count by another `itemsPerPage`. Capped at the data length
-  // so the observer doesn't run forever past the end of the list.
+  // IntersectionObserver-driven reveal. The sentinel sits below the
+  // last row inside the grid's scroll container; once it enters the
+  // viewport, we bump the revealed count by another `itemsPerPage`.
+  // The effect re-arms after each reveal (paginatedProducts.length dep)
+  // so a tall viewport keeps revealing until the sentinel leaves view.
   const loadMoreSentinelRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
-    if (!isInfiniteMode || !hasMoreCompact) return;
+    if (!hasMoreRows) return;
     const node = loadMoreSentinelRef.current;
     if (!node) return;
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries.some(e => e.isIntersecting)) {
-          setCompactRevealed(prev => prev + itemsPerPage);
+          setRevealedRows(prev => prev + itemsPerPage);
         }
       },
       { rootMargin: '200px' },
     );
     observer.observe(node);
     return () => observer.disconnect();
-  }, [isInfiniteMode, hasMoreCompact, itemsPerPage, paginatedProducts.length]);
+  }, [hasMoreRows, itemsPerPage, paginatedProducts.length]);
 
-  // When the linear-mode flips (or travel changes the unit scale), the
-  // stored filter values for torque/speed are no longer comparable to
-  // the new product unit (Nm ↔ N, rpm ↔ mm/s). Clear values *and* swap
-  // each chip's displayName so the label matches the unit it now
-  // operates in (Rated Torque ↔ Rated Thrust, Rated Speed ↔ Linear
-  // Speed). The chip itself stays put.
-  useEffect(() => {
-    const linearLabel = (key: string): string | null => {
-      if (key === 'rated_torque') return 'Rated Thrust';
-      if (key === 'peak_torque') return 'Peak Thrust';
-      if (key === 'rated_speed') return 'Linear Speed';
-      return null;
-    };
-    const rotaryLabel = (key: string): string | null => {
-      if (key === 'rated_torque') return 'Rated Torque';
-      if (key === 'peak_torque') return 'Peak Torque';
-      if (key === 'rated_speed') return 'Rated Speed';
-      return null;
-    };
-    setFilters(current => {
-      let changed = false;
-      const next = current.map(f => {
-        const baseKey = f.attribute.split('.')[0];
-        if (!TORQUE_KEYS.includes(baseKey) && !SPEED_KEYS.includes(baseKey)) {
-          return f;
-        }
-        const targetName = isLinearMode ? linearLabel(baseKey) : rotaryLabel(baseKey);
-        const needsNameSwap = targetName !== null && targetName !== f.displayName;
-        const needsValueReset = f.value !== undefined;
-        if (!needsNameSwap && !needsValueReset) return f;
-        changed = true;
-        return {
-          ...f,
-          value: undefined,
-          displayName: targetName ?? f.displayName,
-        };
-      });
-      return changed ? next : current;
-    });
-  }, [isLinearMode, linearTravel]);
-
-  // Column headers with linear-mode label/unit overrides for SPEED_KEYS
-  // and TORQUE_KEYS (thrust/force view for linear actuators). Unit
-  // strings flip through `displayUnit()` so e.g. Nm → in·lb when the
-  // global unit toggle is set to imperial. Linear-mode units (mm/s, N)
-  // also flip for consistency.
+  // Column headers — label + unit per column. Unit strings flip through
+  // `displayUnit()` so e.g. Nm → in·lb when the per-column unit override
+  // is set to imperial.
   const getColumnHeaders = (): Array<{ key: string; label: string; unit: string | null }> => {
     return visibleColumnAttributes.map(attr => {
-      let label = attr.displayName;
-      let unit: string | null = attr.unit || null;
-      if (isLinearMode) {
-        if (SPEED_KEYS.includes(attr.key)) {
-          label = 'Linear Speed';
-          unit = 'mm/s';
-        } else if (TORQUE_KEYS.includes(attr.key)) {
-          label = attr.key === 'peak_torque' ? 'Peak Thrust' : 'Rated Thrust';
-          unit = 'N';
-        }
-      }
+      const label = attr.displayName;
+      const unit: string | null = attr.unit || null;
       return { key: attr.key, label, unit: unit ? displayUnit(unit, unitSystemFor(attr.key)) : null };
     });
   };
@@ -612,16 +530,16 @@ export default function ProductList() {
   const extractNumericOnly = (value: any, sys: UnitSystem): string | null => {
     if (!value) return null;
 
-    if (typeof value === 'number') return String(value);
+    if (typeof value === 'number') return formatNumber(value);
     if (typeof value === 'string') return value;
 
     if (typeof value === 'object') {
       if ('value' in value && value.value !== null && value.value !== undefined) {
         if ('unit' in value) {
           const c = convertValueUnit(value, sys);
-          return String(c.value);
+          return formatNumber(c.value);
         }
-        return String(value.value);
+        return formatNumber(value.value);
       }
 
       const hasMin = 'min' in value && value.min !== null && value.min !== undefined;
@@ -630,21 +548,21 @@ export default function ProductList() {
       if (hasMin && hasMax) {
         if ('unit' in value) {
           const c = convertMinMaxUnit(value, sys);
-          return `${c.min}-${c.max}`;
+          return formatRange(c.min, c.max);
         }
-        return `${value.min}-${value.max}`;
+        return formatRange(value.min, value.max);
       } else if (hasMin) {
         if ('unit' in value) {
           const c = convertValueUnit({ value: value.min, unit: value.unit }, sys);
-          return String(c.value);
+          return formatNumber(c.value);
         }
-        return String(value.min);
+        return formatNumber(value.min);
       } else if (hasMax) {
         if ('unit' in value) {
           const c = convertValueUnit({ value: value.max, unit: value.unit }, sys);
-          return String(c.value);
+          return formatNumber(c.value);
         }
-        return String(value.max);
+        return formatNumber(value.max);
       }
     }
 
@@ -947,31 +865,29 @@ export default function ProductList() {
             <span className="results-count">
               {displayProducts.length === 0
                 ? '0'
-                : isInfiniteMode
-                  ? `1-${paginatedProducts.length}`
-                  : `${(currentPage - 1) * itemsPerPage + 1}-${Math.min(currentPage * itemsPerPage, displayProducts.length)}`
+                : `1-${paginatedProducts.length}`
               } of {displayProducts.length}
             </span>
           </div>
           <div className="page-toolbar-right">
-            {productType && linearizedSource.length > 0 && (
+            {productType && compatNarrowed.length > 0 && (
               <div className="page-toolbar-match">
                 <div className="page-toolbar-match-numbers">
                   <span className="page-toolbar-match-count">{filteredProducts.length}</span>
                   <span className="page-toolbar-match-divider">/</span>
-                  <span className="page-toolbar-match-total">{linearizedSource.length}</span>
+                  <span className="page-toolbar-match-total">{compatNarrowed.length}</span>
                   <span className="page-toolbar-match-label">matching</span>
                   <span className="page-toolbar-match-percent">
-                    {linearizedSource.length === 0
+                    {compatNarrowed.length === 0
                       ? '0%'
-                      : `${Math.round((filteredProducts.length / linearizedSource.length) * 100)}%`}
+                      : `${Math.round((filteredProducts.length / compatNarrowed.length) * 100)}%`}
                   </span>
                 </div>
                 <div className="page-toolbar-match-bar" aria-hidden="true">
                   <div
                     className="page-toolbar-match-bar-fill"
                     style={{
-                      width: `${linearizedSource.length === 0 ? 0 : (filteredProducts.length / linearizedSource.length) * 100}%`,
+                      width: `${compatNarrowed.length === 0 ? 0 : (filteredProducts.length / compatNarrowed.length) * 100}%`,
                     }}
                   />
                 </div>
@@ -993,90 +909,6 @@ export default function ProductList() {
             )}
           </div>
         </div>
-
-        {/* Bauhaus phase 2b: 4-cell summary stat row over the currently
-         * filtered set. Renders for the product types declared in
-         * STAT_CONFIGS (drive + motor today); other types render
-         * nothing. Collapsible — state persists in localStorage. */}
-        <CatalogStatRow products={displayProducts} productType={productType} />
-
-        {/* Linear / Z-axis controls for motors — moved out of the sidebar.
-         * The label above the buttons ("Motor application:") is intentional:
-         * without it, "Linear" reads as a *product type* rather than a
-         * motor-application mode. That conflation hides linear_actuator
-         * records from anyone who picks Motors and clicks Linear expecting
-         * to find actuators. The hint below the buttons (when Linear or
-         * Z-axis is active) deep-links to the Linear Actuators type so the
-         * user can switch in one click. Both are interim measures until
-         * Build Phase 1 PR-1 strips this control entirely; see
-         * todo/BUILD.md Part 5 for the full plan. */}
-        {productType === 'motor' && (
-          <div className="page-toolbar-transmission">
-            <div className="transmission-type-label">Motor application:</div>
-            <div className="transmission-type-row">
-              {(['rotary', 'linear', 'z-axis'] as const).map(t => (
-                <button
-                  key={t}
-                  className={`transmission-type-btn ${appType === t ? 'transmission-type-active' : ''}`}
-                  onClick={() => {
-                    setAppType(t);
-                    if (t === 'rotary') { setLinearTravel(0); setLoadMass(0); }
-                    if (t === 'linear') setLoadMass(0);
-                  }}
-                >
-                  {t === 'z-axis' ? 'Z-Axis' : t.charAt(0).toUpperCase() + t.slice(1)}
-                </button>
-              ))}
-            </div>
-            {(appType === 'linear' || appType === 'z-axis')
-              && categories.some(c => c.type === 'linear_actuator') && (
-              <div className="transmission-type-hint">
-                Looking for linear actuator products?{' '}
-                <button
-                  type="button"
-                  className="transmission-type-hint-link"
-                  onClick={() => handleProductTypeChange('linear_actuator')}
-                >
-                  Switch to Linear Actuators →
-                </button>
-              </div>
-            )}
-            {(appType === 'linear' || appType === 'z-axis') && (
-              <div className="transmission-param">
-                <label className="transmission-param-label">Linear Travel / Rev</label>
-                <div className="transmission-param-input-row">
-                  <input
-                    type="number"
-                    className="transmission-param-input"
-                    min={0}
-                    step={0.1}
-                    value={linearTravel || ''}
-                    placeholder="0"
-                    onChange={(e) => setLinearTravel(Math.max(0, Number(e.target.value) || 0))}
-                  />
-                  <span className="transmission-param-unit">mm/rev</span>
-                </div>
-              </div>
-            )}
-            {appType === 'z-axis' && (
-              <div className="transmission-param">
-                <label className="transmission-param-label">Load Mass</label>
-                <div className="transmission-param-input-row">
-                  <input
-                    type="number"
-                    className="transmission-param-input"
-                    min={0}
-                    step={0.1}
-                    value={loadMass || ''}
-                    placeholder="0"
-                    onChange={(e) => setLoadMass(Math.max(0, Number(e.target.value) || 0))}
-                  />
-                  <span className="transmission-param-unit">kg</span>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
 
         {error && (
           <div className="error" style={{ margin: '0.5rem 0' }}>
@@ -1203,7 +1035,7 @@ export default function ProductList() {
                       attribute={attribute}
                       label={header.label}
                       products={displayProducts}
-                      allProducts={linearizedSource}
+                      allProducts={compatNarrowed}
                       filter={filter}
                       allFilters={filters}
                       sortConfig={sortConfig}
@@ -1241,23 +1073,6 @@ export default function ProductList() {
                   );
                 });
               })()}
-              {/* Computed columns for Z-axis */}
-              {appType === 'z-axis' && isLinearMode && loadMass > 0 && (
-                <>
-                  <div className="product-grid-header-item computed-col" style={{ width: 70 }}>
-                    <div className="product-grid-header-label">Gravity</div>
-                    <div className="product-grid-header-unit">(N)</div>
-                  </div>
-                  <div className="product-grid-header-item computed-col" style={{ width: 80 }}>
-                    <div className="product-grid-header-label">Net Thrust</div>
-                    <div className="product-grid-header-unit">(N)</div>
-                  </div>
-                  <div className="product-grid-header-item computed-col" style={{ width: 80 }}>
-                    <div className="product-grid-header-label">Brake Hold</div>
-                    <div className="product-grid-header-unit">(N)</div>
-                  </div>
-                </>
-              )}
               {/* Restore-hidden-column button — only rendered when
                   there's something to restore. */}
               {hiddenColumnAttributes.length > 0 && (
@@ -1328,80 +1143,35 @@ export default function ProductList() {
                           backgroundColor: cellColor
                         }}
                       >
-                        <div className="spec-header-value">{numericValue || formatValue(productValue, 0, 5, cellSys)}</div>
+                        <div className="spec-header-value">{attrKey === 'availability' ? humanizeAvailability(productValue) : (numericValue || formatValue(productValue, 0, 5, cellSys))}</div>
                       </div>
                     );
                   })}
 
-                  {/* Z-axis computed values */}
-                  {appType === 'z-axis' && isLinearMode && loadMass > 0 && (() => {
-                    const gravityForce = parseFloat((loadMass * GRAVITY).toPrecision(4));
-                    const ratedThrustVal = (product as any).rated_torque;
-                    const thrustNum = ratedThrustVal && typeof ratedThrustVal === 'object' && 'value' in ratedThrustVal
-                      ? ratedThrustVal.value : null;
-                    const netThrust = thrustNum !== null ? parseFloat((thrustNum - gravityForce).toPrecision(4)) : null;
-                    return (
-                      <>
-                        <div className="spec-header-item computed-cell">
-                          <div className="spec-header-value">{gravityForce.toFixed(1)}</div>
-                        </div>
-                        <div className={`spec-header-item computed-cell ${netThrust !== null && netThrust < 0 ? 'computed-cell-warning' : ''}`}>
-                          <div className="spec-header-value">{netThrust !== null ? netThrust.toFixed(1) : '-'}</div>
-                        </div>
-                        <div className="spec-header-item computed-cell">
-                          <div className="spec-header-value">{gravityForce.toFixed(1)}</div>
-                        </div>
-                      </>
-                    );
-                  })()}
-
                 </div>
               ))}
             </div>
-            </div>
 
-            {/* Pagination / infinite-scroll affordance. Cozy uses
-                discrete paging; compact streams via an IntersectionObserver
-                sentinel that triggers a window expansion as the user
-                nears the bottom. */}
-            {!isInfiniteMode && totalPages > 1 && (
-              <div className="pagination-nav">
-                <button
-                  className="pagination-btn"
-                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                  disabled={currentPage === 1}
-                >
-                  ← Previous
-                </button>
-                <span className="pagination-info">
-                  Page {currentPage} of {totalPages}
+            {/* Infinite-scroll affordance. Lives INSIDE the grid's
+                scroll container so the IntersectionObserver fires as
+                the user nears the bottom of the grid's own scrollport
+                (the headers stick to the same scrollport). */}
+            <div
+              ref={loadMoreSentinelRef}
+              className="infinite-scroll-sentinel"
+              aria-hidden="true"
+            >
+              {hasMoreRows ? (
+                <span className="infinite-scroll-status">
+                  Loading more… ({paginatedProducts.length} of {displayProducts.length})
                 </span>
-                <button
-                  className="pagination-btn"
-                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                  disabled={currentPage === totalPages}
-                >
-                  Next →
-                </button>
-              </div>
-            )}
-            {isInfiniteMode && (
-              <div
-                ref={loadMoreSentinelRef}
-                className="infinite-scroll-sentinel"
-                aria-hidden="true"
-              >
-                {hasMoreCompact ? (
-                  <span className="infinite-scroll-status">
-                    Loading more… ({paginatedProducts.length} of {displayProducts.length})
-                  </span>
-                ) : displayProducts.length > 0 ? (
-                  <span className="infinite-scroll-status">
-                    End of {displayProducts.length} results
-                  </span>
-                ) : null}
-              </div>
-            )}
+              ) : displayProducts.length > 0 ? (
+                <span className="infinite-scroll-status">
+                  End of {displayProducts.length} results
+                </span>
+              ) : null}
+            </div>
+            </div>
           </>
         )}
       </main>

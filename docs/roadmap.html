@@ -66,14 +66,14 @@
                 <span class="column-code">BACKLOG</span>
                 <h2 class="column-title">Backlog</h2>
                 <p class="column-blurb">Queued behind the row above.</p>
-                <span class="column-count">6</span>
+                <span class="column-count">8</span>
             </header>
             <ol class="kanban-stack">
                 <li>
                     <a class="kanban-card" href="roadmap/build.html">
                         <div class="card-head">
                             <span class="card-source">todo/BUILD.md</span>
-                            <span class="status-chip status-backlog">⚪ QUEUED (INDEPENDENT, USER-FACING)</span>
+                            <span class="status-chip status-backlog">🚧 PR 1A NEARLY DONE: `COMPATIBLE_ACTUATORS` (#247) + EXPRESS `/API/V1/RELATIONS/ACTUATORS` (#262). 1A REMAINDER: `_DISTRIBUTION_POSITION` HISTOGRAM BLOCK. THEN 1B STRIP-DOWN → 1C PAGE → 1D REDIRECT</span>
                         </div>
                         <h3 class="card-title">BUILD — requirements-first system assembler</h3>
                         <p class="card-summary">The third page in Specodex's user-facing hierarchy, and the one the rest of the application is meant to point at. Today the catalog has two surfaces: Selection (/, the filterable component browser) and Actuators (/actuators, a Linear-Motion supercategory…</p>
@@ -84,7 +84,7 @@
                     <a class="kanban-card" href="roadmap/hardening.html">
                         <div class="card-head">
                             <span class="card-source">todo/HARDENING.md</span>
-                            <span class="status-chip status-backlog">⚪ QUEUED (NEXT-SPRINT TOP)</span>
+                            <span class="status-chip status-backlog">⏳ SEARCH HALF #246; ROUTES + CONTRACT ROUND-TRIP 2026-06-10. REMAINING: 13 MOCKED-TEST SWEEP + CI `--INTEGRATION` WIRING</span>
                         </div>
                         <h3 class="card-title">HARDENING — adversarial-by-default testing posture</h3>
                         <p class="card-summary">Audit date: 2026-05-09 Status (post-2026-05-10 sprint): 10 of 14 findings shipped; 4 remain.</p>
@@ -99,6 +99,28 @@
                         </div>
                         <h3 class="card-title">Marketing plan: get Specodex into the hands of mechatronics engineers</h3>
                         <p class="card-summary">Status: 📐 planned. No paid spend, no ads, no agency. Engineer-to-engineer distribution, leaning on the niche-signal of the field-manual aesthetic and the open-source repo as proof of seriousness. Stripe metered billing exists in stripe/ (Rust Lambda) —…</p>
+                    </a>
+                </li>
+
+                <li>
+                    <a class="kanban-card" href="roadmap/paygate.html">
+                        <div class="card-head">
+                            <span class="card-source">todo/PAYGATE.md</span>
+                            <span class="status-chip status-backlog">BACKLOG</span>
+                        </div>
+                        <h3 class="card-title">PAYGATE — per-query Stripe charging for the API</h3>
+                        <p class="card-summary">Charge programmatic API consumers per query, metered through the existing Stripe subscription. The browsable public website is untouched — it sends no API key and stays free.</p>
+                    </a>
+                </li>
+
+                <li>
+                    <a class="kanban-card" href="roadmap/pricing.html">
+                        <div class="card-head">
+                            <span class="card-source">todo/PRICING.md</span>
+                            <span class="status-chip status-backlog">BACKLOG</span>
+                        </div>
+                        <h3 class="card-title">PRICING — populate `msrp` at scale from public price sources</h3>
+                        <p class="card-summary">Operational learnings encoded in code: Newark search cut (100% timeout, 0 hits ever); robots-dead tiers cut (#270); parent-redirect guard in fetch.py; 429 retry loop; --tiers + --rate-limit + --max-shopping-calls flags on price-enrich.</p>
                     </a>
                 </li>
 
@@ -141,20 +163,9 @@
                 <span class="column-code">SIGNOFF</span>
                 <h2 class="column-title">Needs Sign-off</h2>
                 <p class="column-blurb">Blocked on an explicit human decision.</p>
-                <span class="column-count">3</span>
+                <span class="column-count">2</span>
             </header>
             <ol class="kanban-stack">
-                <li>
-                    <a class="kanban-card" href="roadmap/db-cleanup.html">
-                        <div class="card-head">
-                            <span class="card-source">todo/DB_CLEANUP.md</span>
-                            <span class="status-chip status-signoff">🔴 NEEDS SIGN-OFF</span>
-                        </div>
-                        <h3 class="card-title">DB schema cleanup — gameplan</h3>
-                        <p class="card-summary">Driven by the field-coverage audit at outputs/audit_fields_dev_&lt;ts&gt;.md (re-runnable via uv run python -m cli.audit_fields --stage dev). The audit scans products-dev and tabulates, per product_type, the fraction of rows that have a populated value for every…</p>
-                    </a>
-                </li>
-
                 <li>
                     <a class="kanban-card" href="roadmap/python-backend.html">
                         <div class="card-head">
@@ -256,10 +267,19 @@
                 <span class="column-code">SHIPPED</span>
                 <h2 class="column-title">Shipped</h2>
                 <p class="column-blurb">Every churn row for this doc is ✅; the doc itself is overdue for deletion or pruning.</p>
-                <span class="column-count">0</span>
+                <span class="column-count">1</span>
             </header>
             <ol class="kanban-stack">
-                <li class="empty">No cards in this column.</li>
+                <li>
+                    <a class="kanban-card" href="roadmap/db-cleanup.html">
+                        <div class="card-head">
+                            <span class="card-source">todo/DB_CLEANUP.md</span>
+                            <span class="status-chip status-shipped">✅ RESOLVED 2026-06-12: POPULATE, VIA PRICING.MD (ACCEPTED BY NICK)</span>
+                        </div>
+                        <h3 class="card-title">DB schema cleanup — gameplan</h3>
+                        <p class="card-summary">Driven by the field-coverage audit at outputs/audit_fields_dev_&lt;ts&gt;.md (re-runnable via uv run python -m cli.audit_fields --stage dev). The audit scans products-dev and tabulates, per product_type, the fraction of rows that have a populated value for every…</p>
+                    </a>
+                </li>
             </ol>
         </section>
     </main>

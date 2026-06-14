@@ -11,9 +11,11 @@ import {
   deriveAttributesFromRecords,
   mergeAttributesByKey,
   AttributeMetadata,
+  getAttributesForType,
 } from './filters';
 import {
   COLUMN_ORDER,
+  DEFAULT_LEADING_ORDER,
   orderColumnAttributes,
   computeVisibleColumnAttributes,
 } from './columnOrder';
@@ -725,5 +727,128 @@ describe('computeVisibleColumnAttributes', () => {
       10,
     );
     expect(out).toHaveLength(0);
+  });
+});
+
+describe('commercial columns (price + lead time)', () => {
+  // The real product types — datasheet is a listing record, not a
+  // ProductBase, so it carries neither price nor availability.
+  const PRODUCT_TYPES = [
+    'motor',
+    'drive',
+    'robot_arm',
+    'gearhead',
+    'contactor',
+    'electric_cylinder',
+    // Derivation-only type (no static getXxxAttributes list): still must
+    // surface price + lead time pinned far-left. Regression guard for the
+    // 2026-06-13 scramble where it had no COLUMN_ORDER entry.
+    'linear_actuator',
+  ] as const;
+
+  // Mirrors how ProductList assembles the rendered column set: static
+  // type attrs + record-derived attrs, minus identity/bookkeeping keys,
+  // ordered, then capped. This is the end-to-end "what actually renders"
+  // check — getAttributesForType alone doesn't catch a positioning bug.
+  const RENDER_EXCLUDED = new Set([
+    'part_number', 'datasheet_url', 'pages', 'PK', 'SK', 'product_id',
+    'product_type', 'msrp_source_url', 'msrp_fetched_at',
+    'availability_source_url', 'availability_fetched_at',
+  ]);
+  const pricedRecord = (type: string) => ({
+    PK: `PRODUCT#${type}`, SK: 'PRODUCT#x', product_id: 'x',
+    product_type: type, part_number: 'PN-1', manufacturer: 'ACME',
+    msrp: { value: 1234, unit: 'USD' }, availability: 'in_stock',
+  });
+  const renderedColumnKeys = (type: typeof PRODUCT_TYPES[number]) => {
+    const merged = mergeAttributesByKey(
+      getAttributesForType(type),
+      deriveAttributesFromRecords([pricedRecord(type)], type),
+    ).filter((a) => !RENDER_EXCLUDED.has(a.key));
+    return computeVisibleColumnAttributes(
+      orderColumnAttributes(merged, type), [], [], 10,
+    ).map((a) => a.key);
+  };
+
+  it.each(PRODUCT_TYPES)(
+    'exposes msrp (Price) + availability (Lead Time) as default-visible for %s',
+    (type) => {
+      const attrs = getAttributesForType(type);
+      const msrp = attrs.find((a) => a.key === 'msrp');
+      const avail = attrs.find((a) => a.key === 'availability');
+
+      expect(msrp).toBeDefined();
+      expect(msrp?.displayName).toBe('Price');
+      expect(msrp?.defaultVisible).toBe(true);
+      expect(msrp?.nested).toBe(true);
+
+      expect(avail).toBeDefined();
+      expect(avail?.displayName).toBe('Lead Time');
+      expect(avail?.defaultVisible).toBe(true);
+    },
+  );
+
+  it('renders price + lead time immediately after manufacturer for every type', () => {
+    for (const type of PRODUCT_TYPES) {
+      const order = COLUMN_ORDER[type] ?? [];
+      const mfg = order.indexOf('manufacturer');
+      expect(mfg).toBeGreaterThanOrEqual(0);
+      expect(order[mfg + 1]).toBe('msrp');
+      expect(order[mfg + 2]).toBe('availability');
+    }
+  });
+
+  it.each(PRODUCT_TYPES)(
+    'renders Price + Lead Time adjacent and far-left (after manufacturer) for %s',
+    (type) => {
+      const keys = renderedColumnKeys(type);
+      const mfg = keys.indexOf('manufacturer');
+      const price = keys.indexOf('msrp');
+      const lead = keys.indexOf('availability');
+      // Both present, adjacent (price then lead), and leading the spec
+      // columns — i.e. right after the (here-excluded) part_number +
+      // manufacturer, nothing wedged between or after into the specs.
+      expect(price).toBeGreaterThanOrEqual(0);
+      expect(lead).toBe(price + 1);
+      expect(price).toBe(mfg + 1);
+    },
+  );
+
+  it('pins commercial columns far-left for an unlisted type via DEFAULT_LEADING_ORDER', () => {
+    expect(DEFAULT_LEADING_ORDER).toEqual(['manufacturer', 'msrp', 'availability']);
+    // Simulate a future derivation-only type with no COLUMN_ORDER entry by
+    // dropping linear_actuator's key, then asserting the fallback orders it.
+    const saved = COLUMN_ORDER.linear_actuator;
+    delete COLUMN_ORDER.linear_actuator;
+    try {
+      const keys = renderedColumnKeys('linear_actuator');
+      const mfg = keys.indexOf('manufacturer');
+      expect(keys[mfg + 1]).toBe('msrp');
+      expect(keys[mfg + 2]).toBe('availability');
+    } finally {
+      COLUMN_ORDER.linear_actuator = saved;
+    }
+  });
+
+  it('forces both columns visible past the nested-only default rule', () => {
+    // availability is a bare string — it would be hidden by the default
+    // rule (rule 6) without the defaultVisible override.
+    const attrs = getAttributesForType('motor');
+    const visible = computeVisibleColumnAttributes(attrs, [], [], 50);
+    const keys = visible.map((a) => a.key);
+    expect(keys).toContain('msrp');
+    expect(keys).toContain('availability');
+  });
+
+  it('mixed "all" view leads with price + lead time', () => {
+    const attrs = getAttributesForType('all');
+    expect(attrs.some((a) => a.key === 'msrp')).toBe(true);
+    expect(attrs.some((a) => a.key === 'availability')).toBe(true);
+  });
+
+  it('datasheet listings carry neither commercial column', () => {
+    const attrs = getAttributesForType('datasheet');
+    expect(attrs.some((a) => a.key === 'msrp')).toBe(false);
+    expect(attrs.some((a) => a.key === 'availability')).toBe(false);
   });
 });

@@ -29,6 +29,12 @@
 //   `part_number` is pinned as the leading column by ProductList.tsx and
 //   is excluded from this list — don't put it here.
 //
+//   `msrp` (Price) and `availability` (Lead Time) lead every type right
+//   after `manufacturer`. They're the two buyer-facing commercial columns
+//   and are forced default-visible in filters.ts (commercialAttributes).
+//   `availability` is the honest lead-time signal — the numeric `lead_time`
+//   field has no populator, so the populated stock snapshot stands in for it.
+//
 // =============================================================================
 
 import type { ProductType } from './models';
@@ -39,6 +45,8 @@ export const COLUMN_ORDER: Partial<
 > = {
   motor: [
     'manufacturer',
+    'msrp',
+    'availability',
     'rated_power',
     'rated_torque',
     'rated_speed',
@@ -47,6 +55,8 @@ export const COLUMN_ORDER: Partial<
   ],
   drive: [
     'manufacturer',
+    'msrp',
+    'availability',
     'rated_power',
     'input_voltage',
     'input_voltage_phases',
@@ -55,25 +65,53 @@ export const COLUMN_ORDER: Partial<
   ],
   robot_arm: [
     'manufacturer',
+    'msrp',
+    'availability',
     // e.g. 'payload', 'reach', 'degrees_of_freedom', 'pose_repeatability', 'max_tcp_speed',
   ],
   gearhead: [
     'manufacturer',
+    'msrp',
+    'availability',
     // e.g. 'gear_ratio', 'gear_type', 'rated_torque', 'peak_torque', 'backlash', 'efficiency',
   ],
   contactor: [
     'manufacturer',
+    'msrp',
+    'availability',
     // e.g. 'ie_ac3_400v', 'motor_power_ac3_400v_kw', 'motor_power_ac3_480v_hp',
   ],
   electric_cylinder: [
     'manufacturer',
+    'msrp',
+    'availability',
     // e.g. 'stroke', 'max_push_force', 'continuous_force', 'max_linear_speed', 'rated_voltage',
+  ],
+  linear_actuator: [
+    'manufacturer',
+    'msrp',
+    'availability',
+    // Derivation-only type (no static getXxxAttributes list) — its spec
+    // columns auto-populate from records. The leading three still pin
+    // here so Price + Lead Time stay far-left, not alphabetized adrift.
   ],
   datasheet: [
     'manufacturer',
     // e.g. 'product_name', 'product_family', 'component_type',
   ],
 };
+
+// Fallback leading order for any concrete product type that has NO
+// explicit COLUMN_ORDER entry above (e.g. a future type added by dropping
+// a model file + records, per the "auto-populate" convention). Without
+// this, an unlisted type alphabetizes every column and Price + Lead Time
+// scatter — exactly the linear_actuator bug caught on 2026-06-13. Keeps
+// the two commercial columns pinned far-left universally.
+//
+// Note `?? DEFAULT_LEADING_ORDER` only fires on `undefined` (a missing
+// key). An *explicitly empty* entry (`type: []`) still means "pure
+// alphabetical" and is preserved.
+export const DEFAULT_LEADING_ORDER = ['manufacturer', 'msrp', 'availability'];
 
 /**
  * Order attributes for table rendering: authored COLUMN_ORDER keys first
@@ -85,7 +123,7 @@ export const orderColumnAttributes = (
 ): AttributeMetadata[] => {
   const order =
     productType && productType !== 'all'
-      ? COLUMN_ORDER[productType] ?? []
+      ? COLUMN_ORDER[productType] ?? DEFAULT_LEADING_ORDER
       : [];
   const indexOf = new Map(order.map((k, i) => [k, i] as const));
   return [...attrs].sort((a, b) => {

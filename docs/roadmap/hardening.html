@@ -43,7 +43,7 @@
             <div class="hero-tag">▮▮▮ HARDENING ▮▮▮</div>
             <h1 class="hero-title">HARDENING — adversarial-by-default testing posture</h1>
             <div class="doc-meta">
-                <span class="status-chip status-backlog">⚪ QUEUED (NEXT-SPRINT TOP)</span>
+                <span class="status-chip status-backlog">⏳ SEARCH HALF #246; ROUTES + CONTRACT ROUND-TRIP 2026-06-10. REMAINING: 13 MOCKED-TEST SWEEP + CI `--INTEGRATION` WIRING</span>
                 <span class="doc-source"><code>todo/HARDENING.md</code></span>
             </div>
         </section>
@@ -68,8 +68,8 @@
 </tr>
 <tr>
 <td>1.2 <code>uv sync --locked</code> CI sweep</td>
-<td>⚪ open</td>
-<td>needs human PR (touches <code>.github/workflows/</code>)</td>
+<td>✅ shipped</td>
+<td>#261 (9 sites × 5 workflows)</td>
 </tr>
 <tr>
 <td>1.3 Regression tests for log-injection #82/#83/#84</td>
@@ -207,6 +207,20 @@ next-sprint queue: <code>cli/processor.py</code>, <code>specodex/integration/com
 4. Add a contract test: returned items round-trip through the Pydantic-generated <code>generated.ts</code> types without coercion.
 5. File a follow-up HARDENING card: "migrate the remaining 13 mocked backend tests to real DAL."</p>
 <p><strong>Definition of done:</strong> three tests run against DynamoDB Local in CI and pass; jest globalSetup boots/teardowns the local instance; follow-up card exists.</p>
+<p><strong>Status (2026-05-23):</strong> ⏳ <strong>partially shipped, follow-up open</strong>.</p>
+<p><em>What shipped:</em>
+- ✅ <code>@shelf/jest-dynamodb</code> wired in (<code>app/backend/jest.integration.config.js</code> + <code>jest-dynamodb-config.js</code>). globalSetup boots the jar; globalTeardown stops it. First run downloads ~30 MB; cached in <code>app/node_modules/dynamodb-local</code> thereafter.
+- ✅ <code>DynamoDBService</code> accepts optional <code>endpoint</code> + <code>credentials</code> overrides so tests can point at <code>http://localhost:8000</code> without changing prod construction.
+- ✅ <code>tests/integration/db.real-dal.test.ts</code> — 6 tests covering CRUD, paginated <code>list</code>, projection-only scan, sorted-set dedup across types, missing-row null. Runs in ~0.4 s after the jar boots.
+- ✅ <code>npm run test:integration</code> script + <code>./Quickstart verify --integration</code> adds the backend stage. Default verify stays fast (unit only); the <code>--integration</code> flag exercises the real DAL.
+- ✅ Java required (present by default on macOS, GitHub Actions ubuntu-latest, most dev VMs). <code>NODE_OPTIONS=--experimental-vm-modules</code> set in the script so the AWS SDK's dynamic-import retry path doesn't crash jest.</p>
+<p><em>What's still open (file as 2.2.b):</em>
+- ✅ <code>search.contract.test.ts</code> migration to real-DAL — shipped #246 (<code>tests/integration/search.real-dal.test.ts</code>).
+- ✅ <code>routes.test.ts</code> migration to real-DAL — shipped 2026-06-10 (<code>tests/integration/routes.real-dal.test.ts</code>: aggregation/CRUD/dedupe/datasheet routes end-to-end). Error-injection cases (DB throws → 500) deliberately stay in the mocked sibling.
+- ✅ The contract round-trip test (step 4) — same PR: fully-structured Motor (ValueUnit fields, explicit nulls) survives POST → DynamoDB → GET without coercion, typed against <code>generated.ts</code>'s <code>Motor</code>.
+- ✅ Latent race fixed in the same PR: all integration suites share the one <code>specodex-test</code> table and truncate in beforeEach; parallel jest workers raced each other's seeds once a third suite existed. <code>maxWorkers: 1</code> in <code>jest.integration.config.js</code>.
+- The remaining 13 mocked tests (step 5). Each migration is mechanical given the foundation, but each test needs its own seed/cleanup so the diff is non-trivial — better split across PRs.
+- Wire <code>verify --integration</code> into the <code>Test Backend</code> CI job (currently runs unit only via plain <code>verify --only backend</code>). One-line workflow change; needs draft PR.</p>
 <h3 id="23-idor-cross-tenant-auth-tests-m-p1">2.3 IDOR + cross-tenant auth tests (M, P1)</h3>
 <p>Existing tests cover happy-path 200s and 401-on-no-token. None covers "user A's token requesting user B's data."</p>
 <p><strong>Steps:</strong>

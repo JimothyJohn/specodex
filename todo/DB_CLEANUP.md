@@ -94,10 +94,15 @@ cleanup.
 
 ### `msrp` / `msrp_source_url` / `msrp_fetched_at` on `ProductBase` — keep
 
-`./Quickstart price-enrich` exists and does populate these (drive
-shows 0.7% on `msrp` — a small but real signal that enrichment is
-sometimes running). Removing them would tear out the price-enrich
-contract. Keep until / unless that workstream is explicitly retired.
+**Decision resolved 2026-06-12: populate.** Nick accepted
+[PRICING.md](PRICING.md) — the populate workstream. `./Quickstart
+price-book` (bulk, #268) joined the crawler path (`price-enrich`,
+salvaged in #270) as the mechanisms. The Phase 2 framing below is
+superseded by that doc.
+
+(Historical context: drive showed 0.7% on `msrp` at audit time; the
+2026-06-11 investigation showed those prices came from catalog-PDF
+ingest, not the crawler.)
 
 ### `linear_actuator` over-spec — defer
 

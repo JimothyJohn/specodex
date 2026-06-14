@@ -3,7 +3,64 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { formatPropertyLabel, formatValue } from './formatting';
+import { formatPropertyLabel, formatValue, formatNumber, formatRange } from './formatting';
+
+describe('formatNumber', () => {
+  it('passes non-numbers and non-finite values through', () => {
+    expect(formatNumber('x')).toBe('x');
+    expect(formatNumber(null)).toBe('null');
+    expect(formatNumber(Infinity)).toBe('Infinity');
+    expect(formatNumber(NaN)).toBe('NaN');
+  });
+
+  it('never rounds integers', () => {
+    expect(formatNumber(4525)).toBe('4525');
+    expect(formatNumber(13)).toBe('13');
+    expect(formatNumber(0)).toBe('0');
+  });
+
+  it('groups thousands only from 10k up', () => {
+    expect(formatNumber(90000)).toBe('90,000');
+    expect(formatNumber(15700)).toBe('15,700');
+    expect(formatNumber(4000)).toBe('4000');
+    expect(formatNumber(2600)).toBe('2600');
+  });
+
+  it('trims extraction-noise float precision by magnitude band', () => {
+    expect(formatNumber(1.64054)).toBe('1.64');
+    expect(formatNumber(0.0127108)).toBe('0.0127');
+    expect(formatNumber(0.0494)).toBe('0.0494');
+    expect(formatNumber(115.51)).toBe('115.5');
+    expect(formatNumber(10.2)).toBe('10.2');
+    expect(formatNumber(-1.64054)).toBe('-1.64');
+  });
+
+  it('never shows trailing zeros', () => {
+    expect(formatNumber(1.5)).toBe('1.5');
+    expect(formatNumber(2.0)).toBe('2');
+  });
+});
+
+describe('formatRange', () => {
+  it('collapses degenerate ranges to the single value', () => {
+    expect(formatRange(460, 460)).toBe('460');
+    expect(formatRange(10, 10)).toBe('10');
+  });
+
+  it('renders distinct bounds as min-max', () => {
+    expect(formatRange(200, 240)).toBe('200-240');
+  });
+
+  it('renders one-sided ranges as the present bound', () => {
+    expect(formatRange(48, null)).toBe('48');
+    expect(formatRange(undefined, 75)).toBe('75');
+    expect(formatRange(null, null)).toBe('');
+  });
+
+  it('formats bounds through formatNumber', () => {
+    expect(formatRange(0.0127108, 1.64054)).toBe('0.0127-1.64');
+  });
+});
 
 describe('formatPropertyLabel', () => {
   it('capitalizes regular words', () => {
@@ -153,5 +210,19 @@ describe('formatValue', () => {
     );
     expect(out).toContain('in');
     expect(out).not.toContain(' mm');
+  });
+
+  it('collapses degenerate MinMaxUnit ranges (extraction min === max)', () => {
+    expect(formatValue({ min: 460, max: 460, unit: 'V' })).toBe('460 V');
+    expect(formatValue({ min: 10, max: 10 })).toBe('10');
+  });
+
+  it('trims float precision in ValueUnit cells', () => {
+    expect(formatValue({ value: 1.64054, unit: 'Nm' })).toBe('1.64 Nm');
+    expect(formatValue({ value: 0.0127108, unit: 'Nm' })).toBe('0.0127 Nm');
+  });
+
+  it('groups large magnitudes in ValueUnit cells', () => {
+    expect(formatValue({ value: 90000, unit: 'W' })).toBe('90,000 W');
   });
 });

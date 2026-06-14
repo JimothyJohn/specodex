@@ -52,6 +52,11 @@ _DISTRIBUTOR_DOMAINS: dict[str, str] = {
     "newark.com": "Newark",
     "alliedelec.com": "Allied Electronics",
     "grainger.com": "Grainger",
+    # Magento storefront with direct lowercase-PN product slugs and
+    # server-rendered prices (verified live 2026-06-12). 404 on miss.
+    # NOTE: bodine-electric.com was probed and rejected — /products/<pn>
+    # 302s to the catalog page, which would body-fallback a wrong price.
+    "electromate.com": "Electromate",  # AMC, Galil, Maxon, Applied Motion
     # Kyklo-backed storefronts. Same JSON-LD Product.offers.price scheme
     # as shop1.us.mitsubishielectric.com; URL pattern is /products/{pn}
     # with a redirect to / when the part isn't carried (handled by the
@@ -198,6 +203,11 @@ def _oem_candidates(manufacturer: str, part_number: str) -> List[Candidate]:
 
 
 def _distributor_candidates(part_number: str) -> List[Candidate]:
+    # Wolf Automation, Motion Industries, and Allied Electronics search
+    # endpoints are robots.txt-disallowed (verified live 2026-06-11) and
+    # we respect robots — their direct search candidates are gone. The
+    # domains stay in _DISTRIBUTOR_DOMAINS so SERP-organic product-detail
+    # URLs on them (often robots-allowed) still classify and extract.
     pn = quote_plus(part_number.strip())
     out: List[Candidate] = [
         Candidate(
@@ -205,30 +215,26 @@ def _distributor_candidates(part_number: str) -> List[Candidate]:
             source_type="distributor",
             source_name="Galco",
         ),
-        Candidate(
-            url=f"https://www.wolfautomation.com/search/?q={pn}",
-            source_type="distributor",
-            source_name="Wolf Automation",
-        ),
-        Candidate(
-            url=f"https://www.motionindustries.com/search?searchTerm={pn}",
-            source_type="distributor",
-            source_name="Motion Industries",
-        ),
-        Candidate(
-            url=f"https://www.newark.com/webapp/wcs/stores/servlet/Search?st={pn}",
-            source_type="distributor",
-            source_name="Newark",
-        ),
-        Candidate(
-            url=f"https://www.alliedelec.com/search/?searchTerm={pn}",
-            source_type="distributor",
-            source_name="Allied Electronics",
-        ),
+        # Newark's search endpoint was dropped 2026-06-12: it timed out
+        # on 100% of observed requests (15s each, on every miss) and
+        # never produced a single hit — Newark is electronics-focused
+        # and barely carries industrial drives/motors. The domain stays
+        # in _DISTRIBUTOR_DOMAINS for SERP-result classification.
         Candidate(
             url=f"https://www.grainger.com/search?searchQuery={pn}",
             source_type="distributor",
             source_name="Grainger",
+        ),
+        # Electromate (motion-control distributor: AMC, Galil, Maxon,
+        # Applied Motion, Copley accessories) serves product pages at
+        # the lowercase part-number slug with the price in static HTML
+        # (data-price-amount + $-text; JSON-LD sku is their internal id
+        # so the SKU guard falls through to regex — correct on a PDP).
+        # Unknown parts 404 cleanly.
+        Candidate(
+            url=f"https://www.electromate.com/{quote_plus(part_number.strip().lower())}",
+            source_type="distributor",
+            source_name="Electromate",
         ),
     ]
     # Kyklo-backed distributor storefronts — direct product pages. When the
@@ -245,23 +251,14 @@ def _distributor_candidates(part_number: str) -> List[Candidate]:
     return out
 
 
-# ── Tier 3: aggregator search URLs ──────────────────────────────────
-
-
-def _aggregator_candidates(part_number: str) -> List[Candidate]:
-    pn = quote_plus(part_number.strip())
-    return [
-        Candidate(
-            url=f"https://www.radwell.com/en-US/search?Query={pn}",
-            source_type="aggregator",
-            source_name="Radwell International",
-        ),
-        Candidate(
-            url=f"https://www.plccenter.com/en-US/search?Query={pn}",
-            source_type="aggregator",
-            source_name="PLC Center",
-        ),
-    ]
+# ── Tier 3: aggregators ─────────────────────────────────────────────
+#
+# Radwell and PLC Center search endpoints are robots.txt-disallowed
+# (verified live 2026-06-11), so there are no direct aggregator search
+# candidates anymore. _AGGREGATOR_DOMAINS remains as a classification
+# allowlist: SERP-organic product-detail URLs on those domains are
+# still fetched (the fetcher robots-checks the final URL) and tagged
+# with the aggregator tier.
 
 
 # ── Tier 4: Serper SERP fallback ────────────────────────────────────
@@ -335,7 +332,9 @@ def resolve_candidates(
 ) -> List[Candidate]:
     """Return ordered candidate URLs across all tiers.
 
-    Ordering: OEM direct → distributor search → aggregator search → SERP.
+    Ordering: OEM direct → distributor search → SERP. (Aggregator search
+    endpoints were retired 2026-06-11 — robots.txt-disallowed; aggregator
+    pages now arrive only via SERP-organic product URLs.)
     The caller walks in order and stops at the first successful price.
     """
     if not manufacturer or not part_number:
@@ -344,7 +343,6 @@ def resolve_candidates(
     out: List[Candidate] = []
     out.extend(_oem_candidates(manufacturer, part_number))
     out.extend(_distributor_candidates(part_number))
-    out.extend(_aggregator_candidates(part_number))
     if use_serp:
         out.extend(serp_candidates(manufacturer, part_number, api_key=serper_api_key))
 
