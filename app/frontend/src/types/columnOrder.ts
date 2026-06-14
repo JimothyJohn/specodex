@@ -87,11 +87,31 @@ export const COLUMN_ORDER: Partial<
     'availability',
     // e.g. 'stroke', 'max_push_force', 'continuous_force', 'max_linear_speed', 'rated_voltage',
   ],
+  linear_actuator: [
+    'manufacturer',
+    'msrp',
+    'availability',
+    // Derivation-only type (no static getXxxAttributes list) — its spec
+    // columns auto-populate from records. The leading three still pin
+    // here so Price + Lead Time stay far-left, not alphabetized adrift.
+  ],
   datasheet: [
     'manufacturer',
     // e.g. 'product_name', 'product_family', 'component_type',
   ],
 };
+
+// Fallback leading order for any concrete product type that has NO
+// explicit COLUMN_ORDER entry above (e.g. a future type added by dropping
+// a model file + records, per the "auto-populate" convention). Without
+// this, an unlisted type alphabetizes every column and Price + Lead Time
+// scatter — exactly the linear_actuator bug caught on 2026-06-13. Keeps
+// the two commercial columns pinned far-left universally.
+//
+// Note `?? DEFAULT_LEADING_ORDER` only fires on `undefined` (a missing
+// key). An *explicitly empty* entry (`type: []`) still means "pure
+// alphabetical" and is preserved.
+export const DEFAULT_LEADING_ORDER = ['manufacturer', 'msrp', 'availability'];
 
 /**
  * Order attributes for table rendering: authored COLUMN_ORDER keys first
@@ -103,7 +123,7 @@ export const orderColumnAttributes = (
 ): AttributeMetadata[] => {
   const order =
     productType && productType !== 'all'
-      ? COLUMN_ORDER[productType] ?? []
+      ? COLUMN_ORDER[productType] ?? DEFAULT_LEADING_ORDER
       : [];
   const indexOf = new Map(order.map((k, i) => [k, i] as const));
   return [...attrs].sort((a, b) => {
