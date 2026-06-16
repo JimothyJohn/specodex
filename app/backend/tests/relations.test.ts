@@ -104,6 +104,42 @@ describe('GET /api/v1/relations/actuators', () => {
     expect(res.body.data[0].product_id).toBe('ok');
   });
 
+  it('attaches a _distribution_position block ranked over the filtered candidate set', async () => {
+    // Five candidates: three at 300mm, two at 200mm, one at 100mm.
+    // Rank 1 = 300mm cluster (size 3), rank 2 = 200mm (size 2),
+    // rank 3 = 100mm (size 1). Sparse row (no stroke) gets no badge.
+    mockList([
+      la('a300-1', {}),
+      la('a300-2', {}),
+      la('a300-3', {}),
+      la('a200-1', { stroke: { value: 200, unit: 'mm' } }),
+      la('a200-2', { stroke: { value: 200, unit: 'mm' } }),
+      la('a100', { stroke: { value: 100, unit: 'mm' } }),
+      la('sparse', { stroke: null }),
+    ]);
+    const res = await request(app).get('/api/v1/relations/actuators');
+    expect(res.status).toBe(200);
+    const byId = Object.fromEntries(
+      res.body.data.map((r: { product_id: string }) => [r.product_id, r]),
+    );
+    expect(byId['a300-1']._distribution_position).toEqual({
+      spec: 'stroke',
+      rank: 1,
+      cluster_count: 3,
+    });
+    expect(byId['a200-1']._distribution_position).toEqual({
+      spec: 'stroke',
+      rank: 2,
+      cluster_count: 2,
+    });
+    expect(byId['a100']._distribution_position).toEqual({
+      spec: 'stroke',
+      rank: 3,
+      cluster_count: 1,
+    });
+    expect(byId['sparse']._distribution_position).toBeUndefined();
+  });
+
   it('accepts but does not filter on min_duty_cycle and orientation', async () => {
     mockList([la('a-1', {})]);
     const res = await request(app).get(
@@ -277,6 +313,69 @@ describe('Predicates (port of specodex/relations.py)', () => {
     ).toEqual(['full']);
     // Floor above the rating excludes the full row too.
     expect(_predicates.compatibleActuators(rows, { minPeakForceN: 201 })).toHaveLength(0);
+  });
+
+  it('attachStrokeDistributionPositions ranks clusters by size and skips sparse rows', () => {
+    const la = (id: string, stroke: ValueUnit | null) =>
+      ({ product_id: id, product_type: 'linear_actuator', stroke } as ActuatorRecord);
+    type ValueUnit = { value?: number | null; unit?: string | null };
+    type ActuatorRecord = {
+      product_id: string;
+      product_type: 'linear_actuator' | 'electric_cylinder';
+      stroke?: ValueUnit | null;
+      [key: string]: unknown;
+    };
+    const rows: ActuatorRecord[] = [
+      la('big-1', { value: 500, unit: 'mm' }),
+      la('big-2', { value: 500, unit: 'mm' }),
+      la('small', { value: 100, unit: 'mm' }),
+      la('inches', { value: 10, unit: 'in' }), // non-canonical → no badge
+      la('missing', null), // sparse → no badge
+    ];
+    const annotated = _predicates.attachStrokeDistributionPositions(rows);
+    const byId = Object.fromEntries(annotated.map(r => [r.product_id, r]));
+    expect(byId['big-1']._distribution_position).toEqual({
+      spec: 'stroke',
+      rank: 1,
+      cluster_count: 2,
+    });
+    expect(byId['big-2']._distribution_position).toEqual({
+      spec: 'stroke',
+      rank: 1,
+      cluster_count: 2,
+    });
+    expect(byId['small']._distribution_position).toEqual({
+      spec: 'stroke',
+      rank: 2,
+      cluster_count: 1,
+    });
+    expect(byId['inches']._distribution_position).toBeUndefined();
+    expect(byId['missing']._distribution_position).toBeUndefined();
+  });
+
+  it('attachStrokeDistributionPositions breaks ties on stroke ascending', () => {
+    type ValueUnit = { value?: number | null; unit?: string | null };
+    type ActuatorRecord = {
+      product_id: string;
+      product_type: 'linear_actuator' | 'electric_cylinder';
+      stroke?: ValueUnit | null;
+      [key: string]: unknown;
+    };
+    const mk = (id: string, mm: number): ActuatorRecord => ({
+      product_id: id,
+      product_type: 'linear_actuator',
+      stroke: { value: mm, unit: 'mm' },
+    });
+    // Two same-size singleton clusters at 150mm and 300mm — the 150mm
+    // cluster should rank ahead (ascending tiebreak). Deterministic
+    // ordering matters so a Build user reload doesn't shuffle the badge.
+    const annotated = _predicates.attachStrokeDistributionPositions([
+      mk('a300', 300),
+      mk('a150', 150),
+    ]);
+    const byId = Object.fromEntries(annotated.map(r => [r.product_id, r]));
+    expect(byId['a150']._distribution_position?.rank).toBe(1);
+    expect(byId['a300']._distribution_position?.rank).toBe(2);
   });
 
   it('encoderIntersect requires motor protocol in drive list', () => {

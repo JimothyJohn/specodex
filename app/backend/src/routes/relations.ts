@@ -137,6 +137,72 @@ function meetsFloor(
 }
 
 /**
+ * Distribution-position metadata attached to each actuator candidate
+ * in the `/actuators` response. Drives todo/BUILD.md Part 3's
+ * "8th most common stroke in catalogue" badge. Computed once per
+ * request from the candidate set (not the full catalogue), so the
+ * rank is meaningful relative to what passed the filter.
+ *
+ * `spec` is fixed to `stroke` for the first cut — Build's most
+ * user-facing dimension, and the one the doc's example targets.
+ * Future expansion can pick per-request (peak_force_rating, peak_velocity_rating)
+ * via a query parameter; not needed for Phase 1.
+ */
+type DistributionPosition = {
+  spec: 'stroke' | 'peak_force_rating' | 'peak_velocity_rating';
+  rank: number;
+  cluster_count: number;
+};
+
+/**
+ * Group actuators by integer-millimetre stroke, rank the resulting
+ * clusters by size (1 = most populous), and attach a
+ * `_distribution_position` block to each candidate.
+ *
+ * Actuators missing the field or carrying it in a non-canonical unit
+ * receive no badge — same precision-over-recall rule the predicates
+ * follow. Ties in cluster size are broken by the spec value
+ * (ascending) so a stable rank survives across calls.
+ */
+function attachStrokeDistributionPositions(
+  candidates: ActuatorRecord[],
+): Array<ActuatorRecord & { _distribution_position?: DistributionPosition }> {
+  const bucketKey = (v: ValueUnit | null | undefined): number | null => {
+    if (!v || v.value == null || v.unit !== 'mm') return null;
+    return Math.round(v.value);
+  };
+
+  const counts = new Map<number, number>();
+  for (const c of candidates) {
+    const k = bucketKey(c.stroke);
+    if (k == null) continue;
+    counts.set(k, (counts.get(k) ?? 0) + 1);
+  }
+
+  // Sort clusters by size descending, tiebreak on the stroke value
+  // ascending so the rank is deterministic across identical-size
+  // clusters.
+  const ranked = [...counts.entries()].sort((a, b) => {
+    if (b[1] !== a[1]) return b[1] - a[1];
+    return a[0] - b[0];
+  });
+  const rankByBucket = new Map<number, number>();
+  ranked.forEach(([bucket], i) => rankByBucket.set(bucket, i + 1));
+
+  return candidates.map(c => {
+    const k = bucketKey(c.stroke);
+    if (k == null) return c;
+    const rank = rankByBucket.get(k);
+    const cluster_count = counts.get(k);
+    if (rank == null || cluster_count == null) return c;
+    return {
+      ...c,
+      _distribution_position: { spec: 'stroke', rank, cluster_count },
+    };
+  });
+}
+
+/**
  * Port of relations.py `compatible_actuators` — the requirements-first
  * entry point for Build's slot-fill sequence (todo/BUILD.md Part 4).
  * Each floor is optional and independent; an unset floor applies no
@@ -259,7 +325,13 @@ router.get('/actuators', async (req: Request, res: Response): Promise<void> => {
     minPeakForceN: q.min_peak_force_n,
     minPeakVelocityMmS: q.min_peak_velocity_mm_s,
   });
-  res.json({ success: true, data: matches, count: matches.length, total: actuators.length });
+  const annotated = attachStrokeDistributionPositions(matches);
+  res.json({
+    success: true,
+    data: annotated,
+    count: annotated.length,
+    total: actuators.length,
+  });
 });
 
 router.get('/motors-for-actuator', async (req: Request, res: Response): Promise<void> => {
@@ -348,6 +420,7 @@ export const _predicates = {
   compatibleMotors,
   compatibleDrives,
   compatibleGearheads,
+  attachStrokeDistributionPositions,
 };
 
 export default router;
