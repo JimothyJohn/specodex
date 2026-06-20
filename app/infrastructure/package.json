@@ -14,13 +14,13 @@
     "destroy": "cdk destroy"
   },
   "dependencies": {
-    "aws-cdk-lib": "^2.259.0",
+    "aws-cdk-lib": "^2.260.0",
     "constructs": "^10.4.2"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",
     "@types/node": "^25.9.3",
-    "aws-cdk": "^2.1126.0",
+    "aws-cdk": "^2.1128.0",
     "esbuild": "^0.28.1",
     "jest": "^30.4.2",
     "ts-jest": "^29.4.11",
