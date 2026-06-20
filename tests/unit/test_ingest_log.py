@@ -145,6 +145,42 @@ class TestShouldSkip:
         assert should_skip(rec) is True
 
 
+@pytest.mark.unit
+class TestShouldSkipMalformedRecord:
+    """Regression cases for the malformed-record path on quality_fail.
+    Caught by ``tests/unit/test_ingest_log_property.py`` (hypothesis
+    surfaced non-numeric strings landing in ``fields_filled_avg`` /
+    ``fields_total`` — the prior ``int()`` / ``float()`` coercion raised
+    ValueError before the function could decide). A leaked exception
+    here crashes ``scraper.process_datasheet`` on the first read of the
+    bad row, so the safe-retry fallback is also the safe-recovery path.
+    """
+
+    def test_non_numeric_fields_filled_avg_retries(self) -> None:
+        rec = {
+            "status": STATUS_QUALITY_FAIL,
+            "fields_filled_avg": ":",  # the exact shape hypothesis caught
+            "fields_total": None,
+        }
+        assert should_skip(rec) is False
+
+    def test_non_numeric_fields_total_retries(self) -> None:
+        rec = {
+            "status": STATUS_QUALITY_FAIL,
+            "fields_filled_avg": 10.0,
+            "fields_total": "not-a-number",
+        }
+        assert should_skip(rec) is False
+
+    def test_both_numeric_slots_malformed_retries(self) -> None:
+        rec = {
+            "status": STATUS_QUALITY_FAIL,
+            "fields_filled_avg": "x",
+            "fields_total": "y",
+        }
+        assert should_skip(rec) is False
+
+
 # ---------------------------------------------------------------------------
 # DynamoDBClient ingest CRUD
 # ---------------------------------------------------------------------------
