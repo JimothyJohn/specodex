@@ -8,7 +8,7 @@ dependencies = [
     "google-genai>=2.8.0",
     "pypdf2>=3.0.1",
     "pydantic>=2.13.4",
-    "boto3>=1.43.24",
+    "boto3>=1.43.29",
     "tenacity>=9.1.4",
     "pycryptodome>=3.20.0",
     "playwright>=1.60.0",
@@ -34,7 +34,7 @@ dev = [
     # `./Quickstart verify --only python`. app/backend_py/ keeps its
     # own pyproject.toml for the standalone Lambda bundle; these
     # mirror that list so one `uv sync` covers the whole monorepo.
-    "fastapi>=0.136.3",
+    "fastapi>=0.137.0",
     "mangum>=0.17.0",
     "python-jose[cryptography]>=3.5.0",
     "email-validator>=2.0.0",
@@ -53,14 +53,14 @@ dev = [
     "mutmut>=3.6.0",
     "mypy>=2.1.0",
     "pydantic-to-typescript>=2.0.0",
-    "pytest>=9.0.3",
+    "pytest>=9.1.0",
     "pytest-cov>=7.1.0",
     "pytest-mock>=3.15.1",
     # Random test order — auto-loads as a pytest plugin and surfaces
     # hidden inter-test dependencies / global-state leaks. Pin a seed
     # in CI via PYTEST_RANDOMLY_SEED for reproducibility.
     "pytest-randomly>=3.15.0",
-    "ruff>=0.15.16",
+    "ruff>=0.15.17",
 ]
 
 [tool.setuptools]
