@@ -269,6 +269,7 @@ Each one was a bug where the docstring said one thing and the code did another. 
 | `specodex/placeholders.py:is_placeholder` (LLM "null"/"N/A" string filter) | `test_placeholders_property.py` | `test_placeholders.py` |
 | `specodex/pricing/extract.py:_parse_bare_decimal` + `_parse_money` + `_parse_json_loose` | `test_pricing_parsers_property.py` | `test_pricing.py` |
 | `specodex/relations.py` predicates (`_value_in_range`, `_range_within`, `_value_gte`, `_shaft_compatible`, `_meets_floor`, `_encoder_protocol_intersect`) + `compatible_actuators` / `compatible_motors` / `compatible_drives` / `compatible_gearheads` | `test_relations_property.py` | `test_relations.py` |
+| `specodex/pricing/shopping.py:_parse_offers` + `filter_offers` + `pick_price` (Serper `/shopping` tier trust chain) | `test_shopping_property.py` | `test_shopping.py` |
 
 The 2026-05-14 sprint closed out the four "untested adversarial surfaces" from the 2026-05-10 callout (`cli/processor.py`, `compat.py`, `spec_rules.py`, `quality.py`) via PRs #149, #185, #202, #203. None of the four runs surfaced new bugs — every Hypothesis search confirmed the contract the example tests had already pinned. The boring-good outcome.
 
