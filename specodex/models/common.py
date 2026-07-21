@@ -22,7 +22,7 @@ from typing import Annotated, Any, List, Literal, Optional
 
 from pydantic import BaseModel, BeforeValidator, model_validator
 
-from specodex.units import normalize_unit_value
+from specodex.units import INERTIA_UNIT_STRINGS, normalize_unit_value
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -453,9 +453,11 @@ TORQUE = UnitFamily(
             "Nm",
             "N-m",
             "N·m",
+            "N.m",
             "mNm",
             "mN-m",
             "mN·m",
+            "mN.m",
             "μNm",
             "oz-in",
             "oz·in",
@@ -476,7 +478,7 @@ TORQUE = UnitFamily(
 SPEED = UnitFamily(
     "speed",
     "rpm",
-    frozenset({"rpm", "RPM", "rad/s", "rps"}),
+    frozenset({"rpm", "RPM", "r/min", "rev/min", "rad/s", "rps"}),
 )
 FORCE = UnitFamily(
     "force",
@@ -507,29 +509,9 @@ FREQUENCY = UnitFamily(
 INERTIA = UnitFamily(
     "inertia",
     "kg·cm²",
-    frozenset(
-        {
-            "kg·cm²",
-            "kg-cm²",
-            "kgcm²",
-            "g·cm²",
-            "g-cm²",
-            "gcm²",
-            "g.cm²",
-            "g·cm2",
-            "gcm2",
-            "kg·m²",
-            "kg-m²",
-            "kgm²",
-            "kg.m²",
-            "kg·m2",
-            "kgm2",
-            "oz-in²",
-            "oz·in²",
-            "oz-in2",
-            "oz·in2",
-        }
-    ),
+    # Derived from units.py so the accepted set and the conversion table
+    # can't drift: every accepted spelling is guaranteed to normalize.
+    INERTIA_UNIT_STRINGS,
 )
 RESISTANCE = UnitFamily(
     "resistance",
