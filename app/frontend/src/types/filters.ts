@@ -1319,9 +1319,14 @@ const getNestedValue = (obj: any, path: string): any => {
  * - number: Return as-is
  * - ValueUnit: { value: 100, unit: 'V' } → 100
  * - MinMaxUnit: { min: 200, max: 240, unit: 'V' } → 220 (average)
+ * - one-sided MinMaxUnit: { min: 200, max: null } → 200 (present bound)
  * - other: null
  *
- * Used for numeric sorting and filtering.
+ * Used for numeric sorting and filtering. One-sided ranges return their
+ * present bound — the naive midpoint corrupted the key (null → 0 made
+ * {min: 200, max: null} sort as 100; undefined made it NaN, which passes
+ * typeof === 'number' guards downstream). Mirrors
+ * utils/filterValues.ts:numericFromValue so filter and sort keys agree.
  *
  * @param value - Value to extract number from
  * @returns Numeric value or null if not extractable
@@ -1336,9 +1341,14 @@ const extractNumericValue = (value: any): number | null => {
     if ('value' in value) return value.value;
 
     // MinMaxUnit: { min: number, max: number, unit: string }
-    // Use average for sorting/filtering
-    if ('min' in value && 'max' in value) {
-      return (value.min + value.max) / 2;
+    // Use average for sorting/filtering; one-sided → present bound
+    const hasMin = 'min' in value && value.min != null;
+    const hasMax = 'max' in value && value.max != null;
+    if (hasMin || hasMax) {
+      const num = hasMin && hasMax
+        ? (Number(value.min) + Number(value.max)) / 2
+        : Number(hasMin ? value.min : value.max);
+      return Number.isNaN(num) ? null : num;
     }
   }
 
@@ -1374,21 +1384,27 @@ const matchesFilter = (value: any, filter: FilterCriterion): boolean => {
     return value !== undefined && value !== null;
   }
 
-  // ===== MULTI-SELECT STRING MATCHING =====
-  // When filter has multiple values (string[]), match if product value matches ANY of them (OR logic)
+  // ===== MULTI-SELECT MATCHING =====
+  // When filter has multiple values (string[] or number[], built by
+  // MultiSelectFilterPopover), match if product value matches ANY of them
+  // (OR logic). Numeric filter elements compare by exact numeric equality
+  // (substring matching made {4, 8} also match 48, and ip {5} match 54);
+  // string elements keep case-insensitive substring semantics.
   if (Array.isArray(filter.value)) {
     const filterValues = filter.value; // Extract to help TypeScript
+    const matchesOne = (v: any, fv: any): boolean => {
+      if (typeof fv === 'number') {
+        const num = extractNumericValue(v);
+        return num !== null && num === fv;
+      }
+      return String(v).toLowerCase().includes(String(fv).toLowerCase());
+    };
     // Handle case where product value is also an array
     if (Array.isArray(value)) {
-      return value.some(v =>
-        filterValues.some((fv: any) =>
-          String(v).toLowerCase().includes(String(fv).toLowerCase())
-        )
-      );
+      return value.some(v => filterValues.some((fv: any) => matchesOne(v, fv)));
     }
     // Product value is a single value, check if it matches any filter value
-    const valueStr = String(value).toLowerCase();
-    return filterValues.some((fv: any) => valueStr.includes(String(fv).toLowerCase()));
+    return filterValues.some((fv: any) => matchesOne(value, fv));
   }
 
   // ===== ARRAY MATCHING =====
@@ -1423,17 +1439,25 @@ const matchesFilter = (value: any, filter: FilterCriterion): boolean => {
     // range straddles the threshold is excluded, so no cell ever shows a
     // bound that contradicts the filter direction. Slider thumb and sort
     // key still use midpoint, so the slider scale is unchanged.
+    // One-sided ranges ({min: null, max: 240}) fall back to the present
+    // bound — comparing against a null bound coerced null → 0 and either
+    // silently dropped the row or matched it spuriously. Both bounds
+    // missing → no match.
     if ('min' in value && 'max' in value) {
       if (typeof filter.value === 'number') {
         const op = filter.operator || '=';
-        let representative: number;
+        const min = value.min ?? null;
+        const max = value.max ?? null;
+        let representative: number | null;
         if (op === '>=' || op === '>') {
-          representative = value.min;
+          representative = min ?? max;
         } else if (op === '<=' || op === '<') {
-          representative = value.max;
+          representative = max ?? min;
         } else {
-          representative = (value.min + value.max) / 2;
+          // = / != : midpoint, or the present bound for one-sided ranges
+          representative = min !== null && max !== null ? (min + max) / 2 : (min ?? max);
         }
+        if (representative === null) return false;
         return compareNumbers(representative, op, filter.value);
       }
     }
