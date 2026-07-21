@@ -1297,8 +1297,7 @@ export interface Manufacturer {
    * List of product types offered (e.g., 'motor', 'drive')
    */
   offered_product_types?:
-    | ("motor" | "drive" | "gearhead" | "robot_arm" | "contactor" | "electric_cylinder" | "linear_actuator")[]
-    | null;
+    ("motor" | "drive" | "gearhead" | "robot_arm" | "contactor" | "electric_cylinder" | "linear_actuator")[] | null;
 }
 /**
  * A Pydantic model representing the specifications of a motor.
