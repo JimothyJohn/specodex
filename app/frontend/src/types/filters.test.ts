@@ -852,3 +852,338 @@ describe('commercial columns (price + lead time)', () => {
     expect(attrs.some((a) => a.key === 'availability')).toBe(false);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────
+// REGRESSION — 2026-07-21: numeric multi-select matched by substring.
+//
+// MultiSelectFilterPopover.buildFilter stores number[] for number-typed
+// columns, but matchesFilter compared every array element with
+// String(value).includes(String(fv)). Selecting gear_ratio {4, 8} also
+// matched 48; ip_rating {5} matched 54 and 65. Numeric filter elements
+// must compare by exact numeric equality; string elements keep the
+// substring semantics (relied on by string multi-selects elsewhere).
+// ─────────────────────────────────────────────────────────────────────────
+describe('numeric multi-select filters (exact equality)', () => {
+  const gearheads: Product[] = [
+    {
+      product_id: 'g4',
+      product_type: 'gearhead',
+      manufacturer: 'ACME',
+      part_number: 'GH-4',
+      product_name: 'GH-4',
+      gear_ratio: 4,
+    },
+    {
+      product_id: 'g8',
+      product_type: 'gearhead',
+      manufacturer: 'ACME',
+      part_number: 'GH-8',
+      product_name: 'GH-8',
+      gear_ratio: 8,
+    },
+    {
+      product_id: 'g48',
+      product_type: 'gearhead',
+      manufacturer: 'ACME',
+      part_number: 'GH-48',
+      product_name: 'GH-48',
+      gear_ratio: 48,
+    },
+  ];
+
+  it('selecting {4, 8} matches 4 and 8 but NOT 48', () => {
+    const filters: FilterCriterion[] = [
+      {
+        attribute: 'gear_ratio',
+        mode: 'include',
+        operator: '=',
+        value: [4, 8],
+        displayName: 'Gear Ratio',
+      },
+    ];
+    const result = applyFilters(gearheads, filters);
+    expect(result.map(p => p.product_id).sort()).toEqual(['g4', 'g8']);
+  });
+
+  it('selecting {5} does not substring-match ValueUnit-wrapped 54 or 65', () => {
+    const motors: Product[] = [
+      {
+        product_id: 'p5',
+        product_type: 'motor',
+        manufacturer: 'ACME',
+        part_number: 'M-5',
+        product_name: 'M-5',
+        rated_power: { value: 5, unit: 'W' },
+      },
+      {
+        product_id: 'p54',
+        product_type: 'motor',
+        manufacturer: 'ACME',
+        part_number: 'M-54',
+        product_name: 'M-54',
+        rated_power: { value: 54, unit: 'W' },
+      },
+      {
+        product_id: 'p65',
+        product_type: 'motor',
+        manufacturer: 'ACME',
+        part_number: 'M-65',
+        product_name: 'M-65',
+        rated_power: { value: 65, unit: 'W' },
+      },
+    ];
+    const filters: FilterCriterion[] = [
+      {
+        attribute: 'rated_power',
+        mode: 'include',
+        operator: '=',
+        value: [5],
+        displayName: 'Rated Power',
+      },
+    ];
+    const result = applyFilters(motors, filters);
+    expect(result.map(p => p.product_id)).toEqual(['p5']);
+  });
+
+  it('numeric filter against an array-valued attribute compares elements exactly', () => {
+    const products: Product[] = [
+      {
+        product_id: 'a',
+        product_type: 'drive',
+        manufacturer: 'ACME',
+        part_number: 'A',
+        product_name: 'A',
+        input_voltage_phases: [12, 100],
+      },
+      {
+        product_id: 'b',
+        product_type: 'drive',
+        manufacturer: 'ACME',
+        part_number: 'B',
+        product_name: 'B',
+        input_voltage_phases: [10, 20],
+      },
+    ];
+    const filters: FilterCriterion[] = [
+      {
+        attribute: 'input_voltage_phases',
+        mode: 'include',
+        operator: '=',
+        value: [10],
+        displayName: 'Input Voltage Phases',
+      },
+    ];
+    // "100".includes("10") is true — substring matching wrongly kept 'a'.
+    const result = applyFilters(products, filters);
+    expect(result.map(p => p.product_id)).toEqual(['b']);
+  });
+
+  it('exclude mode with numeric multi-select only excludes exact matches', () => {
+    const filters: FilterCriterion[] = [
+      {
+        attribute: 'gear_ratio',
+        mode: 'exclude',
+        operator: '=',
+        value: [4],
+        displayName: 'Gear Ratio',
+      },
+    ];
+    const result = applyFilters(gearheads, filters);
+    expect(result.map(p => p.product_id).sort()).toEqual(['g48', 'g8']);
+  });
+
+  it('string multi-select keeps case-insensitive substring semantics (pinned)', () => {
+    const products: Product[] = [
+      {
+        product_id: '1',
+        product_type: 'motor',
+        manufacturer: 'ACME Motors',
+        part_number: 'AC-1',
+        product_name: 'AC-1',
+      },
+      {
+        product_id: '2',
+        product_type: 'motor',
+        manufacturer: 'Beta Corp',
+        part_number: 'BC-1',
+        product_name: 'BC-1',
+      },
+    ];
+    const filters: FilterCriterion[] = [
+      {
+        attribute: 'manufacturer',
+        mode: 'include',
+        operator: '=',
+        value: ['acme', 'gamma'],
+        displayName: 'Manufacturer',
+      },
+    ];
+    const result = applyFilters(products, filters);
+    expect(result.map(p => p.product_id)).toEqual(['1']);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// REGRESSION — 2026-07-21: one-sided MinMaxUnit ranges silently dropped.
+//
+// For >=/> the representative bound was value.min, for </<= value.max,
+// with no null check: {min: null, max: 240} under '>=' compared
+// null >= x → false and the row vanished. The rest of the app supports
+// one-sided ranges (formatting.ts formatRange, filterValues.ts
+// numericFromValue), so the filter must fall back to the present bound;
+// both bounds missing → no match. For =/!= the representative of a
+// one-sided range is the present bound, not (null + max) / 2.
+// ─────────────────────────────────────────────────────────────────────────
+describe('one-sided MinMaxUnit range filtering', () => {
+  const make = (id: string, voltage: any): Product => ({
+    product_id: id,
+    product_type: 'motor',
+    manufacturer: 'ACME',
+    part_number: id,
+    product_name: id,
+    rated_voltage: voltage,
+  });
+
+  it('{min: null, max: 240} passes a >= filter via the max fallback', () => {
+    const products = [make('a', { min: null, max: 240, unit: 'V' })];
+    const filters: FilterCriterion[] = [
+      {
+        attribute: 'rated_voltage',
+        mode: 'include',
+        operator: '>=',
+        value: 100,
+        displayName: 'Rated Voltage',
+      },
+    ];
+    expect(applyFilters(products, filters)).toHaveLength(1);
+  });
+
+  it('{min: null, max: 240} passes a > filter via the max fallback', () => {
+    const products = [make('a', { min: null, max: 240, unit: 'V' })];
+    const filters: FilterCriterion[] = [
+      {
+        attribute: 'rated_voltage',
+        mode: 'include',
+        operator: '>',
+        value: 100,
+        displayName: 'Rated Voltage',
+      },
+    ];
+    expect(applyFilters(products, filters)).toHaveLength(1);
+  });
+
+  it('{min: 200, max: null} fails a < filter via the min fallback (no null→0 coercion)', () => {
+    // Pre-fix, null < 100 coerced null → 0 and wrongly matched.
+    const products = [make('a', { min: 200, max: null, unit: 'V' })];
+    const filters: FilterCriterion[] = [
+      {
+        attribute: 'rated_voltage',
+        mode: 'include',
+        operator: '<',
+        value: 100,
+        displayName: 'Rated Voltage',
+      },
+    ];
+    expect(applyFilters(products, filters)).toHaveLength(0);
+  });
+
+  it('= uses the present bound as representative for a one-sided range', () => {
+    const products = [make('a', { min: null, max: 240, unit: 'V' })];
+    const eq = (value: number): FilterCriterion[] => [
+      {
+        attribute: 'rated_voltage',
+        mode: 'include',
+        operator: '=',
+        value,
+        displayName: 'Rated Voltage',
+      },
+    ];
+    // Pre-fix representative was (null + 240) / 2 = 120.
+    expect(applyFilters(products, eq(240))).toHaveLength(1);
+    expect(applyFilters(products, eq(120))).toHaveLength(0);
+  });
+
+  it('both bounds missing → no match, even under >=', () => {
+    // Pre-fix, representative null under '>=' coerced to 0 → 0 >= 0 matched.
+    const products = [make('a', { min: null, max: null, unit: 'V' })];
+    const filters: FilterCriterion[] = [
+      {
+        attribute: 'rated_voltage',
+        mode: 'include',
+        operator: '>=',
+        value: 0,
+        displayName: 'Rated Voltage',
+      },
+    ];
+    expect(applyFilters(products, filters)).toHaveLength(0);
+  });
+
+  it('two-sided ranges keep strict-bound matching (pinned)', () => {
+    const products = [make('a', { min: 200, max: 240, unit: 'V' })];
+    const f = (operator: '>=' | '<=', value: number): FilterCriterion[] => [
+      {
+        attribute: 'rated_voltage',
+        mode: 'include',
+        operator,
+        value,
+        displayName: 'Rated Voltage',
+      },
+    ];
+    expect(applyFilters(products, f('>=', 200))).toHaveLength(1);
+    expect(applyFilters(products, f('>=', 220))).toHaveLength(0); // min misses the bar
+    expect(applyFilters(products, f('<=', 240))).toHaveLength(1);
+    expect(applyFilters(products, f('<=', 220))).toHaveLength(0); // max exceeds
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// REGRESSION — 2026-07-21: midpoint sort key corrupted for one-sided
+// ranges. extractNumericValue did (min + max) / 2 unconditionally:
+// {min: 200, max: null} → 100 (null → 0), {min: 200, max: undefined} →
+// NaN (which passes typeof === 'number' guards downstream). One-sided
+// ranges must sort by their present bound, agreeing with
+// filterValues.ts numericFromValue.
+// ─────────────────────────────────────────────────────────────────────────
+describe('one-sided MinMaxUnit range sorting', () => {
+  const make = (id: string, voltage: any): Product => ({
+    product_id: id,
+    product_type: 'motor',
+    manufacturer: 'ACME',
+    part_number: id,
+    product_name: id,
+    rated_voltage: voltage,
+  });
+  const sort: SortConfig = {
+    attribute: 'rated_voltage',
+    direction: 'asc',
+    displayName: 'Rated Voltage',
+  };
+
+  it('{min: 220, max: null} sorts by its min bound, not the null→0 midpoint', () => {
+    // Pre-fix key was (220 + 0) / 2 = 110 → wrongly sorted before 150.
+    const products = [make('half-open', { min: 220, max: null, unit: 'V' }), make('scalar', { value: 150, unit: 'V' })];
+    const result = sortProducts(products, sort);
+    expect(result.map(p => p.product_id)).toEqual(['scalar', 'half-open']);
+  });
+
+  it('{min: null, max: 240} sorts by its max bound', () => {
+    // Pre-fix key was (0 + 240) / 2 = 120 → wrongly sorted before 200.
+    const products = [make('half-open', { min: null, max: 240, unit: 'V' }), make('scalar', { value: 200, unit: 'V' })];
+    const result = sortProducts(products, sort);
+    expect(result.map(p => p.product_id)).toEqual(['scalar', 'half-open']);
+  });
+
+  it('{min: 200, max: undefined} sorts by min instead of producing a NaN key', () => {
+    // Pre-fix key was (200 + undefined) / 2 = NaN → comparator returned NaN.
+    const products = [make('half-open', { min: 200, max: undefined, unit: 'V' }), make('scalar', { value: 100, unit: 'V' })];
+    const result = sortProducts(products, sort);
+    expect(result.map(p => p.product_id)).toEqual(['scalar', 'half-open']);
+  });
+
+  it('two-sided ranges keep the midpoint sort key (pinned)', () => {
+    const products = [make('range', { min: 90, max: 110, unit: 'V' }), make('scalar', { value: 100.1, unit: 'V' })];
+    const result = sortProducts(products, sort);
+    // midpoint 100 < 100.1
+    expect(result.map(p => p.product_id)).toEqual(['range', 'scalar']);
+  });
+});
