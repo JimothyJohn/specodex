@@ -180,6 +180,25 @@ class TestShouldSkipMalformedRecord:
         }
         assert should_skip(rec) is False
 
+    def test_nonfinite_fields_total_retries(self) -> None:
+        # int(float("inf")) raises OverflowError, not ValueError — the
+        # exact shape hypothesis caught after the string cases were fixed.
+        rec = {
+            "status": STATUS_QUALITY_FAIL,
+            "fields_filled_avg": None,
+            "fields_total": float("inf"),
+        }
+        assert should_skip(rec) is False
+
+    def test_nonfinite_fields_filled_avg_retries(self) -> None:
+        rec = {
+            "status": STATUS_QUALITY_FAIL,
+            "fields_filled_avg": float("-inf"),
+            "fields_total": 10,
+        }
+        # -inf / 10 is -inf, which is < MIN_RETRY_THRESHOLD — must not raise
+        assert should_skip(rec) is False
+
 
 # ---------------------------------------------------------------------------
 # DynamoDBClient ingest CRUD
