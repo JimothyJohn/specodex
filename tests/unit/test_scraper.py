@@ -362,3 +362,41 @@ class TestProcessDatasheet:
         # No valid models means batch_create gets an empty list (or is called with 0 items)
         # The function returns "failed" because success_count == 0
         assert result == "failed"
+
+
+@pytest.mark.unit
+class TestExtractBundledPdfTempFiles:
+    """Regression: _extract_bundled_pdf created two delete=False temp
+    files and only unlinked them on the happy path. Its caller
+    (_run_chunk) swallows exceptions, so a bad chunk silently leaked
+    two temp PDFs per failure — a long batch run accumulated them."""
+
+    def test_no_temp_leak_when_extraction_raises(self, tmp_path, monkeypatch) -> None:
+        import tempfile
+
+        from specodex import scraper
+
+        monkeypatch.setattr(tempfile, "tempdir", str(tmp_path))
+        monkeypatch.setattr(
+            scraper,
+            "extract_pdf_pages",
+            MagicMock(side_effect=RuntimeError("corrupt pdf")),
+        )
+        with pytest.raises(RuntimeError):
+            scraper._extract_bundled_pdf(b"%PDF-fake", [0])
+        leftovers = list(tmp_path.iterdir())
+        assert leftovers == [], f"temp files leaked: {leftovers}"
+
+    def test_no_temp_leak_on_success(self, tmp_path, monkeypatch) -> None:
+        import tempfile
+
+        from specodex import scraper
+
+        monkeypatch.setattr(tempfile, "tempdir", str(tmp_path))
+
+        def _fake_extract(tmp_in, tmp_out, pages):
+            tmp_out.write_bytes(b"%PDF-out")
+
+        monkeypatch.setattr(scraper, "extract_pdf_pages", _fake_extract)
+        assert scraper._extract_bundled_pdf(b"%PDF-fake", [0]) == b"%PDF-out"
+        assert list(tmp_path.iterdir()) == []

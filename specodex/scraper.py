@@ -513,13 +513,16 @@ def _extract_bundled_pdf(full_pdf: bytes, pages_0idx: List[int]) -> bytes:
     with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp_in:
         tmp_in.write(full_pdf)
         tmp_in_path = Path(tmp_in.name)
-    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp_out:
-        tmp_out_path = Path(tmp_out.name)
-    extract_pdf_pages(tmp_in_path, tmp_out_path, pages_0idx)
-    data = tmp_out_path.read_bytes()
-    tmp_in_path.unlink()
-    tmp_out_path.unlink()
-    return data
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp_out:
+            tmp_out_path = Path(tmp_out.name)
+        try:
+            extract_pdf_pages(tmp_in_path, tmp_out_path, pages_0idx)
+            return tmp_out_path.read_bytes()
+        finally:
+            tmp_out_path.unlink(missing_ok=True)
+    finally:
+        tmp_in_path.unlink(missing_ok=True)
 
 
 def _save_failure_artifacts(

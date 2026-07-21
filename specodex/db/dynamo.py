@@ -674,15 +674,21 @@ class DynamoDBClient:
                     i : i + batch_size
                 ]
 
+                buffered: int = 0
                 with self.table.batch_writer() as writer:
                     for model in batch:
                         try:
                             item: Dict[str, Any] = self._serialize_item(model)
                             writer.put_item(Item=item)
-                            success_count += 1
+                            buffered += 1
                         except Exception as e:
                             print(f"Error in batch item: {e}")
                             continue
+                # batch_writer flushes on context exit — only count a
+                # batch after its flush succeeds. Counting at buffer time
+                # reported items as written that never landed when the
+                # flush failed after boto3's unprocessed-items retries.
+                success_count += buffered
 
             return success_count
         except ClientError as e:
