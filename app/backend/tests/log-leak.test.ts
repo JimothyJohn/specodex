@@ -58,11 +58,13 @@ jest.mock('../src/db/dynamodb', () => ({
 const mockGetSubStatus = jest.fn();
 const mockIsSubActive = jest.fn();
 const mockCreateCheckout = jest.fn();
+const mockCreateApiKey = jest.fn();
 jest.mock('../src/services/stripe', () => ({
   stripeService: {
     getSubscriptionStatus: mockGetSubStatus,
     isSubscriptionActive: mockIsSubActive,
     createCheckoutSession: mockCreateCheckout,
+    createApiKey: mockCreateApiKey,
     reportUsage: jest.fn(),
   },
 }));
@@ -197,50 +199,63 @@ describe('Stripe error paths do not leak the secret key or webhook secret', () =
     });
   });
 
-  // KNOWN-LEAKING: `subscription.ts` 500 paths do
-  //   `console.error('Error checking subscription status:', error)`
-  // which logs the full `Error` object including its message — and
-  // `res.json({ error: error.message })` sends it to the client. If
-  // an upstream Stripe error embeds a credential into its message
-  // (real Stripe SDK errors sometimes do this), the secret leaks
-  // both to CloudWatch and to the response body.
-  //
-  // These two tests are marked `it.failing` to document the known
-  // bug. They will start FAILING (i.e. starting to "pass normally")
-  // when the leak is fixed — which is the signal to remove `.failing`.
-  // Tracked as a follow-up HARDENING card; see the PR description.
-  it.failing(
-    '500 on /api/subscription/status — no sk_test in logs (KNOWN LEAK)',
-    async () => {
-      const stripeErr = new Error(
-        `Stripe API error: invalid auth (key=${SENTINELS.STRIPE_SECRET_KEY})`,
-      );
-      mockGetSubStatus.mockRejectedValueOnce(stripeErr);
+  // Historically KNOWN-LEAKING (pinned as `it.failing` until fixed):
+  // the `subscription.ts` 500 paths logged the full `Error` object and
+  // sent `error.message` to the client via `res.json`. Upstream Stripe
+  // SDK errors sometimes embed credentials in their message, so the
+  // secret leaked both to CloudWatch and to the response body. The
+  // routes now log only the error class and return a generic string;
+  // these tests enforce that contract on both the log and the wire.
+  it('500 on /api/subscription/status — no sk_test in logs or response', async () => {
+    const stripeErr = new Error(
+      `Stripe API error: invalid auth (key=${SENTINELS.STRIPE_SECRET_KEY})`,
+    );
+    mockGetSubStatus.mockRejectedValueOnce(stripeErr);
 
-      await request(app)
-        .get('/api/subscription/status')
-        .set('Authorization', 'Bearer good-token');
+    const res = await request(app)
+      .get('/api/subscription/status')
+      .set('Authorization', 'Bearer good-token');
 
-      assertNoSentinelInLogs();
-    },
-  );
+    expect(res.status).toBe(500);
+    expect(JSON.stringify(res.body)).not.toContain(SENTINELS.STRIPE_SECRET_KEY);
+    assertNoSentinelInLogs();
+  });
 
-  it.failing(
-    '500 on /api/subscription/checkout — no webhook secret in logs (KNOWN LEAK)',
-    async () => {
-      const checkoutErr = new Error(
-        `checkout failed (whsec=${SENTINELS.STRIPE_WEBHOOK_SECRET})`,
-      );
-      mockCreateCheckout.mockRejectedValueOnce(checkoutErr);
+  it('500 on /api/subscription/checkout — no webhook secret in logs or response', async () => {
+    const checkoutErr = new Error(
+      `checkout failed (whsec=${SENTINELS.STRIPE_WEBHOOK_SECRET})`,
+    );
+    mockCreateCheckout.mockRejectedValueOnce(checkoutErr);
 
-      await request(app)
-        .post('/api/subscription/checkout')
-        .set('Authorization', 'Bearer good-token')
-        .send({});
+    const res = await request(app)
+      .post('/api/subscription/checkout')
+      .set('Authorization', 'Bearer good-token')
+      .send({});
 
-      assertNoSentinelInLogs();
-    },
-  );
+    expect(res.status).toBe(500);
+    expect(JSON.stringify(res.body)).not.toContain(SENTINELS.STRIPE_WEBHOOK_SECRET);
+    assertNoSentinelInLogs();
+  });
+
+  // Same leak shape on the API-key mint route: `apikeys.ts` returned
+  // `error.message` from the Stripe service straight to the client.
+  it('500 on POST /api/apikeys — no Stripe secret in logs or response', async () => {
+    const mintErr = new Error(
+      `key mint failed (key=${SENTINELS.STRIPE_SECRET_KEY} cus=${SENTINELS.STRIPE_CUSTOMER_ID})`,
+    );
+    mockCreateApiKey.mockRejectedValueOnce(mintErr);
+
+    const res = await request(app)
+      .post('/api/apikeys')
+      .set('Authorization', 'Bearer good-token')
+      .send({});
+
+    expect(res.status).toBe(500);
+    expect(res.body.success).toBe(false);
+    expect(JSON.stringify(res.body)).not.toContain(SENTINELS.STRIPE_SECRET_KEY);
+    expect(JSON.stringify(res.body)).not.toContain(SENTINELS.STRIPE_CUSTOMER_ID);
+    assertNoSentinelInLogs();
+  });
 });
 
 // --------------------------------------------------------------------

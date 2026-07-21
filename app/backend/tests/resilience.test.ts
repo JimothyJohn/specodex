@@ -195,13 +195,18 @@ describe('Batch Operation Partial Failures', () => {
     expect(response.body.data.items_failed).toBe(1);
   });
 
-  it('POST /api/products single item with DB failure returns 201 with success=false', async () => {
+  // Deliberate contract change: this used to pin 201 + success:false when
+  // the DAL wrote nothing, which told clients "created" on a total write
+  // failure (the DAL swallows DynamoDB errors). Zero-created is now a 500;
+  // partial success (test above) remains 201.
+  it('POST /api/products single item with DB failure returns 500 with success=false', async () => {
     (DynamoDBService.prototype.create as jest.Mock).mockResolvedValue(false);
 
     const response = await request(app).post('/api/products').send({
       product_type: 'motor', product_name: 'A', manufacturer: 'Test',
     });
-    expect(response.status).toBe(201);
+    expect(response.status).toBe(500);
+    expect(response.body.success).toBe(false);
     expect(response.body.data.items_created).toBe(0);
   });
 

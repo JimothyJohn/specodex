@@ -12,8 +12,18 @@ import { safeLog } from '../util/log';
 
 const ALLOWED_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
-// Paths exempt from readonly — these only queue work, they don't mutate existing data
-const WRITE_ALLOWED_PATHS = new Set(['/upload', '/upload/']);
+// Paths exempt from readonly — these only queue work or compute, they
+// don't mutate existing data. The compat check is a read-only pairwise
+// computation that uses POST solely to carry a body ({a, b} product
+// refs); blocking it made the feature dead on the public deployment.
+// Paths are as seen by this middleware, which is mounted at /api
+// (src/index.ts) — i.e. /api/v1/compat/check arrives as /v1/compat/check.
+const WRITE_ALLOWED_PATHS = new Set([
+  '/upload',
+  '/upload/',
+  '/v1/compat/check',
+  '/v1/compat/check/',
+]);
 
 // Path prefixes exempt from readonly. Auth endpoints (register, login,
 // password reset, etc.) need POST in public mode but don't mutate
