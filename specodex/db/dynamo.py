@@ -17,6 +17,7 @@ import boto3  # type: ignore
 from botocore.exceptions import ClientError  # type: ignore
 
 from specodex.config import REGION, SCHEMA_CHOICES, TABLE_NAME
+from specodex.db.lookups import query_first_match, scan_first_match
 from specodex.models.datasheet import Datasheet
 from specodex.models.product import ProductBase
 
@@ -204,13 +205,17 @@ class DynamoDBClient:
             # For now, let's assume we scan or use a GSI if we had one.
             # Without GSI, we have to Scan, which is inefficient but acceptable for now as per plan.
 
-            response = self.table.scan(
-                FilterExpression="#url = :url",
-                ExpressionAttributeNames={"#url": "url"},
-                ExpressionAttributeValues={":url": url},
-                Limit=1,
+            # No Limit — DynamoDB applies Limit before FilterExpression, so
+            # Limit=1 examines one arbitrary item and misses real matches.
+            return (
+                scan_first_match(
+                    self.table,
+                    FilterExpression="#url = :url",
+                    ExpressionAttributeNames={"#url": "url"},
+                    ExpressionAttributeValues={":url": url},
+                )
+                is not None
             )
-            return bool(response.get("Items"))
         except ClientError as e:
             print(
                 f"Error checking if datasheet exists: {e.response['Error']['Message']}"
@@ -342,19 +347,22 @@ class DynamoDBClient:
             model_type: str = product_type.upper()
             pk_value: str = f"PRODUCT#{model_type}"
 
-            response = self.table.query(
-                KeyConditionExpression="PK = :pk",
-                FilterExpression="manufacturer = :manufacturer AND product_name = :product_name",
-                ExpressionAttributeValues={
-                    ":pk": pk_value,
-                    ":manufacturer": manufacturer,
-                    ":product_name": product_name,
-                },
-                Limit=1,  # We only need to know if at least one exists
+            # No Limit — DynamoDB applies Limit before FilterExpression, so
+            # Limit=1 examines only the partition's first item and misses
+            # every other product of this type.
+            return (
+                query_first_match(
+                    self.table,
+                    KeyConditionExpression="PK = :pk",
+                    FilterExpression="manufacturer = :manufacturer AND product_name = :product_name",
+                    ExpressionAttributeValues={
+                        ":pk": pk_value,
+                        ":manufacturer": manufacturer,
+                        ":product_name": product_name,
+                    },
+                )
+                is not None
             )
-
-            # Return True if we found at least one matching item
-            return bool(response.get("Items"))
 
         except ClientError as e:
             print(f"Error checking if product exists: {e.response['Error']['Message']}")
