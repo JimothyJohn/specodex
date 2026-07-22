@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Specodex PR #333 — commercial-first UI: confidence chips, source popovers, stocked badges, the Commercial ⇄ Technical balance control, and the vendor drawer.">
+    <meta name="theme-color" content="#3A2C1C">
+    <title>Specodex — PR #333: commercial-first UI</title>
+    <link rel="icon" type="image/svg+xml" href="../logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-issue="PR-333">
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="band">
+        <div class="band-inner">
+            <a class="band-brand" href="../index.html">
+                <svg class="band-mark" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <rect width="120" height="120" fill="#E8E2C9"/>
+                    <rect x="14" y="14" width="92" height="92" fill="none" stroke="#1A1A14" stroke-width="3"/>
+                    <rect x="14" y="14" width="92" height="22" fill="#3A2C1C"/>
+                    <rect x="62" y="60" width="40" height="10" fill="#A88A1C"/>
+                    <line x1="14" y1="56" x2="106" y2="56" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="74" x2="106" y2="74" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="92" x2="106" y2="92" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="60" y1="36" x2="60" y2="106" stroke="#1A1A14" stroke-width="2"/>
+                </svg>
+                <span class="wordmark">SPECODEX</span>
+            </a>
+            <nav class="band-nav" aria-label="Section">
+                <a href="../index.html">Catalog</a>
+                <a href="./" class="active">Pull Requests</a>
+                <a href="https://github.com/JimothyJohn/specodex" rel="noreferrer">GitHub</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="hero-tag">▮▮▮ PULL REQUEST #333 ▮▮▮</div>
+            <h1 class="hero-title">Commercial-first UI — chips, popovers, badges, balance control, vendor drawer</h1>
+            <p class="hero-sub">
+                <code>todo/COMMERCIAL.md</code> Phase 3 — the display
+                layer for the provenance schema (PR #331) and the
+                inference engine's output (PR #332). Every commercial
+                figure in the table now says what it is and where it
+                came from: listed prices get a <code>LISTED</code>
+                confidence chip, estimates render muted with a tilde
+                and their own tier, and every chip opens a source
+                popover with the citation trail. Plus stocked badges
+                on availability, a Commercial ⇄ Technical column
+                balance control, an estimates-aware price filter, and
+                an app-native vendor drawer that only shows cited
+                facts.
+            </p>
+            <dl class="pr-meta">
+                <div><dt>Branch</dt><dd><code>feat/commercial-ui-20260721</code></dd></div>
+                <div><dt>Merged</dt><dd>2026-07-22</dd></div>
+                <div><dt>Diff</dt><dd>+2,573 / −26 across 28 files</dd></div>
+                <div><dt>Plan</dt><dd><code>todo/COMMERCIAL.md</code> Phase 3</dd></div>
+                <div><dt>Tests</dt><dd>83 new frontend tests; <code>verify --only frontend</code> green</dd></div>
+            </dl>
+            <div class="cta-row">
+                <a class="cta cta-primary" href="https://github.com/JimothyJohn/specodex/pull/333" rel="noreferrer">View on GitHub →</a>
+                <a class="cta cta-ghost" href="./">All requests</a>
+            </div>
+        </section>
+
+        <section aria-label="What changes">
+            <div class="divider"><span>▮▮▮ PER-SURFACE BEFORE → AFTER ▮▮▮</span></div>
+            <ol class="cell-list">
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">S-1</span><h2 class="cell-title">Price cell</h2></div>
+                    <p class="cell-body">
+                        Before: bare number or empty cell; no way to
+                        tell where a price came from. After: a listed
+                        price renders as before plus a
+                        <code>LISTED</code> ConfidenceChip; click →
+                        SourcePopover citing <code>msrp_source_url</code>
+                        + <code>msrp_fetched_at</code> (no source URL →
+                        "listed — catalog extraction", citing the
+                        <code>datasheet_url</code>). No listed price
+                        but a <code>price_estimate</code> →
+                        <code>~$1,240</code> styled muted/italic +
+                        confidence chip + popover. Neither →
+                        <code>—</code>. Resolution order (listed &gt;
+                        estimate &gt; absent) is a pure function in
+                        <code>utils/commercial.ts</code>, unit-tested;
+                        the two are never merged.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">S-2</span><h2 class="cell-title">Lead-time cell + stocked badges</h2></div>
+                    <p class="cell-body">
+                        Before: humanized enum text ("In Stock"), no
+                        provenance. After: <code>in_stock</code> /
+                        <code>limited</code> → compact
+                        <code>STOCKED</code> badge whose popover cites
+                        <code>availability_source_url</code> +
+                        <code>availability_fetched_at</code>;
+                        <code>back_order</code> / <code>out_of_stock</code>
+                        / <code>pre_order</code> / <code>discontinued</code>
+                        → corresponding muted badges; listed
+                        <code>lead_time</code> renders its value;
+                        <code>lead_time_estimate</code> renders
+                        <code>~N weeks</code> + chip; else <code>—</code>.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">S-3</span><h2 class="cell-title">Source popover</h2></div>
+                    <p class="cell-body">
+                        New <code>ui/SourcePopover</code>. Each
+                        citation: kind label, publisher hostname
+                        (derived from the URL), retrieval date,
+                        verbatim excerpt in quoted style, and a "View
+                        source" <code>&lt;ExternalLink&gt;</code>.
+                        <code>db_inference</code> citations read
+                        "Estimated from N comparable products (method
+                        X)" — ids are counted, not linked, because no
+                        per-product route exists.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">S-4</span><h2 class="cell-title">Commercial ⇄ Technical balance</h2></div>
+                    <p class="cell-body">
+                        New <code>BalanceToggle</code> — segmented
+                        COMM / BAL / TECH control in the header next
+                        to the density toggle, persisted under
+                        <code>specodex.columnBalance</code>.
+                        Commercial → the commercial band (price, lead
+                        time, warranty) pins first and a
+                        price-ascending default sort is seeded
+                        (removed on the way out only if the user
+                        hasn't touched it); Technical → specs first
+                        with the commercial band trailing last;
+                        Balanced → today's default. Implemented by
+                        extending <code>orderColumnAttributes</code>
+                        (the PR #285 mechanism) with a balance
+                        parameter — no parallel ordering path.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">S-5</span><h2 class="cell-title">Vendor drawer</h2></div>
+                    <p class="cell-body">
+                        Before: manufacturer cells were inert text.
+                        After: clicking a manufacturer opens an
+                        app-native drawer reading
+                        <code>src/data/vendors.json</code> (seeded
+                        <code>{}</code> — the registry + real cited
+                        data ship in <a href="334.html">PR #334</a>)
+                        through a tolerant accessor. No entry → the
+                        honest empty state: "No published commercial
+                        facts on file for &lt;name&gt;. Facts appear
+                        here only with a verifiable public citation."
+                        Entries render each fact with its citations
+                        through the same SourcePopover. No ratings,
+                        no stars, no invented copy.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">S-6</span><h2 class="cell-title">Filters — stocked chip + estimates opt-in</h2></div>
+                    <p class="cell-body">
+                        Stocked-only quick chip in the page toolbar —
+                        a plain <code>FilterCriterion</code>
+                        (<code>availability ∈ {in_stock, limited}</code>)
+                        through the existing multi-select matching.
+                        Price filters gain a per-filter
+                        <code>includeEstimates</code> flag (default
+                        <strong>off</strong> — listed prices only);
+                        when on, rows without <code>msrp</code> fall
+                        back to <code>price_estimate.value</code>, and
+                        a listed price always wins over the estimate.
+                        Surfaced as an <code>~est</code> toggle on the
+                        price column header (both densities).
+                    </p>
+                </li>
+            </ol>
+        </section>
+
+        <section aria-label="Conventions">
+            <div class="divider"><span>▮▮▮ CONVENTIONS HELD ▮▮▮</span></div>
+            <p class="prose">
+                No native chrome: Tooltip / ExternalLink primitives
+                throughout, portaled popovers and drawer with
+                outside-click + Escape dismissal,
+                <code>.scrollable</code> for themed scrollbars — the
+                style drift gates pass (SourcePopover's header prop is
+                named <code>heading</code> to stay clear of the
+                <code>title=</code> grep). Every new component ships a
+                sibling <code>.css</code> imported by the component;
+                <code>App.css</code> untouched.
+            </p>
+        </section>
+
+        <section aria-label="Files touched">
+            <div class="divider"><span>▮▮▮ FILES TOUCHED ▮▮▮</span></div>
+            <table class="spec-table">
+                <thead><tr><th>File</th><th>Lines</th><th>Note</th></tr></thead>
+                <tbody>
+                    <tr><td><code>src/utils/commercial.ts</code> + <code>.test.ts</code></td><td class="num">+527</td><td>NEW — resolution order, badge map, citation mapping, vendor accessor</td></tr>
+                    <tr><td><code>src/components/ui/ConfidenceChip.{tsx,css,test.tsx}</code></td><td class="num">+179</td><td>NEW — confidence-tier chip primitive</td></tr>
+                    <tr><td><code>src/components/ui/SourcePopover.{tsx,css,test.tsx}</code></td><td class="num">+385</td><td>NEW — citation popover primitive</td></tr>
+                    <tr><td><code>src/components/CommercialCell.{tsx,css,test.tsx}</code></td><td class="num">+372</td><td>NEW — price / lead-time cell renderer</td></tr>
+                    <tr><td><code>src/components/BalanceToggle.{tsx,css,test.tsx}</code></td><td class="num">+172</td><td>NEW — COMM / BAL / TECH segmented control</td></tr>
+                    <tr><td><code>src/components/VendorDrawer.{tsx,css,test.tsx}</code></td><td class="num">+389</td><td>NEW — app-native vendor facts drawer</td></tr>
+                    <tr><td><code>src/components/ColumnHeader.{tsx,css}</code></td><td class="num">+74</td><td><code>~est</code> toggle on the price header</td></tr>
+                    <tr><td><code>src/types/columnOrder.ts</code> + balance test</td><td class="num">+154 / −6</td><td>balance parameter on <code>orderColumnAttributes</code></td></tr>
+                    <tr><td><code>src/types/filters.ts</code> + commercial test</td><td class="num">+195 / −1</td><td>stocked chip criterion + <code>includeEstimates</code></td></tr>
+                    <tr><td><code>src/components/ProductList.tsx</code>, <code>App.tsx</code>, <code>context/AppContext.tsx</code></td><td class="num">+124 / −18</td><td>wiring: cells, toggle, drawer, filter chip</td></tr>
+                    <tr><td><code>src/data/vendors.json</code></td><td class="num">+1</td><td>seed <code>{}</code> — populated by PR #334</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section aria-label="How to verify">
+            <div class="divider"><span>▮▮▮ HOW TO VERIFY ▮▮▮</span></div>
+            <ol class="cell-list">
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">V-1</span><h2 class="cell-title">83 new tests, gate green</h2></div>
+                    <p class="cell-body">
+                        <code>utils/commercial.test.ts</code>
+                        (resolution order, catalog-extraction
+                        fallback, badge map for all six availability
+                        values, citation mapping, inference wording,
+                        vendor accessor),
+                        <code>columnOrder.balance.test.ts</code>
+                        (ordering per mode, no drop/dup),
+                        <code>filters.commercial.test.ts</code>
+                        (stocked filter, includeEstimates
+                        on/off/threshold/listed-wins), plus component
+                        suites for ConfidenceChip, SourcePopover,
+                        CommercialCell, BalanceToggle (localStorage
+                        round-trip), VendorDrawer (empty state +
+                        populated facts). <code>./Quickstart verify
+                        --only frontend</code> fully green.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">V-2</span><h2 class="cell-title">Eyeball it</h2></div>
+                    <p class="cell-body">
+                        <code>./Quickstart dev</code> → price column
+                        shows chips on listed prices; toggle COMM /
+                        TECH and watch the commercial band pin or
+                        trail; click a manufacturer for the drawer's
+                        honest empty state; flip <code>~est</code> on
+                        the price filter and confirm estimate rows
+                        enter the match set only then.
+                    </p>
+                </li>
+            </ol>
+        </section>
+
+        <a class="back-link" href="./">← back to requests log</a>
+    </main>
+
+    <footer>
+        <div class="footer-inner">
+            <span>© 2026 Specodex · PR #333</span>
+            <span class="footer-rule" aria-hidden="true"></span>
+            <a class="footer-link" href="https://github.com/JimothyJohn/specodex/pull/333" rel="noreferrer">View on GitHub</a>
+            <a class="footer-link" href="./">All requests</a>
+        </div>
+    </footer>
+</body>
+</html>
