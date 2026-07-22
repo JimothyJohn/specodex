@@ -1,0 +1,58 @@
+{
+  "slug": "oriental-motor",
+  "display_name": "Oriental Motor",
+  "facts": [
+    {
+      "label": "Standard product warranty",
+      "value": "Warranty claims accepted up to 2 years from date of shipment (written notice of defect required within that period)",
+      "kind": "warranty",
+      "sources": [
+        {
+          "url": "https://www.orientalmotor.com/support/warranty.html",
+          "kind": "oem",
+          "retrieved_at": "2026-07-22T02:27:42Z",
+          "excerpt": "the Company shall have no obligation or liability under this Warranty unless it shall have received written notice specifying such defect no later than two (2) years from the date of shipment"
+        }
+      ]
+    },
+    {
+      "label": "US support channels and hours",
+      "value": "Business hours Mon-Fri 8:30am EST to 5:00pm PST; technical support 1-800-468-3982, customer service 1-800-418-7903, sales 1-800-448-6935",
+      "kind": "support",
+      "sources": [
+        {
+          "url": "https://www.orientalmotor.com/contact/index.html",
+          "kind": "oem",
+          "retrieved_at": "2026-07-22T02:27:42Z",
+          "excerpt": "Service & Support Business Hours: Monday to Friday 8:30am EST to 5:00pm PST Technical Support: 1-800-468-3982 Robot Support: 1-800-443-0775 Inside Sales Support: 1-800-448-6935 Customer Service: 1-800-418-7903"
+        }
+      ]
+    },
+    {
+      "label": "Plant quality/environmental certifications",
+      "value": "ISO 9001 and ISO 14001 certified plants in Japan; Torrance and Chicago plants ISO 9001:2015",
+      "kind": "certification",
+      "sources": [
+        {
+          "url": "https://www.orientalmotor.com/support/iso9001-14001.html",
+          "kind": "oem",
+          "retrieved_at": "2026-07-22T02:27:42Z",
+          "excerpt": "Oriental Motor Plants that have acquired Certification for ISO9001 and ISO14001 Tsuruoka Plants (Chuo, Nishi) Tsuchiura Plant Takamatsu Plant (Kokubunji, Kozai) Soma Plant Kashiwa Plant Tsukuba Plant Torrance Plant (ISO9001:2015 Only) Chicago Plant (ISO9001:2015 Only)"
+        }
+      ]
+    },
+    {
+      "label": "Published delivery statement",
+      "value": "Products can be delivered in as little as 3 days, from an order of 1 piece",
+      "kind": "lead_time_statement",
+      "sources": [
+        {
+          "url": "https://www.orientalmotor.com/contact/index.html",
+          "kind": "oem",
+          "retrieved_at": "2026-07-22T02:27:42Z",
+          "excerpt": "With our solid production, quality control and logistics systems, Oriental motor products can be delivered to customers when they need it, in as little as 3 days, starting from an order of just 1 piece."
+        }
+      ]
+    }
+  ]
+}
