@@ -158,7 +158,7 @@ def _strip_value_qualifiers(v: Any) -> Optional[float]:
     if isinstance(v, Decimal):
         return float(v)
     if isinstance(v, str):
-        cleaned = v.strip().strip("+~><")
+        cleaned = v.strip().strip("+~><≤≥±").strip()
         if not cleaned:
             return None
         try:
@@ -166,6 +166,17 @@ def _strip_value_qualifiers(v: Any) -> Optional[float]:
         except ValueError:
             return None
     return None
+
+
+def _recover_glyph_unit(value_part: str, unit: str) -> tuple[str, str]:
+    """Recover a trailing unit glyph from the value side of a legacy
+    compact string whose unit slot is a placeholder ("±180°;null").
+    Returns (value_part, unit), possibly unchanged."""
+    from specodex.placeholders import is_placeholder
+
+    if is_placeholder(unit) and value_part.endswith("°"):
+        return value_part[:-1].strip(), "°"
+    return value_part, unit
 
 
 def _coerce_str_to_value_unit_dict(s: str) -> Optional[dict]:
@@ -180,9 +191,20 @@ def _coerce_str_to_value_unit_dict(s: str) -> Optional[dict]:
         val_str, unit = parts[0].strip(), parts[1].strip()
         if not unit:
             return None
+        val_str, unit = _recover_glyph_unit(val_str, unit)
         val = _strip_value_qualifiers(val_str)
         if val is None:
-            return None
+            # Legacy compact strings sometimes carry a range in a
+            # scalar slot ("-90-135°;null" as a working_range). Collapse
+            # to min — the same convention as MinMaxUnit → ValueUnit
+            # instance coercion — instead of killing the whole row.
+            as_range = _coerce_str_to_min_max_unit_dict(s)
+            if as_range is None:
+                return None
+            scalar = as_range["min"] if as_range["min"] is not None else as_range["max"]
+            if scalar is None:
+                return None
+            return {"value": scalar, "unit": as_range["unit"]}
         return {"value": val, "unit": unit}
     parts = s.split()
     if len(parts) >= 2:
@@ -229,10 +251,16 @@ def _coerce_str_to_min_max_unit_dict(s: str) -> Optional[dict]:
     range_part, unit = parts[0].strip(), parts[1].strip()
     if not unit:
         return None
+    range_part, unit = _recover_glyph_unit(range_part, unit)
     range_part = range_part.replace(" to ", "-")
-    # Try range "lo-hi" (handle leading negative on lo).
     import re
 
+    # Symmetric range "±N" → [-N, N] ("±180°;null" working ranges).
+    pm = re.match(r"^±\s*(\d+(?:\.\d+)?)$", range_part)
+    if pm:
+        bound = float(pm.group(1))
+        return {"min": -bound, "max": bound, "unit": unit}
+    # Try range "lo-hi" (handle leading negative on lo).
     m = re.match(r"^(-?\d+(?:\.\d+)?)-(-?\d+(?:\.\d+)?)$", range_part)
     if m:
         try:
