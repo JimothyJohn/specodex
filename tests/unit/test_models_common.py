@@ -449,6 +449,16 @@ class TestLegacyCompactStringRecovery:
             "unit": "°",
         }
 
+    # -- trailing parenthetical annotation on the value side --
+    def test_trailing_parenthetical_stripped(self) -> None:
+        assert _coerce_str_to_value_unit_dict("340 (360 option);degrees") == {
+            "value": 340.0,
+            "unit": "degrees",
+        }
+
+    def test_parenthetical_only_still_none(self) -> None:
+        assert _coerce_str_to_value_unit_dict("(360 option);degrees") is None
+
     # -- real "null" unit with no recoverable glyph stays dead --
     def test_null_unit_without_glyph_still_none(self) -> None:
         assert _coerce_str_to_value_unit_dict("garbage;null") is None

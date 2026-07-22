@@ -159,6 +159,9 @@ def _strip_value_qualifiers(v: Any) -> Optional[float]:
         return float(v)
     if isinstance(v, str):
         cleaned = v.strip().strip("+~><≤≥±").strip()
+        # Drop a trailing parenthetical annotation ("340 (360 option)").
+        if cleaned.endswith(")") and "(" in cleaned:
+            cleaned = cleaned[: cleaned.rindex("(")].strip()
         if not cleaned:
             return None
         try:
