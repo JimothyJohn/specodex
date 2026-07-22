@@ -1,0 +1,58 @@
+{
+  "slug": "mitsubishi-electric",
+  "display_name": "Mitsubishi Electric",
+  "facts": [
+    {
+      "label": "Servo systems warranty (MEAU)",
+      "value": "Servo drives and motors: 12 months from date of installation or 18 months from date of shipment, whichever comes first",
+      "kind": "warranty",
+      "sources": [
+        {
+          "url": "https://us.mitsubishielectric.com/fa/en/legal-notices/warranty-servo-systems",
+          "kind": "oem",
+          "retrieved_at": "2026-07-22T02:27:42Z",
+          "excerpt": "The Products are warrantied for a period of twelve (12) months from the date of Product installation at the premises of the original end user or eighteen (18) months from the date of shipment from MEAU, whichever comes first"
+        }
+      ]
+    },
+    {
+      "label": "Variable frequency drive warranty (MEAU)",
+      "value": "Listed VFD series (FR-S500/E500/D700/E700/E800, manufactured after Aug 1 2004): 60 months from date of manufacture",
+      "kind": "warranty",
+      "sources": [
+        {
+          "url": "https://us.mitsubishielectric.com/fa/en/legal-notices/warranty-variable-frequency-drive/",
+          "kind": "oem",
+          "retrieved_at": "2026-07-22T02:27:42Z",
+          "excerpt": "The Variable Frequency Drives (VFD) models FR-S500-NA, FR-S500E-NA, FR-E500-NA, FR-D700-NA, FR-E700-NA series, and FR-E800 manufactured after August 1, 2004 are warrantied for a period of sixty (60) months from the date of manufacture."
+        }
+      ]
+    },
+    {
+      "label": "US industrial automation phone support",
+      "value": "1-847-478-2500 x 3, 8:00AM-6:00PM CST Monday-Friday (except US holidays)",
+      "kind": "support",
+      "sources": [
+        {
+          "url": "https://us.mitsubishielectric.com/fa/en/support/technical-support/telephone-support/industrial-automation/",
+          "kind": "oem",
+          "retrieved_at": "2026-07-22T02:27:42Z",
+          "excerpt": "Phone Technical Support: 1-847-478-2500 x 3 - Our hours of operation are from 8:00AM to 6:00PM CST Monday through Friday (except US holidays)."
+        }
+      ]
+    },
+    {
+      "label": "US industrial automation headquarters",
+      "value": "500 Corporate Woods Parkway, Vernon Hills, Illinois 60061",
+      "kind": "location",
+      "sources": [
+        {
+          "url": "https://us.mitsubishielectric.com/fa/en/about-us/locations/",
+          "kind": "oem",
+          "retrieved_at": "2026-07-22T02:27:42Z",
+          "excerpt": "CORPORATE HEADQUARTERS Mitsubishi Electric US, Inc. Industrial Automation Division 500 Corporate Woods Parkway Vernon Hills, Illinois 60061"
+        }
+      ]
+    }
+  ]
+}

@@ -43,6 +43,18 @@ Everything goes through `./Quickstart <command>`. It's a bash shim that delegate
                                   from the Pydantic models under specodex/models/.
                                   Single source of truth for the Python ↔ TypeScript
                                   contract — see "Type generation" below.
+    ./Quickstart vendor-facts validate|verify
+                                  Citation-required vendor-facts registry
+                                  (data/vendors/*.json, loader in
+                                  specodex/vendors/registry.py). validate loads
+                                  every profile and exits 1 on any fact without
+                                  a valid citation; verify re-fetches each cited
+                                  URL (SSRF-checked, robots-respecting) and
+                                  re-checks the verbatim excerpt — the
+                                  replicability audit from todo/COMMERCIAL.md
+                                  Phase 4. After editing data/vendors/, rerun
+                                  scripts/gen_vendor_data.py and commit the
+                                  regenerated app/frontend/src/data/vendors.json.
 
 All CLI modules live in `cli/`. Quickstart is the single entry point — don't run `python -m cli.foo` in docs or scripts unless there's a reason.
 
