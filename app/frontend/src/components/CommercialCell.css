@@ -1,0 +1,80 @@
+/* PriceCell + LeadTimeCell — commercial band table cells. */
+
+.commercial-cell {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.commercial-cell--absent {
+  color: var(--text-tertiary);
+}
+
+.commercial-cell-value {
+  font-family: var(--font-mono);
+}
+
+/* Estimates read distinctly muted/italic per the manila design language
+ * — an estimate never masquerades as a listed price. */
+.commercial-cell-value--estimate {
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+
+/* Availability badge — compact stencil-style stamp. */
+.availability-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 0.35em;
+  font-family: var(--font-headline);
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  line-height: 1.6;
+  text-transform: uppercase;
+  border-radius: 0;
+  background: transparent;
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+}
+
+.availability-badge:hover {
+  background: var(--bg-tertiary);
+}
+
+.availability-badge--positive {
+  color: var(--success);
+  border: 1px solid var(--success);
+}
+
+.availability-badge--muted {
+  color: var(--text-tertiary);
+  border: 1px solid var(--border-color-light);
+}
+
+/* Stocked-only quick filter chip (page toolbar). Colocated with the
+ * badge it mirrors — the chip and the STOCKED badge must read as the
+ * same concept. */
+.stocked-quick-chip {
+  padding: 0.1rem 0.5rem;
+  font-family: var(--font-headline);
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--border-color-light);
+  border-radius: 0;
+  cursor: pointer;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.stocked-quick-chip:hover {
+  background: var(--bg-tertiary);
+}
+
+.stocked-quick-chip.is-active {
+  color: var(--success);
+  border-color: var(--success);
+}

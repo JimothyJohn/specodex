@@ -1,0 +1,57 @@
+/* ConfidenceChip — tier chip for commercial figures. Muted by design:
+ * a hint beside the value, not a banner. Tier strength descends
+ * listed → high → medium → low → inferred; `inferred` is visually the
+ * weakest (dashed border, tertiary text) so estimates never read as
+ * listed prices. */
+
+.confidence-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 0.3em;
+  margin-left: 0.35em;
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  line-height: 1.5;
+  border-radius: 0;
+  cursor: pointer;
+  vertical-align: middle;
+  background: transparent;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.confidence-chip:hover,
+.confidence-chip.is-active {
+  background: var(--bg-tertiary);
+}
+
+/* Listed — the strongest tier: solid border, primary text. */
+.confidence-chip--listed {
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+}
+
+/* High / medium / low — progressively lighter borders and text. */
+.confidence-chip--high {
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color-light);
+}
+
+.confidence-chip--medium {
+  color: var(--text-tertiary);
+  border: 1px solid var(--border-color-light);
+}
+
+.confidence-chip--low {
+  color: var(--text-tertiary);
+  border: 1px dashed var(--border-color-light);
+}
+
+/* Inferred — clearly the weakest: dashed border, tertiary italic. */
+.confidence-chip--inferred {
+  color: var(--text-tertiary);
+  border: 1px dashed var(--border-color-light);
+  font-style: italic;
+  opacity: 0.85;
+}

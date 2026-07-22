@@ -22,6 +22,7 @@ import { DatasheetEntry, Product, ProductSummary, ProductType } from '../types/m
 import { apiClient } from '../api/client';
 import { UnitSystem } from '../utils/unitConversion';
 import { safeLoad, safeLoadString, safeSave } from '../utils/localStorage';
+import { ColumnBalance, isColumnBalance } from '../types/columnOrder';
 import { BUILD_SLOTS, BuildSlot } from '../utils/compat';
 import { useToast } from '../components/ui/Toast';
 
@@ -127,6 +128,13 @@ interface AppContextType extends AppState {
   // string they had before.
   rowDensity: RowDensity;
   setRowDensity: (d: RowDensity) => void;
+
+  // Commercial ⇄ Technical column balance (todo/COMMERCIAL.md Phase 3).
+  // Reorders the commercial band relative to the technical columns and
+  // (in commercial mode) seeds a price-ascending default sort. Persisted
+  // like density so the preference survives a refresh.
+  columnBalance: ColumnBalance;
+  setColumnBalance: (b: ColumnBalance) => void;
 }
 
 /**
@@ -215,6 +223,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [rowDensity]);
   const setRowDensity = useCallback((d: RowDensity) => setRowDensityState(d), []);
+
+  // Commercial ⇄ Technical balance. Plain-string persistence via
+  // safeLoadString, same pattern as unitSystem / rowDensity — malformed
+  // stored values fall back to 'balanced'.
+  const [columnBalance, setColumnBalanceState] = useState<ColumnBalance>(() =>
+    safeLoadString('specodex.columnBalance', isColumnBalance, 'balanced'),
+  );
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      window.localStorage.setItem('specodex.columnBalance', columnBalance);
+    } catch {
+      // best-effort
+    }
+  }, [columnBalance]);
+  const setColumnBalance = useCallback((b: ColumnBalance) => setColumnBalanceState(b), []);
 
   // ========== Caching Infrastructure ==========
   /**
@@ -800,6 +824,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // Row density
     rowDensity,
     setRowDensity,
+
+    // Commercial ⇄ Technical column balance
+    columnBalance,
+    setColumnBalance,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

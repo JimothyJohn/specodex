@@ -43,6 +43,7 @@ import { useApp } from '../context/AppContext';
 import DistributionChart from './DistributionChart';
 import MultiSelectFilterPopover from './MultiSelectFilterPopover';
 import Tooltip from './ui/Tooltip';
+import './ColumnHeader.css';
 
 interface ColumnHeaderProps {
   attribute: AttributeMetadata;
@@ -370,6 +371,41 @@ function ColumnHeader({
     }
   };
 
+  // Price column only: per-filter "include estimates" toggle
+  // (todo/COMMERCIAL.md Phase 3). Default off — a price constraint
+  // matches listed prices only until the user opts estimates in.
+  // Disabled until a filter exists: with no threshold there is nothing
+  // for the estimates to satisfy.
+  const isPriceColumn = attribute.key === 'msrp';
+  const estimatesIncluded = filter?.includeEstimates === true;
+  const toggleIncludeEstimates = () => {
+    if (!filter) return;
+    onFilterChange({ ...filter, includeEstimates: !estimatesIncluded });
+  };
+
+  const includeEstimatesButton = isPriceColumn ? (
+    <Tooltip
+      content={
+        !filter
+          ? 'Set a price threshold first, then include estimated prices'
+          : estimatesIncluded
+            ? 'Estimated prices included — click for listed prices only'
+            : 'Listed prices only — click to also match estimates (~$)'
+      }
+    >
+      <button
+        type="button"
+        className={`readout-estimates-toggle${estimatesIncluded ? ' is-active' : ''}`}
+        onClick={toggleIncludeEstimates}
+        disabled={!filter}
+        aria-pressed={estimatesIncluded}
+        aria-label="Include estimated prices in the price filter"
+      >
+        ~est
+      </button>
+    </Tooltip>
+  ) : null;
+
   const cycleOperator = () => {
     const idx = SLIDER_OPERATORS.indexOf(operator);
     const next = SLIDER_OPERATORS[(idx + 1) % SLIDER_OPERATORS.length];
@@ -620,6 +656,7 @@ function ColumnHeader({
                 </button>
               </Tooltip>
             )}
+            {includeEstimatesButton}
           </>
         )}
 
@@ -834,6 +871,7 @@ function ColumnHeader({
                 {operator === '>=' ? '≥' : operator === '<=' ? '≤' : operator}
               </button>
             </Tooltip>
+            {includeEstimatesButton}
             {dispUnit && (
               <Tooltip content={`Click to switch units (currently ${unitSystem})`}>
                 <button

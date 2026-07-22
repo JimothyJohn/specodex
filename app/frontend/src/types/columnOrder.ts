@@ -113,25 +113,83 @@ export const COLUMN_ORDER: Partial<
 // alphabetical" and is preserved.
 export const DEFAULT_LEADING_ORDER = ['manufacturer', 'msrp', 'availability'];
 
+// =============================================================================
+// Commercial ⇄ Technical balance (todo/COMMERCIAL.md Phase 3)
+// =============================================================================
+//
+// The balance control reorders the *commercial band* relative to the
+// technical columns; it extends the PR #285 pinning mechanism above
+// rather than introducing a parallel ordering path.
+//
+//   commercial: band first (price, lead time, warranty), then
+//               manufacturer, then the type's authored technical order.
+//               ProductList also seeds a price-ascending default sort.
+//   balanced:   today's default — manufacturer, msrp, availability, ….
+//   technical:  technical-first; the commercial band trails last, after
+//               even the unlisted alphabetical spill.
+
+export type ColumnBalance = 'commercial' | 'balanced' | 'technical';
+
+export const isColumnBalance = (v: string): v is ColumnBalance =>
+  v === 'commercial' || v === 'balanced' || v === 'technical';
+
+/**
+ * The buyer-facing commercial columns, in their pinned order. `msrp`
+ * renders as Price, `availability` as Lead Time (the honest stock
+ * signal); `lead_time` / `warranty` join the band whenever records
+ * carry them (they're derivation-only today).
+ */
+export const COMMERCIAL_BAND_KEYS = [
+  'msrp',
+  'availability',
+  'lead_time',
+  'warranty',
+] as const;
+
 /**
  * Order attributes for table rendering: authored COLUMN_ORDER keys first
  * (in declared order), then unlisted keys alphabetical by displayName.
+ * `balance` shifts the commercial band per the table above.
  */
 export const orderColumnAttributes = (
   attrs: AttributeMetadata[],
   productType: ProductType,
+  balance: ColumnBalance = 'balanced',
 ): AttributeMetadata[] => {
-  const order =
+  const authored =
     productType && productType !== 'all'
       ? COLUMN_ORDER[productType] ?? DEFAULT_LEADING_ORDER
       : [];
+  const band = new Set<string>(COMMERCIAL_BAND_KEYS);
+
+  let order: string[];
+  let trailing: string[] = [];
+  if (balance === 'commercial') {
+    order = [
+      ...COMMERCIAL_BAND_KEYS,
+      'manufacturer',
+      ...authored.filter((k) => !band.has(k) && k !== 'manufacturer'),
+    ];
+  } else if (balance === 'technical') {
+    order = authored.filter((k) => !band.has(k));
+    trailing = [...COMMERCIAL_BAND_KEYS];
+  } else {
+    order = [...authored];
+  }
+
   const indexOf = new Map(order.map((k, i) => [k, i] as const));
+  const trailIndexOf = new Map(trailing.map((k, i) => [k, i] as const));
+  // Rank tiers: 0 = explicitly ordered, 1 = unlisted (alphabetical),
+  // 2 = trailing commercial band (technical mode only).
+  const rankOf = (key: string): number =>
+    trailIndexOf.has(key) ? 2 : indexOf.has(key) ? 0 : 1;
+
   return [...attrs].sort((a, b) => {
-    const ai = indexOf.get(a.key);
-    const bi = indexOf.get(b.key);
-    if (ai !== undefined && bi !== undefined) return ai - bi;
-    if (ai !== undefined) return -1;
-    if (bi !== undefined) return 1;
+    const ar = rankOf(a.key);
+    const br = rankOf(b.key);
+    if (ar !== br) return ar - br;
+    if (ar === 0) return indexOf.get(a.key)! - indexOf.get(b.key)!;
+    if (ar === 2) return trailIndexOf.get(a.key)! - trailIndexOf.get(b.key)!;
     return a.displayName.localeCompare(b.displayName);
   });
 };
