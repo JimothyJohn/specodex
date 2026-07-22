@@ -54,6 +54,114 @@
             <div class="divider"><span>▮▮▮ RECENT PULL REQUESTS ▮▮▮</span></div>
             <ol class="pr-cards">
                 <li>
+                    <a class="pr-card" href="334.html">
+                        <div class="pr-card-head">
+                            <span class="pr-num">PR #334</span>
+                            <h2 class="pr-title">Citation-required vendor-facts registry + verify audit <em>(4 seeded vendors, 15 live-verified facts)</em></h2>
+                        </div>
+                        <div class="pr-card-meta">
+                            <span>Merged 2026-07-22</span>
+                            <span>+1,178 / −1 across 12 files</span>
+                            <span>Branch <code>feat/vendor-facts-registry-20260721</code></span>
+                        </div>
+                        <p class="pr-card-body">
+                            COMMERCIAL Phase 4. A vendor fact exists only
+                            with ≥1 citation carrying a URL, ISO 8601
+                            retrieval timestamp, and a verbatim excerpt
+                            (≤280 chars) — the loader raises on anything
+                            less. <code>./Quickstart vendor-facts
+                            validate</code> is the gate;
+                            <code>verify</code> re-fetches every cited URL
+                            (SSRF-checked, robots-respecting) and re-checks
+                            each excerpt verbatim: 16 citations, 11 OK,
+                            0 STALE, 0 UNREACHABLE, 5 MANUAL (ABB PDFs).
+                            Unverifiable facts — on-time-delivery %, ABB
+                            ISO certs, Yaskawa lead times — deliberately
+                            excluded. Feeds the PR #333 vendor drawer.
+                        </p>
+                    </a>
+                </li>
+                <li>
+                    <a class="pr-card" href="333.html">
+                        <div class="pr-card-head">
+                            <span class="pr-num">PR #333</span>
+                            <h2 class="pr-title">Commercial-first UI <em>(confidence chips, source popovers, stocked badges, balance control, vendor drawer)</em></h2>
+                        </div>
+                        <div class="pr-card-meta">
+                            <span>Merged 2026-07-22</span>
+                            <span>+2,573 / −26 across 28 files</span>
+                            <span>Branch <code>feat/commercial-ui-20260721</code></span>
+                        </div>
+                        <p class="pr-card-body">
+                            COMMERCIAL Phase 3. Every commercial figure in
+                            the table now says what it is and where it
+                            came from: <code>LISTED</code> chips on real
+                            prices, muted <code>~$1,240</code> estimates
+                            with their own tier, SourcePopover citation
+                            trails, <code>STOCKED</code> badges with
+                            provenance, a COMM / BAL / TECH column-balance
+                            control, an <code>~est</code> opt-in on price
+                            filters (listed always wins), and an app-native
+                            vendor drawer that shows only cited facts.
+                            83 new tests; zero native chrome.
+                        </p>
+                    </a>
+                </li>
+                <li>
+                    <a class="pr-card" href="332.html">
+                        <div class="pr-card-head">
+                            <span class="pr-num">PR #332</span>
+                            <h2 class="pr-title">Deterministic price inference from DB comparables <em>(price-comps-v1)</em></h2>
+                        </div>
+                        <div class="pr-card-meta">
+                            <span>Merged 2026-07-22</span>
+                            <span>+1,357 / −3 across 9 files</span>
+                            <span>Branch <code>feat/commercial-inference-20260721</code></span>
+                        </div>
+                        <p class="pr-card-body">
+                            COMMERCIAL Phase 2. Two rungs over the priced
+                            pool: a same-family <code>log10(price)</code>
+                            vs <code>log10(spec)</code> ladder fit, then a
+                            distance-weighted KNN fallback. Honesty gates
+                            (&lt;3 comparables, &gt;4× p75/p25 dispersion,
+                            no extrapolation beyond the ladder) end the
+                            chain in <code>None</code>, never a junk
+                            figure. No LLM, no RNG, no clock read — output
+                            is a <code>SourcedFigure</code> citing sorted
+                            comparable ids + method version, bit-for-bit
+                            reproducible. <code>./Quickstart price-infer</code>
+                            is dry-run by default; prod not accepted.
+                        </p>
+                    </a>
+                </li>
+                <li>
+                    <a class="pr-card" href="331.html">
+                        <div class="pr-card-head">
+                            <span class="pr-num">PR #331</span>
+                            <h2 class="pr-title">Commercial provenance schema <em>(SourcedFigure / SourceCitation + estimate fields)</em></h2>
+                        </div>
+                        <div class="pr-card-meta">
+                            <span>Merged 2026-07-22</span>
+                            <span>+492 / −13 across 13 files</span>
+                            <span>Branch <code>feat/commercial-schema-20260721</code></span>
+                        </div>
+                        <p class="pr-card-body">
+                            COMMERCIAL Phase 1 — the data contract the
+                            whole program hangs off. <code>SourceCitation</code>
+                            (URL + retrieval time + verbatim excerpt, or
+                            comparable ids + algorithm version) and
+                            <code>SourcedFigure</code> (value + confidence
+                            tier + ≥1 citation) make an uncited figure
+                            unrepresentable. <code>ProductBase</code> gains
+                            <code>price_estimate</code> /
+                            <code>lead_time_estimate</code>, kept distinct
+                            from <code>msrp</code> and excluded from both
+                            the Gemini extraction schema and quality
+                            scoring. 15 invariant-pinning tests.
+                        </p>
+                    </a>
+                </li>
+                <li>
                     <a class="pr-card" href="150.html">
                         <div class="pr-card-head">
                             <span class="pr-num">PR #150 (DRAFT)</span>
