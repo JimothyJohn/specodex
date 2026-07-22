@@ -12,6 +12,7 @@ from pydantic import BaseModel, BeforeValidator, Field
 from typing_extensions import Annotated
 
 
+from specodex.models.commercial import SourcedFigure
 from specodex.models.common import Mass, ProductType, ValueUnit
 from specodex.placeholders import is_placeholder
 
@@ -121,6 +122,26 @@ class ProductBase(BaseModel):
     )
     availability_fetched_at: Optional[str] = Field(
         None, description="ISO 8601 timestamp when availability was last fetched."
+    )
+    price_estimate: Optional[SourcedFigure] = Field(
+        None,
+        description=(
+            "Inferred price when no listed msrp exists. Computed by "
+            "specodex.pricing.inference from DB comparables — never "
+            "LLM-extracted (see llm_schema.EXCLUDED_FIELDS). Kept distinct "
+            "from msrp so an estimate can never masquerade as a listed "
+            "price; carries its confidence tier and comparable citations."
+        ),
+    )
+    lead_time_estimate: Optional[SourcedFigure] = Field(
+        None,
+        description=(
+            "Inferred lead time (e.g. {'value': 6, 'unit': 'weeks'}) with "
+            "confidence + citations. Computed, never LLM-extracted. The "
+            "stocked signal itself lives in `availability`; this field "
+            "covers published vendor/family lead-time statements and "
+            "their provenance."
+        ),
     )
     warranty: Optional[ValueUnit] = None
     lead_time: Optional[ValueUnit] = Field(
