@@ -28,8 +28,13 @@ Everything goes through `./Quickstart <command>`. It's a bash shim that delegate
     ./Quickstart price-enrich     Backfill MSRP on existing products
     ./Quickstart price-infer      Deterministic price estimates from DB
                                   comparables (price-comps-v1: same-family
-                                  log-log ladder, KNN fallback). Dry-run by
-                                  default; --apply writes price_estimate on
+                                  log-log ladder, KNN fallback). --lead-times
+                                  mode applies published vendor lead-time
+                                  statements (registry lead_time_statement
+                                  facts) as lead_time_estimate — citations
+                                  carried verbatim, confidence "medium", no
+                                  invented lead times ever. Dry-run by
+                                  default; --apply writes estimates on
                                   dev/staging only. See todo/COMMERCIAL.md
                                   Phase 2.
     ./Quickstart price-book PB    Backfill MSRP in bulk from a public price book
@@ -289,6 +294,7 @@ Each one was a bug where the docstring said one thing and the code did another. 
 | `specodex/relations.py` predicates (`_value_in_range`, `_range_within`, `_value_gte`, `_shaft_compatible`, `_meets_floor`, `_encoder_protocol_intersect`) + `compatible_actuators` / `compatible_motors` / `compatible_drives` / `compatible_gearheads` | `test_relations_property.py` | `test_relations.py` |
 | `specodex/pricing/shopping.py:_parse_offers` + `filter_offers` + `pick_price` (Serper `/shopping` tier trust chain) | `test_shopping_property.py` | `test_shopping.py` |
 | `specodex/pricing/inference.py:estimate_price` (price-comps-v1 DB-comparables engine) | `test_price_inference_property.py` | `test_price_inference.py` |
+| `specodex/pricing/lead_time.py:parse_lead_statement` + `parse_lead_statement_range` (published vendor lead-time statements) | `test_lead_time_property.py` | `test_lead_time_inference.py` |
 
 The 2026-05-14 sprint closed out the four "untested adversarial surfaces" from the 2026-05-10 callout (`cli/processor.py`, `compat.py`, `spec_rules.py`, `quality.py`) via PRs #149, #185, #202, #203. None of the four runs surfaced new bugs — every Hypothesis search confirmed the contract the example tests had already pinned. The boring-good outcome.
 
