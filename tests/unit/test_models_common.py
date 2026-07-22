@@ -385,3 +385,102 @@ class TestCoerceIpRating:
 
     def test_bare_dict_becomes_none(self):
         assert _coerce_ip_rating({"unit": "IP"}) is None
+
+
+@pytest.mark.unit
+class TestLegacyCompactStringRecovery:
+    """Regression (2026-07-22): 217 robot_arm rows + ~150 other rows on
+    products-dev were invisible because ONE legacy compact-string field
+    failed coercion and killed the whole row. Shapes below are copied
+    verbatim from the failing DB rows."""
+
+    # -- Unicode qualifiers (≤/≥) previously not stripped --
+    def test_leq_qualifier_value_unit(self) -> None:
+        assert _coerce_str_to_value_unit_dict("≤ 3;arc-min") == {
+            "value": 3.0,
+            "unit": "arc-min",
+        }
+
+    def test_leq_qualifier_no_space(self) -> None:
+        got = _coerce_str_to_value_unit_dict("≤55;dB (1.000 rpm) / 65 dB (3.000 rpm)")
+        assert got is not None
+        assert got["value"] == 55.0
+
+    def test_geq_qualifier(self) -> None:
+        assert _coerce_str_to_value_unit_dict("≥ 20;kHz") == {
+            "value": 20.0,
+            "unit": "kHz",
+        }
+
+    # -- ± with degree glyph + literal "null" unit ("±180°;null") --
+    def test_plus_minus_degree_null_unit_value_unit(self) -> None:
+        assert _coerce_str_to_value_unit_dict("±180°;null") == {
+            "value": 180.0,
+            "unit": "°",
+        }
+
+    def test_plus_minus_range_min_max(self) -> None:
+        assert _coerce_str_to_min_max_unit_dict("±180°;null") == {
+            "min": -180.0,
+            "max": 180.0,
+            "unit": "°",
+        }
+
+    def test_plus_minus_plain_unit(self) -> None:
+        assert _coerce_str_to_min_max_unit_dict("±0.02;mm") == {
+            "min": -0.02,
+            "max": 0.02,
+            "unit": "mm",
+        }
+
+    # -- negative-to-positive range with glyph + null unit --
+    def test_negative_range_degree_null_unit_min_max(self) -> None:
+        assert _coerce_str_to_min_max_unit_dict("-90-135°;null") == {
+            "min": -90.0,
+            "max": 135.0,
+            "unit": "°",
+        }
+
+    def test_negative_range_collapses_to_min_for_value_unit(self) -> None:
+        # Matches the MinMaxUnit → ValueUnit collapse convention
+        # (scalar = min when present).
+        assert _coerce_str_to_value_unit_dict("-90-135°;null") == {
+            "value": -90.0,
+            "unit": "°",
+        }
+
+    # -- trailing parenthetical annotation on the value side --
+    def test_trailing_parenthetical_stripped(self) -> None:
+        assert _coerce_str_to_value_unit_dict("340 (360 option);degrees") == {
+            "value": 340.0,
+            "unit": "degrees",
+        }
+
+    def test_parenthetical_only_still_none(self) -> None:
+        assert _coerce_str_to_value_unit_dict("(360 option);degrees") is None
+
+    # -- slash-separated per-variant alternatives --
+    def test_slash_alternatives_take_first(self) -> None:
+        assert _coerce_str_to_value_unit_dict("±180 / ±165;°") == {
+            "value": 180.0,
+            "unit": "°",
+        }
+
+    # -- real "null" unit with no recoverable glyph stays dead --
+    def test_null_unit_without_glyph_still_none(self) -> None:
+        assert _coerce_str_to_value_unit_dict("garbage;null") is None
+
+    def test_row_level_recovery_robot_arm_joint(self) -> None:
+        """The actual failing joints shape from products-dev."""
+        from specodex.models.robot_arm import JointSpecs
+
+        j = JointSpecs.model_validate(
+            {
+                "joint_name": "J1",
+                "working_range": "±180°;null",
+                "max_speed": {"value": "160", "unit": "°/s"},
+            }
+        )
+        assert j.working_range is not None
+        assert j.working_range.value == 180.0
+        assert j.working_range.unit == "°"
