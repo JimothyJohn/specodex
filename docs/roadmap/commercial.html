@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Users pick industrial components on commercial criteria at least as much as technical ones: what does it cost, when can I get it, who stands behind it. Today th">
+    <meta name="theme-color" content="#3A2C1C">
+    <title>Specodex — COMMERCIAL — sourced, confidence-scored commercial data (price, lead time, vendor facts) as first-class citizens</title>
+    <link rel="icon" type="image/svg+xml" href="../logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-issue="COMMERCIAL — SOURCED, CO">
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="band">
+        <div class="band-inner">
+            <a class="band-brand" href="../index.html">
+                <svg class="band-mark" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <rect width="120" height="120" fill="#E8E2C9"/>
+                    <rect x="14" y="14" width="92" height="92" fill="none" stroke="#1A1A14" stroke-width="3"/>
+                    <rect x="14" y="14" width="92" height="22" fill="#3A2C1C"/>
+                    <rect x="62" y="60" width="40" height="10" fill="#A88A1C"/>
+                    <line x1="14" y1="56" x2="106" y2="56" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="74" x2="106" y2="74" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="92" x2="106" y2="92" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="60" y1="36" x2="60" y2="106" stroke="#1A1A14" stroke-width="2"/>
+                </svg>
+                <span class="wordmark">SPECODEX</span>
+            </a>
+            <nav class="band-nav" aria-label="Section">
+                <a href="../index.html">Catalog</a>
+                <a href="../roadmap.html">Roadmap</a>
+                <a href="https://github.com/JimothyJohn/specodex/blob/master/todo/COMMERCIAL.md" rel="noreferrer">Source</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="doc-hero">
+            <div class="hero-tag">▮▮▮ COMMERCIAL ▮▮▮</div>
+            <h1 class="hero-title">COMMERCIAL — sourced, confidence-scored commercial data (price, lead time, vendor facts) as first-class citizens</h1>
+            <div class="doc-meta">
+                <span class="status-chip status-backlog">BACKLOG</span>
+                <span class="doc-source"><code>todo/COMMERCIAL.md</code></span>
+            </div>
+        </section>
+
+        <article class="doc-body">
+<h1 id="commercial-sourced-confidence-scored-commercial-data-price-lead-time-vendor-facts-as-first-class-citizens">COMMERCIAL — sourced, confidence-scored commercial data (price, lead time, vendor facts) as first-class citizens</h1>
+<blockquote>
+<p>🚧 in progress — designed 2026-07-21. Phase 1 (provenance schema) and
+Phase 2 (inference engine) land first; Phase 3 (UI overhaul) and
+Phase 4 (vendor-facts registry) follow. Extends PRICING.md — that doc
+owns <em>acquisition</em> of listed prices; this doc owns <em>confidence,
+inference, lead time, vendor facts, and presentation</em>.</p>
+</blockquote>
+<h2 id="the-problem">The problem</h2>
+<p>Users pick industrial components on commercial criteria at least as
+much as technical ones: what does it cost, when can I get it, who
+stands behind it. Today the catalog is technical-first: <code>msrp</code> covers
+~4% of rows, <code>lead_time</code>/<code>warranty</code> are never populated, availability
+is a hidden per-seller snapshot, and nothing tells the user how
+trustworthy a figure is or where it came from.</p>
+<h2 id="ground-rules-non-negotiable">Ground rules (non-negotiable)</h2>
+<ol>
+<li><strong>Facts only, opinions never.</strong> A figure enters the system only if
+   it is an explicit, published fact: a listed price, a printed
+   warranty term, a published on-time-delivery percentage, a stated
+   support-hours window. No review scores, no sentiment, no "known
+   for good service." If a vendor doesn't publish it, we don't have it.</li>
+<li><strong>Every figure carries its receipts.</strong> Each commercial value stores
+   ≥1 citation: URL + retrieval timestamp + verbatim excerpt. A reader
+   must be able to open the source and find the excerpt. Inferred
+   values cite the comparable product IDs + algorithm version instead
+   — equally replicable given a DB snapshot.</li>
+<li><strong>Confidence is explicit and honest.</strong> Every displayed commercial
+   figure has a confidence tier. An estimate never masquerades as a
+   listed price.</li>
+<li><strong>Replicable.</strong> Given the same sources (or same DB snapshot +
+   algorithm version), a re-run produces the same figure. Inference is
+   deterministic: sorted comparables, versioned algorithm, no RNG.</li>
+</ol>
+<h2 id="the-generic-acquisition-ladder-any-commercial-figure">The generic acquisition ladder (any commercial figure)</h2>
+<p>Ordered by confidence; a figure records which rung produced it:</p>
+<table>
+<thead>
+<tr>
+<th>Rung</th>
+<th>Source class</th>
+<th>Examples</th>
+<th>Confidence</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>OEM listed</td>
+<td>manufacturer web store, printed price book</td>
+<td><code>listed</code></td>
+</tr>
+<tr>
+<td>2</td>
+<td>Distributor listed</td>
+<td>authorized distributor product page (JSON-LD/microdata)</td>
+<td><code>listed</code></td>
+</tr>
+<tr>
+<td>3</td>
+<td>Aggregator / marketplace</td>
+<td>shopping-tier median across sellers, surplus/aggregator pages</td>
+<td><code>high</code></td>
+</tr>
+<tr>
+<td>4</td>
+<td>Trade press / articles</td>
+<td>published "starts at $X", press-release pricing</td>
+<td><code>medium</code></td>
+</tr>
+<tr>
+<td>5</td>
+<td>Family interpolation</td>
+<td>same manufacturer + family price ladder (DB)</td>
+<td><code>inferred</code> (medium score)</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Cross-vendor comparables</td>
+<td>same type + closest specs across manufacturers (DB)</td>
+<td><code>inferred</code> (low score)</td>
+</tr>
+</tbody>
+</table>
+<p>Rungs 1–4 are the existing PRICING.md machinery (extract cascade,
+price books, shopping tier) — already built, plus articles as a new
+<code>SourceKind</code>. Rungs 5–6 are the new inference engine (Phase 2). The
+same ladder applies to lead time: OEM published lead times (rung 1),
+distributor stock status (rung 2, via availability-enrich),
+family/vendor inference (rungs 5–6).</p>
+<h2 id="phase-1-provenance-confidence-schema-specodexmodelscommercialpy">Phase 1 — provenance + confidence schema (<code>specodex/models/commercial.py</code>)</h2>
+<p>New shared models, additive-only on <code>ProductBase</code>:</p>
+<pre><code class="language-python">SourceKind = Literal[&quot;oem&quot;, &quot;distributor&quot;, &quot;aggregator&quot;, &quot;price_book&quot;,
+                     &quot;shopping&quot;, &quot;article&quot;, &quot;vendor_doc&quot;, &quot;db_inference&quot;]
+Confidence = Literal[&quot;listed&quot;, &quot;high&quot;, &quot;medium&quot;, &quot;low&quot;, &quot;inferred&quot;]
+
+class SourceCitation(BaseModel):
+    url: Optional[str]           # None only for kind=&quot;db_inference&quot;
+    kind: SourceKind
+    retrieved_at: str            # ISO 8601
+    excerpt: Optional[str]       # verbatim quote backing the figure (≤280 chars)
+    comparable_ids: Optional[List[str]]  # db_inference: sorted product_ids used
+    method_version: Optional[str]        # db_inference: e.g. &quot;price-comps-v1&quot;
+
+class SourcedFigure(BaseModel):
+    value: ValueUnit             # {value: 1234.0, unit: &quot;USD&quot;} / {value: 6, unit: &quot;weeks&quot;}
+    confidence: Confidence
+    observed_range: Optional[MinMaxUnit]  # dispersion across sources/comparables
+    sources: List[SourceCitation]         # min_length=1 — no orphan figures
+</code></pre>
+<p><code>ProductBase</code> gains <code>price_estimate: Optional[SourcedFigure]</code> and
+<code>lead_time_estimate: Optional[SourcedFigure]</code>. Existing fields keep
+their meaning: <code>msrp</code> (+<code>msrp_source_url</code>/<code>msrp_fetched_at</code>) stays the
+<em>listed</em> price; <code>availability</code> (+provenance pair) stays the per-seller
+snapshot. The UI resolution order is: listed figure if present, else
+estimate with its confidence badge. Never merge the two.</p>
+<p>Invariant tests: a <code>SourcedFigure</code> cannot exist without ≥1 citation; a
+<code>db_inference</code> citation must carry <code>comparable_ids</code> + <code>method_version</code>;
+a non-inference citation must carry <code>url</code>. Schema-compat snapshots
+refresh (additive fields), gen-types reruns.</p>
+<h2 id="phase-2-inference-engine-specodexpricinginferencepy">Phase 2 — inference engine (<code>specodex/pricing/inference.py</code>)</h2>
+<p>"Scan the database and price from similar results" — deterministic and
+explainable, no black box:</p>
+<ul>
+<li><strong>Comparable selection.</strong> Same <code>product_type</code>. Prefer same
+  manufacturer + same <code>product_family</code> (rung 5); fall back to
+  cross-manufacturer same-type (rung 6). Spec distance in log space
+  over the type's dominant sizing specs (motor: rated_power,
+  rated_torque; drive: rated_power, rated_current; gearhead:
+  max_continuous_torque, gear_ratio; actuator: max_force, stroke;
+  robot_arm: payload, reach). Missing-spec rows are excluded from the
+  comparable pool, never guessed.</li>
+<li><strong>Estimation.</strong> Within a same-family ladder with ≥3 priced points:
+  log-log interpolation on the dominant spec (industrial pricing is
+  power-law in size). Otherwise: distance-weighted median of the k≤8
+  nearest priced comparables. <code>observed_range</code> = p25–p75 of the pool.</li>
+<li><strong>Confidence scoring.</strong> Family ladder interpolation → <code>inferred</code>
+  with medium score; cross-vendor median → <code>inferred</code> low. Pool size
+  and dispersion gate output: &lt;3 comparables or p75/p25 &gt; 4× → no
+  estimate at all (an absent figure beats a junk figure).</li>
+<li><strong>Determinism / replicability.</strong> Comparables sorted by product_id;
+  algorithm version string in every citation; re-running against the
+  same DB snapshot reproduces the estimate bit-for-bit. Property test
+  pins this.</li>
+<li><strong>Lead time inference.</strong> <code>stocked</code> derives from availability
+  (in_stock/limited at any observed seller ⇒ "stocked — ships in
+  days", citation = the availability observation). Non-stocked rows
+  get a lead-time estimate only from published vendor/family lead
+  times (vendor registry, Phase 4) — we do NOT statistically invent
+  factory lead times; there is no honest public per-part signal
+  (see availability field note in product.py).</li>
+</ul>
+<p>CLI: <code>./Quickstart price-infer [--stage dev] [--type X] [--dry-run]</code>
+(dry-run default, dev-only writes, prints the comparable table per
+estimate so an operator can eyeball the reasoning).</p>
+<h2 id="phase-3-commercial-first-ui">Phase 3 — commercial-first UI</h2>
+<ul>
+<li><strong>Commercial band</strong> (already pinned far-left: Price, Lead Time):
+  price cell shows listed price, or estimate rendered distinctly
+  (<code>~$1,240</code> + confidence chip); lead-time cell shows <code>STOCKED</code> badge
+  or estimate/<code>—</code>. Warranty column joins the band when populated.</li>
+<li><strong>Confidence chip + source popover.</strong> Every commercial cell gets a
+  small tier chip (<code>listed</code>/<code>high</code>/<code>med</code>/<code>low</code>/<code>est</code>). Click → popover
+  listing each citation: publisher, date, excerpt, external link; for
+  inferred figures: "estimated from N comparables" with links to those
+  product rows. App-native popover (Tooltip/Popover primitives — no
+  <code>title=</code>, per the no-native-chrome table).</li>
+<li><strong>Commercial ⇄ Technical balance.</strong> Segmented control
+  (Commercial / Balanced / Technical) that reorders column groups and
+  default sort; persists in localStorage like density/units. Filter
+  chips work on commercial fields (price range incl. estimates toggle,
+  stocked-only, min warranty).</li>
+<li><strong>Vendor drawer.</strong> Click a manufacturer → drawer with the vendor's
+  registry facts (Phase 4): warranty terms, support channels + hours,
+  certifications, published OTD%, factory locations — every line with
+  its citation. No facts → drawer says so, plainly.</li>
+</ul>
+<h2 id="phase-4-vendor-facts-registry-citation-required">Phase 4 — vendor-facts registry (citation-required)</h2>
+<p><code>data/vendors/&lt;slug&gt;.json</code>, one file per manufacturer. Every field is
+a <code>{fact, sources[]}</code> pair; the loader <strong>rejects any fact without a
+citation</strong>. Facts limited to the explicit-and-published:</p>
+<ul>
+<li>standard warranty terms (e.g. "3-year warranty on servo products")</li>
+<li>support channels: phone, email, hours, regions</li>
+<li>certifications: ISO 9001/14001 etc. (cert body + number when shown)</li>
+<li>published on-time-delivery % (annual/quality/investor reports only)</li>
+<li>factory / support locations</li>
+<li>published standard lead-time statements ("motors ship in 2 weeks")</li>
+</ul>
+<p>Tooling: <code>./Quickstart vendor-facts validate</code> (schema + citation
+completeness) and <code>vendor-facts verify</code> (re-fetch each URL, confirm
+the verbatim excerpt still appears; failures flag the fact stale —
+this is the replicability audit). Registry rows land in DynamoDB as
+<code>VENDOR#&lt;slug&gt;</code> and serve via <code>/api/v1/vendors</code>. Seeding is
+research-driven and incremental; an empty registry renders honestly
+as "no published facts on file."</p>
+<h2 id="what-this-deliberately-does-not-do">What this deliberately does NOT do</h2>
+<ul>
+<li>No review-site scores, star ratings, Reddit/forum sentiment, or
+  "reputation" synthesis — subjective, non-replicable, excluded.</li>
+<li>No per-part factory lead-time guesses beyond the stocked signal and
+  published vendor statements.</li>
+<li>No currency conversion (USD only, matching the price band logic).</li>
+<li>No paid data sources without an explicit decision.</li>
+</ul>
+<h2 id="phasing-prs">Phasing / PRs</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Scope</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>commercial.py</code> schema + ProductBase fields + gen-types + snapshots</td>
+<td>🚧</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Inference engine + <code>price-infer</code> CLI + property tests</td>
+<td>🚧</td>
+</tr>
+<tr>
+<td>3</td>
+<td>UI: confidence chips, source popover, stocked badge, balance control, vendor drawer shell</td>
+<td>⚪ after 1</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Vendor registry: schema, validate/verify CLI, seed 3–5 vendors with real citations</td>
+<td>⚪ independent</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Article <code>SourceKind</code> wiring in the extract cascade; estimates backfill sweep on dev</td>
+<td>⚪ after 1+2</td>
+</tr>
+</tbody>
+</table>
+<h2 id="triggers">Triggers</h2>
+<table>
+<thead>
+<tr>
+<th>Trigger</th>
+<th>Surface</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>specodex/models/commercial.py</code>, <code>SourcedFigure</code>, confidence chips, vendor drawer, <code>data/vendors/</code></td>
+<td>this doc</td>
+</tr>
+<tr>
+<td>price acquisition (crawler, price books, shopping tier)</td>
+<td><a href="PRICING.md">PRICING.md</a></td>
+</tr>
+</tbody>
+</table>
+        </article>
+    </main>
+
+    <footer>
+        <div class="footer-inner">
+            <a class="footer-link" href="../roadmap.html">← Back to roadmap</a>
+            <span class="footer-rule" aria-hidden="true"></span>
+            <a class="footer-link" href="https://github.com/JimothyJohn/specodex/blob/master/todo/COMMERCIAL.md" rel="noreferrer">Edit on GitHub</a>
+        </div>
+    </footer>
+</body>
+</html>
