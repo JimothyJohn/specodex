@@ -165,10 +165,19 @@ citation**. Facts limited to the explicit-and-published:
 Tooling: `./Quickstart vendor-facts validate` (schema + citation
 completeness) and `vendor-facts verify` (re-fetch each URL, confirm
 the verbatim excerpt still appears; failures flag the fact stale —
-this is the replicability audit). Registry rows land in DynamoDB as
-`VENDOR#<slug>` and serve via `/api/v1/vendors`. Seeding is
-research-driven and incremental; an empty registry renders honestly
-as "no published facts on file."
+this is the replicability audit). Seeding is research-driven and
+incremental; an empty registry renders honestly as "no published
+facts on file."
+
+**Shipped (PR #334, 2026-07-21):** registry schema
+(`specodex/vendors/registry.py`), validate/verify CLI, frontend
+bundle via `scripts/gen_vendor_data.py` →
+`app/frontend/src/data/vendors.json` (consumed by the Phase 3 vendor
+drawer), seeded Yaskawa (3), Mitsubishi Electric (4), Oriental
+Motor (4), ABB (4) — every fact live-verified (11 OK, 5 MANUAL for
+ABB PDF sources). **Deferred:** the DynamoDB `VENDOR#<slug>` rows +
+`/api/v1/vendors` endpoint — the bundled JSON serves the drawer
+today; move to the API when the registry outgrows a static bundle.
 
 ## What this deliberately does NOT do
 
@@ -186,7 +195,7 @@ as "no published facts on file."
 | 1 | `commercial.py` schema + ProductBase fields + gen-types + snapshots | 🚧 |
 | 2 | Inference engine + `price-infer` CLI + property tests | ✅ shipped PR #332 |
 | 3 | UI: confidence chips, source popover, stocked badge, balance control, vendor drawer shell | ✅ shipped PR #333 |
-| 4 | Vendor registry: schema, validate/verify CLI, seed 3–5 vendors with real citations | ⚪ independent |
+| 4 | Vendor registry: schema, validate/verify CLI, seed 3–5 vendors with real citations | ✅ shipped PR #334 (4 vendors, 15 facts; verify audit 11 OK / 5 MANUAL-PDF) |
 | 5 | Article `SourceKind` wiring in the extract cascade; estimates backfill sweep on dev | ⚪ after 1+2 |
 
 ## Triggers

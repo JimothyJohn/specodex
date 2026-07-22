@@ -241,10 +241,18 @@ citation</strong>. Facts limited to the explicit-and-published:</p>
 <p>Tooling: <code>./Quickstart vendor-facts validate</code> (schema + citation
 completeness) and <code>vendor-facts verify</code> (re-fetch each URL, confirm
 the verbatim excerpt still appears; failures flag the fact stale —
-this is the replicability audit). Registry rows land in DynamoDB as
-<code>VENDOR#&lt;slug&gt;</code> and serve via <code>/api/v1/vendors</code>. Seeding is
-research-driven and incremental; an empty registry renders honestly
-as "no published facts on file."</p>
+this is the replicability audit). Seeding is research-driven and
+incremental; an empty registry renders honestly as "no published
+facts on file."</p>
+<p><strong>Shipped (PR #334, 2026-07-21):</strong> registry schema
+(<code>specodex/vendors/registry.py</code>), validate/verify CLI, frontend
+bundle via <code>scripts/gen_vendor_data.py</code> →
+<code>app/frontend/src/data/vendors.json</code> (consumed by the Phase 3 vendor
+drawer), seeded Yaskawa (3), Mitsubishi Electric (4), Oriental
+Motor (4), ABB (4) — every fact live-verified (11 OK, 5 MANUAL for
+ABB PDF sources). <strong>Deferred:</strong> the DynamoDB <code>VENDOR#&lt;slug&gt;</code> rows +
+<code>/api/v1/vendors</code> endpoint — the bundled JSON serves the drawer
+today; move to the API when the registry outgrows a static bundle.</p>
 <h2 id="what-this-deliberately-does-not-do">What this deliberately does NOT do</h2>
 <ul>
 <li>No review-site scores, star ratings, Reddit/forum sentiment, or
@@ -277,12 +285,12 @@ as "no published facts on file."</p>
 <tr>
 <td>3</td>
 <td>UI: confidence chips, source popover, stocked badge, balance control, vendor drawer shell</td>
-<td>⚪ after 1</td>
+<td>✅ shipped PR #333</td>
 </tr>
 <tr>
 <td>4</td>
 <td>Vendor registry: schema, validate/verify CLI, seed 3–5 vendors with real citations</td>
-<td>⚪ independent</td>
+<td>✅ shipped PR #334 (4 vendors, 15 facts; verify audit 11 OK / 5 MANUAL-PDF)</td>
 </tr>
 <tr>
 <td>5</td>
