@@ -123,6 +123,19 @@ explainable, no black box:
   factory lead times; there is no honest public per-part signal
   (see availability field note in product.py).
 
+  **Shipped (PR #338, 2026-07-22):** the published-statement half.
+  `specodex/pricing/lead_time.py` parses registry
+  `lead_time_statement` facts ("N (business) days/weeks", "N-M"
+  ranges → max + observed_range, "same day" pinned as 1 day;
+  unparseable → stays registry-only) and applies them as
+  `lead_time_estimate` SourcedFigures — confidence "medium", the
+  fact's citations carried through verbatim, rows with a listed
+  `lead_time` skipped. CLI: `./Quickstart price-infer --lead-times
+  [--apply]` (same dev/staging guard rails; registry loads first,
+  DB untouched when nothing parses). Currently only Oriental Motor
+  carries a parseable statement ("as little as 3 days" → 3 days);
+  seeding more vendors picks them up with zero code changes.
+
 CLI: `./Quickstart price-infer [--stage dev] [--type X] [--dry-run]`
 (dry-run default, dev-only writes, prints the comparable table per
 estimate so an operator can eyeball the reasoning).
@@ -193,7 +206,7 @@ today; move to the API when the registry outgrows a static bundle.
 | # | Scope | Status |
 |---|---|---|
 | 1 | `commercial.py` schema + ProductBase fields + gen-types + snapshots | 🚧 |
-| 2 | Inference engine + `price-infer` CLI + property tests | ✅ shipped PR #332 |
+| 2 | Inference engine + `price-infer` CLI + property tests | ✅ shipped PR #332 (price); lead-time-from-vendor-statements wiring PR #338 |
 | 3 | UI: confidence chips, source popover, stocked badge, balance control, vendor drawer shell | ✅ shipped PR #333 |
 | 4 | Vendor registry: schema, validate/verify CLI, seed 3–5 vendors with real citations | ✅ shipped PR #334 (4 vendors, 15 facts; verify audit 11 OK / 5 MANUAL-PDF) |
 | 5 | Article `SourceKind` wiring in the extract cascade; estimates backfill sweep on dev | ⚪ after 1+2 |

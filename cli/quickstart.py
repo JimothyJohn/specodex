@@ -22,8 +22,12 @@ Usage:
                                   (try: ./Quickstart price-book --help)
     ./Quickstart price-infer      Deterministic price estimates from DB
                                   comparables (price-comps-v1: family ladder /
-                                  KNN). Dry-run default; --apply writes
-                                  price_estimate on dev/staging only.
+                                  KNN). --lead-times mode instead applies
+                                  published vendor lead-time statements from
+                                  the citation-audited registry as
+                                  lead_time_estimate (no invented lead times).
+                                  Dry-run default; --apply writes estimates
+                                  on dev/staging only.
                                   (try: ./Quickstart price-infer --help)
     ./Quickstart availability-enrich  Backfill stock availability (schema.org
                                   ItemAvailability) from distributor pages

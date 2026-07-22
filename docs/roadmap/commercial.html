@@ -201,6 +201,18 @@ explainable, no black box:</p>
   factory lead times; there is no honest public per-part signal
   (see availability field note in product.py).</li>
 </ul>
+<p><strong>Shipped (PR #338, 2026-07-22):</strong> the published-statement half.
+  <code>specodex/pricing/lead_time.py</code> parses registry
+  <code>lead_time_statement</code> facts ("N (business) days/weeks", "N-M"
+  ranges → max + observed_range, "same day" pinned as 1 day;
+  unparseable → stays registry-only) and applies them as
+  <code>lead_time_estimate</code> SourcedFigures — confidence "medium", the
+  fact's citations carried through verbatim, rows with a listed
+  <code>lead_time</code> skipped. CLI: <code>./Quickstart price-infer --lead-times
+  [--apply]</code> (same dev/staging guard rails; registry loads first,
+  DB untouched when nothing parses). Currently only Oriental Motor
+  carries a parseable statement ("as little as 3 days" → 3 days);
+  seeding more vendors picks them up with zero code changes.</p>
 <p>CLI: <code>./Quickstart price-infer [--stage dev] [--type X] [--dry-run]</code>
 (dry-run default, dev-only writes, prints the comparable table per
 estimate so an operator can eyeball the reasoning).</p>
@@ -280,7 +292,7 @@ today; move to the API when the registry outgrows a static bundle.</p>
 <tr>
 <td>2</td>
 <td>Inference engine + <code>price-infer</code> CLI + property tests</td>
-<td>✅ shipped PR #332</td>
+<td>✅ shipped PR #332 (price); lead-time-from-vendor-statements wiring PR #338</td>
 </tr>
 <tr>
 <td>3</td>
