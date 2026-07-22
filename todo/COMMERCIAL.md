@@ -185,7 +185,7 @@ as "no published facts on file."
 |---|---|---|
 | 1 | `commercial.py` schema + ProductBase fields + gen-types + snapshots | 🚧 |
 | 2 | Inference engine + `price-infer` CLI + property tests | ✅ shipped PR #332 |
-| 3 | UI: confidence chips, source popover, stocked badge, balance control, vendor drawer shell | ⚪ after 1 |
+| 3 | UI: confidence chips, source popover, stocked badge, balance control, vendor drawer shell | ✅ shipped PR #333 |
 | 4 | Vendor registry: schema, validate/verify CLI, seed 3–5 vendors with real citations | ⚪ independent |
 | 5 | Article `SourceKind` wiring in the extract cascade; estimates backfill sweep on dev | ⚪ after 1+2 |
 
