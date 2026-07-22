@@ -197,9 +197,12 @@ def _coerce_str_to_value_unit_dict(s: str) -> Optional[dict]:
         val_str, unit = _recover_glyph_unit(val_str, unit)
         val = _strip_value_qualifiers(val_str)
         if val is None and "/" in val_str:
-            # Slash-separated per-variant alternatives ("±180 / ±165").
-            # Take the first — the primary variant's spec.
-            val = _strip_value_qualifiers(val_str.split("/", 1)[0])
+            # Slash-separated per-variant alternatives ("±180 / ±165",
+            # "+140/-140"). Take the first segment that parses.
+            for segment in val_str.split("/"):
+                val = _strip_value_qualifiers(segment)
+                if val is not None:
+                    break
         if val is None:
             # Legacy compact strings sometimes carry a range in a
             # scalar slot ("-90-135°;null" as a working_range). Collapse
@@ -268,7 +271,7 @@ def _coerce_str_to_min_max_unit_dict(s: str) -> Optional[dict]:
         bound = float(pm.group(1))
         return {"min": -bound, "max": bound, "unit": unit}
     # Try range "lo-hi" (handle leading negative on lo).
-    m = re.match(r"^(-?\d+(?:\.\d+)?)-(-?\d+(?:\.\d+)?)$", range_part)
+    m = re.match(r"^([+-]?\d+(?:\.\d+)?)-([+-]?\d+(?:\.\d+)?)$", range_part)
     if m:
         try:
             return {
