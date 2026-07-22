@@ -20,6 +20,11 @@ Usage:
                                   (try: ./Quickstart price-enrich --help)
     ./Quickstart price-book       Backfill MSRP from a public price book (XLSX/PDF)
                                   (try: ./Quickstart price-book --help)
+    ./Quickstart price-infer      Deterministic price estimates from DB
+                                  comparables (price-comps-v1: family ladder /
+                                  KNN). Dry-run default; --apply writes
+                                  price_estimate on dev/staging only.
+                                  (try: ./Quickstart price-infer --help)
     ./Quickstart availability-enrich  Backfill stock availability (schema.org
                                   ItemAvailability) from distributor pages
                                   (try: ./Quickstart availability-enrich --help)
@@ -1148,6 +1153,13 @@ def main() -> None:
     if len(sys.argv) >= 2 and sys.argv[1] == "price-enrich":
         run(
             ["uv", "run", "python", "-m", "cli.price_enrich", *sys.argv[2:]],
+            cwd=ROOT,
+        )
+        return
+
+    if len(sys.argv) >= 2 and sys.argv[1] == "price-infer":
+        run(
+            ["uv", "run", "python", "-m", "cli.price_infer", *sys.argv[2:]],
             cwd=ROOT,
         )
         return
