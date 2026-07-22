@@ -466,6 +466,27 @@ class TestLegacyCompactStringRecovery:
             "unit": "°",
         }
 
+    # -- explicit + sign on the upper bound ("-160-+65;deg") --
+    def test_signed_upper_bound_range(self) -> None:
+        assert _coerce_str_to_min_max_unit_dict("-160-+65;deg") == {
+            "min": -160.0,
+            "max": 65.0,
+            "unit": "deg",
+        }
+
+    def test_signed_upper_bound_collapses_for_value_unit(self) -> None:
+        assert _coerce_str_to_value_unit_dict("-51-+190;deg") == {
+            "value": -51.0,
+            "unit": "deg",
+        }
+
+    # -- empty-first slash segment ("/-140;°") takes next parseable --
+    def test_empty_first_slash_segment(self) -> None:
+        assert _coerce_str_to_value_unit_dict("/-140;°") == {
+            "value": -140.0,
+            "unit": "°",
+        }
+
     # -- real "null" unit with no recoverable glyph stays dead --
     def test_null_unit_without_glyph_still_none(self) -> None:
         assert _coerce_str_to_value_unit_dict("garbage;null") is None
