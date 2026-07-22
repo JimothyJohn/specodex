@@ -459,6 +459,13 @@ class TestLegacyCompactStringRecovery:
     def test_parenthetical_only_still_none(self) -> None:
         assert _coerce_str_to_value_unit_dict("(360 option);degrees") is None
 
+    # -- slash-separated per-variant alternatives --
+    def test_slash_alternatives_take_first(self) -> None:
+        assert _coerce_str_to_value_unit_dict("±180 / ±165;°") == {
+            "value": 180.0,
+            "unit": "°",
+        }
+
     # -- real "null" unit with no recoverable glyph stays dead --
     def test_null_unit_without_glyph_still_none(self) -> None:
         assert _coerce_str_to_value_unit_dict("garbage;null") is None

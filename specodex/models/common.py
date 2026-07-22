@@ -196,6 +196,10 @@ def _coerce_str_to_value_unit_dict(s: str) -> Optional[dict]:
             return None
         val_str, unit = _recover_glyph_unit(val_str, unit)
         val = _strip_value_qualifiers(val_str)
+        if val is None and "/" in val_str:
+            # Slash-separated per-variant alternatives ("±180 / ±165").
+            # Take the first — the primary variant's spec.
+            val = _strip_value_qualifiers(val_str.split("/", 1)[0])
         if val is None:
             # Legacy compact strings sometimes carry a range in a
             # scalar slot ("-90-135°;null" as a working_range). Collapse
