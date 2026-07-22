@@ -40,6 +40,11 @@ EXCLUDED_FIELDS: frozenset[str] = frozenset(
         "SK",
         "datasheet_url",
         "pages",
+        # Computed commercial estimates — produced by
+        # specodex.pricing.inference with citation-backed provenance.
+        # The LLM must never be asked to fill them.
+        "price_estimate",
+        "lead_time_estimate",
     }
 )
 
