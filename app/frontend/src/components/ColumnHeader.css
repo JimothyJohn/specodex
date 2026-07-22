@@ -1,0 +1,36 @@
+/* ColumnHeader-specific selectors. Historical header styles (label,
+ * slider, readout pills) still live in App.css; NEW ColumnHeader-only
+ * selectors land here per the per-component CSS convention. */
+
+/* Price column's per-filter "include estimates" toggle
+ * (todo/COMMERCIAL.md Phase 3). Muted until active — estimates are
+ * opt-in, listed prices are the default. */
+.readout-estimates-toggle {
+  padding: 0 0.3em;
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  font-style: italic;
+  letter-spacing: 0.04em;
+  color: var(--text-tertiary);
+  background: transparent;
+  border: 1px dashed var(--border-color-light);
+  border-radius: 0;
+  cursor: pointer;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.readout-estimates-toggle:hover:not(:disabled) {
+  background: var(--bg-tertiary);
+}
+
+.readout-estimates-toggle:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.readout-estimates-toggle.is-active {
+  color: var(--text-secondary);
+  border-style: solid;
+  border-color: var(--border-color);
+  background: var(--bg-tertiary);
+}

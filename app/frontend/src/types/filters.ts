@@ -84,6 +84,12 @@ export interface FilterCriterion {
   value?: FilterValue;        // Filter value (optional for existence checks)
   operator?: ComparisonOperator; // Comparison operator (for numbers)
   displayName: string;        // Human-readable attribute name for UI
+  // Price filters only (attribute 'msrp' / 'msrp.*'): when true, rows
+  // without a listed price fall back to `price_estimate.value` for this
+  // criterion. Default off — listed prices only — so an estimate never
+  // silently satisfies a price constraint (todo/COMMERCIAL.md ground
+  // rule 3). The per-filter toggle lives in the price column header.
+  includeEstimates?: boolean;
 }
 
 /**
@@ -869,6 +875,10 @@ const DERIVATION_EXCLUDED_KEYS: ReadonlySet<string> = new Set([
   'msrp_fetched_at',
   'availability_source_url',
   'availability_fetched_at',
+  // SourcedFigure objects — rendered inside the Price / Lead Time cells
+  // (with confidence chips + source popovers), never as their own columns.
+  'price_estimate',
+  'lead_time_estimate',
 ]);
 
 function toDisplayName(snake: string): string {
@@ -975,6 +985,38 @@ export const mergeAttributesByKey = (
 // Authored column order for the results table lives in a sibling file
 // so it's trivially findable: app/frontend/src/types/columnOrder.ts.
 export { COLUMN_ORDER, orderColumnAttributes } from './columnOrder';
+
+// =====================================================================
+// Commercial quick filters (todo/COMMERCIAL.md Phase 3)
+// =====================================================================
+
+/**
+ * Availability values that count as "stocked" for the quick filter.
+ * Mirrors utils/commercial.ts STOCKED_AVAILABILITY_VALUES — the badge
+ * and the filter must agree on what STOCKED means.
+ */
+export const STOCKED_FILTER_VALUES = ['in_stock', 'limited'];
+
+/**
+ * The stocked-only quick-filter chip. A plain FilterCriterion so it
+ * flows through applyFilters' existing multi-select (string[]) matching
+ * — no bespoke filter path.
+ */
+export const buildStockedOnlyFilter = (): FilterCriterion => ({
+  attribute: 'availability',
+  mode: 'include',
+  operator: '=',
+  value: [...STOCKED_FILTER_VALUES],
+  displayName: 'Stocked',
+});
+
+/** Recognize the quick-filter chip so the toolbar toggle can remove it. */
+export const isStockedOnlyFilter = (f: FilterCriterion): boolean =>
+  f.attribute === 'availability' &&
+  f.mode === 'include' &&
+  Array.isArray(f.value) &&
+  f.value.length === STOCKED_FILTER_VALUES.length &&
+  STOCKED_FILTER_VALUES.every((v) => (f.value as unknown[]).includes(v));
 
 /**
  * Get available comparison operators for an attribute based on actual data values
@@ -1105,7 +1147,25 @@ export const applyFilters = (products: Product[], filters: FilterCriterion[]): P
       if (filter.mode === 'neutral') continue;
 
       // Extract value using dot notation (e.g., 'rated_voltage.min')
-      const value = getNestedValue(product, filter.attribute);
+      let value = getNestedValue(product, filter.attribute);
+
+      // Price filters may opt into estimates: when the row has no listed
+      // msrp and the criterion carries includeEstimates, substitute the
+      // inferred price (price_estimate.value, a ValueUnit) so the
+      // comparison logic below sees the same shape a listed msrp has.
+      if (
+        (value === undefined || value === null) &&
+        filter.includeEstimates &&
+        (filter.attribute === 'msrp' || filter.attribute.startsWith('msrp.'))
+      ) {
+        const estimated = getNestedValue(product, 'price_estimate.value');
+        if (estimated !== undefined && estimated !== null) {
+          value =
+            filter.attribute === 'msrp'
+              ? estimated
+              : getNestedValue(estimated, filter.attribute.slice('msrp.'.length));
+        }
+      }
 
       // ===== HANDLE MISSING VALUES =====
       if (value === undefined || value === null) {

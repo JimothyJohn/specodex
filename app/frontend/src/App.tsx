@@ -33,6 +33,7 @@ import { ToastProvider } from './components/ui/Toast';
 import ThemeToggle from './components/ThemeToggle';
 import GitHubLink from './components/GitHubLink';
 import DensityToggle from './components/DensityToggle';
+import BalanceToggle from './components/BalanceToggle';
 import NetworkStatus from './components/NetworkStatus';
 import ErrorBoundary from './components/ErrorBoundary';
 import BuildTray from './components/BuildTray';
@@ -142,6 +143,7 @@ export function AppShell() {
               >
                 Feedback
               </button>
+              <BalanceToggle />
               <DensityToggle />
               <ThemeToggle />
               <AccountMenu />
