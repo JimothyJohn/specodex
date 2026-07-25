@@ -10,6 +10,7 @@ import { FilterCriterion, SortConfig, applyFilters, sortProducts, getAttributesF
 // Column order is authored in types/columnOrder.ts — edit that file to
 // change what columns appear and in what order.
 import { orderColumnAttributes, computeVisibleColumnAttributes } from '../types/columnOrder';
+import VendorDrawer from './VendorDrawer';
 import { formatValue, formatNumber, formatRange, computeAutoColumnWidths } from '../utils/formatting';
 import Tooltip from './ui/Tooltip';
 import { displayUnit, convertValueUnit, convertMinMaxUnit } from '../utils/unitConversion';
@@ -72,6 +73,11 @@ export default function ProductList() {
   // or "filtered to zero" (no_match) without splitting into two modals.
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [feedbackCategory, setFeedbackCategory] = useState<FeedbackCategory>('no_match');
+  // Vendor drawer — opened by clicking a manufacturer name in the table.
+  // Shows the manufacturer's cited facts from the vendor-facts registry
+  // (the one commercial surface that survived the 2026-07-24 removal:
+  // registry facts are citation-required, unlike the per-product data).
+  const [vendorDrawerFor, setVendorDrawerFor] = useState<string | null>(null);
   // Both densities use infinite scroll; the reveal step is
   // density-driven (compact rows are shorter, so a step has to be
   // bigger to outrun the viewport). The discrete cozy pager retired
@@ -1136,7 +1142,25 @@ export default function ProductList() {
                         }}
                       >
                         <div className="spec-header-value">
-                          {numericValue || formatValue(productValue, 0, 5, cellSys)}
+                          {attrKey === 'manufacturer' && typeof productValue === 'string' && productValue ? (
+                            /* Manufacturer opens the vendor-facts drawer;
+                               stopPropagation keeps the row's detail
+                               modal from opening underneath. */
+                            <Tooltip content={`Vendor facts for ${productValue}`}>
+                              <button
+                                type="button"
+                                className="vendor-link"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setVendorDrawerFor(productValue);
+                                }}
+                              >
+                                {productValue}
+                              </button>
+                            </Tooltip>
+                          ) : (
+                            numericValue || formatValue(productValue, 0, 5, cellSys)
+                          )}
                         </div>
                       </div>
                     );
@@ -1174,6 +1198,12 @@ export default function ProductList() {
         product={selectedProduct}
         onClose={handleCloseModal}
         clickPosition={clickPosition}
+      />
+
+      {/* Vendor-facts drawer — opened by clicking a manufacturer name. */}
+      <VendorDrawer
+        manufacturer={vendorDrawerFor}
+        onClose={() => setVendorDrawerFor(null)}
       />
 
       {/* Attribute Selector Modal — shows currently-hidden columns so
