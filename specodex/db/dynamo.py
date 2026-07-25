@@ -9,6 +9,7 @@ AWS credentials are expected to be configured via environment variables:
 
 from __future__ import annotations
 
+import logging
 from decimal import Decimal
 from typing import Any, Dict, List, Optional, Sequence, Type, TypeVar, Union
 from uuid import UUID
@@ -20,6 +21,8 @@ from specodex.config import REGION, SCHEMA_CHOICES, TABLE_NAME
 from specodex.db.lookups import query_first_match, scan_first_match
 from specodex.models.datasheet import Datasheet
 from specodex.models.product import ProductBase
+
+logger: logging.Logger = logging.getLogger(__name__)
 
 
 # Type variable for Pydantic models
@@ -427,6 +430,13 @@ class DynamoDBClient:
         Returns:
             True if successful, False otherwise
         """
+        # Reversed arguments used to surface as "'UUID' object has no
+        # attribute 'model_fields'" deep inside serialization — fail
+        # fast with the signature instead.
+        if isinstance(product_id, type) or not isinstance(model_class, type):
+            raise TypeError(
+                "delete(product_id, model_class) — arguments appear reversed"
+            )
         try:
             # Convert UUID to string if necessary
             id_str: str = (
@@ -671,40 +681,78 @@ class DynamoDBClient:
         if not models:
             return 0
 
-        try:
-            success_count: int = 0
+        # Dedupe by primary key BEFORE chunking (last wins — matches
+        # DynamoDB's own overwrite semantics). Two items sharing a key
+        # inside one BatchWriteItem chunk make DynamoDB reject the WHOLE
+        # chunk ("Provided list of item keys contains duplicates") —
+        # the 2026-07-25 CGI ingest hit this via compute_product_id's
+        # punctuation stripping ('5.5:1' and '55:1' → identical IDs)
+        # and reported 536 written with 193 rows actually readable.
+        serialized: Dict[tuple, Dict[str, Any]] = {}
+        for model in models:
+            try:
+                item = self._serialize_item(model)
+            except Exception as e:
+                logger.error("Error serializing batch item: %s", e)
+                continue
+            key = (item.get("PK"), item.get("SK"))
+            prior = serialized.get(key)
+            if prior is not None and prior.get("part_number") != item.get(
+                "part_number"
+            ):
+                # Distinct part numbers landing on one ID is the
+                # normalization-collision tell — the earlier row is
+                # about to be silently replaced. Surface it.
+                logger.warning(
+                    "batch_create: part numbers %r and %r collide on the same "
+                    "product_id (%s) — keeping the later row. Disambiguate the "
+                    "part-number format (compute_product_id strips punctuation).",
+                    prior.get("part_number"),
+                    item.get("part_number"),
+                    item.get("SK"),
+                )
+            serialized[key] = item
 
-            # DynamoDB batch_write_item has a limit of 25 items per request
-            batch_size: int = 25
-
-            for i in range(0, len(models), batch_size):
-                batch: Sequence[Union[ProductBase, Datasheet]] = models[
-                    i : i + batch_size
-                ]
-
-                buffered: int = 0
-                with self.table.batch_writer() as writer:
-                    for model in batch:
+        items = list(serialized.values())
+        success_count: int = 0
+        # DynamoDB batch_write_item has a limit of 25 items per request.
+        batch_size: int = 25
+        for i in range(0, len(items), batch_size):
+            chunk = items[i : i + batch_size]
+            # A failed chunk must not abandon the chunks after it — the
+            # old single try around the whole loop returned early on the
+            # first ClientError, silently dropping every later chunk.
+            try:
+                buffered = 0
+                with self.table.batch_writer(overwrite_by_pkeys=["PK", "SK"]) as writer:
+                    for item in chunk:
+                        # Per-item guard: one bad item must not zero the
+                        # chunk's healthy neighbours (pinned by
+                        # test_resilience.py::test_batch_create_counts_
+                        # individual_failures).
                         try:
-                            item: Dict[str, Any] = self._serialize_item(model)
                             writer.put_item(Item=item)
                             buffered += 1
                         except Exception as e:
-                            print(f"Error in batch item: {e}")
-                            continue
+                            logger.error("batch_create: item failed: %s", e)
                 # batch_writer flushes on context exit — only count a
-                # batch after its flush succeeds. Counting at buffer time
+                # chunk after its flush succeeds. Counting at buffer time
                 # reported items as written that never landed when the
                 # flush failed after boto3's unprocessed-items retries.
                 success_count += buffered
-
-            return success_count
-        except ClientError as e:
-            print(f"Error in batch create: {e.response['Error']['Message']}")
-            return success_count
-        except Exception as e:
-            print(f"Unexpected error in batch create: {e}")
-            return success_count
+            except ClientError as e:
+                logger.error(
+                    "batch_create: chunk of %d failed (%s) — continuing with "
+                    "remaining chunks",
+                    len(chunk),
+                    e.response["Error"]["Message"],
+                )
+            except Exception as e:
+                logger.error(
+                    "batch_create: unexpected chunk failure (%s) — continuing",
+                    e,
+                )
+        return success_count
 
     def delete_all(self, confirm: bool = False, dry_run: bool = False) -> int:
         """Delete ALL items from the DynamoDB table.
