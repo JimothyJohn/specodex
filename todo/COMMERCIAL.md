@@ -3,8 +3,11 @@
 > 🔴 needs sign-off — UI surface REMOVED 2026-07-24 (PR #341): the
 > commercial data quality was bad enough to make the feature unusable,
 > so the Phase 3/4 frontend (Price/Lead Time columns, balance toggle,
-> stocked filter, vendor drawer, confidence chips) was pulled and the
-> UI is technical-specs-only again. The Phase 1 schema, Phase 2
+> stocked filter, confidence chips) was pulled and the UI is
+> technical-specs-only again. Exception (PR #342, same day): the
+> manufacturer-click VendorDrawer stays — registry facts are
+> citation-required, a different quality tier than the per-product
+> scrape. The Phase 1 schema, Phase 2
 > inference engine, and vendor-facts registry are untouched and keep
 > writing to the DB. Do NOT re-ship the UI until the data-quality bar
 > is agreed with Nick — the blocker is coverage/accuracy of the
