@@ -59,6 +59,11 @@ interface GearheadRecord {
   input_motor_mount?: string[] | null;
   output_motor_mount?: string | null;
   input_shaft_diameter?: ValueUnit | null;
+  gear_ratio?: number | null;
+  efficiency?: number | null;
+  max_continuous_torque?: ValueUnit | null;
+  max_input_speed?: ValueUnit | null;
+  nominal_input_speed?: ValueUnit | null;
   [key: string]: unknown;
 }
 
@@ -106,11 +111,35 @@ function shaftCompatible(
   motorShaft: ValueUnit | null | undefined,
   gearheadInput: ValueUnit | null | undefined,
 ): boolean {
+  // Max-bore semantics: `input_shaft_diameter` is the LARGEST motor
+  // shaft the gearhead's input coupling accepts (clamping-bushing
+  // bound), so the motor fits when its shaft is ≤ bore. 0.1mm grace
+  // absorbs catalog rounding. Mirrors relations.py _shaft_compatible.
   if (!motorShaft || !gearheadInput) return false;
   if (motorShaft.value == null || gearheadInput.value == null) return false;
   if (!motorShaft.unit || !gearheadInput.unit) return false;
   if (motorShaft.unit !== gearheadInput.unit) return false;
-  return Math.abs(motorShaft.value - gearheadInput.value) <= 0.1;
+  return motorShaft.value <= gearheadInput.value + 0.1;
+}
+
+function inputTorqueCapacity(g: GearheadRecord): ValueUnit | null {
+  // Continuous input-torque capacity referred from the output rating:
+  // T_in = T2N / (ratio × efficiency). Efficiency defaults to 1.0 when
+  // absent/out of (0, 1] — understates capacity, erring toward
+  // exclusion. Mirrors relations.py input_torque_capacity.
+  const tq = g.max_continuous_torque;
+  if (!tq || tq.value == null || !tq.unit) return null;
+  if (g.gear_ratio == null || g.gear_ratio <= 0) return null;
+  const eff = g.efficiency != null && g.efficiency > 0 && g.efficiency <= 1 ? g.efficiency : 1.0;
+  return { value: tq.value / (g.gear_ratio * eff), unit: tq.unit };
+}
+
+function gearheadSpeedOk(motor: MotorRecord, g: GearheadRecord): boolean {
+  // Motor's rated speed must sit within the gearhead's input-speed
+  // rating: max_input_speed (hard ceiling) first, nominal_input_speed
+  // as the stricter fallback. Mirrors relations.py _gearhead_speed_ok.
+  const rating = g.max_input_speed ?? g.nominal_input_speed;
+  return valueGte(rating, motor.rated_speed);
 }
 
 function encoderIntersect(motor: MotorRecord, drive: DriveRecord): boolean {
@@ -268,11 +297,22 @@ function compatibleGearheads(
   motor: MotorRecord,
   gearheadDb: GearheadRecord[],
 ): GearheadRecord[] {
-  if (!motor.motor_mount_pattern) return [];
+  // Required motor fields mirror compatibleDrives' early return; the
+  // four per-row checks mirror relations.py compatible_gearheads.
+  if (
+    !motor.motor_mount_pattern ||
+    !motor.shaft_diameter ||
+    !motor.rated_speed ||
+    !motor.rated_torque
+  ) {
+    return [];
+  }
   return gearheadDb.filter(g => {
     if (!g.input_motor_mount || g.input_motor_mount.length === 0) return false;
     if (!g.input_motor_mount.includes(motor.motor_mount_pattern!)) return false;
     if (!shaftCompatible(motor.shaft_diameter, g.input_shaft_diameter)) return false;
+    if (!gearheadSpeedOk(motor, g)) return false;
+    if (!valueGte(inputTorqueCapacity(g), motor.rated_torque)) return false;
     return true;
   });
 }
@@ -414,6 +454,8 @@ export const _predicates = {
   valueGte,
   rangeWithin,
   shaftCompatible,
+  inputTorqueCapacity,
+  gearheadSpeedOk,
   encoderIntersect,
   meetsFloor,
   compatibleActuators,

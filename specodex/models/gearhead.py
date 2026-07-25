@@ -124,7 +124,12 @@ class Gearhead(ProductBase):
         None, description="Gearbox frame size, corresponding to flange (e.g., 42, 60)"
     )
     input_shaft_diameter: Length = Field(
-        None, description="Diameter of the input shaft (motor specific) (e.g., in mm)"
+        None,
+        description=(
+            "Maximum motor shaft diameter the input coupling accepts "
+            "(clamping-bushing bound, e.g., in mm) — compatibility is "
+            "motor shaft <= this value"
+        ),
     )
     output_shaft_diameter: Length = Field(
         None, description="Diameter of the output shaft (e.g., in mm)"

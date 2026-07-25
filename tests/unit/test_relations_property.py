@@ -375,11 +375,26 @@ class TestShaftCompatibleContract:
 
     @given(a=_value_unit(), b=_value_unit())
     @settings(max_examples=200, deadline=None)
-    def test_symmetric(self, a: ValueUnit, b: ValueUnit) -> None:
-        """The 0.1mm tolerance is on the absolute difference, so the
-        predicate must be symmetric — swapping arguments cannot change
-        the verdict."""
-        assert _shaft_compatible(a, b) == _shaft_compatible(b, a)
+    def test_verdict_is_max_bore_rule(self, a: ValueUnit, b: ValueUnit) -> None:
+        """Max-bore semantics: for same-unit finite inputs the verdict
+        is exactly `motor ≤ bore + 0.1` (2026-07-25 — the predicate was
+        symmetric equality-within-tolerance before the input-matching
+        change; the bore is an upper bound, not a target)."""
+        if a.unit != b.unit:
+            return
+        assert _shaft_compatible(a, b) is (a.value <= b.value + 0.1)
+
+    @given(a=_value_unit(), b=_value_unit(), shrink=_FINITE_SCALARS)
+    @settings(max_examples=200, deadline=None)
+    def test_smaller_shaft_never_flips_to_incompatible(
+        self, a: ValueUnit, b: ValueUnit, shrink: float
+    ) -> None:
+        """Monotonicity: if a shaft fits a bore, every thinner shaft
+        (same unit) fits it too."""
+        if a.unit != b.unit or not _shaft_compatible(a, b):
+            return
+        thinner = ValueUnit(value=a.value - abs(shrink), unit=a.unit)
+        assert _shaft_compatible(thinner, b) is True
 
 
 class TestMeetsFloorContract:
