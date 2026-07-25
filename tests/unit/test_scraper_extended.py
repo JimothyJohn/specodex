@@ -204,3 +204,53 @@ class TestProcessDatasheetUnexpectedError:
             None,
         )
         assert result == "failed"
+
+
+class TestForceBypassesProductExists:
+    """Regression: force=True must bypass the product_exists
+    short-circuit. A partially ingested datasheet shares product_name
+    with its own rows, so without the bypass a re-run can never finish
+    the stragglers (the 'partial success wedges retries' wart — see
+    catalog-ingest skill §7; product IDs are deterministic UUID5, so
+    re-runs overwrite idempotently rather than duplicating)."""
+
+    @patch("specodex.scraper.get_web_content")
+    @patch("specodex.scraper.is_pdf_url", return_value=False)
+    def test_force_false_short_circuits(self, _mock_is_pdf, mock_get_web, mock_db):
+        mock_db.product_exists.return_value = True
+        result = process_datasheet(
+            mock_db,
+            FAKE_API_KEY,
+            "motor",
+            "TestCorp",
+            "TestMotor",
+            "TestFamily",
+            "https://example.com/specs",
+            None,
+            force=False,
+        )
+        assert result == "skipped"
+        mock_get_web.assert_not_called()
+
+    @patch("specodex.scraper.get_web_content")
+    @patch("specodex.scraper.is_pdf_url", return_value=False)
+    def test_force_true_proceeds_past_existing_product(
+        self, _mock_is_pdf, mock_get_web, mock_db
+    ):
+        mock_db.product_exists.return_value = True
+        mock_get_web.return_value = None  # fail right after the gate
+        result = process_datasheet(
+            mock_db,
+            FAKE_API_KEY,
+            "motor",
+            "TestCorp",
+            "TestMotor",
+            "TestFamily",
+            "https://example.com/specs",
+            None,
+            force=True,
+        )
+        # Reached the content fetch — the existing-product gate did not
+        # short-circuit the forced re-run.
+        mock_get_web.assert_called_once()
+        assert result == "failed"
