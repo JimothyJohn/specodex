@@ -682,6 +682,7 @@ def process_datasheet(
     force: bool = False,
     save_failed_to: Optional[Path] = DEFAULT_FAILED_DATASHEETS_DIR,
     prompt_prefix: Optional[str] = None,
+    min_quality: Optional[float] = None,
 ) -> str:
     """
     Process a single datasheet: check existence, scrape, parse, and save to DB.
@@ -706,6 +707,13 @@ def process_datasheet(
             series code in part_number") or Gemini enumerates the full
             ratio × frame-size cross-product and truncates mid-JSON.
             Composes with the double-tap primer when both are present.
+        min_quality: override for the quality-gate threshold (default
+            ``specodex.quality.DEFAULT_MIN_QUALITY``). Series-overview
+            brochures top out around 6 filled spec fields per row —
+            legitimate but below the default gate tuned for
+            part-number-level datasheets. Lower deliberately, per
+            datasheet, and only when the sparsity is the document's
+            fault rather than the extraction's.
 
     Returns: "success", "skipped", or "failed".
     """
@@ -955,10 +963,13 @@ def process_datasheet(
         # Use the post-merge list for the "missing fields" computation so the
         # log reflects what the vendor would actually see as gaps. We score
         # all merged models (passed + rejected) to build the union of gaps.
-        from specodex.quality import filter_products
+        from specodex.quality import DEFAULT_MIN_QUALITY, filter_products
 
         scored_models = parsed_models  # full merged set for missing-fields union
-        passed_models, rejected_models = filter_products(valid_models)
+        passed_models, rejected_models = filter_products(
+            valid_models,
+            min_quality=DEFAULT_MIN_QUALITY if min_quality is None else min_quality,
+        )
         if rejected_models:
             logger.warning(
                 "Dropped %d low-quality products (too many N/A fields)",

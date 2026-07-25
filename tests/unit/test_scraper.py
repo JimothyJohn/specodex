@@ -506,3 +506,73 @@ class TestPromptPrefixForwarding:
 
         mock_generate.assert_called_once()
         assert mock_generate.call_args.kwargs["prompt_prefix"] == "STEER-BLOCK"
+
+
+@pytest.mark.unit
+class TestMinQualityOverride:
+    """process_datasheet honors a per-datasheet quality-gate override."""
+
+    @staticmethod
+    def _sparse_motor() -> Motor:
+        # part_number + type only — sparse enough to fail the default
+        # 25% gate but pass a deliberate 20% override is not guaranteed
+        # across schema growth, so compute the score dynamically in the
+        # test instead of hardcoding expectations here.
+        return Motor(
+            product_type="motor",
+            product_name="Test",
+            manufacturer="TestMfg",
+            part_number="ABC-123",
+        )
+
+    def _run(self, min_quality, mock_parse_return) -> MagicMock:
+        client = MagicMock()
+        client.product_exists.return_value = False
+        client.read.return_value = None
+        client.read_ingest.return_value = None
+        client.batch_create.side_effect = lambda models: len(models)
+
+        with (
+            patch("specodex.scraper.get_document", return_value=b"pdf bytes"),
+            patch("specodex.scraper.is_pdf_url", return_value=True),
+            patch("specodex.scraper.find_spec_pages_by_text", return_value=[]),
+            patch("specodex.extract.generate_content", return_value=Mock(text="[]")),
+            patch(
+                "specodex.extract.parse_gemini_response", return_value=mock_parse_return
+            ),
+        ):
+            process_datasheet(
+                client=client,
+                api_key="test-key",
+                product_type="motor",
+                manufacturer="TestMfg",
+                product_name="Test",
+                product_family="",
+                url="https://example.com/test.pdf",
+                pages=None,
+                save_failed_to=None,
+                min_quality=min_quality,
+            )
+        return client
+
+    def test_sparse_product_fails_default_gate(self) -> None:
+        from specodex.quality import score_product
+
+        sparse = self._sparse_motor()
+        score, *_ = score_product(sparse)
+        assert score < 0.25, "fixture drifted: no longer below the default gate"
+
+        client = self._run(min_quality=None, mock_parse_return=[sparse])
+        (written,) = client.batch_create.call_args.args
+        assert written == []
+
+    def test_override_admits_sparse_product(self) -> None:
+        from specodex.quality import score_product
+
+        sparse = self._sparse_motor()
+        score, *_ = score_product(sparse)
+
+        client = self._run(min_quality=score, mock_parse_return=[sparse])
+        (written,) = client.batch_create.call_args.args
+        assert len(written) == 1
+        assert written[0].part_number == "ABC-123"

@@ -31,6 +31,10 @@ PLACEHOLDER_STRINGS = frozenset(
         "not available",
         "not applicable",
         "not specified",
+        # Seen in real Gemini output on the Nidec ABLE VR gearbox run
+        # (2026-07-24): a prompt asking it to "leave fields null" came
+        # back with the literal string "unset" in lubrication_type.
+        "unset",
     }
 )
 
