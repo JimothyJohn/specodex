@@ -2,6 +2,7 @@
 
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
+import uuid
 from uuid import uuid4
 
 import pytest
@@ -395,3 +396,116 @@ class TestDatasheetOps:
             ]
         }
         assert client.product_exists("motor", "Acme", "TestMotor", Motor) is True
+
+
+# ---------------------------------------------------------------------------
+# TestBatchCreateHardening — 2026-07-25 CGI ingest incident
+# ---------------------------------------------------------------------------
+@pytest.mark.unit
+class TestBatchCreateHardening:
+    """batch_create fed two part numbers whose normalized product IDs
+    collide ('5.5:1' vs '55:1' — compute_product_id strips punctuation)
+    put duplicate keys in one BatchWriteItem chunk. DynamoDB rejected
+    the whole chunk, the ClientError escaped the chunk loop, and every
+    REMAINING chunk was silently abandoned — 'WROTE 536' with 193 rows
+    actually readable."""
+
+    def _writer(self, mock_table, exit_effects=None):
+        mock_writer = MagicMock()
+        mock_table.batch_writer.return_value.__enter__ = MagicMock(
+            return_value=mock_writer
+        )
+        if exit_effects is None:
+            mock_table.batch_writer.return_value.__exit__ = MagicMock(
+                return_value=False
+            )
+        else:
+            mock_table.batch_writer.return_value.__exit__ = MagicMock(
+                side_effect=exit_effects
+            )
+        return mock_writer
+
+    @patch("specodex.db.dynamo.boto3")
+    def test_duplicate_ids_deduped_last_wins(self, mock_boto3: MagicMock) -> None:
+        client, mock_table = _make_client(mock_boto3)
+        writer = self._writer(mock_table)
+        dup_id = uuid.uuid4()
+        first = Motor(
+            product_name="M",
+            product_type="motor",
+            manufacturer="Acme",
+            product_id=dup_id,
+            part_number="017PLX 5.5:1",
+        )
+        second = Motor(
+            product_name="M",
+            product_type="motor",
+            manufacturer="Acme",
+            product_id=dup_id,
+            part_number="017PLX 55:1",
+        )
+        other = Motor(product_name="M2", product_type="motor", manufacturer="Acme")
+        count = client.batch_create([first, second, other])
+        assert count == 2  # duplicate collapsed, truthful count
+        assert writer.put_item.call_count == 2
+        written_pns = [
+            c.kwargs["Item"].get("part_number") for c in writer.put_item.call_args_list
+        ]
+        assert "017PLX 55:1" in written_pns  # last wins
+        assert "017PLX 5.5:1" not in written_pns
+
+    @patch("specodex.db.dynamo.boto3")
+    def test_duplicate_id_different_pn_warns(
+        self, mock_boto3: MagicMock, caplog
+    ) -> None:
+        client, mock_table = _make_client(mock_boto3)
+        self._writer(mock_table)
+        dup_id = uuid.uuid4()
+        a = Motor(
+            product_name="M",
+            product_type="motor",
+            manufacturer="Acme",
+            product_id=dup_id,
+            part_number="A 5.5:1",
+        )
+        b = Motor(
+            product_name="M",
+            product_type="motor",
+            manufacturer="Acme",
+            product_id=dup_id,
+            part_number="A 55:1",
+        )
+        import logging
+
+        with caplog.at_level(logging.WARNING, logger="specodex.db.dynamo"):
+            client.batch_create([a, b])
+        assert any("collide" in r.message for r in caplog.records)
+
+    @patch("specodex.db.dynamo.boto3")
+    def test_failed_chunk_does_not_abandon_remaining(
+        self, mock_boto3: MagicMock
+    ) -> None:
+        client, mock_table = _make_client(mock_boto3)
+        boom = ClientError(
+            {"Error": {"Code": "ValidationException", "Message": "duplicates"}},
+            "BatchWriteItem",
+        )
+        self._writer(mock_table, exit_effects=[boom, False])
+        motors = [
+            Motor(product_name=f"M{i}", product_type="motor", manufacturer="Acme")
+            for i in range(30)  # 2 chunks of 25 + 5
+        ]
+        count = client.batch_create(motors)
+        assert count == 5  # chunk 1 failed, chunk 2 still written
+
+
+@pytest.mark.unit
+class TestDeleteArgOrder:
+    @patch("specodex.db.dynamo.boto3")
+    def test_reversed_arguments_raise_clearly(self, mock_boto3: MagicMock) -> None:
+        """delete(model_class, id) — the reversed call — used to surface
+        as \"'UUID' object has no attribute 'model_fields'\" deep inside
+        serialization. Fail fast with the signature in the message."""
+        client, _ = _make_client(mock_boto3)
+        with pytest.raises(TypeError, match="delete\\(product_id, model_class\\)"):
+            client.delete(Motor, uuid.uuid4())  # type: ignore[arg-type]
