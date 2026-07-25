@@ -97,3 +97,72 @@ describe('listProducts pagination', () => {
     await expect(apiClient.listProducts('motor')).rejects.toThrow(/No products data/);
   });
 });
+
+describe('streamProducts', () => {
+  it('fires onPage per page with a running total and returns all rows', async () => {
+    const pages = [
+      { success: true, data: [product(1), product(2)], cursor: 'C1' },
+      { success: true, data: [product(3)], cursor: null },
+    ];
+    let call = 0;
+    globalThis.fetch = vi.fn(async () => jsonResponse(pages[call++])) as typeof fetch;
+
+    const seen: Array<[number, number]> = [];
+    const all = await apiClient.streamProducts('motor', {
+      onPage: (batch, loaded) => seen.push([batch.length, loaded]),
+    });
+    expect(all).toHaveLength(3);
+    expect(seen).toEqual([
+      [2, 2],
+      [1, 3],
+    ]);
+  });
+
+  it('requests a small first page only when streaming (onPage present)', async () => {
+    const urls: string[] = [];
+    globalThis.fetch = vi.fn(async (url: RequestInfo | URL) => {
+      urls.push(String(url));
+      return jsonResponse({ success: true, data: [product(1)], cursor: null });
+    }) as typeof fetch;
+
+    await apiClient.streamProducts('motor', { onPage: () => {} });
+    expect(urls[0]).toContain('limit=250');
+
+    urls.length = 0;
+    await apiClient.streamProducts('motor');
+    expect(urls[0]).not.toContain('limit=');
+  });
+
+  it('follow-up pages use the backend default cap, not the first-page size', async () => {
+    const urls: string[] = [];
+    const pages = [
+      { success: true, data: [product(1)], cursor: 'C1' },
+      { success: true, data: [product(2)], cursor: null },
+    ];
+    let call = 0;
+    globalThis.fetch = vi.fn(async (url: RequestInfo | URL) => {
+      urls.push(String(url));
+      return jsonResponse(pages[call++]);
+    }) as typeof fetch;
+
+    await apiClient.streamProducts('motor', { onPage: () => {} });
+    expect(urls[1]).toContain('cursor=C1');
+    expect(urls[1]).not.toContain('limit=');
+  });
+
+  it('abandons the walk when shouldContinue returns false, returning the partial set', async () => {
+    const pages = [
+      { success: true, data: [product(1)], cursor: 'C1' },
+      { success: true, data: [product(2)], cursor: 'C2' },
+    ];
+    let call = 0;
+    globalThis.fetch = vi.fn(async () => jsonResponse(pages[call++])) as typeof fetch;
+
+    const all = await apiClient.streamProducts('motor', {
+      onPage: () => {},
+      shouldContinue: () => false,
+    });
+    expect(all).toHaveLength(1);
+    expect(call).toBe(1); // no second request issued
+  });
+});

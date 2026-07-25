@@ -72,6 +72,10 @@ interface AppState {
   summary: ProductSummary | null;  // Aggregated product statistics
   categories: ProductCategory[];    // All unique product categories with counts
   loading: boolean;           // Global loading indicator
+  // Non-null while a product listing is streaming in page by page.
+  // `total` is the categories count for the type (null when categories
+  // haven't loaded yet → render an indeterminate bar).
+  loadProgress: { loaded: number; total: number | null } | null;
   error: string | null;       // Latest error message (null if no error)
 }
 
@@ -154,7 +158,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [summary, setSummary] = useState<ProductSummary | null>(null);
   const [categories, setCategories] = useState<ProductCategory[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadProgress, setLoadProgress] = useState<{
+    loaded: number;
+    total: number | null;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Mirror of `categories` readable inside loadProducts without adding
+  // it to the callback's deps — a categories update mid-stream must not
+  // recreate the callback (that would re-fire ProductList's effect and
+  // supersede the in-flight stream of the very type it's loading).
+  const categoriesRef = useRef<ProductCategory[]>([]);
+  useEffect(() => {
+    categoriesRef.current = categories;
+  }, [categories]);
 
   // Display unit system. Persisted as a plain string ('metric' | 'imperial')
   // so a malformed value falls back to the metric default rather than
@@ -266,6 +283,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       console.log(`[AppContext] Skipping loadProducts - no product type selected`);
       setProducts([]);
       setCurrentProductType(null);
+      setLoadProgress(null);
       // Keep the ref in sync so an in-flight background refresh for the
       // previous type can't resurrect its rows after the user cleared
       // the selection.
@@ -286,9 +304,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setProducts(cached);
       setCurrentProductType(type);
       currentProductTypeRef.current = type;
-      // A superseded cache-miss load skips its own setLoading(false) —
-      // as the now-latest load, clear the flag here.
+      // A superseded cache-miss load skips its own setLoading(false) /
+      // setLoadProgress(null) — as the now-latest load, clear both here.
       setLoading(false);
+      setLoadProgress(null);
 
       // ===== BACKGROUND REFRESH =====
       // Fetch fresh data without blocking the UI or showing loading states
@@ -322,16 +341,43 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setLoading(true);  // Show loading indicator
       setError(null);     // Clear any previous errors
 
-      const data = await apiClient.listProducts(type);
+      // Expected row count from the categories endpoint — drives the
+      // determinate progress bar while pages stream in.
+      const cats = categoriesRef.current;
+      const expectedTotal =
+        type === 'all'
+          ? cats.reduce((sum, c) => sum + c.count, 0) || null
+          : cats.find(c => c.type === type)?.count ?? null;
+
+      // Stream pages: first (small) page paints immediately and clears
+      // the loading flag; later pages append. Every continuation is
+      // seq-guarded so a superseded stream stops touching shared state
+      // and abandons its cursor walk.
+      let firstPage = true;
+      const data = await apiClient.streamProducts(type, {
+        shouldContinue: () => seq === loadSeqRef.current,
+        onPage: (batch, loaded) => {
+          if (seq !== loadSeqRef.current) return;
+          if (firstPage) {
+            firstPage = false;
+            setProducts(batch);
+            setCurrentProductType(type);
+            currentProductTypeRef.current = type;
+            setLoading(false);
+          } else {
+            setProducts(prev => [...prev, ...batch]);
+          }
+          setLoadProgress({ loaded, total: expectedTotal });
+        },
+      });
       console.log(`[AppContext] API returned ${data.length} products for ${type}`);
 
-      // Guard: a newer loadProducts call started while this request was
-      // in flight — its data owns the UI now. Still cache the response
-      // (it's fresh data for its own type), but don't touch products
-      // or currentProductType.
+      // Guard: a newer loadProducts call started while this stream was
+      // in flight — its data owns the UI now. The stream was abandoned
+      // early, so `data` may be partial: do NOT cache it (a partial
+      // cache entry would silently truncate the type forever).
       if (seq !== loadSeqRef.current) {
         console.log(`[AppContext] Discarding stale response for ${type} (superseded)`);
-        setProductCache(prev => new Map(prev).set(type, data));
         return;
       }
 
@@ -358,6 +404,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // the spinner while the newer request is still in flight.
       if (seq === loadSeqRef.current) {
         setLoading(false);
+        setLoadProgress(null);
       }
     }
   }, [productCache]);
@@ -765,6 +812,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     summary,        // Product statistics (total, motors, drives)
     categories,     // All unique product categories with counts
     loading,        // Global loading indicator
+    loadProgress,   // Streaming listing progress (null when idle)
     error,          // Latest error message
 
     // Data loading methods
