@@ -392,16 +392,52 @@ class ApiClient {
       return response.data;
     }
 
-    // No limit: follow the cursor until the listing is exhausted so
-    // client-side filters and the table see the same row count as the
-    // categories endpoint. Each page is the backend's default cap
-    // (2000 rows); MAX_LIST_PAGES bounds the loop if the backend keeps
-    // returning cursors. A backend that doesn't send `cursor` (the v2
-    // FastAPI path, for now) degrades to the old single-page behavior.
+    // No limit: stream the cursor walk. Without an onPage consumer this
+    // is exactly the old exhaustive fetch.
+    return this.streamProducts(type);
+  }
+
+  /**
+   * Stream a full product listing page by page.
+   *
+   * Follows the /api/products cursor until exhausted (same contract as
+   * the old listProducts loop: MAX_LIST_PAGES bounds a backend that
+   * returns cursors forever; a backend that doesn't send `cursor` — the
+   * v2 FastAPI path, for now — degrades to a single page). Two additions
+   * over listProducts:
+   *
+   * - `onPage` fires after every page so the caller can paint rows
+   *   before the walk finishes. A 5,600-row type used to block the UI
+   *   for the whole walk; now the first page is on screen in one
+   *   round-trip.
+   * - The first request asks for a small page (`firstPageSize`, default
+   *   250) so that first paint is sub-second; subsequent requests use
+   *   the backend's default cap (2000).
+   *
+   * `shouldContinue` is checked before every follow-up request — return
+   * false to abandon the walk (e.g. the user switched product types).
+   * The partial array is returned; callers guard against caching it.
+   *
+   * @returns All rows fetched before exhaustion or abandonment.
+   */
+  async streamProducts(
+    type: Exclude<ProductType, null> = 'all',
+    opts: {
+      onPage?: (batch: Product[], loaded: number) => void;
+      shouldContinue?: () => boolean;
+      firstPageSize?: number;
+    } = {}
+  ): Promise<Product[]> {
+    const { onPage, shouldContinue, firstPageSize = 250 } = opts;
     const all: Product[] = [];
     let cursor: string | null = null;
     for (let page = 0; page < MAX_LIST_PAGES; page++) {
       const params = new URLSearchParams({ type });
+      if (page === 0 && onPage) {
+        // Small first page = fast first paint. Only worth it when
+        // someone is consuming pages incrementally.
+        params.append('limit', firstPageSize.toString());
+      }
       if (cursor) {
         params.append('cursor', cursor);
       }
@@ -410,9 +446,14 @@ class ApiClient {
         throw new Error('No products data received');
       }
       all.push(...response.data);
+      onPage?.(response.data, all.length);
       cursor = response.cursor ?? null;
       if (!cursor) {
         break;
+      }
+      if (shouldContinue && !shouldContinue()) {
+        console.log(`[ApiClient] Stream of '${type}' abandoned at ${all.length} rows`);
+        return all;
       }
     }
 

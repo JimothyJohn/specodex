@@ -2517,6 +2517,25 @@ button.secondary:hover {
   color: var(--text-tertiary);
 }
 
+/* Initial product-listing load — first page not yet on screen. */
+.loading-state {
+  display: flex;
+  justify-content: center;
+  padding: 4rem 2rem;
+}
+
+.loading-state .progress-bar {
+  width: min(360px, 80%);
+}
+
+/* Slim hydration strip above the grid while the rest of a listing
+ * streams in page by page (first page already rendered). */
+.stream-progress {
+  padding: 0.35rem 0.8rem;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+}
+
 /* Horizontal-scroll wrapper for the spec table. Column count can run
  * into the dozens on dense product types (contactor has 30+); we let the
  * table widen to its content and scroll rather than squeezing columns to

@@ -26,6 +26,7 @@ import ProductDetailModal from './ProductDetailModal';
 import AttributeSelector from './AttributeSelector';
 import Dropdown from './Dropdown';
 import FeedbackModal from './ui/FeedbackModal';
+import { ProgressBar } from './ui/ProgressBar';
 import type { FeedbackCategory } from '../utils/feedback';
 import { ADJACENT_TYPES, BuildSlot, check as compatCheck } from '../utils/compat';
 
@@ -60,7 +61,7 @@ export function defaultStateForType(type: ProductType): ProductListResetState {
 }
 
 export default function ProductList() {
-  const { products, categories, loading, error, loadProducts, loadCategories, unitSystem, build, compatibleOnly, setCompatibleOnly, rowDensity } = useApp();
+  const { products, categories, loading, loadProgress, error, loadProducts, loadCategories, unitSystem, build, compatibleOnly, setCompatibleOnly, rowDensity } = useApp();
   const [productType, setProductType] = useState<ProductType>(null);
   const [filters, setFilters] = useState<FilterCriterion[]>([]);
   const [sorts, setSorts] = useState<SortConfig[]>([]);
@@ -917,7 +918,18 @@ export default function ProductList() {
           </div>
         )}
 
-        {productType === null || (!loading && displayProducts.length === 0) ? (
+        {productType !== null && loading && products.length === 0 ? (
+          /* Initial load, nothing fetched yet — without this branch the
+             grid rendered zero rows with no indicator and a slow type
+             looked like a hang. */
+          <div className="loading-state" role="status">
+            <ProgressBar
+              label={`Loading ${
+                productType === 'all' ? 'products' : `${productType}s`
+              }…`}
+            />
+          </div>
+        ) : productType === null || (!loading && displayProducts.length === 0) ? (
           <div className="empty-state-minimal">
             <p>
               {productType === null
@@ -950,6 +962,25 @@ export default function ProductList() {
           </div>
         ) : (
           <>
+            {loadProgress &&
+              (loadProgress.total === null ||
+                loadProgress.loaded < loadProgress.total) && (
+                /* First page is on screen; the rest of the listing is
+                   still streaming in. Filters apply to what's loaded. */
+                <div className="stream-progress" role="status">
+                  <ProgressBar
+                    value={
+                      loadProgress.total !== null ? loadProgress.loaded : undefined
+                    }
+                    max={loadProgress.total ?? undefined}
+                    label={
+                      loadProgress.total !== null
+                        ? `Loading ${loadProgress.loaded.toLocaleString()} of ${loadProgress.total.toLocaleString()} records…`
+                        : `Loading… ${loadProgress.loaded.toLocaleString()} records so far`
+                    }
+                  />
+                </div>
+              )}
             {compatFilterActive && compatHiddenCount > 0 && (
               <div className="compat-filter-banner" role="status">
                 <span>

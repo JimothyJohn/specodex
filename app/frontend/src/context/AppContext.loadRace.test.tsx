@@ -21,6 +21,17 @@ const listProducts = vi.fn();
 vi.mock('../api/client', () => ({
   apiClient: {
     listProducts: (...args: unknown[]) => listProducts(...args),
+    // The cache-miss path streams; emulate a single-page stream that
+    // delivers everything in one onPage. The race assertions below are
+    // unchanged — the seq guard now lives inside onPage.
+    streamProducts: (
+      type: unknown,
+      opts?: { onPage?: (batch: unknown[], loaded: number) => void }
+    ) =>
+      (listProducts(type) as Promise<Product[]>).then(data => {
+        opts?.onPage?.(data, data.length);
+        return data;
+      }),
     getSummary: vi.fn(() => Promise.reject(new Error('not in this test'))),
     getCategories: vi.fn(() => Promise.reject(new Error('not in this test'))),
     createProduct: vi.fn(() => Promise.reject(new Error('not in this test'))),
