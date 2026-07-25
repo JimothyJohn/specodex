@@ -93,7 +93,14 @@ def _gearhead(
     name: str = "G1",
     input_mounts: list[str] | None = None,
     input_shaft_dia: float = 14.0,
+    gear_ratio: float | None = 10.0,
+    efficiency: float | None = None,
+    max_continuous_torque: float | None = 100.0,
+    max_input_speed: float | None = 6000,
+    nominal_input_speed: float | None = None,
 ) -> Gearhead:
+    """Defaults are compatible with `_motor()`'s defaults: capacity
+    100/10 = 10 Nm covers rated_torque 1.0; 6000 rpm covers 3000."""
     if input_mounts is None:
         input_mounts = ["NEMA 23"]
     return Gearhead(
@@ -103,6 +110,23 @@ def _gearhead(
         part_number=f"PN-{name}",
         input_motor_mount=input_mounts,
         input_shaft_diameter={"value": input_shaft_dia, "unit": "mm"},
+        gear_ratio=gear_ratio,
+        efficiency=efficiency,
+        max_continuous_torque=(
+            {"value": max_continuous_torque, "unit": "Nm"}
+            if max_continuous_torque is not None
+            else None
+        ),
+        max_input_speed=(
+            {"value": max_input_speed, "unit": "rpm"}
+            if max_input_speed is not None
+            else None
+        ),
+        nominal_input_speed=(
+            {"value": nominal_input_speed, "unit": "rpm"}
+            if nominal_input_speed is not None
+            else None
+        ),
     )
 
 
@@ -271,12 +295,21 @@ class TestShaftCompatible:
             ValueUnit(value=14.05, unit="mm"),
         )
 
-    def test_outside_tolerance(self):
+    def test_thinner_shaft_fits(self):
+        # Max-bore semantics (2026-07-25): bore is an upper bound.
+        from specodex.models.common import ValueUnit
+
+        assert _shaft_compatible(
+            ValueUnit(value=14.0, unit="mm"),
+            ValueUnit(value=15.0, unit="mm"),
+        )
+
+    def test_shaft_exceeding_bore_rejected(self):
         from specodex.models.common import ValueUnit
 
         assert not _shaft_compatible(
-            ValueUnit(value=14.0, unit="mm"),
             ValueUnit(value=15.0, unit="mm"),
+            ValueUnit(value=14.0, unit="mm"),
         )
 
 
@@ -393,11 +426,85 @@ class TestCompatibleGearheads:
 
         assert compatible_gearheads(motor, [gear]) == []
 
-    def test_shaft_outside_tolerance(self):
-        motor = _motor(shaft_dia=14.0)
-        gear = _gearhead(input_shaft_dia=15.0)
+    def test_shaft_exceeds_bore(self):
+        motor = _motor(shaft_dia=15.0)
+        gear = _gearhead(input_shaft_dia=14.0)
 
         assert compatible_gearheads(motor, [gear]) == []
+
+    def test_thinner_shaft_fits_bore(self):
+        # Max-bore semantics (2026-07-25): the gearhead's
+        # input_shaft_diameter is the largest shaft the clamp accepts,
+        # so a thinner motor shaft is compatible, not a mismatch.
+        motor = _motor(shaft_dia=10.0)
+        gear = _gearhead(input_shaft_dia=14.0)
+
+        assert compatible_gearheads(motor, [gear]) == [gear]
+
+    def test_shaft_rounding_grace_on_boundary(self):
+        motor = _motor(shaft_dia=14.05)
+        gear = _gearhead(input_shaft_dia=14.0)
+
+        assert compatible_gearheads(motor, [gear]) == [gear]
+
+    def test_motor_torque_exceeds_input_capacity(self):
+        # Capacity = T2N / ratio = 5 / 10 = 0.5 Nm < rated 1.0 Nm.
+        motor = _motor(rated_torque=1.0)
+        gear = _gearhead(max_continuous_torque=5.0, gear_ratio=10.0)
+
+        assert compatible_gearheads(motor, [gear]) == []
+
+    def test_efficiency_raises_input_capacity(self):
+        # Without efficiency: capacity 10/10 = 1.0 < 1.05 → excluded.
+        # With η=0.9: capacity 10/(10×0.9) = 1.11 ≥ 1.05 → included.
+        motor = _motor(rated_torque=1.05)
+        strict = _gearhead(name="strict", max_continuous_torque=10.0, gear_ratio=10.0)
+        lossy = _gearhead(
+            name="lossy",
+            max_continuous_torque=10.0,
+            gear_ratio=10.0,
+            efficiency=0.9,
+        )
+
+        assert compatible_gearheads(motor, [strict]) == []
+        assert compatible_gearheads(motor, [lossy]) == [lossy]
+
+    def test_gearhead_missing_ratio_excluded(self):
+        gear = _gearhead(gear_ratio=None)
+
+        assert compatible_gearheads(_motor(), [gear]) == []
+
+    def test_gearhead_missing_torque_excluded(self):
+        gear = _gearhead(max_continuous_torque=None)
+
+        assert compatible_gearheads(_motor(), [gear]) == []
+
+    def test_motor_speed_exceeds_input_rating(self):
+        motor = _motor(rated_speed=3000)
+        gear = _gearhead(max_input_speed=2000)
+
+        assert compatible_gearheads(motor, [gear]) == []
+
+    def test_nominal_speed_fallback_when_max_missing(self):
+        motor = _motor(rated_speed=3000)
+        covered = _gearhead(
+            name="covered", max_input_speed=None, nominal_input_speed=4000
+        )
+        too_slow = _gearhead(
+            name="too_slow", max_input_speed=None, nominal_input_speed=2000
+        )
+        unrated = _gearhead(
+            name="unrated", max_input_speed=None, nominal_input_speed=None
+        )
+
+        assert compatible_gearheads(motor, [covered, too_slow, unrated]) == [covered]
+
+    def test_motor_missing_torque_or_speed_excluded(self):
+        gear = _gearhead()
+
+        assert compatible_gearheads(_motor(rated_torque=None), [gear]) == []
+        assert compatible_gearheads(_motor(rated_speed=None), [gear]) == []
+        assert compatible_gearheads(_motor(shaft_dia=None), [gear]) == []
 
     def test_motor_with_no_mount_excluded(self):
         motor = _motor(mount=None)

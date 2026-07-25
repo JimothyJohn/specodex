@@ -177,10 +177,13 @@ def _check_intersect(
 
 
 def _check_shaft_fit(motor_shaft: Any, gearhead_bore: Any) -> CheckResult:
-    """Motor shaft OD must equal gearhead bore within 0.1 mm.
+    """Motor shaft OD must fit within the gearhead's input bore (≤ + 0.1 mm).
 
-    Equality rather than "shaft ≤ bore" because motor shafts couple via
-    keyed/clamped bores — a mismatch of any size is the wrong part.
+    The bore spec is the MAXIMUM motor shaft the input coupling accepts —
+    precision-gearbox catalogs publish it as a clamping-bushing bound
+    ("motor shaft ≤ 24 mm") and bushing kits cover smaller shafts. The
+    0.1 mm grace absorbs catalog rounding on the boundary. Semantics
+    changed from equality 2026-07-25 to match `relations._shaft_compatible`.
     """
     m = _scalar(motor_shaft)
     g = _scalar(gearhead_bore)
@@ -188,13 +191,13 @@ def _check_shaft_fit(motor_shaft: Any, gearhead_bore: Any) -> CheckResult:
         return CheckResult("shaft_diameter", "partial", "one side missing")
     if m[1] != g[1]:
         return CheckResult("shaft_diameter", "fail", f"unit mismatch: {m[1]} vs {g[1]}")
-    if abs(m[0] - g[0]) > 0.1:
+    if m[0] > g[0] + 0.1:
         return CheckResult(
             "shaft_diameter",
             "fail",
-            f"motor {m[0]} {m[1]} ≠ gearhead bore {g[0]} {g[1]}",
+            f"motor {m[0]} {m[1]} exceeds gearhead max bore {g[0]} {g[1]}",
         )
-    return CheckResult("shaft_diameter", "ok", f"{m[0]} {m[1]} matches bore")
+    return CheckResult("shaft_diameter", "ok", f"{m[0]} {m[1]} fits bore {g[0]} {g[1]}")
 
 
 # ---------------------------------------------------------------------------
@@ -229,6 +232,10 @@ def _compare_mechanical_shaft(
         _check_equal_str(source.frame_size, sink.frame_size, "frame_size"),
         _check_shaft_fit(source.shaft_diameter, sink.shaft_diameter),
         _check_demand_le_max(source.max_speed, sink.max_speed, "speed"),
+        # Sink's rated_torque is the referred input-torque capacity
+        # (adapters compute T2N / (ratio × efficiency) for gearheads);
+        # partial when either side didn't publish torque.
+        _check_demand_le_max(source.rated_torque, sink.rated_torque, "torque"),
     ]
 
 

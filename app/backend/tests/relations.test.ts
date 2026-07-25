@@ -46,6 +46,11 @@ const gearheadNema23 = {
   product_type: 'gearhead',
   input_motor_mount: ['NEMA 23'],
   input_shaft_diameter: { value: 14.0, unit: 'mm' },
+  // Input-side ratings sized to accept motorNema23 (capacity
+  // 100/10 = 10 Nm ≥ 1 Nm rated; 6000 rpm ≥ 3000 rpm rated).
+  gear_ratio: 10.0,
+  max_continuous_torque: { value: 100.0, unit: 'Nm' },
+  max_input_speed: { value: 6000, unit: 'rpm' },
 };
 
 const linearActuatorNema23 = {
@@ -228,21 +233,44 @@ describe('GET /api/v1/relations/gearheads-for-motor', () => {
     expect(res.status).toBe(404);
   });
 
-  it('filters gearheads by mount + shaft', async () => {
+  it('filters gearheads by mount + shaft + torque + speed', async () => {
     mockRead(motorNema23);
     mockList([
       gearheadNema23,
       { ...gearheadNema23, product_id: 'g-wrong-mount', input_motor_mount: ['NEMA 17'] },
       {
+        // Bore smaller than the motor shaft — still excluded under
+        // max-bore semantics (14mm shaft > 12mm bore).
         ...gearheadNema23,
-        product_id: 'g-wrong-shaft',
+        product_id: 'g-bore-too-small',
         input_shaft_diameter: { value: 12.0, unit: 'mm' },
+      },
+      {
+        // Bore larger than the motor shaft — fits (max-bore semantics).
+        ...gearheadNema23,
+        product_id: 'g-bore-larger',
+        input_shaft_diameter: { value: 19.0, unit: 'mm' },
+      },
+      {
+        // Capacity 5/10 = 0.5 Nm < motor's 1.0 Nm rated torque.
+        ...gearheadNema23,
+        product_id: 'g-torque-overload',
+        max_continuous_torque: { value: 5.0, unit: 'Nm' },
+      },
+      {
+        // 2000 rpm input ceiling < motor's 3000 rpm rated speed.
+        ...gearheadNema23,
+        product_id: 'g-too-slow',
+        max_input_speed: { value: 2000, unit: 'rpm' },
       },
     ]);
     const res = await request(app).get('/api/v1/relations/gearheads-for-motor?id=m-23');
     expect(res.status).toBe(200);
-    expect(res.body.count).toBe(1);
-    expect(res.body.data[0].product_id).toBe('g-23');
+    expect(res.body.count).toBe(2);
+    expect(res.body.data.map((g: { product_id: string }) => g.product_id)).toEqual([
+      'g-23',
+      'g-bore-larger',
+    ]);
   });
 });
 
@@ -274,13 +302,35 @@ describe('Predicates (port of specodex/relations.py)', () => {
     ).toBe(true);
   });
 
-  it('shaftCompatible accepts within 0.1mm tolerance', () => {
-    expect(
-      _predicates.shaftCompatible({ value: 14.0, unit: 'mm' }, { value: 14.05, unit: 'mm' }),
-    ).toBe(true);
+  it('shaftCompatible uses max-bore semantics (motor ≤ bore + 0.1mm)', () => {
+    // Thinner shaft fits a larger bore.
     expect(
       _predicates.shaftCompatible({ value: 14.0, unit: 'mm' }, { value: 15.0, unit: 'mm' }),
+    ).toBe(true);
+    // Rounding grace on the boundary.
+    expect(
+      _predicates.shaftCompatible({ value: 14.05, unit: 'mm' }, { value: 14.0, unit: 'mm' }),
+    ).toBe(true);
+    // Shaft thicker than the bore does not fit.
+    expect(
+      _predicates.shaftCompatible({ value: 15.0, unit: 'mm' }, { value: 14.0, unit: 'mm' }),
     ).toBe(false);
+  });
+
+  it('inputTorqueCapacity refers output rating through ratio and efficiency', () => {
+    const base = {
+      product_id: 'g',
+      product_type: 'gearhead' as const,
+      gear_ratio: 10.0,
+      max_continuous_torque: { value: 100.0, unit: 'Nm' },
+    };
+    expect(_predicates.inputTorqueCapacity(base)).toEqual({ value: 10.0, unit: 'Nm' });
+    expect(_predicates.inputTorqueCapacity({ ...base, efficiency: 0.8 })).toEqual({
+      value: 12.5,
+      unit: 'Nm',
+    });
+    expect(_predicates.inputTorqueCapacity({ ...base, gear_ratio: null })).toBeNull();
+    expect(_predicates.inputTorqueCapacity({ ...base, max_continuous_torque: null })).toBeNull();
   });
 
   it('meetsFloor requires presence, canonical unit, and >= floor', () => {

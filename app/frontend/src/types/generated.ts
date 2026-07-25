@@ -1038,7 +1038,7 @@ export interface Gearhead {
    */
   frame_size?: string | null;
   /**
-   * Diameter of the input shaft (motor specific) (e.g., in mm)
+   * Maximum motor shaft diameter the input coupling accepts (clamping-bushing bound, e.g., in mm) — compatibility is motor shaft <= this value
    */
   input_shaft_diameter?: ValueUnit | null;
   /**

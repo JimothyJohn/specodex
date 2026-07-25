@@ -26,6 +26,7 @@ from specodex.integration.ports import (
     Port,
 )
 from specodex.models.common import MinMaxUnit, ValueUnit
+from specodex.relations import input_torque_capacity
 from specodex.models.contactor import Contactor
 from specodex.models.drive import Drive
 from specodex.models.electric_cylinder import ElectricCylinder
@@ -99,6 +100,9 @@ def _gearhead_ports(g: Gearhead) -> Dict[str, Port]:
             shaft_diameter=g.input_shaft_diameter,
             frame_size=g.frame_size,
             max_speed=g.max_input_speed,
+            # Continuous capacity the input side can absorb, referred
+            # from the catalog's output rating through ratio/efficiency.
+            rated_torque=input_torque_capacity(g),
         ),
         "shaft_output": MechanicalShaftPort(
             direction="output",
