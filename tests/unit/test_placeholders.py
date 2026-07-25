@@ -30,6 +30,9 @@ class TestIsPlaceholder:
             "not available",
             "Not Applicable",
             "not specified",
+            # Regression: real Gemini output, Nidec ABLE VR run 2026-07-24.
+            "unset",
+            "Unset",
         ],
     )
     def test_known_placeholder_strings(self, value: str) -> None:
