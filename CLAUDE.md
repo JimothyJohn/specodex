@@ -87,6 +87,18 @@ build artifact. The check lives in the `test-codegen` job in
 `generated.ts` says so. If the generated TS is wrong, fix the Pydantic
 model and re-generate; never patch the TS.
 
+**Known trap: wrap-only formatting drift.** Local
+`json-schema-to-typescript` version skew can wrap long union types
+differently than CI's regeneration (e.g. the
+`Manufacturer.offered_product_types` union), failing the
+`test-codegen` gate with a diff that contains no semantic change.
+When that happens, revert only the wrap-only hunk to CI's form (the
+`+` side of the gate's diff in the failed job log) and keep your real
+changes — do not commit the local wrapping, and do not chase it by
+reinstalling Node deps. The one exception to "don't hand-edit":
+matching CI's whitespace is fixing the artifact, not the types.
+Bit PRs #344-era work and again on PR #348 (2026-07-25).
+
 **Background and roadmap.** This is Phase 0 of the Python-backend
 migration plan in `todo/PYTHON_BACKEND.md`, which retires the hand-synced
 TypeScript layer in `app/backend/`. Phase 0a (re-route the existing TS
