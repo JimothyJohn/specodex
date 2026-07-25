@@ -75,6 +75,7 @@ def _extract_with_optional_double_tap(
     context: dict,
     content_type: str,
     tokens: dict,
+    prompt_prefix: Optional[str] = None,
 ) -> tuple[List[Any], Optional[DoubleTapResult]]:
     """Wrapper that branches on the SPECODEX_DOUBLE_TAP env var.
 
@@ -85,11 +86,23 @@ def _extract_with_optional_double_tap(
     """
     if _double_tap_enabled():
         result = extract_with_recovery(
-            doc_data, api_key, product_type, context, content_type, tokens=tokens
+            doc_data,
+            api_key,
+            product_type,
+            context,
+            content_type,
+            tokens=tokens,
+            prompt_prefix=prompt_prefix,
         )
         return result.products, result
     parsed = call_llm_and_parse(
-        doc_data, api_key, product_type, context, content_type, tokens=tokens
+        doc_data,
+        api_key,
+        product_type,
+        context,
+        content_type,
+        tokens=tokens,
+        prompt_prefix=prompt_prefix,
     )
     return parsed, None
 
@@ -604,6 +617,7 @@ def _extract_per_page(
     context: dict,
     content_type: str,
     tokens: Optional[dict] = None,
+    prompt_prefix: Optional[str] = None,
 ) -> List[Any]:
     """Extract products from each chunk in parallel, tagging each with source pages.
 
@@ -627,7 +641,13 @@ def _extract_per_page(
             page_pdf = _extract_bundled_pdf(full_pdf, chunk)
             page_context = dict(context, single_page_mode=True)
             products = call_llm_and_parse(
-                page_pdf, api_key, product_type, page_context, content_type, tokens
+                page_pdf,
+                api_key,
+                product_type,
+                page_context,
+                content_type,
+                tokens,
+                prompt_prefix=prompt_prefix,
             )
             for model in products:
                 model.pages = pages_1idx
@@ -661,6 +681,7 @@ def process_datasheet(
     output_path: Optional[Path] = None,
     force: bool = False,
     save_failed_to: Optional[Path] = DEFAULT_FAILED_DATASHEETS_DIR,
+    prompt_prefix: Optional[str] = None,
 ) -> str:
     """
     Process a single datasheet: check existence, scrape, parse, and save to DB.
@@ -679,6 +700,12 @@ def process_datasheet(
             pass ``None`` to disable. Lets you re-open a problem
             datasheet locally and decide whether the catalog is broken or
             our pipeline is.
+        prompt_prefix: optional extraction-steering block prepended to
+            the standard prompt on every LLM call for this datasheet.
+            Series-overview brochures need this ("one entry per series,
+            series code in part_number") or Gemini enumerates the full
+            ratio × frame-size cross-product and truncates mid-JSON.
+            Composes with the double-tap primer when both are present.
 
     Returns: "success", "skipped", or "failed".
     """
@@ -804,6 +831,7 @@ def process_datasheet(
                     context,
                     content_type,
                     tokens,
+                    prompt_prefix=prompt_prefix,
                 )
             elif pages:
                 logger.warning(
@@ -820,6 +848,7 @@ def process_datasheet(
                     context,
                     content_type,
                     tokens,
+                    prompt_prefix=prompt_prefix,
                 )
                 for model in parsed_models:
                     model.pages = [p + 1 for p in pages]
@@ -832,6 +861,7 @@ def process_datasheet(
                     context,
                     content_type,
                     tokens,
+                    prompt_prefix=prompt_prefix,
                 )
         else:
             if pages:
@@ -853,7 +883,13 @@ def process_datasheet(
                 return "failed"
             source_bytes = doc_data
             parsed_models, double_tap_result = _extract_with_optional_double_tap(
-                doc_data, api_key, product_type, context, content_type, tokens
+                doc_data,
+                api_key,
+                product_type,
+                context,
+                content_type,
+                tokens,
+                prompt_prefix=prompt_prefix,
             )
 
         if not parsed_models:
