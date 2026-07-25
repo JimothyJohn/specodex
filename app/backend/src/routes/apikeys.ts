@@ -37,9 +37,15 @@ router.post('/', requireAuth, async (req: Request, res: Response): Promise<void>
     // Returned once; the caller must store it now. Only its hash is
     // persisted upstream, so it cannot be re-shown.
     res.json({ success: true, data: { api_key: apiKey } });
-  } catch (error: any) {
-    console.error('Error creating API key:', error);
-    res.status(500).json({ success: false, error: error.message });
+  } catch (error) {
+    // Upstream (Stripe) error messages can embed credentials, so neither
+    // the client response nor the log carries the raw message — log only
+    // the error class. Pinned by tests/log-leak.test.ts.
+    console.error(
+      'Error creating API key:',
+      error instanceof Error ? error.name : typeof error,
+    );
+    res.status(500).json({ success: false, error: 'Failed to create API key' });
   }
 });
 

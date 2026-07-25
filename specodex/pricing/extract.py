@@ -208,7 +208,10 @@ _DOMAIN_SELECTORS: dict[str, list[str]] = {
 
 
 def _extract_regex(tree: HTMLParser, url: str) -> Optional[Decimal]:
-    host = urlparse(url).netloc.lower().lstrip("www.")
+    # removeprefix, not lstrip: lstrip("www.") strips any leading run of
+    # {'w', '.'} characters, mangling w-initial hosts
+    # (wolfautomation.com → olfautomation.com).
+    host = urlparse(url).netloc.lower().removeprefix("www.")
     selectors: list[str] = []
     for domain, sel_list in _DOMAIN_SELECTORS.items():
         if host == domain or host.endswith("." + domain):

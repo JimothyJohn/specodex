@@ -20,8 +20,8 @@ from specodex.models.common import (
     Resistance,
     Speed,
     Torque,
-    ValueUnit,
     VoltageRange,
+    LenientValueUnit,
 )
 from specodex.models.encoder import EncoderFeedback
 from specodex.models.product import ProductBase
@@ -58,8 +58,8 @@ class Motor(ProductBase):
     rated_current: Current = None
     peak_current: Current = None
     # Compound units (V/krpm, Nm/A) don't belong to a single family — keep generic.
-    voltage_constant: Optional[ValueUnit] = None
-    torque_constant: Optional[ValueUnit] = None
+    voltage_constant: LenientValueUnit = None
+    torque_constant: LenientValueUnit = None
     resistance: Resistance = None
     inductance: Inductance = None
     ip_rating: IpRating = None

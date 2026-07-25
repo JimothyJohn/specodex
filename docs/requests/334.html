@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Specodex PR #334 — citation-required vendor-facts registry: loader that rejects uncited facts, validate/verify replicability audit, seeded with 4 live-verified vendors (15 facts).">
+    <meta name="theme-color" content="#3A2C1C">
+    <title>Specodex — PR #334: citation-required vendor-facts registry</title>
+    <link rel="icon" type="image/svg+xml" href="../logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-issue="PR-334">
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="band">
+        <div class="band-inner">
+            <a class="band-brand" href="../index.html">
+                <svg class="band-mark" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <rect width="120" height="120" fill="#E8E2C9"/>
+                    <rect x="14" y="14" width="92" height="92" fill="none" stroke="#1A1A14" stroke-width="3"/>
+                    <rect x="14" y="14" width="92" height="22" fill="#3A2C1C"/>
+                    <rect x="62" y="60" width="40" height="10" fill="#A88A1C"/>
+                    <line x1="14" y1="56" x2="106" y2="56" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="74" x2="106" y2="74" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="92" x2="106" y2="92" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="60" y1="36" x2="60" y2="106" stroke="#1A1A14" stroke-width="2"/>
+                </svg>
+                <span class="wordmark">SPECODEX</span>
+            </a>
+            <nav class="band-nav" aria-label="Section">
+                <a href="../index.html">Catalog</a>
+                <a href="./" class="active">Pull Requests</a>
+                <a href="https://github.com/JimothyJohn/specodex" rel="noreferrer">GitHub</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="hero-tag">▮▮▮ PULL REQUEST #334 ▮▮▮</div>
+            <h1 class="hero-title">Citation-required vendor-facts registry + verify audit</h1>
+            <p class="hero-sub">
+                Phase 4 of <code>todo/COMMERCIAL.md</code>. A fact
+                enters the registry only with ≥1 citation carrying a
+                URL, an ISO 8601 retrieval timestamp, and a
+                <strong>verbatim excerpt</strong> (≤280 chars) copied
+                from a fetched public page — the loader raises on
+                anything less. No review scores, no sentiment, no
+                "known for" — published facts only. Seeded with four
+                researched vendors (15 facts, every one
+                live-verified) and shipped with a replicability audit
+                that re-fetches every cited URL and re-checks each
+                excerpt verbatim.
+            </p>
+            <dl class="pr-meta">
+                <div><dt>Branch</dt><dd><code>feat/vendor-facts-registry-20260721</code></dd></div>
+                <div><dt>Merged</dt><dd>2026-07-22</dd></div>
+                <div><dt>Diff</dt><dd>+1,178 / −1 across 12 files</dd></div>
+                <div><dt>Plan</dt><dd><code>todo/COMMERCIAL.md</code> Phase 4</dd></div>
+                <div><dt>CLI</dt><dd><code>./Quickstart vendor-facts validate|verify</code></dd></div>
+            </dl>
+            <div class="cta-row">
+                <a class="cta cta-primary" href="https://github.com/JimothyJohn/specodex/pull/334" rel="noreferrer">View on GitHub →</a>
+                <a class="cta cta-ghost" href="./">All requests</a>
+            </div>
+        </section>
+
+        <section aria-label="What changes">
+            <div class="divider"><span>▮▮▮ WHAT'S IN THE BOX ▮▮▮</span></div>
+            <ol class="cell-list">
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">R-1</span><h2 class="cell-title">Registry loader — rejection is the contract</h2></div>
+                    <p class="cell-body">
+                        <code>specodex/vendors/registry.py</code> —
+                        <code>VendorFact</code> / <code>VendorProfile</code>
+                        Pydantic models reusing <code>SourceCitation</code>
+                        from <code>specodex.models.commercial</code>
+                        (PR #331). <code>load_vendor_profiles()</code>
+                        rejects: uncited facts, citations without
+                        url/excerpt, <code>db_inference</code>
+                        citations, unknown fact kinds, slug/filename
+                        mismatches. <code>slug_for_manufacturer()</code>
+                        normalizes DB manufacturer strings
+                        ("Mitsubishi Electric" →
+                        <code>mitsubishi-electric</code>).
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">R-2</span><h2 class="cell-title">validate + verify — the replicability audit</h2></div>
+                    <p class="cell-body">
+                        <code>cli/vendor_facts.py</code> +
+                        <code>./Quickstart vendor-facts
+                        validate|verify</code>. <code>validate</code>
+                        is the gate (exit 1 on violation).
+                        <code>verify</code> re-fetches every cited URL
+                        through the SSRF-checked
+                        (<code>specodex.url_safety.validate_url</code>),
+                        robots-respecting, rate-limited
+                        <code>PriceFetcher</code> and re-checks each
+                        excerpt verbatim (whitespace-normalized). PDF
+                        sources report <code>MANUAL</code> — verify
+                        skips PDF text-diffing by design.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">R-3</span><h2 class="cell-title">Frontend compile step</h2></div>
+                    <p class="cell-body">
+                        <code>scripts/gen_vendor_data.py</code>
+                        compiles <code>data/vendors/*.json</code> →
+                        <code>app/frontend/src/data/vendors.json</code>
+                        (committed; drift-gated by
+                        <code>TestGenVendorData::test_committed_output_matches_live_data</code>).
+                        This is the file the Phase 3 vendor drawer
+                        (<a href="333.html">PR #333</a>) reads.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">R-4</span><h2 class="cell-title">Test coverage</h2></div>
+                    <p class="cell-body">
+                        <code>tests/unit/test_vendor_registry.py</code>
+                        — 29 tests: loader accept/reject contract,
+                        slug normalization, gen-script shape on tmp
+                        fixtures, seeded-profile citation
+                        completeness. <code>./Quickstart verify</code>
+                        green on both python and frontend stages.
+                    </p>
+                </li>
+            </ol>
+        </section>
+
+        <section aria-label="Seeded vendors">
+            <div class="divider"><span>▮▮▮ SEEDED VENDORS — 15 FACTS, ALL LIVE-VERIFIED ▮▮▮</span></div>
+            <table class="spec-table">
+                <thead><tr><th>Vendor</th><th>Facts</th><th>What's cited</th></tr></thead>
+                <tbody>
+                    <tr><td>Yaskawa</td><td class="num">3</td><td>warranty (1 yr first-use / 18 mo shipment), US phone support + hours, ISO 9001:2015</td></tr>
+                    <tr><td>Mitsubishi Electric</td><td class="num">4</td><td>servo warranty (12/18 mo), VFD warranty (60 mo listed series), US phone support + hours, US IA headquarters</td></tr>
+                    <tr><td>Oriental Motor</td><td class="num">4</td><td>warranty (2 yr from shipment), support channels + hours, ISO 9001/14001 plants, published 3-day delivery statement</td></tr>
+                    <tr><td>ABB</td><td class="num">4</td><td>standard equipment warranty (GTC 2021: 12/18 mo), Extended Warranty up to 5 yr, 24/7 MV-drives support, 1-800-HELP-365 helpline</td></tr>
+                </tbody>
+            </table>
+            <p class="prose">
+                Every excerpt was copied from a page fetched through
+                the same fetch+normalize pipeline the audit uses.
+                ABB is PDF-cited by necessity: text extracted from the
+                cited <code>library.e.abb.com</code> PDFs via pymupdf,
+                because <code>www.abb.com</code> HTML times out for
+                non-browser clients. The live
+                <code>vendor-facts verify</code> run on a fresh cache:
+                <strong>16 citations — 11 OK, 0 STALE,
+                0 UNREACHABLE, 5 MANUAL</strong> (all five MANUAL rows
+                are the ABB PDFs).
+            </p>
+        </section>
+
+        <section aria-label="Excluded facts">
+            <div class="divider"><span>▮▮▮ LOOKED FOR, COULD NOT VERIFY — NOT INCLUDED ▮▮▮</span></div>
+            <ol class="cell-list">
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">X-1</span><h2 class="cell-title">On-time-delivery %</h2></div>
+                    <p class="cell-body">
+                        Not published on a fetchable public page for
+                        any of the four vendors. No citation, no fact.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">X-2</span><h2 class="cell-title">ABB ISO 9001 + HQ/factory locations</h2></div>
+                    <p class="cell-body">
+                        <code>abb.com</code> / <code>new.abb.com</code> /
+                        <code>electrification.us.abb.com</code> all
+                        time out for non-browser HTTP clients — the
+                        audit would report UNREACHABLE, so the facts
+                        stay out.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">X-3</span><h2 class="cell-title">Yaskawa standard lead-time statement</h2></div>
+                    <p class="cell-body">
+                        None found on any public Yaskawa page.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">X-4</span><h2 class="cell-title">Mitsubishi Electric ISO certs (MEAU)</h2></div>
+                    <p class="cell-body">
+                        Group-level certifications live on
+                        unreachable/JP pages; nothing citable for
+                        MEAU specifically.
+                    </p>
+                </li>
+            </ol>
+        </section>
+
+        <section aria-label="Files touched">
+            <div class="divider"><span>▮▮▮ FILES TOUCHED ▮▮▮</span></div>
+            <table class="spec-table">
+                <thead><tr><th>File</th><th>Lines</th><th>Note</th></tr></thead>
+                <tbody>
+                    <tr><td><code>specodex/vendors/registry.py</code> + <code>__init__.py</code></td><td class="num">+180</td><td>NEW — models, loader, slug normalizer</td></tr>
+                    <tr><td><code>cli/vendor_facts.py</code></td><td class="num">+203</td><td>NEW — validate gate + verify audit</td></tr>
+                    <tr><td><code>cli/quickstart.py</code></td><td class="num">+19</td><td>wire <code>vendor-facts</code> subcommand</td></tr>
+                    <tr><td><code>data/vendors/{yaskawa,mitsubishi-electric,oriental-motor,abb}.json</code></td><td class="num">+225</td><td>NEW — 4 seeded profiles, 15 facts, 16 citations</td></tr>
+                    <tr><td><code>scripts/gen_vendor_data.py</code></td><td class="num">+62</td><td>NEW — compile registry → frontend JSON</td></tr>
+                    <tr><td><code>app/frontend/src/data/vendors.json</code></td><td class="num">+223 / −1</td><td>generated output for the vendor drawer</td></tr>
+                    <tr><td><code>tests/unit/test_vendor_registry.py</code></td><td class="num">+254</td><td>NEW — 29 tests</td></tr>
+                    <tr><td><code>CLAUDE.md</code></td><td class="num">+12</td><td>document the <code>vendor-facts</code> entry point</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section aria-label="How to verify">
+            <div class="divider"><span>▮▮▮ HOW TO VERIFY ▮▮▮</span></div>
+            <ol class="cell-list">
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">V-1</span><h2 class="cell-title">Gate</h2></div>
+                    <p class="cell-body">
+                        <code>./Quickstart vendor-facts validate</code>
+                        — 4 vendors, 15 facts, all citations valid,
+                        exit 0. Break any citation (drop an excerpt,
+                        blank a URL) and it exits 1.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">V-2</span><h2 class="cell-title">Live audit</h2></div>
+                    <p class="cell-body">
+                        <code>./Quickstart vendor-facts verify</code>
+                        (fresh cache, live re-fetch) — 16 citations:
+                        11 OK, 0 STALE, 0 UNREACHABLE, 5 MANUAL (ABB
+                        PDFs). Rerunnable by anyone; that's the
+                        point.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">V-3</span><h2 class="cell-title">Suites</h2></div>
+                    <p class="cell-body">
+                        <code>./Quickstart verify --only python</code>
+                        green; <code>--only frontend</code> green
+                        (the generated <code>vendors.json</code> is
+                        read by the PR #333 drawer — click a seeded
+                        manufacturer in the table to see the cited
+                        facts render).
+                    </p>
+                </li>
+            </ol>
+        </section>
+
+        <a class="back-link" href="./">← back to requests log</a>
+    </main>
+
+    <footer>
+        <div class="footer-inner">
+            <span>© 2026 Specodex · PR #334</span>
+            <span class="footer-rule" aria-hidden="true"></span>
+            <a class="footer-link" href="https://github.com/JimothyJohn/specodex/pull/334" rel="noreferrer">View on GitHub</a>
+            <a class="footer-link" href="./">All requests</a>
+        </div>
+    </footer>
+</body>
+</html>

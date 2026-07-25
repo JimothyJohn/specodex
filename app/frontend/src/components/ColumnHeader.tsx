@@ -43,6 +43,7 @@ import { useApp } from '../context/AppContext';
 import DistributionChart from './DistributionChart';
 import MultiSelectFilterPopover from './MultiSelectFilterPopover';
 import Tooltip from './ui/Tooltip';
+import './ColumnHeader.css';
 
 interface ColumnHeaderProps {
   attribute: AttributeMetadata;

@@ -1,0 +1,112 @@
+/* SourcePopover — citations behind a commercial figure. Square-bordered
+ * manila card, IBM Plex Mono body — matches the engineering-paper
+ * language of the rest of the app. */
+
+.source-popover {
+  display: flex;
+  flex-direction: column;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 4px 12px var(--shadow-lg);
+  z-index: var(--z-popover);
+  font-family: var(--font-mono);
+}
+
+.source-popover-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.5rem 0.6rem 0.4rem;
+  border-bottom: var(--rule-fine);
+}
+
+.source-popover-heading {
+  font-family: var(--font-headline);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+}
+
+.source-popover-subheading {
+  font-size: 0.62rem;
+  font-style: italic;
+  color: var(--text-tertiary);
+}
+
+.source-popover-list {
+  list-style: none;
+  margin: 0;
+  padding: 0.2rem 0;
+  overflow-y: auto;
+}
+
+.source-popover-empty {
+  padding: 0.5rem 0.6rem;
+  font-size: 0.66rem;
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+
+.source-popover-item {
+  padding: 0.45rem 0.6rem;
+}
+
+.source-popover-item + .source-popover-item {
+  border-top: var(--rule-fine);
+}
+
+.source-popover-item-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5em;
+  flex-wrap: wrap;
+}
+
+.source-popover-kind {
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color-light);
+  padding: 0 0.3em;
+}
+
+.source-popover-host {
+  font-size: 0.64rem;
+  color: var(--text-primary);
+}
+
+.source-popover-date {
+  font-size: 0.6rem;
+  color: var(--text-tertiary);
+  margin-left: auto;
+}
+
+.source-popover-inference {
+  margin: 0.3rem 0 0;
+  font-size: 0.64rem;
+  color: var(--text-secondary);
+}
+
+.source-popover-inference-count {
+  color: var(--text-tertiary);
+}
+
+.source-popover-excerpt {
+  margin: 0.3rem 0 0;
+  padding: 0.25rem 0.45rem;
+  border-left: 2px solid var(--border-color-light);
+  font-size: 0.62rem;
+  font-style: italic;
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+}
+
+.source-popover-link {
+  display: inline-flex;
+  margin-top: 0.35rem;
+  font-size: 0.62rem;
+}

@@ -131,10 +131,11 @@ def should_skip(last: Optional[dict[str, Any]]) -> bool:
         try:
             total = int(last.get("fields_total", 0) or 0)
             filled = float(last.get("fields_filled_avg", 0) or 0)
-        except (TypeError, ValueError):
-            # Malformed prior record (non-numeric string in either
-            # numeric slot) — fall through to retry rather than crash
-            # the scraper on the first read of the bad row.
+        except (TypeError, ValueError, OverflowError):
+            # Malformed prior record (non-numeric string, or a
+            # non-finite float — int(inf) raises OverflowError) — fall
+            # through to retry rather than crash the scraper on the
+            # first read of the bad row.
             return False
         if total <= 0:
             return False

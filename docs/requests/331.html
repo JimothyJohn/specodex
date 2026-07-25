@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Specodex PR #331 — commercial provenance schema: SourcedFigure/SourceCitation with citation-required invariants, plus price_estimate / lead_time_estimate on ProductBase.">
+    <meta name="theme-color" content="#3A2C1C">
+    <title>Specodex — PR #331: commercial provenance schema (SourcedFigure / SourceCitation)</title>
+    <link rel="icon" type="image/svg+xml" href="../logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-issue="PR-331">
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="band">
+        <div class="band-inner">
+            <a class="band-brand" href="../index.html">
+                <svg class="band-mark" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <rect width="120" height="120" fill="#E8E2C9"/>
+                    <rect x="14" y="14" width="92" height="92" fill="none" stroke="#1A1A14" stroke-width="3"/>
+                    <rect x="14" y="14" width="92" height="22" fill="#3A2C1C"/>
+                    <rect x="62" y="60" width="40" height="10" fill="#A88A1C"/>
+                    <line x1="14" y1="56" x2="106" y2="56" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="74" x2="106" y2="74" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="92" x2="106" y2="92" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="60" y1="36" x2="60" y2="106" stroke="#1A1A14" stroke-width="2"/>
+                </svg>
+                <span class="wordmark">SPECODEX</span>
+            </a>
+            <nav class="band-nav" aria-label="Section">
+                <a href="../index.html">Catalog</a>
+                <a href="./" class="active">Pull Requests</a>
+                <a href="https://github.com/JimothyJohn/specodex" rel="noreferrer">GitHub</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="hero-tag">▮▮▮ PULL REQUEST #331 ▮▮▮</div>
+            <h1 class="hero-title">Commercial provenance schema — SourcedFigure / SourceCitation + estimate fields</h1>
+            <p class="hero-sub">
+                Phase 1 of <code>todo/COMMERCIAL.md</code> (design
+                PR #330) — the data contract everything else in the
+                commercial program hangs off. A commercial figure
+                (an estimated price, an estimated lead time) may only
+                exist with receipts: a confidence tier and at least
+                one citation saying exactly where it came from.
+                <code>ProductBase</code> gains
+                <code>price_estimate</code> and
+                <code>lead_time_estimate</code> — deliberately
+                distinct from <code>msrp</code>, so an estimate can
+                never masquerade as a listed price — and both fields
+                are walled off from the LLM extraction schema and the
+                quality gate.
+            </p>
+            <dl class="pr-meta">
+                <div><dt>Branch</dt><dd><code>feat/commercial-schema-20260721</code></dd></div>
+                <div><dt>Merged</dt><dd>2026-07-22</dd></div>
+                <div><dt>Diff</dt><dd>+492 / −13 across 13 files</dd></div>
+                <div><dt>Plan</dt><dd><code>todo/COMMERCIAL.md</code> Phase 1</dd></div>
+                <div><dt>Type</dt><dd>Schema addition (additive, no migration)</dd></div>
+            </dl>
+            <div class="cta-row">
+                <a class="cta cta-primary" href="https://github.com/JimothyJohn/specodex/pull/331" rel="noreferrer">View on GitHub →</a>
+                <a class="cta cta-ghost" href="./">All requests</a>
+            </div>
+        </section>
+
+        <section aria-label="Why">
+            <div class="divider"><span>▮▮▮ WHY ▮▮▮</span></div>
+            <p class="prose">
+                The commercial program (inferred prices, lead-time
+                estimates, vendor facts) only works if every figure is
+                <strong>replicable</strong> — a reader must be able to
+                trace any number back to a public source or to the
+                exact set of database comparables and algorithm version
+                that produced it. Without a schema that enforces this,
+                estimates drift into looking like facts. This PR
+                encodes the invariants as Pydantic validators so an
+                uncited figure is unrepresentable, not merely
+                discouraged.
+            </p>
+        </section>
+
+        <section aria-label="What changes">
+            <div class="divider"><span>▮▮▮ WHAT CHANGES ▮▮▮</span></div>
+            <ol class="cell-list">
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">A-1</span><h2 class="cell-title">SourceCitation — the receipt</h2></div>
+                    <p class="cell-body">
+                        New <code>specodex/models/commercial.py</code>
+                        defines <code>SourceCitation</code>: either a
+                        public-source citation (URL + retrieval time +
+                        verbatim excerpt) or a <code>db_inference</code>
+                        citation (comparable product IDs + algorithm
+                        version). Validators enforce completeness per
+                        kind — a URL citation without an excerpt, or a
+                        <code>db_inference</code> citation without its
+                        comparables, fails validation.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">A-2</span><h2 class="cell-title">SourcedFigure — the figure with receipts</h2></div>
+                    <p class="cell-body">
+                        <code>SourcedFigure</code> wraps a
+                        <code>ValueUnit</code> with a confidence tier,
+                        an optional dispersion range, and ≥1 citation.
+                        The replicability invariants are validator-
+                        enforced: <strong>no figure without receipts,
+                        no inference without its comparables.</strong>
+                        The excerpt length is capped so a citation
+                        stays a quote, not a scraped page.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">B-1</span><h2 class="cell-title">ProductBase gains estimate fields</h2></div>
+                    <p class="cell-body">
+                        <code>price_estimate</code> and
+                        <code>lead_time_estimate</code> land as
+                        optional, purely additive fields on
+                        <code>ProductBase</code> — every product type
+                        inherits them, no migration needed. They are
+                        deliberately distinct from <code>msrp</code>:
+                        a listed price and an inferred price never
+                        share a field, so an estimate can never
+                        masquerade as a listed price.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">B-2</span><h2 class="cell-title">Guardrail: LLM exclusion</h2></div>
+                    <p class="cell-body">
+                        Both estimate fields are excluded from the
+                        Gemini extraction schema
+                        (<code>specodex/models/llm_schema.py</code>).
+                        The LLM must never invent commercial figures —
+                        estimates enter only through the deterministic
+                        inference engine (Phase 2, PR #332), which
+                        carries its own citations.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">B-3</span><h2 class="cell-title">Guardrail: quality-gate exclusion</h2></div>
+                    <p class="cell-body">
+                        <code>specodex/quality.py</code> excludes both
+                        fields from completeness scoring. Estimates
+                        aren't datasheet specs — same treatment as
+                        <code>lead_time</code> /
+                        <code>availability</code> — so a product's
+                        quality score neither rises nor falls with the
+                        presence of an inferred figure.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">C-1</span><h2 class="cell-title">Codegen + snapshot refresh</h2></div>
+                    <p class="cell-body">
+                        <code>./Quickstart gen-types</code> rerun —
+                        <code>SourcedFigure</code> /
+                        <code>SourceCitation</code> now flow into
+                        <code>app/frontend/src/types/generated.ts</code>
+                        for the Phase 3 UI (PR #333). All seven
+                        schema-compat snapshots under
+                        <code>tests/unit/fixtures/schema_snapshots/</code>
+                        refreshed for the additive fields.
+                    </p>
+                </li>
+            </ol>
+        </section>
+
+        <section aria-label="Files touched">
+            <div class="divider"><span>▮▮▮ FILES TOUCHED ▮▮▮</span></div>
+            <table class="spec-table">
+                <thead><tr><th>File</th><th>Lines</th><th>Note</th></tr></thead>
+                <tbody>
+                    <tr><td><code>specodex/models/commercial.py</code></td><td class="num">+124</td><td>NEW — SourceCitation + SourcedFigure with invariant validators</td></tr>
+                    <tr><td><code>specodex/models/product.py</code></td><td class="num">+21</td><td><code>price_estimate</code> / <code>lead_time_estimate</code> on ProductBase</td></tr>
+                    <tr><td><code>specodex/models/llm_schema.py</code></td><td class="num">+5</td><td>exclude estimate fields from the Gemini schema</td></tr>
+                    <tr><td><code>specodex/quality.py</code></td><td class="num">+5</td><td>exclude estimate fields from quality scoring</td></tr>
+                    <tr><td><code>app/frontend/src/types/generated.ts</code></td><td class="num">+131 / −13</td><td>codegen output (SourcedFigure / SourceCitation)</td></tr>
+                    <tr><td><code>tests/unit/fixtures/schema_snapshots/*.json</code> (×7)</td><td class="num">+14</td><td>snapshot refresh for the additive fields</td></tr>
+                    <tr><td><code>tests/unit/test_commercial_models.py</code></td><td class="num">+192</td><td>NEW — 15 invariant-pinning tests</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section aria-label="How to verify">
+            <div class="divider"><span>▮▮▮ HOW TO VERIFY ▮▮▮</span></div>
+            <ol class="cell-list">
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">V-1</span><h2 class="cell-title">Invariant suite</h2></div>
+                    <p class="cell-body">
+                        <code>uv run pytest tests/unit/test_commercial_models.py -v</code>
+                        — 15 new tests pin the invariants:
+                        citation-required, <code>db_inference</code>
+                        completeness, excerpt cap, Gemini-schema
+                        exclusion, and the DynamoDB float→Decimal
+                        round-trip.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">V-2</span><h2 class="cell-title">Full pre-push gate</h2></div>
+                    <p class="cell-body">
+                        <code>./Quickstart verify</code> green end to
+                        end — including the <code>test-codegen</code>
+                        drift gate confirming the committed
+                        <code>generated.ts</code> matches
+                        <code>gen-types</code> output, and the
+                        schema-compat snapshot gate on all seven
+                        product types.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">N-1</span><h2 class="cell-title">What follows</h2></div>
+                    <p class="cell-body">
+                        Phase 2: the <code>price-comps-v1</code>
+                        inference engine (<a href="332.html">PR #332</a>).
+                        Phase 3: the commercial-first UI
+                        (<a href="333.html">PR #333</a>). Phase 4:
+                        the citation-required vendor-facts registry
+                        (<a href="334.html">PR #334</a>).
+                    </p>
+                </li>
+            </ol>
+        </section>
+
+        <a class="back-link" href="./">← back to requests log</a>
+    </main>
+
+    <footer>
+        <div class="footer-inner">
+            <span>© 2026 Specodex · PR #331</span>
+            <span class="footer-rule" aria-hidden="true"></span>
+            <a class="footer-link" href="https://github.com/JimothyJohn/specodex/pull/331" rel="noreferrer">View on GitHub</a>
+            <a class="footer-link" href="./">All requests</a>
+        </div>
+    </footer>
+</body>
+</html>

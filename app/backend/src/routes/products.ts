@@ -109,6 +109,15 @@ router.get('/summary', async (_req: Request, res: Response) => {
 const DEFAULT_LIST_LIMIT = 2000;
 
 /**
+ * Explicit ?limit= values are clamped to the same ceiling. db.listPage
+ * keeps querying until the limit is satisfied, so an unclamped
+ * ?limit=100000000 would hydrate the entire table in one request —
+ * Lambda OOM and/or the 6 MB response cap, on an attacker-controlled
+ * parameter.
+ */
+const MAX_LIST_LIMIT = 2000;
+
+/**
  * Cursors are attacker-controlled input, so decoding is strict: the
  * payload must be base64url JSON of `{type, key?}` where `type` is a
  * known product type and every `key` attribute is a marshalled scalar
@@ -183,7 +192,7 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
       : NaN;
     const limit =
       Number.isFinite(parsedLimit) && parsedLimit > 0
-        ? parsedLimit
+        ? Math.min(parsedLimit, MAX_LIST_LIMIT)
         : DEFAULT_LIST_LIMIT;
 
     // Accept any product type - no validation needed
@@ -289,6 +298,17 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    // An empty array is a validation error, not a write failure — reject
+    // it up front so it never reaches `db.create(undefined)` below and
+    // the zero-created check can't misread it as a DB outage.
+    if (Array.isArray(body) && body.length === 0) {
+      res.status(400).json({
+        success: false,
+        error: 'Product array must not be empty',
+      });
+      return;
+    }
+
     // Handle both single product and array of products
     const products: Product[] = (Array.isArray(body) ? body : [body]) as unknown as Product[];
 
@@ -335,8 +355,26 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
 
     const failureCount = products.length - successCount;
 
+    // Input passed validation but nothing was written. The DAL swallows
+    // DynamoDB errors and reports counts, so a total write failure is a
+    // server-side fault — 201 here lied to the client (same pattern as
+    // datasheets.ts: create() false → 500). Partial success stays 201
+    // with per-item counts.
+    if (successCount === 0) {
+      res.status(500).json({
+        success: false,
+        error: 'Failed to create product(s)',
+        data: {
+          items_received: products.length,
+          items_created: 0,
+          items_failed: failureCount,
+        },
+      });
+      return;
+    }
+
     res.status(201).json({
-      success: successCount > 0,
+      success: true,
       data: {
         items_received: products.length,
         items_created: successCount,

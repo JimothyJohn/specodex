@@ -5,7 +5,7 @@ from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
 
-from specodex.models.common import ValueUnit
+from specodex.models.common import LenientValueUnit
 
 # PDFs above this byte count are flagged as "large" — likely multi-family
 # catalogs that need manual review before automatic processing.
@@ -83,4 +83,4 @@ class Datasheet(BaseModel):
 
     # Additional metadata
     release_year: Optional[int] = None
-    warranty: Optional[ValueUnit] = None
+    warranty: LenientValueUnit = None
