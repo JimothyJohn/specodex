@@ -75,6 +75,7 @@ def _extract_with_optional_double_tap(
     context: dict,
     content_type: str,
     tokens: dict,
+    prompt_prefix: Optional[str] = None,
 ) -> tuple[List[Any], Optional[DoubleTapResult]]:
     """Wrapper that branches on the SPECODEX_DOUBLE_TAP env var.
 
@@ -85,11 +86,23 @@ def _extract_with_optional_double_tap(
     """
     if _double_tap_enabled():
         result = extract_with_recovery(
-            doc_data, api_key, product_type, context, content_type, tokens=tokens
+            doc_data,
+            api_key,
+            product_type,
+            context,
+            content_type,
+            tokens=tokens,
+            prompt_prefix=prompt_prefix,
         )
         return result.products, result
     parsed = call_llm_and_parse(
-        doc_data, api_key, product_type, context, content_type, tokens=tokens
+        doc_data,
+        api_key,
+        product_type,
+        context,
+        content_type,
+        tokens=tokens,
+        prompt_prefix=prompt_prefix,
     )
     return parsed, None
 
@@ -513,13 +526,16 @@ def _extract_bundled_pdf(full_pdf: bytes, pages_0idx: List[int]) -> bytes:
     with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp_in:
         tmp_in.write(full_pdf)
         tmp_in_path = Path(tmp_in.name)
-    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp_out:
-        tmp_out_path = Path(tmp_out.name)
-    extract_pdf_pages(tmp_in_path, tmp_out_path, pages_0idx)
-    data = tmp_out_path.read_bytes()
-    tmp_in_path.unlink()
-    tmp_out_path.unlink()
-    return data
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp_out:
+            tmp_out_path = Path(tmp_out.name)
+        try:
+            extract_pdf_pages(tmp_in_path, tmp_out_path, pages_0idx)
+            return tmp_out_path.read_bytes()
+        finally:
+            tmp_out_path.unlink(missing_ok=True)
+    finally:
+        tmp_in_path.unlink(missing_ok=True)
 
 
 def _save_failure_artifacts(
@@ -601,6 +617,7 @@ def _extract_per_page(
     context: dict,
     content_type: str,
     tokens: Optional[dict] = None,
+    prompt_prefix: Optional[str] = None,
 ) -> List[Any]:
     """Extract products from each chunk in parallel, tagging each with source pages.
 
@@ -624,7 +641,13 @@ def _extract_per_page(
             page_pdf = _extract_bundled_pdf(full_pdf, chunk)
             page_context = dict(context, single_page_mode=True)
             products = call_llm_and_parse(
-                page_pdf, api_key, product_type, page_context, content_type, tokens
+                page_pdf,
+                api_key,
+                product_type,
+                page_context,
+                content_type,
+                tokens,
+                prompt_prefix=prompt_prefix,
             )
             for model in products:
                 model.pages = pages_1idx
@@ -658,6 +681,8 @@ def process_datasheet(
     output_path: Optional[Path] = None,
     force: bool = False,
     save_failed_to: Optional[Path] = DEFAULT_FAILED_DATASHEETS_DIR,
+    prompt_prefix: Optional[str] = None,
+    min_quality: Optional[float] = None,
 ) -> str:
     """
     Process a single datasheet: check existence, scrape, parse, and save to DB.
@@ -667,15 +692,32 @@ def process_datasheet(
     group quality-fails by manufacturer for vendor outreach.
 
     Args:
-        force: if True, ignore the ingest log and re-run even on URLs
-            that previously succeeded. The in-DB ``product_exists`` check
-            still runs (to avoid UUID collisions on repeat rows).
+        force: if True, ignore the ingest log AND the in-DB
+            ``product_exists`` short-circuit and re-run the datasheet.
+            Safe because product IDs are deterministic (UUID5 over
+            manufacturer/part_number/name/family) — repeat rows
+            overwrite in place rather than duplicating. This is the
+            recovery path for partially ingested datasheets, which
+            share product_name with their own rows.
         save_failed_to: directory to drop a snapshot (source PDF/HTML +
             metadata + partial parsed rows) into on every quality_fail
             / extract_fail. Defaults to ``outputs/failed_datasheets/``;
             pass ``None`` to disable. Lets you re-open a problem
             datasheet locally and decide whether the catalog is broken or
             our pipeline is.
+        prompt_prefix: optional extraction-steering block prepended to
+            the standard prompt on every LLM call for this datasheet.
+            Series-overview brochures need this ("one entry per series,
+            series code in part_number") or Gemini enumerates the full
+            ratio × frame-size cross-product and truncates mid-JSON.
+            Composes with the double-tap primer when both are present.
+        min_quality: override for the quality-gate threshold (default
+            ``specodex.quality.DEFAULT_MIN_QUALITY``). Series-overview
+            brochures top out around 6 filled spec fields per row —
+            legitimate but below the default gate tuned for
+            part-number-level datasheets. Lower deliberately, per
+            datasheet, and only when the sparsity is the document's
+            fault rather than the extraction's.
 
     Returns: "success", "skipped", or "failed".
     """
@@ -697,7 +739,13 @@ def process_datasheet(
             )
             return "skipped"
 
-    if client.product_exists(product_type, manufacturer, product_name, model_class):
+    # force bypasses this gate too: a partially ingested datasheet shares
+    # product_name with its own rows, so without the bypass a re-run can
+    # never finish the stragglers. Product IDs are deterministic UUID5 —
+    # a forced re-run overwrites idempotently rather than duplicating.
+    if not force and client.product_exists(
+        product_type, manufacturer, product_name, model_class
+    ):
         logger.warning(
             f"⚠️  Product '{product_name}' by manufacturer '{manufacturer}' with product_type '{product_type}' "
             f"already exists in the database. Skipping scraping to avoid duplicates."
@@ -801,6 +849,7 @@ def process_datasheet(
                     context,
                     content_type,
                     tokens,
+                    prompt_prefix=prompt_prefix,
                 )
             elif pages:
                 logger.warning(
@@ -817,6 +866,7 @@ def process_datasheet(
                     context,
                     content_type,
                     tokens,
+                    prompt_prefix=prompt_prefix,
                 )
                 for model in parsed_models:
                     model.pages = [p + 1 for p in pages]
@@ -829,6 +879,7 @@ def process_datasheet(
                     context,
                     content_type,
                     tokens,
+                    prompt_prefix=prompt_prefix,
                 )
         else:
             if pages:
@@ -850,7 +901,13 @@ def process_datasheet(
                 return "failed"
             source_bytes = doc_data
             parsed_models, double_tap_result = _extract_with_optional_double_tap(
-                doc_data, api_key, product_type, context, content_type, tokens
+                doc_data,
+                api_key,
+                product_type,
+                context,
+                content_type,
+                tokens,
+                prompt_prefix=prompt_prefix,
             )
 
         if not parsed_models:
@@ -916,10 +973,13 @@ def process_datasheet(
         # Use the post-merge list for the "missing fields" computation so the
         # log reflects what the vendor would actually see as gaps. We score
         # all merged models (passed + rejected) to build the union of gaps.
-        from specodex.quality import filter_products
+        from specodex.quality import DEFAULT_MIN_QUALITY, filter_products
 
         scored_models = parsed_models  # full merged set for missing-fields union
-        passed_models, rejected_models = filter_products(valid_models)
+        passed_models, rejected_models = filter_products(
+            valid_models,
+            min_quality=DEFAULT_MIN_QUALITY if min_quality is None else min_quality,
+        )
         if rejected_models:
             logger.warning(
                 "Dropped %d low-quality products (too many N/A fields)",

@@ -256,13 +256,22 @@ describe('/api/v1/relations — real-DAL integration', () => {
       expect(res.body.success).toBe(false);
     });
 
-    it('filters real gearhead rows by mount + shaft compatibility', async () => {
+    it('filters real gearhead rows by mount + shaft + torque + speed', async () => {
+      // Input ratings sized so g-ok accepts this motor: capacity
+      // 100/10 = 10 Nm ≥ 1 Nm rated; 6000 rpm ≥ 3000 rpm rated.
+      const inputRatings = {
+        gear_ratio: 10.0,
+        max_continuous_torque: { value: 100.0, unit: 'Nm' },
+        max_input_speed: { value: 6000, unit: 'rpm' },
+      };
       await db.create({
         product_id: 'm-23',
         product_type: 'motor',
         manufacturer: 'M',
         motor_mount_pattern: 'NEMA 23',
         shaft_diameter: { value: 14.0, unit: 'mm' },
+        rated_torque: { value: 1.0, unit: 'Nm' },
+        rated_speed: { value: 3000, unit: 'rpm' },
       } as unknown as Product);
       await db.create({
         product_id: 'g-ok',
@@ -270,6 +279,7 @@ describe('/api/v1/relations — real-DAL integration', () => {
         manufacturer: 'G',
         input_motor_mount: ['NEMA 23'],
         input_shaft_diameter: { value: 14.0, unit: 'mm' },
+        ...inputRatings,
       } as unknown as Product);
       await db.create({
         product_id: 'g-wrong-mount',
@@ -277,13 +287,37 @@ describe('/api/v1/relations — real-DAL integration', () => {
         manufacturer: 'G',
         input_motor_mount: ['NEMA 17'],
         input_shaft_diameter: { value: 14.0, unit: 'mm' },
+        ...inputRatings,
       } as unknown as Product);
       await db.create({
-        product_id: 'g-wrong-shaft',
+        // Bore below the motor's 14mm shaft — excluded under
+        // max-bore semantics.
+        product_id: 'g-bore-too-small',
         product_type: 'gearhead',
         manufacturer: 'G',
         input_motor_mount: ['NEMA 23'],
         input_shaft_diameter: { value: 12.0, unit: 'mm' },
+        ...inputRatings,
+      } as unknown as Product);
+      await db.create({
+        // Capacity 5/10 = 0.5 Nm < the motor's 1.0 Nm rated torque.
+        product_id: 'g-torque-overload',
+        product_type: 'gearhead',
+        manufacturer: 'G',
+        input_motor_mount: ['NEMA 23'],
+        input_shaft_diameter: { value: 14.0, unit: 'mm' },
+        ...inputRatings,
+        max_continuous_torque: { value: 5.0, unit: 'Nm' },
+      } as unknown as Product);
+      await db.create({
+        // 2000 rpm input ceiling < the motor's 3000 rpm rated speed.
+        product_id: 'g-too-slow',
+        product_type: 'gearhead',
+        manufacturer: 'G',
+        input_motor_mount: ['NEMA 23'],
+        input_shaft_diameter: { value: 14.0, unit: 'mm' },
+        ...inputRatings,
+        max_input_speed: { value: 2000, unit: 'rpm' },
       } as unknown as Product);
 
       const res = await request(app).get('/api/v1/relations/gearheads-for-motor?id=m-23');

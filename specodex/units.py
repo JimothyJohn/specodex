@@ -34,8 +34,14 @@ logger: logging.Logger = logging.getLogger(__name__)
 UNIT_CONVERSIONS: dict[str, dict[str, float]] = {
     # --- Torque → Nm ---
     "Nm": {
+        "N·m": 1.0,
+        "N-m": 1.0,
+        "N.m": 1.0,
         "mNm": 1e-3,
         "mnm": 1e-3,
+        "mN·m": 1e-3,
+        "mN-m": 1e-3,
+        "mN.m": 1e-3,
         "μNm": 1e-6,
         "oz-in": 7.0615518e-3,
         "oz·in": 7.0615518e-3,
@@ -46,6 +52,20 @@ UNIT_CONVERSIONS: dict[str, dict[str, float]] = {
         "lb-in": 0.1129848,
         "lb·in": 0.1129848,
         "lbin": 0.1129848,
+        # In-first spellings — what US gear-unit catalogs actually print
+        # (Stober MGS "in. lbs.", Sumitomo Cyclo "in•lbs").
+        "in-lb": 0.1129848,
+        "in·lb": 0.1129848,
+        "in.lb": 0.1129848,
+        "inlb": 0.1129848,
+        "in-lbs": 0.1129848,
+        "in·lbs": 0.1129848,
+        "in.lbs": 0.1129848,
+        "in lbs": 0.1129848,
+        "in. lbs.": 0.1129848,
+        "in•lbs": 0.1129848,
+        "in-lbs.": 0.1129848,
+        "inch-pounds": 0.1129848,
         "kgf·cm": 0.0980665,
         "kgf.cm": 0.0980665,
         "kgfcm": 0.0980665,
@@ -73,25 +93,23 @@ UNIT_CONVERSIONS: dict[str, dict[str, float]] = {
     },
     # --- Rotational speed → rpm ---
     "rpm": {
+        "RPM": 1.0,
+        "r/min": 1.0,
+        "rev/min": 1.0,
         "rad/s": 60.0 / (2.0 * math.pi),
         "rps": 60.0,
     },
     # --- Inertia → kg·cm² ---
+    # Separator (·, -, ., none) and superscript (², 2, ^2) variants are
+    # expanded programmatically below — see _INERTIA_BASES.
     "kg·cm²": {
-        "g·cm²": 1e-3,
-        "gcm²": 1e-3,
-        "g.cm²": 1e-3,
-        "g·cm2": 1e-3,
-        "gcm2": 1e-3,
-        "kg·m²": 1e4,
-        "kgm²": 1e4,
-        "kg.m²": 1e4,
-        "kg·m2": 1e4,
-        "kgm2": 1e4,
-        "oz-in²": 0.0720078,
-        "oz·in²": 0.0720078,
-        "oz-in2": 0.0720078,
-        "oz·in2": 0.0720078,
+        # 1 oz·in² = 0.028349523125 kg × 6.4516 cm² = 0.18289978 kg·cm².
+        # (The previous 0.0720078 was exactly this ÷ 2.54 — one inch→cm
+        # factor applied linearly instead of squared.)
+        "oz-in²": 0.18289978,
+        "oz·in²": 0.18289978,
+        "oz-in2": 0.18289978,
+        "oz·in2": 0.18289978,
     },
     # --- Inductance → mH ---
     "mH": {
@@ -110,9 +128,37 @@ UNIT_CONVERSIONS: dict[str, dict[str, float]] = {
         "Ohms": 1.0,
     },
     # --- Temperature → °C ---
+    # None marks an affine special case handled by _convert_temperature.
     "°C": {
-        "°F": None,  # special case, not a simple multiplier
+        "C": 1.0,
+        "°F": None,
+        "F": None,
+        "K": None,
     },
+}
+
+# Inertia glyph variants: (mass, length, multiplier) expanded over every
+# separator × superscript spelling the LLM has been observed to emit
+# ("kg·m^2" appears verbatim in the benchmark caches).
+_INERTIA_BASES: tuple[tuple[str, str, float], ...] = (
+    ("kg", "cm", 1.0),
+    ("g", "cm", 1e-3),
+    ("kg", "m", 1e4),
+)
+for _mass, _length, _mult in _INERTIA_BASES:
+    for _sep in ("·", "-", ".", ""):
+        for _sup in ("²", "2", "^2"):
+            _variant = f"{_mass}{_sep}{_length}{_sup}"
+            if _variant != "kg·cm²":  # never alias the canonical to itself
+                UNIT_CONVERSIONS["kg·cm²"].setdefault(_variant, _mult)
+for _sep in ("-", "·", ""):
+    for _sup in ("²", "2", "^2"):
+        UNIT_CONVERSIONS["kg·cm²"].setdefault(f"oz{_sep}in{_sup}", 0.18289978)
+
+# The full inertia vocabulary (canonical + every alias) — common.py derives
+# the INERTIA family's accepted set from this so the two never drift.
+INERTIA_UNIT_STRINGS: frozenset[str] = frozenset(UNIT_CONVERSIONS["kg·cm²"]) | {
+    "kg·cm²"
 }
 
 # Build reverse lookup: alias → (canonical_unit, multiplier)
@@ -123,7 +169,9 @@ for _canonical, _aliases in UNIT_CONVERSIONS.items():
 
 
 def _convert_temperature(value: float, from_unit: str) -> float:
-    """Convert Fahrenheit to Celsius."""
+    """Convert Fahrenheit or Kelvin to Celsius."""
+    if from_unit == "K":
+        return value - 273.15
     return (value - 32.0) * 5.0 / 9.0
 
 

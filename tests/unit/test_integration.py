@@ -158,13 +158,36 @@ class TestMotorGearheadCompat:
         assert pair is not None
         assert pair.status == "ok", [c.detail for c in pair.checks]
 
-    def test_shaft_diameter_mismatch_fails(self) -> None:
+    def test_shaft_exceeding_bore_fails(self) -> None:
+        r = check(
+            _motor(shaft_diameter="14;mm"), _gearhead(input_shaft_diameter="10;mm")
+        )
+        pair = next(x for x in r.results if "shaft_output" in x.from_port)
+        shaft = next(c for c in pair.checks if c.field == "shaft_diameter")
+        assert shaft.status == "fail"
+
+    def test_thinner_shaft_fits_bore(self) -> None:
+        # Max-bore semantics (2026-07-25): the bore spec is the largest
+        # shaft the input clamp accepts, so thinner motor shafts fit.
         r = check(
             _motor(shaft_diameter="10;mm"), _gearhead(input_shaft_diameter="14;mm")
         )
         pair = next(x for x in r.results if "shaft_output" in x.from_port)
         shaft = next(c for c in pair.checks if c.field == "shaft_diameter")
-        assert shaft.status == "fail"
+        assert shaft.status == "ok", shaft.detail
+
+    def test_motor_torque_exceeds_input_capacity_fails(self) -> None:
+        # Capacity = T2N / ratio = 30 / 10 = 3 Nm < motor's 5 Nm.
+        r = check(_motor(rated_torque="5;Nm"), _gearhead())
+        pair = next(x for x in r.results if "shaft_output" in x.from_port)
+        torque = next(c for c in pair.checks if c.field == "torque")
+        assert torque.status == "fail"
+
+    def test_missing_gear_ratio_makes_torque_partial(self) -> None:
+        r = check(_motor(), _gearhead(gear_ratio=None))
+        pair = next(x for x in r.results if "shaft_output" in x.from_port)
+        torque = next(c for c in pair.checks if c.field == "torque")
+        assert torque.status == "partial"
 
     def test_frame_size_mismatch_fails(self) -> None:
         r = check(_motor(frame_size="42"), _gearhead(frame_size="60"))
@@ -232,8 +255,10 @@ class TestFitsPartialMode:
         assert "supply 2.0 < demand 5.0" in current.detail
 
     def test_shaft_mismatch_softens(self) -> None:
+        # Shaft thicker than the bore — a genuine mismatch under
+        # max-bore semantics — softens to partial in strict=False mode.
         r = check(
-            _motor(shaft_diameter="10;mm"),
+            _motor(shaft_diameter="16;mm"),
             _gearhead(input_shaft_diameter="14;mm"),
             strict=False,
         )

@@ -106,13 +106,16 @@ def _value_gte(a: Optional[ValueUnit], b: Optional[ValueUnit]) -> bool:
 def _shaft_compatible(
     motor_shaft: Optional[ValueUnit], gearhead_input: Optional[ValueUnit]
 ) -> bool:
-    """Shafts are compatible if diameters match within 0.1mm tolerance.
+    """Motor shaft fits if its diameter is at most the gearhead's input bore.
 
-    Real bushing tolerances are tighter (typically H7/h6 fits on the
-    order of 0.01mm), but vendor catalogs round inconsistently
-    ("10mm" vs "10.0mm" vs "9.95mm"). 0.1mm is the pragmatic threshold
-    for a catalog-level pre-filter — final fit is checked against
-    actual mechanical drawings, not this predicate.
+    ``input_shaft_diameter`` on a gearhead is the MAXIMUM motor shaft the
+    input coupling accepts — precision-gearbox catalogs publish it as a
+    clamping-bushing bound ("motor shaft ≤ 24 mm"), and bushing kits
+    cover smaller shafts. So the check is `motor ≤ bore`, not equality.
+
+    The 0.1mm grace absorbs catalog rounding ("10mm" vs "9.95mm") on the
+    boundary; final fit is checked against actual mechanical drawings,
+    not this predicate.
     """
     if motor_shaft is None or gearhead_input is None:
         return False
@@ -122,7 +125,7 @@ def _shaft_compatible(
         return False
     if motor_shaft.unit != gearhead_input.unit:
         return False
-    return abs(motor_shaft.value - gearhead_input.value) <= 0.1
+    return motor_shaft.value <= gearhead_input.value + 0.1
 
 
 def _meets_floor(value: Optional[ValueUnit], floor: float, unit: str) -> bool:
@@ -141,6 +144,41 @@ def _meets_floor(value: Optional[ValueUnit], floor: float, unit: str) -> bool:
     if value.unit != unit:
         return False
     return value.value >= floor
+
+
+def input_torque_capacity(g: Gearhead) -> Optional[ValueUnit]:
+    """Continuous input-torque capacity of a gearhead, referred from output.
+
+    Catalogs rate output torque (T2N); the motor cares about the input
+    side. T_in = T2N / (ratio × efficiency). Efficiency defaults to 1.0
+    when absent or out of (0, 1] — that UNDERSTATES capacity (real
+    losses mean the input can actually push a bit more before the
+    output hits T2N), so missing data errs toward excluding, per this
+    module's precision-first rule.
+
+    Returns None when `gear_ratio` or a positive `max_continuous_torque`
+    is missing — callers exclude the row.
+    """
+    tq = g.max_continuous_torque
+    if tq is None or tq.value is None or tq.unit is None:
+        return None
+    if g.gear_ratio is None or g.gear_ratio <= 0:
+        return None
+    eff = g.efficiency if g.efficiency is not None and 0 < g.efficiency <= 1 else 1.0
+    return ValueUnit(value=tq.value / (g.gear_ratio * eff), unit=tq.unit)
+
+
+def _gearhead_speed_ok(motor: Motor, g: Gearhead) -> bool:
+    """Motor's rated speed must sit within the gearhead's input-speed rating.
+
+    Prefers `max_input_speed` (n1B — the hard ceiling); falls back to
+    `nominal_input_speed` (n1N — stricter, continuous rating) when the
+    ceiling wasn't published. Missing both → excluded.
+    """
+    rating = (
+        g.max_input_speed if g.max_input_speed is not None else g.nominal_input_speed
+    )
+    return _value_gte(rating, motor.rated_speed)
 
 
 def _encoder_protocol_intersect(motor: Motor, drive: Drive) -> bool:
@@ -301,29 +339,53 @@ def compatible_drives(motor: Motor, drive_db: Iterable[Drive]) -> List[Drive]:
 def compatible_gearheads(
     motor: Motor, gearhead_db: Iterable[Gearhead]
 ) -> List[Gearhead]:
-    """Gearheads whose input mount + shaft accept this motor.
+    """Gearheads whose input side accepts this motor as an ideal match.
 
-    A gearhead is compatible if both hold:
-    1. Its `input_motor_mount` list contains the motor's
-       `motor_mount_pattern`.
-    2. Its `input_shaft_diameter` matches motor's `shaft_diameter`
-       within 0.1mm tolerance (catalog-rounding pragmatic threshold —
-       see `_shaft_compatible`).
+    A gearhead is compatible if all four hold:
+    1. Mount does not CONTRADICT: when both sides publish mount info,
+       the gearhead's `input_motor_mount` list must contain the motor's
+       `motor_mount_pattern`. When either side lacks it, the mount
+       check is skipped — precision-gearbox vendors sell adapter
+       plates instead of publishing NEMA-style patterns (only ~5% of
+       ingested gearheads carry a list, 2026-07-25), so treating a
+       missing list as a mismatch would exclude nearly the whole
+       catalog on a field the vendor never states. This is a
+       deliberate, documented exception to the module's
+       exclude-on-missing rule; the physical checks below stay hard.
+    2. The motor's `shaft_diameter` fits within its
+       `input_shaft_diameter` (max-bore semantics, 0.1mm rounding
+       grace — see `_shaft_compatible`).
+    3. The motor's `rated_speed` sits within the gearhead's input-speed
+       rating (`max_input_speed`, falling back to
+       `nominal_input_speed` — see `_gearhead_speed_ok`).
+    4. The motor's `rated_torque` does not exceed the gearhead's
+       continuous input-torque capacity, referred from output torque
+       through ratio and efficiency (see `input_torque_capacity`).
 
-    Returns empty list if motor lacks `motor_mount_pattern`. The
-    compatibility query is precise; "show every gearhead" is the wrong
-    fallback.
+    Returns empty list if the motor lacks any of `shaft_diameter`,
+    `rated_speed`, or `rated_torque` — mirroring `compatible_drives`'
+    treatment of required motor fields.
     """
-    if motor.motor_mount_pattern is None:
+    if (
+        motor.shaft_diameter is None
+        or motor.rated_speed is None
+        or motor.rated_torque is None
+    ):
         return []
 
     out: List[Gearhead] = []
     for g in gearhead_db:
-        if not g.input_motor_mount:
-            continue
-        if motor.motor_mount_pattern not in g.input_motor_mount:
+        if (
+            motor.motor_mount_pattern is not None
+            and g.input_motor_mount
+            and motor.motor_mount_pattern not in g.input_motor_mount
+        ):
             continue
         if not _shaft_compatible(motor.shaft_diameter, g.input_shaft_diameter):
+            continue
+        if not _gearhead_speed_ok(motor, g):
+            continue
+        if not _value_gte(input_torque_capacity(g), motor.rated_torque):
             continue
         out.append(g)
     return out

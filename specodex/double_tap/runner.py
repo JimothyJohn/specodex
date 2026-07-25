@@ -115,13 +115,17 @@ def extract_with_recovery(
     context: dict,
     content_type: str,
     tokens: Optional[dict] = None,
+    prompt_prefix: Optional[str] = None,
 ) -> DoubleTapResult:
     """Drop-in for call_llm_and_parse — runs first pass, verifies, optionally re-extracts.
 
     The shape mirrors call_llm_and_parse so the scraper can swap the
     call site without touching anything else. ``tokens`` is updated
     in-place across both passes so existing ingest-log telemetry sees
-    the full token cost.
+    the full token cost. ``prompt_prefix`` is the caller's steering
+    block — it rides on the first pass as-is and is prepended to the
+    priming block on the second, so the steering constraints still hold
+    while the verifier re-asks about probed fields.
     """
     first_tokens: dict = {"input": 0, "output": 0}
     first_pass = call_llm_and_parse(
@@ -131,6 +135,7 @@ def extract_with_recovery(
         context,
         content_type,
         tokens=first_tokens,
+        prompt_prefix=prompt_prefix,
     )
     if tokens is not None:
         tokens["input"] = tokens.get("input", 0) + first_tokens["input"]
@@ -173,7 +178,7 @@ def extract_with_recovery(
             context,
             content_type,
             tokens=second_tokens,
-            prompt_prefix=primer,
+            prompt_prefix=f"{prompt_prefix}\n\n{primer}" if prompt_prefix else primer,
         )
     except Exception as e:
         # If the second pass blows up for any reason, fall back to the

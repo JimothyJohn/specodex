@@ -10,6 +10,7 @@ import { FilterCriterion, SortConfig, applyFilters, sortProducts, getAttributesF
 // Column order is authored in types/columnOrder.ts — edit that file to
 // change what columns appear and in what order.
 import { orderColumnAttributes, computeVisibleColumnAttributes } from '../types/columnOrder';
+import VendorDrawer from './VendorDrawer';
 import { formatValue, formatNumber, formatRange, computeAutoColumnWidths } from '../utils/formatting';
 import Tooltip from './ui/Tooltip';
 import { displayUnit, convertValueUnit, convertMinMaxUnit } from '../utils/unitConversion';
@@ -25,24 +26,9 @@ import ProductDetailModal from './ProductDetailModal';
 import AttributeSelector from './AttributeSelector';
 import Dropdown from './Dropdown';
 import FeedbackModal from './ui/FeedbackModal';
+import { ProgressBar } from './ui/ProgressBar';
 import type { FeedbackCategory } from '../utils/feedback';
 import { ADJACENT_TYPES, BuildSlot, check as compatCheck } from '../utils/compat';
-
-// Human labels for the `availability` enum (the "Lead Time" column).
-// The raw values are schema.org ItemAvailability tokens; the table
-// shouldn't show `in_stock` to a buyer. Unknown / null values fall
-// through to an empty cell (rendered as N/A by the table).
-const AVAILABILITY_LABELS: Record<string, string> = {
-  in_stock: 'In Stock',
-  back_order: 'Back-order',
-  out_of_stock: 'Out of Stock',
-  pre_order: 'Pre-order',
-  limited: 'Limited',
-  discontinued: 'Discontinued',
-};
-
-const humanizeAvailability = (value: unknown): string =>
-  typeof value === 'string' ? AVAILABILITY_LABELS[value] ?? value : '';
 
 /**
  * The state slices ProductList resets when the user picks a new product
@@ -75,7 +61,7 @@ export function defaultStateForType(type: ProductType): ProductListResetState {
 }
 
 export default function ProductList() {
-  const { products, categories, loading, error, loadProducts, loadCategories, unitSystem, build, compatibleOnly, setCompatibleOnly, rowDensity } = useApp();
+  const { products, categories, loading, loadProgress, error, loadProducts, loadCategories, unitSystem, build, compatibleOnly, setCompatibleOnly, rowDensity } = useApp();
   const [productType, setProductType] = useState<ProductType>(null);
   const [filters, setFilters] = useState<FilterCriterion[]>([]);
   const [sorts, setSorts] = useState<SortConfig[]>([]);
@@ -88,6 +74,11 @@ export default function ProductList() {
   // or "filtered to zero" (no_match) without splitting into two modals.
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [feedbackCategory, setFeedbackCategory] = useState<FeedbackCategory>('no_match');
+  // Vendor drawer — opened by clicking a manufacturer name in the table.
+  // Shows the manufacturer's cited facts from the vendor-facts registry
+  // (the one commercial surface that survived the 2026-07-24 removal:
+  // registry facts are citation-required, unlike the per-product data).
+  const [vendorDrawerFor, setVendorDrawerFor] = useState<string | null>(null);
   // Both densities use infinite scroll; the reveal step is
   // density-driven (compact rows are shorter, so a step has to be
   // bigger to outrun the viewport). The discrete cozy pager retired
@@ -181,10 +172,18 @@ export default function ProductList() {
         'SK',
         'product_id',
         'product_type',
+        // Commercial fields — hidden while the commercial data stays
+        // unreliable; the UI focuses on technical specs only.
+        'msrp',
         'msrp_source_url',
         'msrp_fetched_at',
+        'availability',
         'availability_source_url',
         'availability_fetched_at',
+        'price_estimate',
+        'lead_time_estimate',
+        'lead_time',
+        'warranty',
       ]),
     [],
   );
@@ -787,11 +786,14 @@ export default function ProductList() {
     const hasComparison = availableOperators.some(
       op => op === '>' || op === '>=' || op === '<' || op === '<=',
     );
-    const defaultOperator = hasComparison
-      ? '>='
-      : availableOperators.length > 0
-        ? availableOperators[0]
-        : '=';
+    // Per-attribute override first (e.g. backlash starts at '<' — users
+    // spec a ceiling); generic '>=' floor otherwise.
+    const defaultOperator = attributeMetadata.defaultOperator
+      ?? (hasComparison
+        ? '>='
+        : availableOperators.length > 0
+          ? availableOperators[0]
+          : '=');
     setFilters(prev => {
       if (prev.some(
         f => f.attribute === attribute || f.attribute.startsWith(attribute + '.'),
@@ -833,7 +835,14 @@ export default function ProductList() {
   // columns.
   const handleAddColumn = (attribute: ReturnType<typeof getAttributesForType>[0]) => {
     setUserHiddenKeys(userHiddenKeys.filter(k => k !== attribute.key));
-    if (!attribute.nested && !userRestoredKeys.includes(attribute.key)) {
+    // EVERY added column goes into userRestoredKeys — that's the
+    // "explicit restores always render, even past the cap" carve-out
+    // in computeVisibleColumnAttributes. The old !attribute.nested
+    // condition assumed unit-bearing columns are visible by default,
+    // but past the cap they aren't: adding a nested spec (e.g.
+    // input_shaft_diameter on gearheads, whose default set fills the
+    // cap) silently did nothing. Reported 2026-07-25.
+    if (!userRestoredKeys.includes(attribute.key)) {
       setUserRestoredKeys([...userRestoredKeys, attribute.key]);
     }
     setShowSortSelector(false);
@@ -919,7 +928,18 @@ export default function ProductList() {
           </div>
         )}
 
-        {productType === null || (!loading && displayProducts.length === 0) ? (
+        {productType !== null && loading && products.length === 0 ? (
+          /* Initial load, nothing fetched yet — without this branch the
+             grid rendered zero rows with no indicator and a slow type
+             looked like a hang. */
+          <div className="loading-state" role="status">
+            <ProgressBar
+              label={`Loading ${
+                productType === 'all' ? 'products' : `${productType}s`
+              }…`}
+            />
+          </div>
+        ) : productType === null || (!loading && displayProducts.length === 0) ? (
           <div className="empty-state-minimal">
             <p>
               {productType === null
@@ -952,6 +972,25 @@ export default function ProductList() {
           </div>
         ) : (
           <>
+            {loadProgress &&
+              (loadProgress.total === null ||
+                loadProgress.loaded < loadProgress.total) && (
+                /* First page is on screen; the rest of the listing is
+                   still streaming in. Filters apply to what's loaded. */
+                <div className="stream-progress" role="status">
+                  <ProgressBar
+                    value={
+                      loadProgress.total !== null ? loadProgress.loaded : undefined
+                    }
+                    max={loadProgress.total ?? undefined}
+                    label={
+                      loadProgress.total !== null
+                        ? `Loading ${loadProgress.loaded.toLocaleString()} of ${loadProgress.total.toLocaleString()} records…`
+                        : `Loading… ${loadProgress.loaded.toLocaleString()} records so far`
+                    }
+                  />
+                </div>
+              )}
             {compatFilterActive && compatHiddenCount > 0 && (
               <div className="compat-filter-banner" role="status">
                 <span>
@@ -1143,7 +1182,27 @@ export default function ProductList() {
                           backgroundColor: cellColor
                         }}
                       >
-                        <div className="spec-header-value">{attrKey === 'availability' ? humanizeAvailability(productValue) : (numericValue || formatValue(productValue, 0, 5, cellSys))}</div>
+                        <div className="spec-header-value">
+                          {attrKey === 'manufacturer' && typeof productValue === 'string' && productValue ? (
+                            /* Manufacturer opens the vendor-facts drawer;
+                               stopPropagation keeps the row's detail
+                               modal from opening underneath. */
+                            <Tooltip content={`Vendor facts for ${productValue}`}>
+                              <button
+                                type="button"
+                                className="vendor-link"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setVendorDrawerFor(productValue);
+                                }}
+                              >
+                                {productValue}
+                              </button>
+                            </Tooltip>
+                          ) : (
+                            numericValue || formatValue(productValue, 0, 5, cellSys)
+                          )}
+                        </div>
                       </div>
                     );
                   })}
@@ -1180,6 +1239,12 @@ export default function ProductList() {
         product={selectedProduct}
         onClose={handleCloseModal}
         clickPosition={clickPosition}
+      />
+
+      {/* Vendor-facts drawer — opened by clicking a manufacturer name. */}
+      <VendorDrawer
+        manufacturer={vendorDrawerFor}
+        onClose={() => setVendorDrawerFor(null)}
       />
 
       {/* Attribute Selector Modal — shows currently-hidden columns so

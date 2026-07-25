@@ -141,6 +141,11 @@ export interface AttributeMetadata {
   // with (e.g. motor → rated torque + rated speed). Keep it tightly
   // curated; default chips that nobody touches become noise.
   defaultFilter?: boolean;
+  // Operator a fresh chip for this attribute starts with. Unset means
+  // the generic default ('>=' when the data supports comparisons).
+  // Set '<' for lower-is-better specs — backlash, noise, weight — where
+  // users spec a ceiling, not a floor.
+  defaultOperator?: ComparisonOperator;
 }
 
 // ========== Attribute Categories ==========
@@ -444,11 +449,17 @@ export const getGearheadAttributes = (): AttributeMetadata[] => [
   { key: 'manufacturer', displayName: 'Manufacturer', type: 'string', applicableTypes: ['gearhead'], defaultVisible: true },
   { key: 'part_number', displayName: 'Part Number', type: 'string', applicableTypes: ['gearhead'] },
   { key: 'gear_ratio', displayName: 'Gear Ratio', type: 'number', applicableTypes: ['gearhead'], defaultVisible: true },
-  { key: 'gear_type', displayName: 'Gear Type', type: 'string', applicableTypes: ['gearhead'], defaultVisible: true },
-  { key: 'rated_torque', displayName: 'Rated Torque', type: 'object', applicableTypes: ['gearhead'], nested: true, unit: 'Nm', defaultVisible: true },
-  { key: 'peak_torque', displayName: 'Peak Torque', type: 'object', applicableTypes: ['gearhead'], nested: true, unit: 'Nm', defaultVisible: true },
-  { key: 'backlash', displayName: 'Backlash', type: 'object', applicableTypes: ['gearhead'], nested: true, unit: 'arcmin', defaultVisible: true },
-  { key: 'efficiency', displayName: 'Efficiency', type: 'number', applicableTypes: ['gearhead'], unit: '%', defaultVisible: true },
+  // Selection is dimension-driven; gear technology is informational.
+  { key: 'gear_type', displayName: 'Gear Type', type: 'string', applicableTypes: ['gearhead'], defaultVisible: false },
+  // Model fields are max_continuous_torque / max_peak_torque — the
+  // previous rated_torque / peak_torque keys matched nothing and
+  // rendered dead columns (field-audit finding, fixed 2026-07-25).
+  { key: 'max_continuous_torque', displayName: 'Rated Torque', type: 'object', applicableTypes: ['gearhead'], nested: true, unit: 'Nm', defaultVisible: true },
+  { key: 'max_peak_torque', displayName: 'Peak Torque', type: 'object', applicableTypes: ['gearhead'], nested: true, unit: 'Nm', defaultVisible: true },
+  // Users spec a backlash ceiling — chips start at '<'.
+  { key: 'backlash', displayName: 'Backlash', type: 'object', applicableTypes: ['gearhead'], nested: true, unit: 'arcmin', defaultVisible: true, defaultOperator: '<' },
+  // Stored as a 0-1 fraction; no unit label (a '%' header over 0.9 lies).
+  { key: 'efficiency', displayName: 'Efficiency', type: 'number', applicableTypes: ['gearhead'], defaultVisible: true },
   { key: 'nominal_input_speed', displayName: 'Nominal Input Speed', type: 'object', applicableTypes: ['gearhead'], nested: true, unit: 'rpm', defaultVisible: false },
   { key: 'max_input_speed', displayName: 'Max Input Speed', type: 'object', applicableTypes: ['gearhead'], nested: true, unit: 'rpm', defaultVisible: false },
   { key: 'stages', displayName: 'Stages', type: 'number', applicableTypes: ['gearhead'] },
@@ -456,8 +467,12 @@ export const getGearheadAttributes = (): AttributeMetadata[] => [
   { key: 'rotor_inertia', displayName: 'Rotor Inertia', type: 'object', applicableTypes: ['gearhead'], nested: true, unit: 'kg·cm²', defaultVisible: false },
   { key: 'noise_level', displayName: 'Noise Level', type: 'object', applicableTypes: ['gearhead'], nested: true, unit: 'dBA', defaultVisible: false },
   { key: 'frame_size', displayName: 'Frame Size', type: 'string', applicableTypes: ['gearhead'] },
-  { key: 'input_shaft_diameter', displayName: 'Input Shaft Diameter', type: 'object', applicableTypes: ['gearhead'], nested: true, unit: 'mm', defaultVisible: false },
-  { key: 'output_shaft_diameter', displayName: 'Output Shaft Diameter', type: 'object', applicableTypes: ['gearhead'], nested: true, unit: 'mm', defaultVisible: false },
+  // The clamping-bushing bound: compatible motor shaft ≤ this value —
+  // so the display name says Max, and chips default to '>=' ("accepts
+  // at least my motor's shaft"). Selection is dimension-driven
+  // (gear_type above is defaultVisible: false for the same reason).
+  { key: 'input_shaft_diameter', displayName: 'Max Input Shaft Diameter', type: 'object', applicableTypes: ['gearhead'], nested: true, unit: 'mm', defaultVisible: true, defaultOperator: '>=' },
+  { key: 'output_shaft_diameter', displayName: 'Output Shaft Diameter', type: 'object', applicableTypes: ['gearhead'], nested: true, unit: 'mm', defaultVisible: true },
   { key: 'max_radial_load', displayName: 'Max Radial Load', type: 'object', applicableTypes: ['gearhead'], nested: true, unit: 'N', defaultVisible: false },
   { key: 'max_axial_load', displayName: 'Max Axial Load', type: 'object', applicableTypes: ['gearhead'], nested: true, unit: 'N', defaultVisible: false },
   { key: 'ip_rating', displayName: 'IP Rating', type: 'number', applicableTypes: ['gearhead'] },
@@ -629,45 +644,6 @@ export const getElectricCylinderAttributes = (): AttributeMetadata[] => [
   { key: 'weight', displayName: 'Weight', type: 'object', applicableTypes: ['electric_cylinder'], nested: true, unit: 'kg', defaultVisible: false },
 ];
 
-// =====================================================================
-// Commercial columns (price + lead time)
-// =====================================================================
-//
-// Every ProductBase carries `msrp` (list price, populated by
-// price-enrich) and `availability` (the *honest* lead-time signal —
-// schema.org stock status scraped by availability-enrich). The
-// `availability` field docstring in specodex/models/product.py is
-// explicit that "no honest public numeric lead time exists per part,"
-// so the populated stock snapshot — not the near-always-empty numeric
-// `lead_time` field — is what surfaces under the "Lead Time" column.
-//
-// These two are forced default-visible (`defaultVisible: true`) for
-// every concrete product type and the 'all' view, and pinned to the
-// far left (right after Part Number + Manufacturer) by columnOrder.ts.
-// They render even when null (cell shows N/A) so the buyer-facing
-// columns are always present, not just when a record happens to be
-// enriched.
-export const commercialAttributes = (
-  productType: string,
-): AttributeMetadata[] => [
-  {
-    key: 'msrp',
-    displayName: 'Price',
-    type: 'object',
-    applicableTypes: [productType],
-    nested: true,
-    unit: 'USD',
-    defaultVisible: true,
-  },
-  {
-    key: 'availability',
-    displayName: 'Lead Time',
-    type: 'string',
-    applicableTypes: [productType],
-    defaultVisible: true,
-  },
-];
-
 /**
  * Get all attributes for a specific product type
  *
@@ -694,15 +670,13 @@ export const getAttributesForType = (productType: ProductType): AttributeMetadat
   // Handle null productType (no selection)
   if (productType === null) return [];
 
-  // Fast path: type-specific attributes. Every real product type leads
-  // with the two commercial columns (price + lead time); `datasheet` is
-  // a listing record, not a ProductBase, so it has neither.
-  if (productType === 'motor') return [...commercialAttributes('motor'), ...getMotorAttributes()];
-  if (productType === 'drive') return [...commercialAttributes('drive'), ...getDriveAttributes()];
-  if (productType === 'robot_arm') return [...commercialAttributes('robot_arm'), ...getRobotArmAttributes()];
-  if (productType === 'gearhead') return [...commercialAttributes('gearhead'), ...getGearheadAttributes()];
-  if (productType === 'contactor') return [...commercialAttributes('contactor'), ...getContactorAttributes()];
-  if ((productType as string) === 'electric_cylinder') return [...commercialAttributes('electric_cylinder'), ...getElectricCylinderAttributes()];
+  // Fast path: type-specific attributes.
+  if (productType === 'motor') return getMotorAttributes();
+  if (productType === 'drive') return getDriveAttributes();
+  if (productType === 'robot_arm') return getRobotArmAttributes();
+  if (productType === 'gearhead') return getGearheadAttributes();
+  if (productType === 'contactor') return getContactorAttributes();
+  if ((productType as string) === 'electric_cylinder') return getElectricCylinderAttributes();
   if (productType === 'datasheet') return getDatasheetAttributes();
 
   // ===== COMPUTE COMMON ATTRIBUTES =====
@@ -784,9 +758,7 @@ export const getAttributesForType = (productType: ProductType): AttributeMetadat
   });
 
   console.log(`[filters] Found ${commonAttrs.length} common attributes for 'all' type`);
-  // Price + lead time are common to every concrete product type, so the
-  // mixed 'all' view leads with them too.
-  return [...commercialAttributes('all'), ...commonAttrs];
+  return commonAttrs;
 };
 
 /**
@@ -818,7 +790,7 @@ export const buildDefaultFiltersForType = (
       return {
         attribute: a.key,
         mode: 'include' as const,
-        operator: (wantsRange ? '>=' : '=') as ComparisonOperator,
+        operator: a.defaultOperator ?? ((wantsRange ? '>=' : '=') as ComparisonOperator),
         displayName: a.displayName,
       };
     });
@@ -865,10 +837,19 @@ const DERIVATION_EXCLUDED_KEYS: ReadonlySet<string> = new Set([
   'product_type',
   'datasheet_url',
   'pages',
+  // Commercial fields (price / lead time / warranty and their provenance)
+  // — hidden while the commercial data stays unreliable; the UI focuses
+  // on technical specs only. The pipeline still writes these to the DB.
+  'msrp',
   'msrp_source_url',
   'msrp_fetched_at',
+  'availability',
   'availability_source_url',
   'availability_fetched_at',
+  'price_estimate',
+  'lead_time_estimate',
+  'lead_time',
+  'warranty',
 ]);
 
 function toDisplayName(snake: string): string {
@@ -1319,9 +1300,14 @@ const getNestedValue = (obj: any, path: string): any => {
  * - number: Return as-is
  * - ValueUnit: { value: 100, unit: 'V' } → 100
  * - MinMaxUnit: { min: 200, max: 240, unit: 'V' } → 220 (average)
+ * - one-sided MinMaxUnit: { min: 200, max: null } → 200 (present bound)
  * - other: null
  *
- * Used for numeric sorting and filtering.
+ * Used for numeric sorting and filtering. One-sided ranges return their
+ * present bound — the naive midpoint corrupted the key (null → 0 made
+ * {min: 200, max: null} sort as 100; undefined made it NaN, which passes
+ * typeof === 'number' guards downstream). Mirrors
+ * utils/filterValues.ts:numericFromValue so filter and sort keys agree.
  *
  * @param value - Value to extract number from
  * @returns Numeric value or null if not extractable
@@ -1336,9 +1322,14 @@ const extractNumericValue = (value: any): number | null => {
     if ('value' in value) return value.value;
 
     // MinMaxUnit: { min: number, max: number, unit: string }
-    // Use average for sorting/filtering
-    if ('min' in value && 'max' in value) {
-      return (value.min + value.max) / 2;
+    // Use average for sorting/filtering; one-sided → present bound
+    const hasMin = 'min' in value && value.min != null;
+    const hasMax = 'max' in value && value.max != null;
+    if (hasMin || hasMax) {
+      const num = hasMin && hasMax
+        ? (Number(value.min) + Number(value.max)) / 2
+        : Number(hasMin ? value.min : value.max);
+      return Number.isNaN(num) ? null : num;
     }
   }
 
@@ -1374,21 +1365,27 @@ const matchesFilter = (value: any, filter: FilterCriterion): boolean => {
     return value !== undefined && value !== null;
   }
 
-  // ===== MULTI-SELECT STRING MATCHING =====
-  // When filter has multiple values (string[]), match if product value matches ANY of them (OR logic)
+  // ===== MULTI-SELECT MATCHING =====
+  // When filter has multiple values (string[] or number[], built by
+  // MultiSelectFilterPopover), match if product value matches ANY of them
+  // (OR logic). Numeric filter elements compare by exact numeric equality
+  // (substring matching made {4, 8} also match 48, and ip {5} match 54);
+  // string elements keep case-insensitive substring semantics.
   if (Array.isArray(filter.value)) {
     const filterValues = filter.value; // Extract to help TypeScript
+    const matchesOne = (v: any, fv: any): boolean => {
+      if (typeof fv === 'number') {
+        const num = extractNumericValue(v);
+        return num !== null && num === fv;
+      }
+      return String(v).toLowerCase().includes(String(fv).toLowerCase());
+    };
     // Handle case where product value is also an array
     if (Array.isArray(value)) {
-      return value.some(v =>
-        filterValues.some((fv: any) =>
-          String(v).toLowerCase().includes(String(fv).toLowerCase())
-        )
-      );
+      return value.some(v => filterValues.some((fv: any) => matchesOne(v, fv)));
     }
     // Product value is a single value, check if it matches any filter value
-    const valueStr = String(value).toLowerCase();
-    return filterValues.some((fv: any) => valueStr.includes(String(fv).toLowerCase()));
+    return filterValues.some((fv: any) => matchesOne(value, fv));
   }
 
   // ===== ARRAY MATCHING =====
@@ -1423,17 +1420,25 @@ const matchesFilter = (value: any, filter: FilterCriterion): boolean => {
     // range straddles the threshold is excluded, so no cell ever shows a
     // bound that contradicts the filter direction. Slider thumb and sort
     // key still use midpoint, so the slider scale is unchanged.
+    // One-sided ranges ({min: null, max: 240}) fall back to the present
+    // bound — comparing against a null bound coerced null → 0 and either
+    // silently dropped the row or matched it spuriously. Both bounds
+    // missing → no match.
     if ('min' in value && 'max' in value) {
       if (typeof filter.value === 'number') {
         const op = filter.operator || '=';
-        let representative: number;
+        const min = value.min ?? null;
+        const max = value.max ?? null;
+        let representative: number | null;
         if (op === '>=' || op === '>') {
-          representative = value.min;
+          representative = min ?? max;
         } else if (op === '<=' || op === '<') {
-          representative = value.max;
+          representative = max ?? min;
         } else {
-          representative = (value.min + value.max) / 2;
+          // = / != : midpoint, or the present bound for one-sided ranges
+          representative = min !== null && max !== null ? (min + max) / 2 : (min ?? max);
         }
+        if (representative === null) return false;
         return compareNumbers(representative, op, filter.value);
       }
     }

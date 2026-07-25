@@ -25,6 +25,7 @@ import type { Product } from '../types/models';
 vi.mock('../api/client', () => ({
   apiClient: {
     listProducts: vi.fn(() => Promise.reject(new Error('apiClient not available in unit test'))),
+    streamProducts: vi.fn(() => Promise.reject(new Error('apiClient not available in unit test'))),
     getSummary: vi.fn(() => Promise.reject(new Error('apiClient not available in unit test'))),
     getCategories: vi.fn(() => Promise.reject(new Error('apiClient not available in unit test'))),
     createProduct: vi.fn(() => Promise.reject(new Error('apiClient not available in unit test'))),

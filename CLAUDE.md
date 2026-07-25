@@ -26,6 +26,17 @@ Everything goes through `./Quickstart <command>`. It's a bash shim that delegate
                                   Writes <type>.py + <type>.md (reasoning doc
                                   with source citations).
     ./Quickstart price-enrich     Backfill MSRP on existing products
+    ./Quickstart price-infer      Deterministic price estimates from DB
+                                  comparables (price-comps-v1: same-family
+                                  log-log ladder, KNN fallback). --lead-times
+                                  mode applies published vendor lead-time
+                                  statements (registry lead_time_statement
+                                  facts) as lead_time_estimate — citations
+                                  carried verbatim, confidence "medium", no
+                                  invented lead times ever. Dry-run by
+                                  default; --apply writes estimates on
+                                  dev/staging only. See todo/COMMERCIAL.md
+                                  Phase 2.
     ./Quickstart price-book PB    Backfill MSRP in bulk from a public price book
                                   (XLSX or PDF, path or URL). Dry-run first:
                                   --manufacturer <substr> --dry-run prints the
@@ -37,6 +48,18 @@ Everything goes through `./Quickstart <command>`. It's a bash shim that delegate
                                   from the Pydantic models under specodex/models/.
                                   Single source of truth for the Python ↔ TypeScript
                                   contract — see "Type generation" below.
+    ./Quickstart vendor-facts validate|verify
+                                  Citation-required vendor-facts registry
+                                  (data/vendors/*.json, loader in
+                                  specodex/vendors/registry.py). validate loads
+                                  every profile and exits 1 on any fact without
+                                  a valid citation; verify re-fetches each cited
+                                  URL (SSRF-checked, robots-respecting) and
+                                  re-checks the verbatim excerpt — the
+                                  replicability audit from todo/COMMERCIAL.md
+                                  Phase 4. After editing data/vendors/, rerun
+                                  scripts/gen_vendor_data.py and commit the
+                                  regenerated app/frontend/src/data/vendors.json.
 
 All CLI modules live in `cli/`. Quickstart is the single entry point — don't run `python -m cli.foo` in docs or scripts unless there's a reason.
 
@@ -63,6 +86,18 @@ build artifact. The check lives in the `test-codegen` job in
 **Don't hand-edit generated files.** The banner comment at the top of
 `generated.ts` says so. If the generated TS is wrong, fix the Pydantic
 model and re-generate; never patch the TS.
+
+**Known trap: wrap-only formatting drift.** Local
+`json-schema-to-typescript` version skew can wrap long union types
+differently than CI's regeneration (e.g. the
+`Manufacturer.offered_product_types` union), failing the
+`test-codegen` gate with a diff that contains no semantic change.
+When that happens, revert only the wrap-only hunk to CI's form (the
+`+` side of the gate's diff in the failed job log) and keep your real
+changes — do not commit the local wrapping, and do not chase it by
+reinstalling Node deps. The one exception to "don't hand-edit":
+matching CI's whitespace is fixing the artifact, not the types.
+Bit PRs #344-era work and again on PR #348 (2026-07-25).
 
 **Background and roadmap.** This is Phase 0 of the Python-backend
 migration plan in `todo/PYTHON_BACKEND.md`, which retires the hand-synced
@@ -268,6 +303,10 @@ Each one was a bug where the docstring said one thing and the code did another. 
 | `specodex/ids.py:normalize_string` + `compute_product_id` (deterministic UUID5 generation) | `test_ids_property.py` | `test_ids.py` |
 | `specodex/placeholders.py:is_placeholder` (LLM "null"/"N/A" string filter) | `test_placeholders_property.py` | `test_placeholders.py` |
 | `specodex/pricing/extract.py:_parse_bare_decimal` + `_parse_money` + `_parse_json_loose` | `test_pricing_parsers_property.py` | `test_pricing.py` |
+| `specodex/relations.py` predicates (`_value_in_range`, `_range_within`, `_value_gte`, `_shaft_compatible`, `_meets_floor`, `_encoder_protocol_intersect`) + `compatible_actuators` / `compatible_motors` / `compatible_drives` / `compatible_gearheads` | `test_relations_property.py` | `test_relations.py` |
+| `specodex/pricing/shopping.py:_parse_offers` + `filter_offers` + `pick_price` (Serper `/shopping` tier trust chain) | `test_shopping_property.py` | `test_shopping.py` |
+| `specodex/pricing/inference.py:estimate_price` (price-comps-v1 DB-comparables engine) | `test_price_inference_property.py` | `test_price_inference.py` |
+| `specodex/pricing/lead_time.py:parse_lead_statement` + `parse_lead_statement_range` (published vendor lead-time statements) | `test_lead_time_property.py` | `test_lead_time_inference.py` |
 
 The 2026-05-14 sprint closed out the four "untested adversarial surfaces" from the 2026-05-10 callout (`cli/processor.py`, `compat.py`, `spec_rules.py`, `quality.py`) via PRs #149, #185, #202, #203. None of the four runs surfaced new bugs — every Hypothesis search confirmed the contract the example tests had already pinned. The boring-good outcome.
 

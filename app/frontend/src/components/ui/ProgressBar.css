@@ -1,0 +1,46 @@
+/* ProgressBar — themed replacement for the native <progress> element. */
+
+.progress-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.progress-bar-label {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.progress-bar-track {
+  flex: 1;
+  height: 4px;
+  min-width: 60px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+  position: relative;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: var(--accent-primary);
+  transition: width 0.25s ease;
+}
+
+.progress-bar-indeterminate {
+  position: absolute;
+  width: 35%;
+  animation: progress-bar-sweep 1.2s ease-in-out infinite;
+}
+
+@keyframes progress-bar-sweep {
+  0% {
+    left: -35%;
+  }
+  100% {
+    left: 100%;
+  }
+}

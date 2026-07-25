@@ -1,0 +1,223 @@
+{
+  "abb": {
+    "display_name": "ABB",
+    "facts": [
+      {
+        "label": "Standard equipment warranty (General Terms and Conditions of Sale, 2021)",
+        "value": "12 months from date of first use or 18 months from notification of readiness for shipment, whichever occurs first",
+        "kind": "warranty",
+        "sources": [
+          {
+            "url": "https://library.e.abb.com/public/799fb770bfe048c4b396065e0d40a185/ABB%20General%20Terms%20and%20Conditions%20of%20Sale_June2021_EN.pdf",
+            "kind": "vendor_doc",
+            "retrieved_at": "2026-07-22T02:27:42Z",
+            "excerpt": "If within eighteen (18) months from the date of notification of readiness of shipment or twelve (12) months from date of first use by Purchaser or the end user, whichever date occurs first, the Equipment does not meet the warranties specified above"
+          }
+        ]
+      },
+      {
+        "label": "Extended Warranty for drives (ABB Motion Services)",
+        "value": "Optional Extended Warranty covers drives up to 5 years beyond the factory warranty (spare parts and repair work)",
+        "kind": "warranty",
+        "sources": [
+          {
+            "url": "https://library.e.abb.com/public/eadd9c4dc48541a3a9a18afa5adfeab8/Extended_Warranty_leaflet%203AUA0000229862%20RevC.pdf",
+            "kind": "vendor_doc",
+            "retrieved_at": "2026-07-22T02:27:42Z",
+            "excerpt": "The Extended Warranty service ensures continued peace of mind beyond the original factory warranty period. It covers spare parts and repair work in case of a fault, minimizing downtime and unexpected costs."
+          },
+          {
+            "url": "https://library.e.abb.com/public/eadd9c4dc48541a3a9a18afa5adfeab8/Extended_Warranty_leaflet%203AUA0000229862%20RevC.pdf",
+            "kind": "vendor_doc",
+            "retrieved_at": "2026-07-22T02:27:42Z",
+            "excerpt": "Extended Warranty can cover your drive up to five years."
+          }
+        ]
+      },
+      {
+        "label": "24/7 technical support for MV drives (contract service)",
+        "value": "24/7 prioritized access to ABB technical experts in motors and drives; expert contact within 1 hour of initial contact",
+        "kind": "support",
+        "sources": [
+          {
+            "url": "https://library.e.abb.com/public/d6ec73c322b0476f821b732cac14b7ec/Service_product_description_Technical_Support_MV_drives_24_7_EN_4MWA000118_RevB.pdf",
+            "kind": "vendor_doc",
+            "retrieved_at": "2026-07-22T02:27:42Z",
+            "excerpt": "ABB Technical Support helps you to maximize your asset uptime with 24/7 prioritized access to ABB technical experts in motors and drives."
+          }
+        ]
+      },
+      {
+        "label": "US robotics/automation customer support helpline",
+        "value": "1-800-HELP-365, staffed 24 x 7 x 365 days per year",
+        "kind": "support",
+        "sources": [
+          {
+            "url": "https://library.e.abb.com/public/4669edfedd44e51d8325754e0058607f/24X7+Customer+Support.pdf",
+            "kind": "vendor_doc",
+            "retrieved_at": "2026-07-22T02:27:42Z",
+            "excerpt": "At ABB, our world-class Customer Service Center and toll free Helpline 1-800-HELP-365 is staffed 24 x 7 x 365 days per year."
+          }
+        ]
+      }
+    ]
+  },
+  "mitsubishi-electric": {
+    "display_name": "Mitsubishi Electric",
+    "facts": [
+      {
+        "label": "Servo systems warranty (MEAU)",
+        "value": "Servo drives and motors: 12 months from date of installation or 18 months from date of shipment, whichever comes first",
+        "kind": "warranty",
+        "sources": [
+          {
+            "url": "https://us.mitsubishielectric.com/fa/en/legal-notices/warranty-servo-systems",
+            "kind": "oem",
+            "retrieved_at": "2026-07-22T02:27:42Z",
+            "excerpt": "The Products are warrantied for a period of twelve (12) months from the date of Product installation at the premises of the original end user or eighteen (18) months from the date of shipment from MEAU, whichever comes first"
+          }
+        ]
+      },
+      {
+        "label": "Variable frequency drive warranty (MEAU)",
+        "value": "Listed VFD series (FR-S500/E500/D700/E700/E800, manufactured after Aug 1 2004): 60 months from date of manufacture",
+        "kind": "warranty",
+        "sources": [
+          {
+            "url": "https://us.mitsubishielectric.com/fa/en/legal-notices/warranty-variable-frequency-drive/",
+            "kind": "oem",
+            "retrieved_at": "2026-07-22T02:27:42Z",
+            "excerpt": "The Variable Frequency Drives (VFD) models FR-S500-NA, FR-S500E-NA, FR-E500-NA, FR-D700-NA, FR-E700-NA series, and FR-E800 manufactured after August 1, 2004 are warrantied for a period of sixty (60) months from the date of manufacture."
+          }
+        ]
+      },
+      {
+        "label": "US industrial automation phone support",
+        "value": "1-847-478-2500 x 3, 8:00AM-6:00PM CST Monday-Friday (except US holidays)",
+        "kind": "support",
+        "sources": [
+          {
+            "url": "https://us.mitsubishielectric.com/fa/en/support/technical-support/telephone-support/industrial-automation/",
+            "kind": "oem",
+            "retrieved_at": "2026-07-22T02:27:42Z",
+            "excerpt": "Phone Technical Support: 1-847-478-2500 x 3 - Our hours of operation are from 8:00AM to 6:00PM CST Monday through Friday (except US holidays)."
+          }
+        ]
+      },
+      {
+        "label": "US industrial automation headquarters",
+        "value": "500 Corporate Woods Parkway, Vernon Hills, Illinois 60061",
+        "kind": "location",
+        "sources": [
+          {
+            "url": "https://us.mitsubishielectric.com/fa/en/about-us/locations/",
+            "kind": "oem",
+            "retrieved_at": "2026-07-22T02:27:42Z",
+            "excerpt": "CORPORATE HEADQUARTERS Mitsubishi Electric US, Inc. Industrial Automation Division 500 Corporate Woods Parkway Vernon Hills, Illinois 60061"
+          }
+        ]
+      }
+    ]
+  },
+  "oriental-motor": {
+    "display_name": "Oriental Motor",
+    "facts": [
+      {
+        "label": "Standard product warranty",
+        "value": "Warranty claims accepted up to 2 years from date of shipment (written notice of defect required within that period)",
+        "kind": "warranty",
+        "sources": [
+          {
+            "url": "https://www.orientalmotor.com/support/warranty.html",
+            "kind": "oem",
+            "retrieved_at": "2026-07-22T02:27:42Z",
+            "excerpt": "the Company shall have no obligation or liability under this Warranty unless it shall have received written notice specifying such defect no later than two (2) years from the date of shipment"
+          }
+        ]
+      },
+      {
+        "label": "US support channels and hours",
+        "value": "Business hours Mon-Fri 8:30am EST to 5:00pm PST; technical support 1-800-468-3982, customer service 1-800-418-7903, sales 1-800-448-6935",
+        "kind": "support",
+        "sources": [
+          {
+            "url": "https://www.orientalmotor.com/contact/index.html",
+            "kind": "oem",
+            "retrieved_at": "2026-07-22T02:27:42Z",
+            "excerpt": "Service & Support Business Hours: Monday to Friday 8:30am EST to 5:00pm PST Technical Support: 1-800-468-3982 Robot Support: 1-800-443-0775 Inside Sales Support: 1-800-448-6935 Customer Service: 1-800-418-7903"
+          }
+        ]
+      },
+      {
+        "label": "Plant quality/environmental certifications",
+        "value": "ISO 9001 and ISO 14001 certified plants in Japan; Torrance and Chicago plants ISO 9001:2015",
+        "kind": "certification",
+        "sources": [
+          {
+            "url": "https://www.orientalmotor.com/support/iso9001-14001.html",
+            "kind": "oem",
+            "retrieved_at": "2026-07-22T02:27:42Z",
+            "excerpt": "Oriental Motor Plants that have acquired Certification for ISO9001 and ISO14001 Tsuruoka Plants (Chuo, Nishi) Tsuchiura Plant Takamatsu Plant (Kokubunji, Kozai) Soma Plant Kashiwa Plant Tsukuba Plant Torrance Plant (ISO9001:2015 Only) Chicago Plant (ISO9001:2015 Only)"
+          }
+        ]
+      },
+      {
+        "label": "Published delivery statement",
+        "value": "Products can be delivered in as little as 3 days, from an order of 1 piece",
+        "kind": "lead_time_statement",
+        "sources": [
+          {
+            "url": "https://www.orientalmotor.com/contact/index.html",
+            "kind": "oem",
+            "retrieved_at": "2026-07-22T02:27:42Z",
+            "excerpt": "With our solid production, quality control and logistics systems, Oriental motor products can be delivered to customers when they need it, in as little as 3 days, starting from an order of just 1 piece."
+          }
+        ]
+      }
+    ]
+  },
+  "yaskawa": {
+    "display_name": "Yaskawa",
+    "facts": [
+      {
+        "label": "Standard product warranty (Drives & Motion)",
+        "value": "1 year from date of first use or 18 months from date of shipment, whichever occurs first",
+        "kind": "warranty",
+        "sources": [
+          {
+            "url": "https://www.yaskawa.com/support-training/support/warranty-policy",
+            "kind": "oem",
+            "retrieved_at": "2026-07-22T02:27:42Z",
+            "excerpt": "D&M warrants that for a period of one (1) year from the date the product is first used by Buyer, or 18 months from the date of shipment, whichever occurs first, if any product or part is found by D&M to be defective"
+          }
+        ]
+      },
+      {
+        "label": "US technical phone support",
+        "value": "1-800-YASKAWA (927-5292) or 1-847-887-7457; drives support 7:00am-7:00pm CT Mon-Fri, motion & CNC support 8:00am-5:00pm CT Mon-Fri",
+        "kind": "support",
+        "sources": [
+          {
+            "url": "https://www.yaskawa.com/support-training/support",
+            "kind": "oem",
+            "retrieved_at": "2026-07-22T02:27:42Z",
+            "excerpt": "Phone: 1-800-YASKAWA (927-5292), dial 2 or 1-847-887-7457 , dial 2 Drives Support Hours: 7:00am to 7:00pm (CT) Mon-Fri Motion & CNC Support Hours: 8:00am to 5:00pm (CT) Mon-Fri"
+          }
+        ]
+      },
+      {
+        "label": "Quality management certification",
+        "value": "ISO 9001:2015 certified",
+        "kind": "certification",
+        "sources": [
+          {
+            "url": "https://www.yaskawa.com/about-us/corporate-data/quality-assurance",
+            "kind": "oem",
+            "retrieved_at": "2026-07-22T02:27:42Z",
+            "excerpt": "One example of this commitment is Yaskawa’s acceptance into the ISO 9001:2015 family of certified organizations."
+          }
+        ]
+      }
+    ]
+  }
+}

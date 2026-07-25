@@ -66,6 +66,23 @@ describe('GET /api/products — listing surface', () => {
     expect((DynamoDBService.prototype.listPage as jest.Mock).mock.calls[0][1]).toBe(50);
   });
 
+  // db.listPage keeps querying until the limit is satisfied, so an
+  // unclamped ?limit= hydrates the whole table — Lambda OOM / 6 MB
+  // response cap. Explicit limits must be clamped to the same 2000-row
+  // ceiling as the default.
+  it('clamps an explicit limit above the cap to 2000', async () => {
+    (DynamoDBService.prototype.listPage as jest.Mock).mockResolvedValue({ items: [] });
+    const res = await request(app).get('/api/products?type=motor&limit=100000000');
+    expect(res.status).toBe(200);
+    expect((DynamoDBService.prototype.listPage as jest.Mock).mock.calls[0][1]).toBe(2000);
+  });
+
+  it('limit exactly at the cap passes through unclamped', async () => {
+    (DynamoDBService.prototype.listPage as jest.Mock).mockResolvedValue({ items: [] });
+    await request(app).get('/api/products?type=motor&limit=2000');
+    expect((DynamoDBService.prototype.listPage as jest.Mock).mock.calls[0][1]).toBe(2000);
+  });
+
   it('sets truncated=true and returns a cursor when more pages exist', async () => {
     (DynamoDBService.prototype.listPage as jest.Mock).mockResolvedValue({
       items: [{ product_id: 'p1', product_type: 'motor', manufacturer: 'X' }],
@@ -225,6 +242,57 @@ describe('POST /api/products — creation surface', () => {
       'not-an-object',
     ]);
     expect(res.status).toBe(400);
+  });
+
+  // The DAL swallows DynamoDB errors and reports success counts, so a
+  // total write failure used to surface as 201 + success:false. A 2xx on
+  // "nothing was written" is a lie to the client — it must be a 500.
+  describe('write-failure status', () => {
+    it('single create where the DAL reports failure → 500 with success:false', async () => {
+      (DynamoDBService.prototype.create as jest.Mock).mockResolvedValue(false);
+      const res = await request(app)
+        .post('/api/products')
+        .send({ product_type: 'motor', manufacturer: 'X' });
+      expect(res.status).toBe(500);
+      expect(res.body.success).toBe(false);
+      expect(res.body.data.items_created).toBe(0);
+      expect(res.body.data.items_failed).toBe(1);
+    });
+
+    it('batch where the DAL creates nothing → 500 with success:false', async () => {
+      (DynamoDBService.prototype.batchCreate as jest.Mock).mockResolvedValue(0);
+      const res = await request(app).post('/api/products').send([
+        { product_type: 'motor', manufacturer: 'X' },
+        { product_type: 'motor', manufacturer: 'Y' },
+      ]);
+      expect(res.status).toBe(500);
+      expect(res.body.success).toBe(false);
+      expect(res.body.data.items_created).toBe(0);
+      expect(res.body.data.items_failed).toBe(2);
+    });
+
+    it('partial batch success is still 201 with per-item counts', async () => {
+      (DynamoDBService.prototype.batchCreate as jest.Mock).mockResolvedValue(1);
+      const res = await request(app).post('/api/products').send([
+        { product_type: 'motor', manufacturer: 'X' },
+        { product_type: 'motor', manufacturer: 'Y' },
+      ]);
+      expect(res.status).toBe(201);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.items_created).toBe(1);
+      expect(res.body.data.items_failed).toBe(1);
+    });
+
+    it('empty array body is 400 (validation, not a write failure)', async () => {
+      const res = await request(app)
+        .post('/api/products')
+        .set('Content-Type', 'application/json')
+        .send('[]');
+      expect(res.status).toBe(400);
+      expect(res.body.success).toBe(false);
+      expect(DynamoDBService.prototype.create).not.toHaveBeenCalled();
+      expect(DynamoDBService.prototype.batchCreate).not.toHaveBeenCalled();
+    });
   });
 
   it('huge batch does not crash (1000 items)', async () => {

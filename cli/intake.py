@@ -102,13 +102,14 @@ def _find_by_content_hash(
     """Check if a Datasheet with this content hash already exists."""
     from boto3.dynamodb.conditions import Attr
 
+    from specodex.db.lookups import scan_first_match
+
     table = _get_datasheet_table()
-    resp = table.scan(
+    return scan_first_match(
+        table,
         FilterExpression=Attr("content_hash").eq(content_hash)
         & Attr("PK").begins_with("DATASHEET#"),
     )
-    items = resp.get("Items", [])
-    return items[0] if items else None
 
 
 def _find_by_url(url: str) -> dict[str, Any] | None:
@@ -119,12 +120,13 @@ def _find_by_url(url: str) -> dict[str, Any] | None:
     """
     from boto3.dynamodb.conditions import Attr
 
+    from specodex.db.lookups import scan_first_match
+
     table = _get_datasheet_table()
-    resp = table.scan(
+    return scan_first_match(
+        table,
         FilterExpression=Attr("url").eq(url) & Attr("PK").begins_with("DATASHEET#"),
     )
-    items = resp.get("Items", [])
-    return items[0] if items else None
 
 
 def _is_url_blacklisted(url: str) -> bool:

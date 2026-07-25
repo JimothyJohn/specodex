@@ -59,6 +59,11 @@ interface GearheadRecord {
   input_motor_mount?: string[] | null;
   output_motor_mount?: string | null;
   input_shaft_diameter?: ValueUnit | null;
+  gear_ratio?: number | null;
+  efficiency?: number | null;
+  max_continuous_torque?: ValueUnit | null;
+  max_input_speed?: ValueUnit | null;
+  nominal_input_speed?: ValueUnit | null;
   [key: string]: unknown;
 }
 
@@ -106,11 +111,35 @@ function shaftCompatible(
   motorShaft: ValueUnit | null | undefined,
   gearheadInput: ValueUnit | null | undefined,
 ): boolean {
+  // Max-bore semantics: `input_shaft_diameter` is the LARGEST motor
+  // shaft the gearhead's input coupling accepts (clamping-bushing
+  // bound), so the motor fits when its shaft is ≤ bore. 0.1mm grace
+  // absorbs catalog rounding. Mirrors relations.py _shaft_compatible.
   if (!motorShaft || !gearheadInput) return false;
   if (motorShaft.value == null || gearheadInput.value == null) return false;
   if (!motorShaft.unit || !gearheadInput.unit) return false;
   if (motorShaft.unit !== gearheadInput.unit) return false;
-  return Math.abs(motorShaft.value - gearheadInput.value) <= 0.1;
+  return motorShaft.value <= gearheadInput.value + 0.1;
+}
+
+function inputTorqueCapacity(g: GearheadRecord): ValueUnit | null {
+  // Continuous input-torque capacity referred from the output rating:
+  // T_in = T2N / (ratio × efficiency). Efficiency defaults to 1.0 when
+  // absent/out of (0, 1] — understates capacity, erring toward
+  // exclusion. Mirrors relations.py input_torque_capacity.
+  const tq = g.max_continuous_torque;
+  if (!tq || tq.value == null || !tq.unit) return null;
+  if (g.gear_ratio == null || g.gear_ratio <= 0) return null;
+  const eff = g.efficiency != null && g.efficiency > 0 && g.efficiency <= 1 ? g.efficiency : 1.0;
+  return { value: tq.value / (g.gear_ratio * eff), unit: tq.unit };
+}
+
+function gearheadSpeedOk(motor: MotorRecord, g: GearheadRecord): boolean {
+  // Motor's rated speed must sit within the gearhead's input-speed
+  // rating: max_input_speed (hard ceiling) first, nominal_input_speed
+  // as the stricter fallback. Mirrors relations.py _gearhead_speed_ok.
+  const rating = g.max_input_speed ?? g.nominal_input_speed;
+  return valueGte(rating, motor.rated_speed);
 }
 
 function encoderIntersect(motor: MotorRecord, drive: DriveRecord): boolean {
@@ -134,6 +163,72 @@ function meetsFloor(
   if (!value || value.value == null || !value.unit) return false;
   if (value.unit !== unit) return false;
   return value.value >= floor;
+}
+
+/**
+ * Distribution-position metadata attached to each actuator candidate
+ * in the `/actuators` response. Drives todo/BUILD.md Part 3's
+ * "8th most common stroke in catalogue" badge. Computed once per
+ * request from the candidate set (not the full catalogue), so the
+ * rank is meaningful relative to what passed the filter.
+ *
+ * `spec` is fixed to `stroke` for the first cut — Build's most
+ * user-facing dimension, and the one the doc's example targets.
+ * Future expansion can pick per-request (peak_force_rating, peak_velocity_rating)
+ * via a query parameter; not needed for Phase 1.
+ */
+type DistributionPosition = {
+  spec: 'stroke' | 'peak_force_rating' | 'peak_velocity_rating';
+  rank: number;
+  cluster_count: number;
+};
+
+/**
+ * Group actuators by integer-millimetre stroke, rank the resulting
+ * clusters by size (1 = most populous), and attach a
+ * `_distribution_position` block to each candidate.
+ *
+ * Actuators missing the field or carrying it in a non-canonical unit
+ * receive no badge — same precision-over-recall rule the predicates
+ * follow. Ties in cluster size are broken by the spec value
+ * (ascending) so a stable rank survives across calls.
+ */
+function attachStrokeDistributionPositions(
+  candidates: ActuatorRecord[],
+): Array<ActuatorRecord & { _distribution_position?: DistributionPosition }> {
+  const bucketKey = (v: ValueUnit | null | undefined): number | null => {
+    if (!v || v.value == null || v.unit !== 'mm') return null;
+    return Math.round(v.value);
+  };
+
+  const counts = new Map<number, number>();
+  for (const c of candidates) {
+    const k = bucketKey(c.stroke);
+    if (k == null) continue;
+    counts.set(k, (counts.get(k) ?? 0) + 1);
+  }
+
+  // Sort clusters by size descending, tiebreak on the stroke value
+  // ascending so the rank is deterministic across identical-size
+  // clusters.
+  const ranked = [...counts.entries()].sort((a, b) => {
+    if (b[1] !== a[1]) return b[1] - a[1];
+    return a[0] - b[0];
+  });
+  const rankByBucket = new Map<number, number>();
+  ranked.forEach(([bucket], i) => rankByBucket.set(bucket, i + 1));
+
+  return candidates.map(c => {
+    const k = bucketKey(c.stroke);
+    if (k == null) return c;
+    const rank = rankByBucket.get(k);
+    const cluster_count = counts.get(k);
+    if (rank == null || cluster_count == null) return c;
+    return {
+      ...c,
+      _distribution_position: { spec: 'stroke', rank, cluster_count },
+    };
+  });
 }
 
 /**
@@ -202,11 +297,27 @@ function compatibleGearheads(
   motor: MotorRecord,
   gearheadDb: GearheadRecord[],
 ): GearheadRecord[] {
-  if (!motor.motor_mount_pattern) return [];
+  // Required motor fields mirror compatibleDrives' early return; the
+  // per-row checks mirror relations.py compatible_gearheads. Mount is
+  // a disqualifier only when BOTH sides publish it — vendors sell
+  // adapter plates instead of publishing mount patterns, so a missing
+  // list falls through to the physical checks (deliberate exception
+  // to exclude-on-missing; see the Python docstring).
+  if (!motor.shaft_diameter || !motor.rated_speed || !motor.rated_torque) {
+    return [];
+  }
   return gearheadDb.filter(g => {
-    if (!g.input_motor_mount || g.input_motor_mount.length === 0) return false;
-    if (!g.input_motor_mount.includes(motor.motor_mount_pattern!)) return false;
+    if (
+      motor.motor_mount_pattern &&
+      g.input_motor_mount &&
+      g.input_motor_mount.length > 0 &&
+      !g.input_motor_mount.includes(motor.motor_mount_pattern)
+    ) {
+      return false;
+    }
     if (!shaftCompatible(motor.shaft_diameter, g.input_shaft_diameter)) return false;
+    if (!gearheadSpeedOk(motor, g)) return false;
+    if (!valueGte(inputTorqueCapacity(g), motor.rated_torque)) return false;
     return true;
   });
 }
@@ -259,7 +370,13 @@ router.get('/actuators', async (req: Request, res: Response): Promise<void> => {
     minPeakForceN: q.min_peak_force_n,
     minPeakVelocityMmS: q.min_peak_velocity_mm_s,
   });
-  res.json({ success: true, data: matches, count: matches.length, total: actuators.length });
+  const annotated = attachStrokeDistributionPositions(matches);
+  res.json({
+    success: true,
+    data: annotated,
+    count: annotated.length,
+    total: actuators.length,
+  });
 });
 
 router.get('/motors-for-actuator', async (req: Request, res: Response): Promise<void> => {
@@ -342,12 +459,15 @@ export const _predicates = {
   valueGte,
   rangeWithin,
   shaftCompatible,
+  inputTorqueCapacity,
+  gearheadSpeedOk,
   encoderIntersect,
   meetsFloor,
   compatibleActuators,
   compatibleMotors,
   compatibleDrives,
   compatibleGearheads,
+  attachStrokeDistributionPositions,
 };
 
 export default router;

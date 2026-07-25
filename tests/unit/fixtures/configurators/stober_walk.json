@@ -1,0 +1,1704 @@
+{
+  "groups": {
+    "status": 200,
+    "json": {
+      "productGroups": [
+        {
+          "categoryName": "NEMA Gearboxes",
+          "categoryId": "AsynchronGetriebe",
+          "categoryImageBasePath": "https://configurator.stober.com/resources/productpictures/asynchrongetriebe.png",
+          "infoFlyoutContents": {
+            "titleText": "NEMA Gearboxes",
+            "infoText": "The standard range of power transmission gearboxes covers 3 series. All gearboxes are characterized by their robust, leakproof design and their quiet running. With a motor adapter standard motors and stainless steel motors in accordance with IEC and NEMA-C can be attached.",
+            "images": []
+          },
+          "hasPreFilters": true
+        },
+        {
+          "categoryName": "Servo Gearboxes",
+          "categoryId": "SynchronGetriebe",
+          "categoryImageBasePath": "https://configurator.stober.com/resources/productpictures/web_servogetriebe_g3_transp_rgb.png",
+          "infoFlyoutContents": {
+            "titleText": "Servo Gearboxes",
+            "infoText": "The different inline, offset and right-angle gearboxes from STOBER provide highly versatile adaptability for a wide range of servo tasks.  The motor attachment system enables attachment to all common synchronous servo motors on the market. As an option, the gearboxes can be equipped with a ServoStop motor adapter with integrated brake.\r\n\r\nSTOBER brings an entirely new generation to the market with the planetary gearbox design\u2014high-performance, extremely precise, reliable and exceptional thanks to their highly versatile adaptability for a wide range of servo tasks.",
+            "images": []
+          },
+          "hasPreFilters": true
+        },
+        {
+          "categoryName": "Servo Gearboxes with Brake",
+          "categoryId": "SynchronGetriebeBremse",
+          "categoryImageBasePath": "https://configurator.stober.com/resources/productpictures/web_servogetriebe_mit_bremse_g3_transp_rgb.png",
+          "infoFlyoutContents": {
+            "titleText": "Servo Gearboxes with Brake",
+            "infoText": "The STOBER servo gearboxes can be equipped with a ServoStop motor adapter with integrated brake. The brake reliably prevents unintentional lowering of axes under the action of gravity, even with motor removed. Can be attached to all common synchronous servo motors with plug-in coupling.",
+            "images": []
+          },
+          "hasPreFilters": true
+        },
+        {
+          "categoryName": "Rack and Pinion Gearboxes",
+          "categoryId": "Zahnstangentriebe",
+          "categoryImageBasePath": "https://configurator.stober.com/resources/productpictures/web_gruppe_zahnstangentriebe_g3_transp_rgb.png",
+          "infoFlyoutContents": {
+            "titleText": "Rack and Pinion Gearboxes",
+            "infoText": "Innovative system concept for rack and pinion gearboxes in machine tool, automation and robotics application areas.  The ZTRS design is a special engineering highlight. The bolted supporting bearing holder makes it possible to use the full gear torque in a rack and pinion gearbox for the first time and, as a result, also optimizes the volume performance and rigidity. The new ZV gearboxes are primarily designed for rack and pinion systems in automation and robotics.\r\n\r\nSTOBER brings an entirely new generation on the market with the planetary gearbox design\u2014high-performance, extremely precise, reliable and exceptional thanks to its highly versatile adaptability.",
+            "images": []
+          },
+          "hasPreFilters": true
+        },
+        {
+          "categoryName": "Gear racks",
+          "categoryId": "Zahnstangen",
+          "categoryImageBasePath": "https://configurator.stober.com/resources/productpictures/web_zs_transp_rgb.png",
+          "infoFlyoutContents": {
+            "titleText": "Gear racks",
+            "infoText": "Precision gear racks in lengths of 0.5 m and 1 m with double the number of holes for increased contact pressure and in lengths of 2 m for long travel paths with minimal impact points. All variants can be freely combined, optionally pinned and perfectly matched to STOBER pinions and gearboxes \u2013 for maximum assembly efficiency and precise, reliable transmission of the feed force.",
+            "images": []
+          },
+          "hasPreFilters": true
+        }
+      ],
+      "filters": [
+        {
+          "$type": "ParameterSingleSelection",
+          "values": [
+            {
+              "key": "NoSelection",
+              "value": "Any gearbox design"
+            },
+            {
+              "key": "Axial",
+              "value": "Inline and Offset"
+            },
+            {
+              "key": "Winkel",
+              "value": "Right-angle"
+            }
+          ],
+          "selected": "NoSelection",
+          "infoFlyoutContents": {
+            "titleText": "Gearbox design",
+            "infoText": "Design of the gearbox inline, offset or angular.",
+            "images": []
+          },
+          "units": "",
+          "filterId": "OUTPUTSTYLE",
+          "filterName": "Gearbox design",
+          "filterType": "DROP_DOWN"
+        },
+        {
+          "$type": "ParameterSingleSelection",
+          "values": [
+            {
+              "key": "NoSelection",
+              "value": "Any output shaft design"
+            },
+            {
+              "key": "V",
+              "value": "Solid"
+            },
+            {
+              "key": "A",
+              "value": "Hollow"
+            },
+            {
+              "key": "F",
+              "value": "Flange"
+            },
+            {
+              "key": "Z",
+              "value": "Pinion"
+            }
+          ],
+          "selected": "NoSelection",
+          "infoFlyoutContents": {
+            "titleText": "Output shaft design",
+            "infoText": "Machine element at the output of a gearbox that is used for transferring rotational movements and torques as well as for supporting and holding rotating parts.",
+            "images": []
+          },
+          "units": "",
+          "filterId": "SHAFT",
+          "filterName": "Output shaft design",
+          "filterType": "DROP_DOWN"
+        }
+      ],
+      "hasPreFilters": true,
+      "productSelectionStrip": "44214c54d6c116bbaa74242d44caa446",
+      "configurationId": "45d5f6be-0e63-4b70-b1c2-95d491035af0"
+    }
+  },
+  "groupSel": {
+    "status": 200,
+    "json": {
+      "productGroupFilters": [
+        {
+          "groupName": "I already have a motor",
+          "groupId": "StartMotorDetailsServo",
+          "filters": [
+            {
+              "$type": "ParameterSingleSelection",
+              "values": [
+                {
+                  "key": "NoSelection",
+                  "value": "No motor selection"
+                },
+                {
+                  "key": "ABB",
+                  "value": "ABB"
+                },
+                {
+                  "key": "ACM Engineering",
+                  "value": "ACM Engineering"
+                },
+                {
+                  "key": "Advance Digital",
+                  "value": "Advance Digital"
+                },
+                {
+                  "key": "Advance Micro Controls (AMCI)",
+                  "value": "Advance Micro Controls (AMCI)"
+                },
+                {
+                  "key": "AEG",
+                  "value": "AEG"
+                },
+                {
+                  "key": "Aerotech",
+                  "value": "Aerotech"
+                },
+                {
+                  "key": "Allen Bradley Rockwell",
+                  "value": "Allen Bradley Rockwell"
+                },
+                {
+                  "key": "AMK",
+                  "value": "AMK"
+                },
+                {
+                  "key": "Animatics",
+                  "value": "Animatics"
+                },
+                {
+                  "key": "Applied Motion Products",
+                  "value": "Applied Motion Products"
+                },
+                {
+                  "key": "Automation Direct",
+                  "value": "Automation Direct"
+                },
+                {
+                  "key": "B&R Automation",
+                  "value": "B&R Automation"
+                },
+                {
+                  "key": "Baum\u00fcller",
+                  "value": "Baum\u00fcller"
+                },
+                {
+                  "key": "Bautz",
+                  "value": "Bautz"
+                },
+                {
+                  "key": "Bayside Motion Group",
+                  "value": "Bayside Motion Group"
+                },
+                {
+                  "key": "Beckhoff",
+                  "value": "Beckhoff"
+                },
+                {
+                  "key": "Bonfiglioli",
+                  "value": "Bonfiglioli"
+                },
+                {
+                  "key": "Bosch Rexroth",
+                  "value": "Bosch Rexroth"
+                },
+                {
+                  "key": "CMC",
+                  "value": "CMC"
+                },
+                {
+                  "key": "Control Techniques",
+                  "value": "Control Techniques"
+                },
+                {
+                  "key": "Cool Muscle",
+                  "value": "Cool Muscle"
+                },
+                {
+                  "key": "Daihan",
+                  "value": "Daihan"
+                },
+                {
+                  "key": "Elau",
+                  "value": "Elau"
+                },
+                {
+                  "key": "Electrocraft",
+                  "value": "Electrocraft"
+                },
+                {
+                  "key": "Elmo",
+                  "value": "Elmo"
+                },
+                {
+                  "key": "Elwood Gettys",
+                  "value": "Elwood Gettys"
+                },
+                {
+                  "key": "Emerson",
+                  "value": "Emerson"
+                },
+                {
+                  "key": "Engel",
+                  "value": "Engel"
+                },
+                {
+                  "key": "Exlar",
+                  "value": "Exlar"
+                },
+                {
+                  "key": "Fagor",
+                  "value": "Fagor"
+                },
+                {
+                  "key": "Fanuc",
+                  "value": "Fanuc"
+                },
+                {
+                  "key": "Festo",
+                  "value": "Festo"
+                },
+                {
+                  "key": "Force Controls",
+                  "value": "Force Controls"
+                },
+                {
+                  "key": "Galil",
+                  "value": "Galil"
+                },
+                {
+                  "key": "Gast",
+                  "value": "Gast"
+                },
+                {
+                  "key": "Georgii Kob.",
+                  "value": "Georgii Kob."
+                },
+                {
+                  "key": "Giddings & Lewis / G&L",
+                  "value": "Giddings & Lewis / G&L"
+                },
+                {
+                  "key": "Glentek",
+                  "value": "Glentek"
+                },
+                {
+                  "key": "Group Rels",
+                  "value": "Group Rels"
+                },
+                {
+                  "key": "Hathaway",
+                  "value": "Hathaway"
+                },
+                {
+                  "key": "Heidenhain",
+                  "value": "Heidenhain"
+                },
+                {
+                  "key": "Heidrive",
+                  "value": "Heidrive"
+                },
+                {
+                  "key": "Hiperdrive",
+                  "value": "Hiperdrive"
+                },
+                {
+                  "key": "Industrial Devices (IDC)",
+                  "value": "Industrial Devices (IDC)"
+                },
+                {
+                  "key": "Industrial Indexing Systems",
+                  "value": "Industrial Indexing Systems"
+                },
+                {
+                  "key": "Infranor",
+                  "value": "Infranor"
+                },
+                {
+                  "key": "Isoflux",
+                  "value": "Isoflux"
+                },
+                {
+                  "key": "ITT Torque Systems",
+                  "value": "ITT Torque Systems"
+                },
+                {
+                  "key": "Jetter",
+                  "value": "Jetter"
+                },
+                {
+                  "key": "KEB / Kebco",
+                  "value": "KEB / Kebco"
+                },
+                {
+                  "key": "Keba",
+                  "value": "Keba"
+                },
+                {
+                  "key": "Kollmorgen / Danaher",
+                  "value": "Kollmorgen / Danaher"
+                },
+                {
+                  "key": "KUKA",
+                  "value": "KUKA"
+                },
+                {
+                  "key": "Lenze",
+                  "value": "Lenze"
+                },
+                {
+                  "key": "Lexium",
+                  "value": "Lexium"
+                },
+                {
+                  "key": "Lexium / Modicon",
+                  "value": "Lexium / Modicon"
+                },
+                {
+                  "key": "LIN Engineering",
+                  "value": "LIN Engineering"
+                },
+                {
+                  "key": "Litton Poly Scientific",
+                  "value": "Litton Poly Scientific"
+                },
+                {
+                  "key": "LTI",
+                  "value": "LTI"
+                },
+                {
+                  "key": "Mattke",
+                  "value": "Mattke"
+                },
+                {
+                  "key": "Mavilor",
+                  "value": "Mavilor"
+                },
+                {
+                  "key": "MCG Motion Control Group",
+                  "value": "MCG Motion Control Group"
+                },
+                {
+                  "key": "Mitsubishi",
+                  "value": "Mitsubishi"
+                },
+                {
+                  "key": "Moog",
+                  "value": "Moog"
+                },
+                {
+                  "key": "Motion Control Systems",
+                  "value": "Motion Control Systems"
+                },
+                {
+                  "key": "MTS Automation / Custom Servo",
+                  "value": "MTS Automation / Custom Servo"
+                },
+                {
+                  "key": "Nikki Denso",
+                  "value": "Nikki Denso"
+                },
+                {
+                  "key": "NUM",
+                  "value": "NUM"
+                },
+                {
+                  "key": "Omron",
+                  "value": "Omron"
+                },
+                {
+                  "key": "Oriental Motor",
+                  "value": "Oriental Motor"
+                },
+                {
+                  "key": "Ormec",
+                  "value": "Ormec"
+                },
+                {
+                  "key": "OSAI",
+                  "value": "OSAI"
+                },
+                {
+                  "key": "Pacific Scientific",
+                  "value": "Pacific Scientific"
+                },
+                {
+                  "key": "Panasonic",
+                  "value": "Panasonic"
+                },
+                {
+                  "key": "Parker",
+                  "value": "Parker"
+                },
+                {
+                  "key": "Parvec / Eurotherm",
+                  "value": "Parvec / Eurotherm"
+                },
+                {
+                  "key": "Power Automation",
+                  "value": "Power Automation"
+                },
+                {
+                  "key": "Quick Silver",
+                  "value": "Quick Silver"
+                },
+                {
+                  "key": "Sanyo Denki",
+                  "value": "Sanyo Denki"
+                },
+                {
+                  "key": "Schneider",
+                  "value": "Schneider"
+                },
+                {
+                  "key": "SEM",
+                  "value": "SEM"
+                },
+                {
+                  "key": "Servotronix",
+                  "value": "Servotronix"
+                },
+                {
+                  "key": "SEW Eurodrive",
+                  "value": "SEW Eurodrive"
+                },
+                {
+                  "key": "SIEI",
+                  "value": "SIEI"
+                },
+                {
+                  "key": "Siemens",
+                  "value": "Siemens"
+                },
+                {
+                  "key": "SSD Drives",
+                  "value": "SSD Drives"
+                },
+                {
+                  "key": "Tamagawa",
+                  "value": "Tamagawa"
+                },
+                {
+                  "key": "Teco Electro Devices",
+                  "value": "Teco Electro Devices"
+                },
+                {
+                  "key": "Teknic",
+                  "value": "Teknic"
+                },
+                {
+                  "key": "Telemecanique",
+                  "value": "Telemecanique"
+                },
+                {
+                  "key": "True Automation",
+                  "value": "True Automation"
+                },
+                {
+                  "key": "Vexta",
+                  "value": "Vexta"
+                },
+                {
+                  "key": "Warner Electric (Superior)",
+                  "value": "Warner Electric (Superior)"
+                },
+                {
+                  "key": "Yaskawa",
+                  "value": "Yaskawa"
+                },
+                {
+                  "key": "YET",
+                  "value": "YET"
+                }
+              ],
+              "selected": "NoSelection",
+              "infoFlyoutContents": null,
+              "units": "",
+              "filterId": "motor.Hersteller",
+              "filterName": "Manufacturer",
+              "filterType": "DROP_DOWN"
+            },
+            {
+              "$type": "ParameterSingleSelection",
+              "values": [],
+              "selected": null,
+              "infoFlyoutContents": null,
+              "units": "",
+              "filterId": "motor.Motor",
+              "filterName": "Model",
+              "filterType": "DROP_DOWN"
+            },
+            {
+              "$type": "ParameterSingleSelection",
+              "values": [
+                {
+                  "key": "NoSelection",
+                  "value": "No selection"
+                },
+                {
+                  "key": "G",
+                  "value": "General (Non-Washdown)"
+                },
+                {
+                  "key": "C",
+                  "value": "Corrosion Resistant (Moderate Washdown)"
+                },
+                {
+                  "key": "F",
+                  "value": "Food Duty (Severe Washdown)"
+                },
+                {
+                  "key": "S",
+                  "value": "Stainless Steel (Harshest Washdown)"
+                }
+              ],
+              "selected": "NoSelection",
+              "infoFlyoutContents": {
+                "titleText": "Package",
+                "infoText": "Package selection determines the product will meet your application needs.",
+                "images": []
+              },
+              "units": "",
+              "filterId": "PACKAGE",
+              "filterName": "Package",
+              "filterType": "DROP_DOWN"
+            },
+            {
+              "$type": "ParameterDoubleValue",
+              "minimumValue": 1.97,
+              "minimumStringValue": "1.97",
+              "maximumValue": 1762.58,
+              "maximumStringValue": "1,762.58",
+              "selected": null,
+              "selectedStringValue": "",
+              "units": "",
+              "precision": 2,
+              "stepWidth": 0.01,
+              "firstStep": 1.97,
+              "lastStep": 1762.58,
+              "infoFlyoutContents": {
+                "titleText": "Gear ratio",
+                "infoText": "Gear ratio for the entire drive.",
+                "images": []
+              },
+              "filterId": "ig",
+              "filterName": "Gear ratio",
+              "filterType": "SLIDER_SINGLE_VALUE"
+            }
+          ],
+          "groupPictureName": "https://configurator.stober.com/resources/filtergrouppictures/gearunits_motor.png"
+        },
+        {
+          "groupName": "I want to browse all products with",
+          "groupId": "StartSeriesFilter",
+          "filters": [
+            {
+              "$type": "ParameterDoubleValue",
+              "minimumValue": 16.6,
+              "minimumStringValue": "16.6",
+              "maximumValue": 43000,
+              "maximumStringValue": "43,000.0",
+              "selected": null,
+              "selectedStringValue": "",
+              "units": "Nm",
+              "precision": 1,
+              "stepWidth": 0.1,
+              "firstStep": 16.6,
+              "lastStep": 43000,
+              "infoFlyoutContents": {
+                "titleText": "Acceleration torque",
+                "infoText": "Physical variable for describing the rotational action of a force on a hinged body during acceleration.",
+                "images": []
+              },
+              "filterId": "Macc",
+              "filterName": "Acceleration torque",
+              "filterType": "SLIDER_SINGLE_VALUE"
+            },
+            {
+              "$type": "ParameterSingleSelection",
+              "values": [
+                {
+                  "key": "NoSelection",
+                  "value": "No selection"
+                },
+                {
+                  "key": "G",
+                  "value": "General (Non-Washdown)"
+                },
+                {
+                  "key": "C",
+                  "value": "Corrosion Resistant (Moderate Washdown)"
+                },
+                {
+                  "key": "F",
+                  "value": "Food Duty (Severe Washdown)"
+                },
+                {
+                  "key": "S",
+                  "value": "Stainless Steel (Harshest Washdown)"
+                }
+              ],
+              "selected": "NoSelection",
+              "infoFlyoutContents": {
+                "titleText": "Package",
+                "infoText": "Package selection determines the product will meet your application needs.",
+                "images": []
+              },
+              "units": "",
+              "filterId": "PACKAGE",
+              "filterName": "Package",
+              "filterType": "DROP_DOWN"
+            },
+            {
+              "$type": "ParameterDoubleValue",
+              "minimumValue": 1.97,
+              "minimumStringValue": "1.97",
+              "maximumValue": 1762.58,
+              "maximumStringValue": "1,762.58",
+              "selected": null,
+              "selectedStringValue": "",
+              "units": "",
+              "precision": 2,
+              "stepWidth": 0.01,
+              "firstStep": 1.97,
+              "lastStep": 1762.58,
+              "infoFlyoutContents": {
+                "titleText": "Gear ratio",
+                "infoText": "Gear ratio for the entire drive.",
+                "images": []
+              },
+              "filterId": "ig",
+              "filterName": "Gear ratio",
+              "filterType": "SLIDER_SINGLE_VALUE"
+            }
+          ],
+          "groupPictureName": "https://configurator.stober.com/resources/filtergrouppictures/gearunits_other.png"
+        }
+      ],
+      "hasResults": true,
+      "productSelectionStrip": "8d8b4995863589c8af527cf0fcecf7b8",
+      "configurationId": "66f3f2e6-b7ca-4e3b-8c3f-ee70a016324d"
+    }
+  },
+  "seriesGET": {
+    "status": 200,
+    "json": {
+      "productSeries": [],
+      "productSelectionStrip": "8d8b4995863589c8af527cf0fcecf7b8",
+      "configurationId": "8f734ab3-9a18-45cd-b32c-aab2efd699e7"
+    }
+  },
+  "seriesPOST": {
+    "status": 200,
+    "json": {
+      "productSeries": [
+        {
+          "seriesName": "P Series",
+          "additionalDesignation": "Planetary Gearboxes",
+          "seriesId": "P_ME",
+          "previewImageBaseUrl": "https://configurator.stober.com/resources/productpictures/web_pme_g3_transp_rgb.png",
+          "bestMatchProduct": null,
+          "ratings": [
+            {
+              "ratingLabel": "Power density",
+              "ratingValue": 4,
+              "ratingIcon": "Dot"
+            },
+            {
+              "ratingLabel": "Price category",
+              "ratingValue": 2,
+              "ratingIcon": "Dollar"
+            }
+          ]
+        },
+        {
+          "seriesName": "PH Series",
+          "additionalDesignation": "Planetary Gearboxes",
+          "seriesId": "PH_ME",
+          "previewImageBaseUrl": "https://configurator.stober.com/resources/productpictures/web_phme_g3_transp_rgb.png",
+          "bestMatchProduct": null,
+          "ratings": [
+            {
+              "ratingLabel": "Power density",
+              "ratingValue": 4,
+              "ratingIcon": "Dot"
+            },
+            {
+              "ratingLabel": "Price category",
+              "ratingValue": 3,
+              "ratingIcon": "Dollar"
+            }
+          ]
+        },
+        {
+          "seriesName": "PHQ Series",
+          "additionalDesignation": "Planetary Gearboxes",
+          "seriesId": "PHQ_ME",
+          "previewImageBaseUrl": "https://configurator.stober.com/resources/productpictures/web_phme_g3_transp_rgb.png",
+          "bestMatchProduct": null,
+          "ratings": [
+            {
+              "ratingLabel": "Power density",
+              "ratingValue": 5,
+              "ratingIcon": "Dot"
+            },
+            {
+              "ratingLabel": "Price category",
+              "ratingValue": 4,
+              "ratingIcon": "Dollar"
+            }
+          ]
+        },
+        {
+          "seriesName": "PHV Series",
+          "additionalDesignation": "Planetary Gearboxes",
+          "seriesId": "PHV_ME",
+          "previewImageBaseUrl": "https://configurator.stober.com/resources/productpictures/web_phme_transp_rgb.png",
+          "bestMatchProduct": null,
+          "ratings": [
+            {
+              "ratingLabel": "Power density",
+              "ratingValue": 4,
+              "ratingIcon": "Dot"
+            },
+            {
+              "ratingLabel": "Price category",
+              "ratingValue": 3,
+              "ratingIcon": "Dollar"
+            }
+          ]
+        },
+        {
+          "seriesName": "PE Series",
+          "additionalDesignation": "Planetary Gearboxes",
+          "seriesId": "PE_ME",
+          "previewImageBaseUrl": "https://configurator.stober.com/resources/productpictures/web_peme_g2_transp_rgb.png",
+          "bestMatchProduct": null,
+          "ratings": [
+            {
+              "ratingLabel": "Power density",
+              "ratingValue": 3,
+              "ratingIcon": "Dot"
+            },
+            {
+              "ratingLabel": "Price category",
+              "ratingValue": 1,
+              "ratingIcon": "Dollar"
+            }
+          ]
+        },
+        {
+          "seriesName": "C Series",
+          "additionalDesignation": "Helical Gearboxes",
+          "seriesId": "C_ME",
+          "previewImageBaseUrl": "https://configurator.stober.com/resources/productpictures/web_cme_transp_rgb.png",
+          "bestMatchProduct": null,
+          "ratings": [
+            {
+              "ratingLabel": "Power density",
+              "ratingValue": 1,
+              "ratingIcon": "Dot"
+            },
+            {
+              "ratingLabel": "Price category",
+              "ratingValue": 1,
+              "ratingIcon": "Dollar"
+            }
+          ]
+        },
+        {
+          "seriesName": "F Series",
+          "additionalDesignation": "Offset Helical Gearboxes",
+          "seriesId": "F_ME",
+          "previewImageBaseUrl": "https://configurator.stober.com/resources/productpictures/web_fme_transp_rgb.png",
+          "bestMatchProduct": null,
+          "ratings": [
+            {
+              "ratingLabel": "Power density",
+              "ratingValue": 1,
+              "ratingIcon": "Dot"
+            },
+            {
+              "ratingLabel": "Price category",
+              "ratingValue": 1,
+              "ratingIcon": "Dollar"
+            }
+          ]
+        },
+        {
+          "seriesName": "KS Series",
+          "additionalDesignation": "Right-Angle Servo Gearboxes",
+          "seriesId": "KS_ME",
+          "previewImageBaseUrl": "https://configurator.stober.com/resources/productpictures/fot_ksfme_g1_transp_rgb.png",
+          "bestMatchProduct": null,
+          "ratings": [
+            {
+              "ratingLabel": "Power density",
+              "ratingValue": 3,
+              "ratingIcon": "Dot"
+            },
+            {
+              "ratingLabel": "Price category",
+              "ratingValue": 3,
+              "ratingIcon": "Dollar"
+            }
+          ]
+        },
+        {
+          "seriesName": "PKX Series",
+          "additionalDesignation": "Right-Angle Planetary Gearboxes",
+          "seriesId": "PKX_MF",
+          "previewImageBaseUrl": "https://configurator.stober.com/resources/productpictures/web_pkxmf_g3_transp_rgb.png",
+          "bestMatchProduct": null,
+          "ratings": [
+            {
+              "ratingLabel": "Power density",
+              "ratingValue": 4,
+              "ratingIcon": "Dot"
+            },
+            {
+              "ratingLabel": "Price category",
+              "ratingValue": 3,
+              "ratingIcon": "Dollar"
+            }
+          ]
+        },
+        {
+          "seriesName": "PK Series",
+          "additionalDesignation": "Right-Angle Planetary Gearboxes",
+          "seriesId": "PK_ME",
+          "previewImageBaseUrl": "https://configurator.stober.com/resources/productpictures/web_pkme_g3_transp_rgb.png",
+          "bestMatchProduct": null,
+          "ratings": [
+            {
+              "ratingLabel": "Power density",
+              "ratingValue": 3,
+              "ratingIcon": "Dot"
+            },
+            {
+              "ratingLabel": "Price category",
+              "ratingValue": 3,
+              "ratingIcon": "Dollar"
+            }
+          ]
+        },
+        {
+          "seriesName": "PHKX Series",
+          "additionalDesignation": "Right-Angle Planetary Gearboxes",
+          "seriesId": "PHKX_MF",
+          "previewImageBaseUrl": "https://configurator.stober.com/resources/productpictures/web_phkxmf_g3_transp_rgb.png",
+          "bestMatchProduct": null,
+          "ratings": [
+            {
+              "ratingLabel": "Power density",
+              "ratingValue": 5,
+              "ratingIcon": "Dot"
+            },
+            {
+              "ratingLabel": "Price category",
+              "ratingValue": 4,
+              "ratingIcon": "Dollar"
+            }
+          ]
+        },
+        {
+          "seriesName": "PHK Series",
+          "additionalDesignation": "Right-Angle Planetary Gearboxes",
+          "seriesId": "PHK_ME",
+          "previewImageBaseUrl": "https://configurator.stober.com/resources/productpictures/web_phkme_g3_transp_rgb.png",
+          "bestMatchProduct": null,
+          "ratings": [
+            {
+              "ratingLabel": "Power density",
+              "ratingValue": 4,
+              "ratingIcon": "Dot"
+            },
+            {
+              "ratingLabel": "Price category",
+              "ratingValue": 4,
+              "ratingIcon": "Dollar"
+            }
+          ]
+        },
+        {
+          "seriesName": "PHQK Series",
+          "additionalDesignation": "Right-Angle Planetary Gearboxes",
+          "seriesId": "PHQK_ME",
+          "previewImageBaseUrl": "https://configurator.stober.com/resources/productpictures/web_phkme_g3_transp_rgb.png",
+          "bestMatchProduct": null,
+          "ratings": [
+            {
+              "ratingLabel": "Power density",
+              "ratingValue": 5,
+              "ratingIcon": "Dot"
+            },
+            {
+              "ratingLabel": "Price category",
+              "ratingValue": 5,
+              "ratingIcon": "Dollar"
+            }
+          ]
+        },
+        {
+          "seriesName": "KL Series",
+          "additionalDesignation": "Helical Bevel Gearboxes",
+          "seriesId": "KL_MLQ",
+          "previewImageBaseUrl": "https://configurator.stober.com/resources/productpictures/web_klmq_transp_rgb.png",
+          "bestMatchProduct": null,
+          "ratings": [
+            {
+              "ratingLabel": "Power density",
+              "ratingValue": 2,
+              "ratingIcon": "Dot"
+            },
+            {
+              "ratingLabel": "Price category",
+              "ratingValue": 1,
+              "ratingIcon": "Dollar"
+            }
+          ]
+        },
+        {
+          "seriesName": "K Series",
+          "additionalDesignation": "Helical Bevel Gearboxes",
+          "seriesId": "K_ME",
+          "previewImageBaseUrl": "https://configurator.stober.com/resources/productpictures/web_kme_transp_rgb.png",
+          "bestMatchProduct": null,
+          "ratings": [
+            {
+              "ratingLabel": "Power density",
+              "ratingValue": 2,
+              "ratingIcon": "Dot"
+            },
+            {
+              "ratingLabel": "Price category",
+              "ratingValue": 2,
+              "ratingIcon": "Dollar"
+            }
+          ]
+        },
+        {
+          "seriesName": "KSS Series",
+          "additionalDesignation": "Helical Bevel Gearboxes",
+          "seriesId": "KSS_MSQ",
+          "previewImageBaseUrl": "https://configurator.stober.com/resources/productpictures/web_kssmsq_transp_grey.png",
+          "bestMatchProduct": null,
+          "ratings": [
+            {
+              "ratingLabel": "Power density",
+              "ratingValue": 2,
+              "ratingIcon": "Dot"
+            },
+            {
+              "ratingLabel": "Price category",
+              "ratingValue": 4,
+              "ratingIcon": "Dollar"
+            }
+          ]
+        }
+      ],
+      "findBestMatchBy": null,
+      "productSelectionStrip": "8d8b4995863589c8af527cf0fcecf7b8",
+      "configurationId": "8154b64c-aa6e-419c-8431-c1930ea25bdd",
+      "filterGroups": [
+        {
+          "itemInformation": "",
+          "name": "MotorDetailsServo",
+          "designation": "Motor Details",
+          "parameters": [
+            {
+              "$type": "ParameterSingleSelection",
+              "values": [
+                {
+                  "key": "NoSelection",
+                  "value": "No motor selection"
+                },
+                {
+                  "key": "ABB",
+                  "value": "ABB"
+                },
+                {
+                  "key": "ACM Engineering",
+                  "value": "ACM Engineering"
+                },
+                {
+                  "key": "Advance Digital",
+                  "value": "Advance Digital"
+                },
+                {
+                  "key": "Advance Micro Controls (AMCI)",
+                  "value": "Advance Micro Controls (AMCI)"
+                },
+                {
+                  "key": "AEG",
+                  "value": "AEG"
+                },
+                {
+                  "key": "Aerotech",
+                  "value": "Aerotech"
+                },
+                {
+                  "key": "Allen Bradley Rockwell",
+                  "value": "Allen Bradley Rockwell"
+                },
+                {
+                  "key": "AMK",
+                  "value": "AMK"
+                },
+                {
+                  "key": "Animatics",
+                  "value": "Animatics"
+                },
+                {
+                  "key": "Applied Motion Products",
+                  "value": "Applied Motion Products"
+                },
+                {
+                  "key": "Automation Direct",
+                  "value": "Automation Direct"
+                },
+                {
+                  "key": "B&R Automation",
+                  "value": "B&R Automation"
+                },
+                {
+                  "key": "Baum\u00fcller",
+                  "value": "Baum\u00fcller"
+                },
+                {
+                  "key": "Bautz",
+                  "value": "Bautz"
+                },
+                {
+                  "key": "Bayside Motion Group",
+                  "value": "Bayside Motion Group"
+                },
+                {
+                  "key": "Beckhoff",
+                  "value": "Beckhoff"
+                },
+                {
+                  "key": "Bonfiglioli",
+                  "value": "Bonfiglioli"
+                },
+                {
+                  "key": "Bosch Rexroth",
+                  "value": "Bosch Rexroth"
+                },
+                {
+                  "key": "CMC",
+                  "value": "CMC"
+                },
+                {
+                  "key": "Control Techniques",
+                  "value": "Control Techniques"
+                },
+                {
+                  "key": "Cool Muscle",
+                  "value": "Cool Muscle"
+                },
+                {
+                  "key": "Daihan",
+                  "value": "Daihan"
+                },
+                {
+                  "key": "Elau",
+                  "value": "Elau"
+                },
+                {
+                  "key": "Electrocraft",
+                  "value": "Electrocraft"
+                },
+                {
+                  "key": "Elmo",
+                  "value": "Elmo"
+                },
+                {
+                  "key": "Elwood Gettys",
+                  "value": "Elwood Gettys"
+                },
+                {
+                  "key": "Emerson",
+                  "value": "Emerson"
+                },
+                {
+                  "key": "Engel",
+                  "value": "Engel"
+                },
+                {
+                  "key": "Exlar",
+                  "value": "Exlar"
+                },
+                {
+                  "key": "Fagor",
+                  "value": "Fagor"
+                },
+                {
+                  "key": "Fanuc",
+                  "value": "Fanuc"
+                },
+                {
+                  "key": "Festo",
+                  "value": "Festo"
+                },
+                {
+                  "key": "Force Controls",
+                  "value": "Force Controls"
+                },
+                {
+                  "key": "Galil",
+                  "value": "Galil"
+                },
+                {
+                  "key": "Gast",
+                  "value": "Gast"
+                },
+                {
+                  "key": "Georgii Kob.",
+                  "value": "Georgii Kob."
+                },
+                {
+                  "key": "Giddings & Lewis / G&L",
+                  "value": "Giddings & Lewis / G&L"
+                },
+                {
+                  "key": "Glentek",
+                  "value": "Glentek"
+                },
+                {
+                  "key": "Group Rels",
+                  "value": "Group Rels"
+                },
+                {
+                  "key": "Hathaway",
+                  "value": "Hathaway"
+                },
+                {
+                  "key": "Heidenhain",
+                  "value": "Heidenhain"
+                },
+                {
+                  "key": "Heidrive",
+                  "value": "Heidrive"
+                },
+                {
+                  "key": "Hiperdrive",
+                  "value": "Hiperdrive"
+                },
+                {
+                  "key": "Industrial Devices (IDC)",
+                  "value": "Industrial Devices (IDC)"
+                },
+                {
+                  "key": "Industrial Indexing Systems",
+                  "value": "Industrial Indexing Systems"
+                },
+                {
+                  "key": "Infranor",
+                  "value": "Infranor"
+                },
+                {
+                  "key": "Isoflux",
+                  "value": "Isoflux"
+                },
+                {
+                  "key": "ITT Torque Systems",
+                  "value": "ITT Torque Systems"
+                },
+                {
+                  "key": "Jetter",
+                  "value": "Jetter"
+                },
+                {
+                  "key": "KEB / Kebco",
+                  "value": "KEB / Kebco"
+                },
+                {
+                  "key": "Keba",
+                  "value": "Keba"
+                },
+                {
+                  "key": "Kollmorgen / Danaher",
+                  "value": "Kollmorgen / Danaher"
+                },
+                {
+                  "key": "KUKA",
+                  "value": "KUKA"
+                },
+                {
+                  "key": "Lenze",
+                  "value": "Lenze"
+                },
+                {
+                  "key": "Lexium",
+                  "value": "Lexium"
+                },
+                {
+                  "key": "Lexium / Modicon",
+                  "value": "Lexium / Modicon"
+                },
+                {
+                  "key": "LIN Engineering",
+                  "value": "LIN Engineering"
+                },
+                {
+                  "key": "Litton Poly Scientific",
+                  "value": "Litton Poly Scientific"
+                },
+                {
+                  "key": "LTI",
+                  "value": "LTI"
+                },
+                {
+                  "key": "Mattke",
+                  "value": "Mattke"
+                },
+                {
+                  "key": "Mavilor",
+                  "value": "Mavilor"
+                },
+                {
+                  "key": "MCG Motion Control Group",
+                  "value": "MCG Motion Control Group"
+                },
+                {
+                  "key": "Mitsubishi",
+                  "value": "Mitsubishi"
+                },
+                {
+                  "key": "Moog",
+                  "value": "Moog"
+                },
+                {
+                  "key": "Motion Control Systems",
+                  "value": "Motion Control Systems"
+                },
+                {
+                  "key": "MTS Automation / Custom Servo",
+                  "value": "MTS Automation / Custom Servo"
+                },
+                {
+                  "key": "Nikki Denso",
+                  "value": "Nikki Denso"
+                },
+                {
+                  "key": "NUM",
+                  "value": "NUM"
+                },
+                {
+                  "key": "Omron",
+                  "value": "Omron"
+                },
+                {
+                  "key": "Oriental Motor",
+                  "value": "Oriental Motor"
+                },
+                {
+                  "key": "Ormec",
+                  "value": "Ormec"
+                },
+                {
+                  "key": "OSAI",
+                  "value": "OSAI"
+                },
+                {
+                  "key": "Pacific Scientific",
+                  "value": "Pacific Scientific"
+                },
+                {
+                  "key": "Panasonic",
+                  "value": "Panasonic"
+                },
+                {
+                  "key": "Parker",
+                  "value": "Parker"
+                },
+                {
+                  "key": "Parvec / Eurotherm",
+                  "value": "Parvec / Eurotherm"
+                },
+                {
+                  "key": "Power Automation",
+                  "value": "Power Automation"
+                },
+                {
+                  "key": "Quick Silver",
+                  "value": "Quick Silver"
+                },
+                {
+                  "key": "Sanyo Denki",
+                  "value": "Sanyo Denki"
+                },
+                {
+                  "key": "Schneider",
+                  "value": "Schneider"
+                },
+                {
+                  "key": "SEM",
+                  "value": "SEM"
+                },
+                {
+                  "key": "Servotronix",
+                  "value": "Servotronix"
+                },
+                {
+                  "key": "SEW Eurodrive",
+                  "value": "SEW Eurodrive"
+                },
+                {
+                  "key": "SIEI",
+                  "value": "SIEI"
+                },
+                {
+                  "key": "Siemens",
+                  "value": "Siemens"
+                },
+                {
+                  "key": "SSD Drives",
+                  "value": "SSD Drives"
+                },
+                {
+                  "key": "Tamagawa",
+                  "value": "Tamagawa"
+                },
+                {
+                  "key": "Teco Electro Devices",
+                  "value": "Teco Electro Devices"
+                },
+                {
+                  "key": "Teknic",
+                  "value": "Teknic"
+                },
+                {
+                  "key": "Telemecanique",
+                  "value": "Telemecanique"
+                },
+                {
+                  "key": "True Automation",
+                  "value": "True Automation"
+                },
+                {
+                  "key": "Vexta",
+                  "value": "Vexta"
+                },
+                {
+                  "key": "Warner Electric (Superior)",
+                  "value": "Warner Electric (Superior)"
+                },
+                {
+                  "key": "Yaskawa",
+                  "value": "Yaskawa"
+                },
+                {
+                  "key": "YET",
+                  "value": "YET"
+                }
+              ],
+              "selected": "NoSelection",
+              "infoFlyoutContents": null,
+              "units": "",
+              "filterId": "motor.Hersteller",
+              "filterName": "Manufacturer",
+              "filterType": "DROP_DOWN"
+            },
+            {
+              "$type": "ParameterSingleSelection",
+              "values": [],
+              "selected": null,
+              "infoFlyoutContents": null,
+              "units": "",
+              "filterId": "motor.Motor",
+              "filterName": "Model",
+              "filterType": "DROP_DOWN"
+            }
+          ],
+          "namedPlace": "LeftOfProductSeries"
+        },
+        {
+          "itemInformation": "",
+          "name": "PackageFilter",
+          "designation": "Environment",
+          "parameters": [
+            {
+              "$type": "ParameterSingleSelection",
+              "values": [
+                {
+                  "key": "NoSelection",
+                  "value": "No selection"
+                },
+                {
+                  "key": "G",
+                  "value": "General (Non-Washdown)"
+                },
+                {
+                  "key": "C",
+                  "value": "Corrosion Resistant (Moderate Washdown)"
+                },
+                {
+                  "key": "F",
+                  "value": "Food Duty (Severe Washdown)"
+                },
+                {
+                  "key": "S",
+                  "value": "Stainless Steel (Harshest Washdown)"
+                }
+              ],
+              "selected": "NoSelection",
+              "infoFlyoutContents": {
+                "titleText": "Package",
+                "infoText": "Package selection determines the product will meet your application needs.",
+                "images": []
+              },
+              "units": "",
+              "filterId": "PACKAGE",
+              "filterName": "Package",
+              "filterType": "DROP_DOWN"
+            }
+          ],
+          "namedPlace": "LeftOfProductSeries"
+        },
+        {
+          "itemInformation": "",
+          "name": "SeriesFilter",
+          "designation": "Series Filter",
+          "parameters": [
+            {
+              "$type": "ParameterSingleSelection",
+              "values": [
+                {
+                  "key": "NoSelection",
+                  "value": "Any gearbox design"
+                },
+                {
+                  "key": "Axial",
+                  "value": "Inline and Offset"
+                },
+                {
+                  "key": "Winkel",
+                  "value": "Right-angle"
+                }
+              ],
+              "selected": "NoSelection",
+              "infoFlyoutContents": {
+                "titleText": "Gearbox design",
+                "infoText": "Design of the gearbox inline, offset or angular.",
+                "images": []
+              },
+              "units": "",
+              "filterId": "OUTPUTSTYLE_2",
+              "filterName": "Gearbox design",
+              "filterType": "DROP_DOWN"
+            },
+            {
+              "$type": "ParameterSingleSelection",
+              "values": [
+                {
+                  "key": "NoSelection",
+                  "value": "Any output shaft design"
+                },
+                {
+                  "key": "V",
+                  "value": "Solid"
+                },
+                {
+                  "key": "A",
+                  "value": "Hollow"
+                },
+                {
+                  "key": "F",
+                  "value": "Flange"
+                }
+              ],
+              "selected": "NoSelection",
+              "infoFlyoutContents": {
+                "titleText": "Output shaft design",
+                "infoText": "Machine element at the output of a gearbox that is used for transferring rotational movements and torques as well as for supporting and holding rotating parts.",
+                "images": []
+              },
+              "units": "",
+              "filterId": "SHAFT_2",
+              "filterName": "Output shaft design",
+              "filterType": "DROP_DOWN"
+            },
+            {
+              "$type": "ParameterSingleSelection",
+              "values": [
+                {
+                  "key": "NoSelection",
+                  "value": "All motor adapter designs"
+                },
+                {
+                  "key": "STD",
+                  "value": "Standard coupling"
+                },
+                {
+                  "key": "MF",
+                  "value": "FlexiAdapt coupling"
+                }
+              ],
+              "selected": "STD",
+              "infoFlyoutContents": {
+                "titleText": "Motor adapter design",
+                "infoText": "<html>\r\n<body>\r\n<div>\r\n<p>Standard coupling: Standard coupling<br/>FlexiAdapt coupling: Bellow coupling with expanding function and thermal length compensation<br/>\nBacklash-free plug-in coupling: Claw coupling with thermal length compensation</p></div>\r\n</body>\r\n</html>",
+                "images": []
+              },
+              "units": "",
+              "filterId": "ADAPTER",
+              "filterName": "Motor adapter design",
+              "filterType": "DROP_DOWN"
+            },
+            {
+              "$type": "ParameterDoubleValue",
+              "minimumValue": 16.6,
+              "minimumStringValue": "16.6",
+              "maximumValue": 43000,
+              "maximumStringValue": "43,000.0",
+              "selected": null,
+              "selectedStringValue": "",
+              "units": "Nm",
+              "precision": 1,
+              "stepWidth": 0.1,
+              "firstStep": 16.6,
+              "lastStep": 43000,
+              "infoFlyoutContents": {
+                "titleText": "Acceleration torque",
+                "infoText": "Physical variable for describing the rotational action of a force on a hinged body during acceleration.",
+                "images": []
+              },
+              "filterId": "Macc",
+              "filterName": "Acceleration torque",
+              "filterType": "SLIDER_SINGLE_VALUE"
+            },
+            {
+              "$type": "ParameterDoubleValue",
+              "minimumValue": 1.97,
+              "minimumStringValue": "1.97",
+              "maximumValue": 1762.58,
+              "maximumStringValue": "1,762.58",
+              "selected": null,
+              "selectedStringValue": "",
+              "units": "",
+              "precision": 2,
+              "stepWidth": 0.01,
+              "firstStep": 1.97,
+              "lastStep": 1762.58,
+              "infoFlyoutContents": {
+                "titleText": "Gear ratio",
+                "infoText": "Gear ratio for the entire drive.",
+                "images": []
+              },
+              "filterId": "ig",
+              "filterName": "Gear ratio",
+              "filterType": "SLIDER_SINGLE_VALUE"
+            },
+            {
+              "$type": "ParameterDoubleValue",
+              "minimumValue": 0,
+              "minimumStringValue": "0",
+              "maximumValue": 80000,
+              "maximumStringValue": "80,000",
+              "selected": null,
+              "selectedStringValue": "",
+              "units": "N",
+              "precision": 0,
+              "stepWidth": 1,
+              "firstStep": 0,
+              "lastStep": 80000,
+              "infoFlyoutContents": {
+                "titleText": "Nominal radial force",
+                "infoText": "<html>\r\n<body>\r\n<div>\r\n<p>Force or force component permitted for continuous operation and acting in the radial direction of the input or output shaft.</p>\r\n<p><strong>gearboxes of the C, F and K series:</strong> <br>\r\nThe nominal radial force applies to output speeds n<sub>2m*</sub>  &#x2264;  20 rpm. <br>\r\nFor output speeds n<sub>2m*</sub> > 20 rpm the following applies:<br></p>\r\n\r\n<p><img width=100 height=50 src=\"https://configurator.stober.com/resources/informationitems/f2radn_20_rpm.png\"></p>\r\n</div>\r\n\r\n<div>\r\n<p><strong>All other series:</strong> <br>\r\nThe nominal radial force applies to output speeds n<sub>2m*</sub>  &#x2264;  100 rpm. <br>\r\nFor output speeds n<sub>2m*</sub> > 100 rpm the following applies:<br></p>\r\n\r\n<p><img width=100 height=50 src=\"https://configurator.stober.com/resources/informationitems/f2radn_100_rpm.png\"></p>\r\n</div>\r\n</body>\r\n</html>",
+                "images": []
+              },
+              "filterId": "Fr",
+              "filterName": "Nominal radial force",
+              "filterType": "SLIDER_SINGLE_VALUE"
+            },
+            {
+              "$type": "ParameterDoubleValue",
+              "minimumValue": 1,
+              "minimumStringValue": "1.0",
+              "maximumValue": 25,
+              "maximumStringValue": "25.0",
+              "selected": null,
+              "selectedStringValue": "",
+              "units": "arcmin",
+              "precision": 1,
+              "stepWidth": 0.1,
+              "firstStep": 1,
+              "lastStep": 25,
+              "infoFlyoutContents": {
+                "titleText": "Backlash",
+                "infoText": "Angle that the output shaft can be rotated when the input shaft is blocked at a torque of 0 Nm. Purely theoretical value, because a torque must be applied for the movement of the gearbox parts to overcome the friction. Therefore approximately 1 to 3% of the gearbox's nominal torque is applied inversely for measuring at the output when the input shaft is fixed in place. Results from the tooth and bearing clearance and is indicated in angular minutes based on the output.",
+                "images": []
+              },
+              "filterId": "Phi",
+              "filterName": "Backlash",
+              "filterType": "SLIDER_SINGLE_VALUE"
+            },
+            {
+              "$type": "ParameterDoubleValue",
+              "minimumValue": 2600,
+              "minimumStringValue": "2,600",
+              "maximumValue": 8000,
+              "maximumStringValue": "8,000",
+              "selected": null,
+              "selectedStringValue": "",
+              "units": "rpm",
+              "precision": 0,
+              "stepWidth": 1,
+              "firstStep": 2600,
+              "lastStep": 8000,
+              "infoFlyoutContents": {
+                "titleText": "Max. perm. input speed in cyclic operation",
+                "infoText": "Maximum speed that the motor is allowed to introduce to the gearbox in cyclic operation.",
+                "images": []
+              },
+              "filterId": "n1zb",
+              "filterName": "Max. perm. input speed in cyclic operation",
+              "filterType": "SLIDER_SINGLE_VALUE"
+            }
+          ],
+          "namedPlace": "LeftOfProductSeries"
+        }
+      ]
+    }
+  },
+  "types": {
+    "status": 200,
+    "json": [
+      {
+        "productTypeName": "Gearboxes",
+        "productTypeId": "Getriebe",
+        "productTypeCode": "GEARUNITSEnum"
+      },
+      {
+        "productTypeName": "Geared Motors",
+        "productTypeId": "GetriebeMotoren",
+        "productTypeCode": "GEAREDMOTORSEnum"
+      },
+      {
+        "productTypeName": "Motors",
+        "productTypeId": "Motoren",
+        "productTypeCode": "MOTORSEnum"
+      },
+      {
+        "productTypeName": "Electronics",
+        "productTypeId": "Elektronik",
+        "productTypeCode": "ELECTRONICSEnum"
+      }
+    ]
+  }
+}

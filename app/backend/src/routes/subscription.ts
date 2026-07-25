@@ -32,9 +32,15 @@ router.get('/status', requireAuth, async (req: Request, res: Response) => {
 
     const status = await stripeService.getSubscriptionStatus(req.user!.sub);
     res.json({ success: true, data: status });
-  } catch (error: any) {
-    console.error('Error checking subscription status:', error);
-    res.status(500).json({ success: false, error: error.message });
+  } catch (error) {
+    // Upstream (Stripe) error messages can embed credentials, so neither
+    // the client response nor the log carries the raw message — log only
+    // the error class. Pinned by tests/log-leak.test.ts.
+    console.error(
+      'Error checking subscription status:',
+      error instanceof Error ? error.name : typeof error,
+    );
+    res.status(500).json({ success: false, error: 'Failed to check subscription status' });
   }
 });
 
@@ -61,9 +67,13 @@ router.post('/checkout', requireAuth, async (req: Request, res: Response): Promi
 
     const result = await stripeService.createCheckoutSession(req.user!.sub);
     res.json({ success: true, data: result });
-  } catch (error: any) {
-    console.error('Error creating checkout session:', error);
-    res.status(500).json({ success: false, error: error.message });
+  } catch (error) {
+    // Same leak shape as /status above — generic string out, class-only log.
+    console.error(
+      'Error creating checkout session:',
+      error instanceof Error ? error.name : typeof error,
+    );
+    res.status(500).json({ success: false, error: 'Failed to create checkout session' });
   }
 });
 

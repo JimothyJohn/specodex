@@ -1,0 +1,64 @@
+{
+  "slug": "abb",
+  "display_name": "ABB",
+  "facts": [
+    {
+      "label": "Standard equipment warranty (General Terms and Conditions of Sale, 2021)",
+      "value": "12 months from date of first use or 18 months from notification of readiness for shipment, whichever occurs first",
+      "kind": "warranty",
+      "sources": [
+        {
+          "url": "https://library.e.abb.com/public/799fb770bfe048c4b396065e0d40a185/ABB%20General%20Terms%20and%20Conditions%20of%20Sale_June2021_EN.pdf",
+          "kind": "vendor_doc",
+          "retrieved_at": "2026-07-22T02:27:42Z",
+          "excerpt": "If within eighteen (18) months from the date of notification of readiness of shipment or twelve (12) months from date of first use by Purchaser or the end user, whichever date occurs first, the Equipment does not meet the warranties specified above"
+        }
+      ]
+    },
+    {
+      "label": "Extended Warranty for drives (ABB Motion Services)",
+      "value": "Optional Extended Warranty covers drives up to 5 years beyond the factory warranty (spare parts and repair work)",
+      "kind": "warranty",
+      "sources": [
+        {
+          "url": "https://library.e.abb.com/public/eadd9c4dc48541a3a9a18afa5adfeab8/Extended_Warranty_leaflet%203AUA0000229862%20RevC.pdf",
+          "kind": "vendor_doc",
+          "retrieved_at": "2026-07-22T02:27:42Z",
+          "excerpt": "The Extended Warranty service ensures continued peace of mind beyond the original factory warranty period. It covers spare parts and repair work in case of a fault, minimizing downtime and unexpected costs."
+        },
+        {
+          "url": "https://library.e.abb.com/public/eadd9c4dc48541a3a9a18afa5adfeab8/Extended_Warranty_leaflet%203AUA0000229862%20RevC.pdf",
+          "kind": "vendor_doc",
+          "retrieved_at": "2026-07-22T02:27:42Z",
+          "excerpt": "Extended Warranty can cover your drive up to five years."
+        }
+      ]
+    },
+    {
+      "label": "24/7 technical support for MV drives (contract service)",
+      "value": "24/7 prioritized access to ABB technical experts in motors and drives; expert contact within 1 hour of initial contact",
+      "kind": "support",
+      "sources": [
+        {
+          "url": "https://library.e.abb.com/public/d6ec73c322b0476f821b732cac14b7ec/Service_product_description_Technical_Support_MV_drives_24_7_EN_4MWA000118_RevB.pdf",
+          "kind": "vendor_doc",
+          "retrieved_at": "2026-07-22T02:27:42Z",
+          "excerpt": "ABB Technical Support helps you to maximize your asset uptime with 24/7 prioritized access to ABB technical experts in motors and drives."
+        }
+      ]
+    },
+    {
+      "label": "US robotics/automation customer support helpline",
+      "value": "1-800-HELP-365, staffed 24 x 7 x 365 days per year",
+      "kind": "support",
+      "sources": [
+        {
+          "url": "https://library.e.abb.com/public/4669edfedd44e51d8325754e0058607f/24X7+Customer+Support.pdf",
+          "kind": "vendor_doc",
+          "retrieved_at": "2026-07-22T02:27:42Z",
+          "excerpt": "At ABB, our world-class Customer Service Center and toll free Helpline 1-800-HELP-365 is staffed 24 x 7 x 365 days per year."
+        }
+      ]
+    }
+  ]
+}

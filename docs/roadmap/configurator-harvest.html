@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Today every product row comes from a PDF catalog through page_finder → Gemini → Pydantic → quality gate. That path is lossy (LLM extraction error, only whatever">
+    <meta name="theme-color" content="#3A2C1C">
+    <title>Specodex — CONFIGURATOR_HARVEST — pull specs + part numbers from vendors' online configurators</title>
+    <link rel="icon" type="image/svg+xml" href="../logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-issue="CONFIGURATOR_HARVEST — P">
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="band">
+        <div class="band-inner">
+            <a class="band-brand" href="../index.html">
+                <svg class="band-mark" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <rect width="120" height="120" fill="#E8E2C9"/>
+                    <rect x="14" y="14" width="92" height="92" fill="none" stroke="#1A1A14" stroke-width="3"/>
+                    <rect x="14" y="14" width="92" height="22" fill="#3A2C1C"/>
+                    <rect x="62" y="60" width="40" height="10" fill="#A88A1C"/>
+                    <line x1="14" y1="56" x2="106" y2="56" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="74" x2="106" y2="74" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="92" x2="106" y2="92" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="60" y1="36" x2="60" y2="106" stroke="#1A1A14" stroke-width="2"/>
+                </svg>
+                <span class="wordmark">SPECODEX</span>
+            </a>
+            <nav class="band-nav" aria-label="Section">
+                <a href="../index.html">Catalog</a>
+                <a href="../roadmap.html">Roadmap</a>
+                <a href="https://github.com/JimothyJohn/specodex/blob/master/todo/CONFIGURATOR_HARVEST.md" rel="noreferrer">Source</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="doc-hero">
+            <div class="hero-tag">▮▮▮ CONFIGURATOR HARVEST ▮▮▮</div>
+            <h1 class="hero-title">CONFIGURATOR_HARVEST — pull specs + part numbers from vendors' online configurators</h1>
+            <div class="doc-meta">
+                <span class="status-chip status-backlog">BACKLOG</span>
+                <span class="doc-source"><code>todo/CONFIGURATOR_HARVEST.md</code></span>
+            </div>
+        </section>
+
+        <article class="doc-body">
+<h1 id="configurator_harvest-pull-specs-part-numbers-from-vendors-online-configurators">CONFIGURATOR_HARVEST — pull specs + part numbers from vendors' online configurators</h1>
+<blockquote>
+<p>🚧 in progress — P0 shipped (2026-07-25): <code>ConfiguratorClient</code> + Stober
+adapter behind <code>./Quickstart configurator</code>. P1–P4 below still planned.</p>
+</blockquote>
+<h2 id="why">Why</h2>
+<p>Today every product row comes from a <strong>PDF catalog</strong> through
+<code>page_finder → Gemini → Pydantic → quality gate</code>. That path is lossy
+(LLM extraction error, only whatever the datasheet tabulated) and
+expensive (Gemini tokens per page).</p>
+<p>Many industrial vendors also ship an <strong>online JS configurator</strong> — a
+sizing/selection tool that is a thin SPA over a structured JSON API.
+That API is a <em>higher-fidelity, LLM-free</em> data source:</p>
+<ul>
+<li>Values arrive already <strong>typed with units</strong> (<code>{value, unit}</code> shaped,
+  the same shape our <code>ValueUnit</code>/<code>MinMaxUnit</code> models store).</li>
+<li>The vendor's own <strong>sizing engine</strong> resolves requirements → part
+  number and the exact <strong>order code</strong> — no synthesis, no guessing.</li>
+<li>The full <strong>valid-configuration space</strong> is enumerable, not just the
+  variants a catalog happened to print.</li>
+</ul>
+<p>Two uses:</p>
+<ol>
+<li><strong>New products without catalogs</strong> — ingest a vendor we have no
+   PDF for by walking its configurator.</li>
+<li><strong>Cross-reference</strong> — join configurator data to catalog-extracted
+   DynamoDB rows by part number/family and flag disagreements. The
+   configurator is generally ground-truth (it's the vendor's own
+   engine), so a mismatch is a signal our PDF extraction drifted.</li>
+</ol>
+<p>This is <strong>per-vendor adapter work, not a universal scraper</strong> — see
+"Why it stays per-vendor" below. It does <em>not</em> replace the LLM
+pipeline; it's a second, exact source for the subset of vendors that
+expose a configurator.</p>
+<h2 id="proven-feasibility-stober-spike-2026-07-25">Proven feasibility (Stober spike, 2026-07-25)</h2>
+<p><code>configurator.stober.com</code> is an Angular SPA over a same-origin REST
+API at <code>/api/{locale}/…</code> (<code>API_BASE_URL = origin + "/api/"</code>, <code>shop</code>
+is a path segment, e.g. <code>SDI</code>). Findings:</p>
+<ul>
+<li><strong>Anonymous GET works</strong> directly (curl): <code>GET /api/en-US/ProductSelection/SDI</code>
+  returns the product-type list as JSON.</li>
+<li><strong>POST is dropped at the edge for non-browser clients</strong> (WAF). The
+  fix: drive <strong>headless Chromium (Playwright)</strong>, load the SPA to get a
+  real session, then call the API with <strong>in-page <code>fetch()</code></strong> — the
+  request is indistinguishable from the SPA's own traffic and passes.</li>
+<li>
+<p>The navigation tree and requirement schema are fully readable:</p>
+<p>GET  /api/{loc}/ProductSelection/{shop}                          -&gt; product types
+  POST /api/{loc}/ProductSelection/{type}/{shop}                   -&gt; product groups + prefilters
+  POST /api/{loc}/ProductSelection/{type}/{group}/{shop}           -&gt; select group -&gt; configurationId + filters
+  POST /api/{loc}/ProductSelection/{type}/{group}/Series/{shop}    -&gt; series[] each with bestMatchProduct slot
+  POST .../Series/{seriesId}/Products/{shop}   {filterValues}      -&gt; concrete products
+  POST /api/{loc}/Configuration/Set            {characteristics}   -&gt; apply requirements
+  GET  /api/{loc}/Configuration/Summary                            -&gt; configurationStrip == the order code</p>
+</li>
+<li>
+<p><strong>Requirements schema</strong> (servo gearboxes) came back typed with units
+  and ranges — e.g. <code>ig</code> gear ratio [1.97, 1762.58], <code>Macc</code>
+  acceleration torque [16.6, 43000] Nm, <code>Fr</code> radial force [0, 80000] N,
+  <code>Phi</code> backlash [1, 25] arcmin, <code>n1zb</code> input speed [2600, 8000] rpm,
+  plus enumerated dropdowns (gearbox design, shaft, motor adapter).</p>
+</li>
+<li><strong>Reverse lookup is a first-class server feature</strong> (<code>bestMatchBy</code> /
+  <code>bestMatchProduct</code>): POST <code>{filterValues:[{name, value1}]}</code> and the
+  API returns the closest product per series. Filter state accumulates
+  in the session <code>configurationId</code>.</li>
+</ul>
+<p>Spike artifacts (scratchpad, not committed): <code>stober_probe.sh</code>,
+<code>stober_loop.mjs</code>, <code>stober_bestmatch.mjs</code>, endpoint map.</p>
+<h2 id="design">Design</h2>
+<h3 id="where-it-lives">Where it lives</h3>
+<p>Stack is Python, so use <strong>playwright-python</strong> (<code>uv add --group dev
+playwright</code>) rather than a Node harness — keeps everything in one
+language and reuses our Pydantic models directly.</p>
+<pre><code>specodex/configurators/
+    base.py          # ConfiguratorClient: browser session, in-page fetch, retry, rate-limit, robots check
+    stober.py        # first adapter
+    &lt;vendor&gt;.py      # one module per vendor
+cli/configurator.py  # ./Quickstart configurator &lt;vendor&gt; ... (recon | walk | harvest | crossref)
+</code></pre>
+<p>Reuse existing discipline: the <strong>vendor-facts registry</strong>
+(<code>specodex/vendors/registry.py</code>) already does SSRF checks + robots
+respect + citation capture — lift that into the client so every
+fetched value carries a source URL + timestamp.</p>
+<h3 id="two-directions">Two directions</h3>
+<ul>
+<li><strong>Forward (requirements → part number):</strong> POST filter values /
+  characteristics, read back <code>bestMatchProduct</code> + <code>configurationStrip</code>
+  (order code). This is the sizing use case and the <code>/actuators</code>-page
+  cross-check.</li>
+<li><strong>Inverse (part number → specs):</strong> enumerate the valid-configuration
+  space (walk series → products with empty filters), or decode an
+  existing order code via the config <code>Load</code>/<code>Search</code> endpoints. This
+  is the bulk-ingest use case.</li>
+</ul>
+<h3 id="normalize-pydantic">Normalize → Pydantic</h3>
+<p>The configurator parameter schema (filterId + unit + value) maps
+straight onto <code>ValueUnit</code>/<code>MinMaxUnit</code> — <strong>no LLM</strong>. Each adapter owns
+a <code>param → model field</code> mapping table (the one bespoke bit). Output is
+a standard product model instance, so it flows into the existing DB
+write / bench <code>expected/</code> fixtures unchanged. Add a <code>source</code>
+provenance field (<code>configurator:&lt;vendor&gt;</code> vs <code>catalog</code>) so
+cross-reference can tell them apart.</p>
+<h3 id="cross-reference">Cross-reference</h3>
+<p>Join configurator rows to DynamoDB rows by <code>product_id</code> / family.
+Feed disagreements through the existing <code>spec_rules.py</code> +
+<code>quality.py</code> + triage loop. A configurator/catalog mismatch on a
+numeric field beyond tolerance → triage item ("PDF extraction likely
+wrong, configurator says X").</p>
+<h2 id="phases-independently-shippable-prs">Phases (independently shippable PRs)</h2>
+<ul>
+<li><strong>P0 — <code>ConfiguratorClient</code> base + Stober adapter. ✅ shipped 2026-07-25.</strong>
+  <code>specodex/configurators/{base,stober}.py</code>, <code>cli/configurator.py</code>,
+  <code>./Quickstart configurator recon|walk|schema</code>. Playwright session
+  bootstrap + in-page fetch (WAF bypass), SSRF/robots/rate-limit, the
+  type→group→series walk, and pure parsers that extract the typed
+  requirement schema (numeric sliders w/ units+ranges, enumerated
+  selections) mapped to Gearhead fields. Fixture-based contract tests
+  (captured live responses) + adversarial malformed-payload cases +
+  client guardrails. Live-verified against Stober. <em>Deferred to a
+  follow-up:</em> an endpoint-map drift test that re-derives routes from the
+  SPA bundle (fails when Stober redeploys) — the fixture tests pin the
+  response contract but not the route strings.</li>
+<li><strong>P1 — Stober forward path.</strong> Requirements → <code>bestMatchProduct</code> +
+  order code. The best-match handshake is two-step (set a filter, then
+  set <code>findBestMatchBy</code> before <code>bestMatchProduct</code> populates) — capture it
+  by sniffing the SPA's own best-match click. Property test on the
+  filter-payload builder (adversarial values: out-of-range, NaN, unit
+  mismatch). Cross-check against one <code>/actuators</code> synthesized part number.</li>
+<li><strong>P2 — Stober inverse path + normalize.</strong> Walk the full servo-gearbox
+  space → Pydantic <code>Gearhead</code> instances with <code>source=configurator:stober</code>.
+  Dry-run DB diff against existing Stober rows; no writes outside dev.</li>
+<li><strong>P3 — Cross-reference report.</strong> <code>./Quickstart configurator crossref
+  &lt;vendor&gt;</code> emits the configurator-vs-catalog disagreement table into
+  the triage/ingest-report flow.</li>
+<li><strong>P4 — Second vendor.</strong> Prove the base client generalizes (pick a
+  different framework — a React/GraphQL configurator — to stress the
+  abstraction). Only then is the <code>base.py</code> API trustworthy.</li>
+</ul>
+<h2 id="why-it-stays-per-vendor-the-honest-limit">Why it stays per-vendor (the honest limit)</h2>
+<ul>
+<li>Each configurator is a different SPA (framework, routes, payload
+  shapes, auth). No universal scraper — the value is a <strong>shared
+  harness</strong> (<code>base.py</code>) + a <strong>thin adapter</strong> per vendor (~endpoint map</li>
+<li>param→field table).</li>
+<li>Bot/WAF protection means the browser-session path is mandatory;
+  some deeper endpoints (quote/pricing) sit behind vendor auth (Stober
+  carries MSAL/Azure AD) and are out of scope.</li>
+<li>Configurators change without notice → every adapter needs a drift
+  test, same as vendor-facts <code>verify</code>.</li>
+<li><strong>ToS/robots:</strong> respect robots.txt, rate-limit hard, cache
+  aggressively, identify the client. Reuse the vendor-facts
+  replicability discipline. Treat any vendor that disallows it as
+  out of scope.</li>
+</ul>
+<h2 id="trigger-conditions-add-to-todoreadmemd">Trigger conditions (add to todo/README.md)</h2>
+<p>Files: <code>specodex/configurators/**</code>, <code>cli/configurator.py</code>; user asks
+about "configurator harvest", "scrape a configurator", "reverse a part
+number from a vendor tool", "cross-reference catalog vs configurator".</p>
+        </article>
+    </main>
+
+    <footer>
+        <div class="footer-inner">
+            <a class="footer-link" href="../roadmap.html">← Back to roadmap</a>
+            <span class="footer-rule" aria-hidden="true"></span>
+            <a class="footer-link" href="https://github.com/JimothyJohn/specodex/blob/master/todo/CONFIGURATOR_HARVEST.md" rel="noreferrer">Edit on GitHub</a>
+        </div>
+    </footer>
+</body>
+</html>

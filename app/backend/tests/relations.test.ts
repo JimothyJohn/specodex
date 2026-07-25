@@ -46,6 +46,11 @@ const gearheadNema23 = {
   product_type: 'gearhead',
   input_motor_mount: ['NEMA 23'],
   input_shaft_diameter: { value: 14.0, unit: 'mm' },
+  // Input-side ratings sized to accept motorNema23 (capacity
+  // 100/10 = 10 Nm ≥ 1 Nm rated; 6000 rpm ≥ 3000 rpm rated).
+  gear_ratio: 10.0,
+  max_continuous_torque: { value: 100.0, unit: 'Nm' },
+  max_input_speed: { value: 6000, unit: 'rpm' },
 };
 
 const linearActuatorNema23 = {
@@ -102,6 +107,42 @@ describe('GET /api/v1/relations/actuators', () => {
     expect(res.status).toBe(200);
     expect(res.body.count).toBe(1);
     expect(res.body.data[0].product_id).toBe('ok');
+  });
+
+  it('attaches a _distribution_position block ranked over the filtered candidate set', async () => {
+    // Five candidates: three at 300mm, two at 200mm, one at 100mm.
+    // Rank 1 = 300mm cluster (size 3), rank 2 = 200mm (size 2),
+    // rank 3 = 100mm (size 1). Sparse row (no stroke) gets no badge.
+    mockList([
+      la('a300-1', {}),
+      la('a300-2', {}),
+      la('a300-3', {}),
+      la('a200-1', { stroke: { value: 200, unit: 'mm' } }),
+      la('a200-2', { stroke: { value: 200, unit: 'mm' } }),
+      la('a100', { stroke: { value: 100, unit: 'mm' } }),
+      la('sparse', { stroke: null }),
+    ]);
+    const res = await request(app).get('/api/v1/relations/actuators');
+    expect(res.status).toBe(200);
+    const byId = Object.fromEntries(
+      res.body.data.map((r: { product_id: string }) => [r.product_id, r]),
+    );
+    expect(byId['a300-1']._distribution_position).toEqual({
+      spec: 'stroke',
+      rank: 1,
+      cluster_count: 3,
+    });
+    expect(byId['a200-1']._distribution_position).toEqual({
+      spec: 'stroke',
+      rank: 2,
+      cluster_count: 2,
+    });
+    expect(byId['a100']._distribution_position).toEqual({
+      spec: 'stroke',
+      rank: 3,
+      cluster_count: 1,
+    });
+    expect(byId['sparse']._distribution_position).toBeUndefined();
   });
 
   it('accepts but does not filter on min_duty_cycle and orientation', async () => {
@@ -192,21 +233,53 @@ describe('GET /api/v1/relations/gearheads-for-motor', () => {
     expect(res.status).toBe(404);
   });
 
-  it('filters gearheads by mount + shaft', async () => {
+  it('filters gearheads by mount + shaft + torque + speed', async () => {
     mockRead(motorNema23);
     mockList([
       gearheadNema23,
       { ...gearheadNema23, product_id: 'g-wrong-mount', input_motor_mount: ['NEMA 17'] },
       {
+        // Bore smaller than the motor shaft — still excluded under
+        // max-bore semantics (14mm shaft > 12mm bore).
         ...gearheadNema23,
-        product_id: 'g-wrong-shaft',
+        product_id: 'g-bore-too-small',
         input_shaft_diameter: { value: 12.0, unit: 'mm' },
+      },
+      {
+        // Bore larger than the motor shaft — fits (max-bore semantics).
+        ...gearheadNema23,
+        product_id: 'g-bore-larger',
+        input_shaft_diameter: { value: 19.0, unit: 'mm' },
+      },
+      {
+        // Capacity 5/10 = 0.5 Nm < motor's 1.0 Nm rated torque.
+        ...gearheadNema23,
+        product_id: 'g-torque-overload',
+        max_continuous_torque: { value: 5.0, unit: 'Nm' },
+      },
+      {
+        // 2000 rpm input ceiling < motor's 3000 rpm rated speed.
+        ...gearheadNema23,
+        product_id: 'g-too-slow',
+        max_input_speed: { value: 2000, unit: 'rpm' },
+      },
+      {
+        // No published mount list — mount is contradiction-only
+        // (2026-07-25 relaxation), so this row is judged on
+        // bore/torque/speed alone and passes.
+        ...gearheadNema23,
+        product_id: 'g-no-mount-list',
+        input_motor_mount: null,
       },
     ]);
     const res = await request(app).get('/api/v1/relations/gearheads-for-motor?id=m-23');
     expect(res.status).toBe(200);
-    expect(res.body.count).toBe(1);
-    expect(res.body.data[0].product_id).toBe('g-23');
+    expect(res.body.count).toBe(3);
+    expect(res.body.data.map((g: { product_id: string }) => g.product_id)).toEqual([
+      'g-23',
+      'g-bore-larger',
+      'g-no-mount-list',
+    ]);
   });
 });
 
@@ -238,13 +311,35 @@ describe('Predicates (port of specodex/relations.py)', () => {
     ).toBe(true);
   });
 
-  it('shaftCompatible accepts within 0.1mm tolerance', () => {
-    expect(
-      _predicates.shaftCompatible({ value: 14.0, unit: 'mm' }, { value: 14.05, unit: 'mm' }),
-    ).toBe(true);
+  it('shaftCompatible uses max-bore semantics (motor ≤ bore + 0.1mm)', () => {
+    // Thinner shaft fits a larger bore.
     expect(
       _predicates.shaftCompatible({ value: 14.0, unit: 'mm' }, { value: 15.0, unit: 'mm' }),
+    ).toBe(true);
+    // Rounding grace on the boundary.
+    expect(
+      _predicates.shaftCompatible({ value: 14.05, unit: 'mm' }, { value: 14.0, unit: 'mm' }),
+    ).toBe(true);
+    // Shaft thicker than the bore does not fit.
+    expect(
+      _predicates.shaftCompatible({ value: 15.0, unit: 'mm' }, { value: 14.0, unit: 'mm' }),
     ).toBe(false);
+  });
+
+  it('inputTorqueCapacity refers output rating through ratio and efficiency', () => {
+    const base = {
+      product_id: 'g',
+      product_type: 'gearhead' as const,
+      gear_ratio: 10.0,
+      max_continuous_torque: { value: 100.0, unit: 'Nm' },
+    };
+    expect(_predicates.inputTorqueCapacity(base)).toEqual({ value: 10.0, unit: 'Nm' });
+    expect(_predicates.inputTorqueCapacity({ ...base, efficiency: 0.8 })).toEqual({
+      value: 12.5,
+      unit: 'Nm',
+    });
+    expect(_predicates.inputTorqueCapacity({ ...base, gear_ratio: null })).toBeNull();
+    expect(_predicates.inputTorqueCapacity({ ...base, max_continuous_torque: null })).toBeNull();
   });
 
   it('meetsFloor requires presence, canonical unit, and >= floor', () => {
@@ -277,6 +372,69 @@ describe('Predicates (port of specodex/relations.py)', () => {
     ).toEqual(['full']);
     // Floor above the rating excludes the full row too.
     expect(_predicates.compatibleActuators(rows, { minPeakForceN: 201 })).toHaveLength(0);
+  });
+
+  it('attachStrokeDistributionPositions ranks clusters by size and skips sparse rows', () => {
+    const la = (id: string, stroke: ValueUnit | null) =>
+      ({ product_id: id, product_type: 'linear_actuator', stroke } as ActuatorRecord);
+    type ValueUnit = { value?: number | null; unit?: string | null };
+    type ActuatorRecord = {
+      product_id: string;
+      product_type: 'linear_actuator' | 'electric_cylinder';
+      stroke?: ValueUnit | null;
+      [key: string]: unknown;
+    };
+    const rows: ActuatorRecord[] = [
+      la('big-1', { value: 500, unit: 'mm' }),
+      la('big-2', { value: 500, unit: 'mm' }),
+      la('small', { value: 100, unit: 'mm' }),
+      la('inches', { value: 10, unit: 'in' }), // non-canonical → no badge
+      la('missing', null), // sparse → no badge
+    ];
+    const annotated = _predicates.attachStrokeDistributionPositions(rows);
+    const byId = Object.fromEntries(annotated.map(r => [r.product_id, r]));
+    expect(byId['big-1']._distribution_position).toEqual({
+      spec: 'stroke',
+      rank: 1,
+      cluster_count: 2,
+    });
+    expect(byId['big-2']._distribution_position).toEqual({
+      spec: 'stroke',
+      rank: 1,
+      cluster_count: 2,
+    });
+    expect(byId['small']._distribution_position).toEqual({
+      spec: 'stroke',
+      rank: 2,
+      cluster_count: 1,
+    });
+    expect(byId['inches']._distribution_position).toBeUndefined();
+    expect(byId['missing']._distribution_position).toBeUndefined();
+  });
+
+  it('attachStrokeDistributionPositions breaks ties on stroke ascending', () => {
+    type ValueUnit = { value?: number | null; unit?: string | null };
+    type ActuatorRecord = {
+      product_id: string;
+      product_type: 'linear_actuator' | 'electric_cylinder';
+      stroke?: ValueUnit | null;
+      [key: string]: unknown;
+    };
+    const mk = (id: string, mm: number): ActuatorRecord => ({
+      product_id: id,
+      product_type: 'linear_actuator',
+      stroke: { value: mm, unit: 'mm' },
+    });
+    // Two same-size singleton clusters at 150mm and 300mm — the 150mm
+    // cluster should rank ahead (ascending tiebreak). Deterministic
+    // ordering matters so a Build user reload doesn't shuffle the badge.
+    const annotated = _predicates.attachStrokeDistributionPositions([
+      mk('a300', 300),
+      mk('a150', 150),
+    ]);
+    const byId = Object.fromEntries(annotated.map(r => [r.product_id, r]));
+    expect(byId['a150']._distribution_position?.rank).toBe(1);
+    expect(byId['a300']._distribution_position?.rank).toBe(2);
   });
 
   it('encoderIntersect requires motor protocol in drive list', () => {
