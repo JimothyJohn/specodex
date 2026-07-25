@@ -385,3 +385,205 @@ class TestCoerceIpRating:
 
     def test_bare_dict_becomes_none(self):
         assert _coerce_ip_rating({"unit": "IP"}) is None
+
+
+@pytest.mark.unit
+class TestLegacyCompactStringRecovery:
+    """Regression (2026-07-22): 217 robot_arm rows + ~150 other rows on
+    products-dev were invisible because ONE legacy compact-string field
+    failed coercion and killed the whole row. Shapes below are copied
+    verbatim from the failing DB rows."""
+
+    # -- Unicode qualifiers (≤/≥) previously not stripped --
+    def test_leq_qualifier_value_unit(self) -> None:
+        assert _coerce_str_to_value_unit_dict("≤ 3;arc-min") == {
+            "value": 3.0,
+            "unit": "arc-min",
+        }
+
+    def test_leq_qualifier_no_space(self) -> None:
+        got = _coerce_str_to_value_unit_dict("≤55;dB (1.000 rpm) / 65 dB (3.000 rpm)")
+        assert got is not None
+        assert got["value"] == 55.0
+
+    def test_geq_qualifier(self) -> None:
+        assert _coerce_str_to_value_unit_dict("≥ 20;kHz") == {
+            "value": 20.0,
+            "unit": "kHz",
+        }
+
+    # -- ± with degree glyph + literal "null" unit ("±180°;null") --
+    def test_plus_minus_degree_null_unit_value_unit(self) -> None:
+        assert _coerce_str_to_value_unit_dict("±180°;null") == {
+            "value": 180.0,
+            "unit": "°",
+        }
+
+    def test_plus_minus_range_min_max(self) -> None:
+        assert _coerce_str_to_min_max_unit_dict("±180°;null") == {
+            "min": -180.0,
+            "max": 180.0,
+            "unit": "°",
+        }
+
+    def test_plus_minus_plain_unit(self) -> None:
+        assert _coerce_str_to_min_max_unit_dict("±0.02;mm") == {
+            "min": -0.02,
+            "max": 0.02,
+            "unit": "mm",
+        }
+
+    # -- negative-to-positive range with glyph + null unit --
+    def test_negative_range_degree_null_unit_min_max(self) -> None:
+        assert _coerce_str_to_min_max_unit_dict("-90-135°;null") == {
+            "min": -90.0,
+            "max": 135.0,
+            "unit": "°",
+        }
+
+    def test_negative_range_collapses_to_min_for_value_unit(self) -> None:
+        # Matches the MinMaxUnit → ValueUnit collapse convention
+        # (scalar = min when present).
+        assert _coerce_str_to_value_unit_dict("-90-135°;null") == {
+            "value": -90.0,
+            "unit": "°",
+        }
+
+    # -- trailing parenthetical annotation on the value side --
+    def test_trailing_parenthetical_stripped(self) -> None:
+        assert _coerce_str_to_value_unit_dict("340 (360 option);degrees") == {
+            "value": 340.0,
+            "unit": "degrees",
+        }
+
+    def test_parenthetical_only_still_none(self) -> None:
+        assert _coerce_str_to_value_unit_dict("(360 option);degrees") is None
+
+    # -- slash-separated per-variant alternatives --
+    def test_slash_alternatives_take_first(self) -> None:
+        assert _coerce_str_to_value_unit_dict("±180 / ±165;°") == {
+            "value": 180.0,
+            "unit": "°",
+        }
+
+    # -- explicit + sign on the upper bound ("-160-+65;deg") --
+    def test_signed_upper_bound_range(self) -> None:
+        assert _coerce_str_to_min_max_unit_dict("-160-+65;deg") == {
+            "min": -160.0,
+            "max": 65.0,
+            "unit": "deg",
+        }
+
+    def test_signed_upper_bound_collapses_for_value_unit(self) -> None:
+        assert _coerce_str_to_value_unit_dict("-51-+190;deg") == {
+            "value": -51.0,
+            "unit": "deg",
+        }
+
+    # -- empty-first slash segment ("/-140;°") takes next parseable --
+    def test_empty_first_slash_segment(self) -> None:
+        assert _coerce_str_to_value_unit_dict("/-140;°") == {
+            "value": -140.0,
+            "unit": "°",
+        }
+
+    # -- real "null" unit with no recoverable glyph stays dead --
+    def test_null_unit_without_glyph_still_none(self) -> None:
+        assert _coerce_str_to_value_unit_dict("garbage;null") is None
+
+    def test_row_level_recovery_robot_arm_joint(self) -> None:
+        """The actual failing joints shape from products-dev."""
+        from specodex.models.robot_arm import JointSpecs
+
+        j = JointSpecs.model_validate(
+            {
+                "joint_name": "J1",
+                "working_range": "±180°;null",
+                "max_speed": {"value": "160", "unit": "°/s"},
+            }
+        )
+        assert j.working_range is not None
+        assert j.working_range.value == 180.0
+        assert j.working_range.unit == "°"
+
+
+class TestLenientGenericAliases:
+    """REGRESSION — 2026-07-24: Gemini empty-object stubs killed whole rows.
+
+    The Nidec ABLE VR planetary ingest emitted ``service_life: {}`` and
+    the bare ``Optional[ValueUnit]`` field raised (``could not extract
+    value+unit from {}``), killing every row on the page. Typed family
+    aliases (Torque, Speed, ...) already drop unparseable input to None;
+    the generic fields (service_life, backlash, noise_level, ...) had no
+    such dropper. LenientValueUnit / LenientMinMaxUnit close that gap:
+    a malformed optional spec degrades to None, never a dead row.
+    """
+
+    def test_gearhead_survives_empty_object_stub(self):
+        from specodex.models.gearhead import Gearhead
+
+        g = Gearhead(
+            product_name="ABLE VR Series",
+            manufacturer="Nidec Drive Technology",
+            part_number="VRXF-B-3-3",
+            service_life={},
+        )
+        assert g.service_life is None
+        assert g.part_number == "VRXF-B-3-3"
+
+    @pytest.mark.parametrize(
+        "bad",
+        [
+            {},
+            {"unit": "h"},
+            {"value": None},
+            {"value": None, "unit": None},
+            "not a spec at all",
+            ["20000", "h"],
+            12j,
+        ],
+    )
+    def test_lenient_value_unit_drops_garbage(self, bad):
+        from specodex.models.common import LenientValueUnit
+
+        class M(BaseModel):
+            f: LenientValueUnit = None
+
+        assert M(f=bad).f is None
+
+    def test_lenient_value_unit_still_parses_good_input(self):
+        from specodex.models.common import LenientValueUnit
+
+        class M(BaseModel):
+            f: LenientValueUnit = None
+
+        m = M(f={"value": 20000, "unit": "h"})
+        assert m.f is not None
+        assert m.f.value == 20000.0
+        assert m.f.unit == "h"
+        m2 = M(f="15 arcmin")
+        assert m2.f is not None
+        assert m2.f.value == 15.0
+
+    @pytest.mark.parametrize(
+        "bad",
+        [{}, {"unit": "°C"}, {"min": None, "max": None}, "garbage", 3 + 4j],
+    )
+    def test_lenient_min_max_unit_drops_garbage(self, bad):
+        from specodex.models.common import LenientMinMaxUnit
+
+        class M(BaseModel):
+            f: LenientMinMaxUnit = None
+
+        assert M(f=bad).f is None
+
+    def test_lenient_min_max_unit_still_parses_good_input(self):
+        from specodex.models.common import LenientMinMaxUnit
+
+        class M(BaseModel):
+            f: LenientMinMaxUnit = None
+
+        m = M(f={"min": 35, "max": 40, "unit": "ms"})
+        assert m.f is not None
+        assert m.f.min == 35.0
+        assert m.f.max == 40.0

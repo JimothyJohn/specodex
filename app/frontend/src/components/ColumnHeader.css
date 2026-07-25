@@ -1,0 +1,3 @@
+/* ColumnHeader-specific selectors. Historical header styles (label,
+ * slider, readout pills) still live in App.css; NEW ColumnHeader-only
+ * selectors land here per the per-component CSS convention. */

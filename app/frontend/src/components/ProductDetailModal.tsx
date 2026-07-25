@@ -200,7 +200,14 @@ export default function ProductDetailModal({ product, onClose, clickPosition }: 
   };
 
   const groupSpecs = () => {
-    const skipKeys = ['product_id', 'product_type', 'PK', 'SK', 'pk', 'sk', 'manufacturer', 'part_number', 'type', 'series', 'datasheet_url', 'pages', 'product_name'];
+    const skipKeys = [
+      'product_id', 'product_type', 'PK', 'SK', 'pk', 'sk', 'manufacturer', 'part_number', 'type', 'series', 'datasheet_url', 'pages', 'product_name',
+      // Commercial fields — hidden while the commercial data stays
+      // unreliable; the modal shows technical specs only.
+      'msrp', 'msrp_source_url', 'msrp_fetched_at',
+      'availability', 'availability_source_url', 'availability_fetched_at',
+      'price_estimate', 'lead_time_estimate', 'lead_time', 'warranty',
+    ];
 
     // Define category groups for better organization
     const categories: Record<string, Array<{ key: string; label: string; value: any }>> = {

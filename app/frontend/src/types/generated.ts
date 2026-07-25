@@ -70,6 +70,14 @@ export interface Contactor {
    * ISO 8601 timestamp when availability was last fetched.
    */
   availability_fetched_at?: string | null;
+  /**
+   * Inferred price when no listed msrp exists. Computed by specodex.pricing.inference from DB comparables — never LLM-extracted (see llm_schema.EXCLUDED_FIELDS). Kept distinct from msrp so an estimate can never masquerade as a listed price; carries its confidence tier and comparable citations.
+   */
+  price_estimate?: SourcedFigure | null;
+  /**
+   * Inferred lead time (e.g. {'value': 6, 'unit': 'weeks'}) with confidence + citations. Computed, never LLM-extracted. The stocked signal itself lives in `availability`; this field covers published vendor/family lead-time statements and their provenance.
+   */
+  lead_time_estimate?: SourcedFigure | null;
   warranty?: ValueUnit | null;
   /**
    * Expected delivery / lead time for the product. Typically a ValueUnit with unit='days' (e.g. {'value': 30, 'unit': 'days'}). Sourced from manufacturer or distributor data, not the datasheet.
@@ -279,6 +287,73 @@ export interface ValueUnit {
   unit: string;
 }
 /**
+ * A commercial value plus its confidence and receipts.
+ *
+ * ``value`` follows the site-wide ValueUnit shape ({value, unit}) —
+ * e.g. {"value": 1234.0, "unit": "USD"} for a price estimate or
+ * {"value": 6, "unit": "weeks"} for a lead time.
+ */
+export interface SourcedFigure {
+  value: ValueUnit;
+  confidence: "listed" | "high" | "medium" | "low" | "inferred";
+  /**
+   * Dispersion across the sources/comparables (e.g. p25-p75 of the comparable pool). Same unit as value.
+   */
+  observed_range?: MinMaxUnit | null;
+  /**
+   * At least one citation — no orphan figures.
+   *
+   * @minItems 1
+   */
+  sources: [SourceCitation, ...SourceCitation[]];
+  [k: string]: unknown;
+}
+/**
+ * A numeric range paired with a shared unit — canonical range spec shape.
+ *
+ * At least one of ``min`` / ``max`` must be present; either may be
+ * ``None`` for half-open intervals (e.g. ``max=85, min=None`` for "up
+ * to 85 °C"). Serialised form is ``{"min": <num|null>, "max": <num|null>,
+ * "unit": "<str>"}``.
+ */
+export interface MinMaxUnit {
+  min?: number | null;
+  max?: number | null;
+  unit: string;
+}
+/**
+ * One receipt backing a commercial figure.
+ *
+ * Invariants (enforced):
+ * - ``db_inference`` citations carry ``comparable_ids`` and
+ *   ``method_version`` (URL-less but replicable from the DB).
+ * - Every other kind carries a ``url``.
+ */
+export interface SourceCitation {
+  /**
+   * Source URL. Required for every kind except db_inference.
+   */
+  url?: string | null;
+  kind: "oem" | "distributor" | "aggregator" | "price_book" | "shopping" | "article" | "vendor_doc" | "db_inference";
+  /**
+   * ISO 8601 timestamp when the source was read.
+   */
+  retrieved_at: string;
+  /**
+   * Verbatim quote from the source backing the figure. Used by the vendor-facts verify audit to confirm the source still says what we recorded.
+   */
+  excerpt?: string | null;
+  /**
+   * db_inference only: sorted product_ids of the comparables the estimate was computed from.
+   */
+  comparable_ids?: string[] | null;
+  /**
+   * db_inference only: versioned algorithm identifier (e.g. 'price-comps-v1') so estimates are reproducible.
+   */
+  method_version?: string | null;
+  [k: string]: unknown;
+}
+/**
  * A single row from a contactor's utilization-category rating table.
  *
  * Contactor datasheets publish AC-3 / AC-1 / AC-4 ratings as multi-row
@@ -330,19 +405,6 @@ export interface ContactorIcwRating {
    * Withstand current for the duration (A).
    */
   current: ValueUnit | null;
-}
-/**
- * A numeric range paired with a shared unit — canonical range spec shape.
- *
- * At least one of ``min`` / ``max`` must be present; either may be
- * ``None`` for half-open intervals (e.g. ``max=85, min=None`` for "up
- * to 85 °C"). Serialised form is ``{"min": <num|null>, "max": <num|null>,
- * "unit": "<str>"}``.
- */
-export interface MinMaxUnit {
-  min?: number | null;
-  max?: number | null;
-  unit: string;
 }
 /**
  * Defines the specifications for the robot's control box.
@@ -458,6 +520,14 @@ export interface Drive {
    * ISO 8601 timestamp when availability was last fetched.
    */
   availability_fetched_at?: string | null;
+  /**
+   * Inferred price when no listed msrp exists. Computed by specodex.pricing.inference from DB comparables — never LLM-extracted (see llm_schema.EXCLUDED_FIELDS). Kept distinct from msrp so an estimate can never masquerade as a listed price; carries its confidence tier and comparable citations.
+   */
+  price_estimate?: SourcedFigure | null;
+  /**
+   * Inferred lead time (e.g. {'value': 6, 'unit': 'weeks'}) with confidence + citations. Computed, never LLM-extracted. The stocked signal itself lives in `availability`; this field covers published vendor/family lead-time statements and their provenance.
+   */
+  lead_time_estimate?: SourcedFigure | null;
   warranty?: ValueUnit | null;
   /**
    * Expected delivery / lead time for the product. Typically a ValueUnit with unit='days' (e.g. {'value': 30, 'unit': 'days'}). Sourced from manufacturer or distributor data, not the datasheet.
@@ -584,6 +654,14 @@ export interface ElectricCylinder {
    * ISO 8601 timestamp when availability was last fetched.
    */
   availability_fetched_at?: string | null;
+  /**
+   * Inferred price when no listed msrp exists. Computed by specodex.pricing.inference from DB comparables — never LLM-extracted (see llm_schema.EXCLUDED_FIELDS). Kept distinct from msrp so an estimate can never masquerade as a listed price; carries its confidence tier and comparable citations.
+   */
+  price_estimate?: SourcedFigure | null;
+  /**
+   * Inferred lead time (e.g. {'value': 6, 'unit': 'weeks'}) with confidence + citations. Computed, never LLM-extracted. The stocked signal itself lives in `availability`; this field covers published vendor/family lead-time statements and their provenance.
+   */
+  lead_time_estimate?: SourcedFigure | null;
   warranty?: ValueUnit | null;
   /**
    * Expected delivery / lead time for the product. Typically a ValueUnit with unit='days' (e.g. {'value': 30, 'unit': 'days'}). Sourced from manufacturer or distributor data, not the datasheet.
@@ -886,6 +964,14 @@ export interface Gearhead {
    * ISO 8601 timestamp when availability was last fetched.
    */
   availability_fetched_at?: string | null;
+  /**
+   * Inferred price when no listed msrp exists. Computed by specodex.pricing.inference from DB comparables — never LLM-extracted (see llm_schema.EXCLUDED_FIELDS). Kept distinct from msrp so an estimate can never masquerade as a listed price; carries its confidence tier and comparable citations.
+   */
+  price_estimate?: SourcedFigure | null;
+  /**
+   * Inferred lead time (e.g. {'value': 6, 'unit': 'weeks'}) with confidence + citations. Computed, never LLM-extracted. The stocked signal itself lives in `availability`; this field covers published vendor/family lead-time statements and their provenance.
+   */
+  lead_time_estimate?: SourcedFigure | null;
   warranty?: ValueUnit | null;
   /**
    * Expected delivery / lead time for the product. Typically a ValueUnit with unit='days' (e.g. {'value': 30, 'unit': 'days'}). Sourced from manufacturer or distributor data, not the datasheet.
@@ -1118,6 +1204,14 @@ export interface LinearActuator {
    * ISO 8601 timestamp when availability was last fetched.
    */
   availability_fetched_at?: string | null;
+  /**
+   * Inferred price when no listed msrp exists. Computed by specodex.pricing.inference from DB comparables — never LLM-extracted (see llm_schema.EXCLUDED_FIELDS). Kept distinct from msrp so an estimate can never masquerade as a listed price; carries its confidence tier and comparable citations.
+   */
+  price_estimate?: SourcedFigure | null;
+  /**
+   * Inferred lead time (e.g. {'value': 6, 'unit': 'weeks'}) with confidence + citations. Computed, never LLM-extracted. The stocked signal itself lives in `availability`; this field covers published vendor/family lead-time statements and their provenance.
+   */
+  lead_time_estimate?: SourcedFigure | null;
   warranty?: ValueUnit | null;
   /**
    * Expected delivery / lead time for the product. Typically a ValueUnit with unit='days' (e.g. {'value': 30, 'unit': 'days'}). Sourced from manufacturer or distributor data, not the datasheet.
@@ -1297,8 +1391,7 @@ export interface Manufacturer {
    * List of product types offered (e.g., 'motor', 'drive')
    */
   offered_product_types?:
-    | ("motor" | "drive" | "gearhead" | "robot_arm" | "contactor" | "electric_cylinder" | "linear_actuator")[]
-    | null;
+    ("motor" | "drive" | "gearhead" | "robot_arm" | "contactor" | "electric_cylinder" | "linear_actuator")[] | null;
 }
 /**
  * A Pydantic model representing the specifications of a motor.
@@ -1349,6 +1442,14 @@ export interface Motor {
    * ISO 8601 timestamp when availability was last fetched.
    */
   availability_fetched_at?: string | null;
+  /**
+   * Inferred price when no listed msrp exists. Computed by specodex.pricing.inference from DB comparables — never LLM-extracted (see llm_schema.EXCLUDED_FIELDS). Kept distinct from msrp so an estimate can never masquerade as a listed price; carries its confidence tier and comparable citations.
+   */
+  price_estimate?: SourcedFigure | null;
+  /**
+   * Inferred lead time (e.g. {'value': 6, 'unit': 'weeks'}) with confidence + citations. Computed, never LLM-extracted. The stocked signal itself lives in `availability`; this field covers published vendor/family lead-time statements and their provenance.
+   */
+  lead_time_estimate?: SourcedFigure | null;
   warranty?: ValueUnit | null;
   /**
    * Expected delivery / lead time for the product. Typically a ValueUnit with unit='days' (e.g. {'value': 30, 'unit': 'days'}). Sourced from manufacturer or distributor data, not the datasheet.
@@ -1475,6 +1576,14 @@ export interface ProductBase {
    * ISO 8601 timestamp when availability was last fetched.
    */
   availability_fetched_at?: string | null;
+  /**
+   * Inferred price when no listed msrp exists. Computed by specodex.pricing.inference from DB comparables — never LLM-extracted (see llm_schema.EXCLUDED_FIELDS). Kept distinct from msrp so an estimate can never masquerade as a listed price; carries its confidence tier and comparable citations.
+   */
+  price_estimate?: SourcedFigure | null;
+  /**
+   * Inferred lead time (e.g. {'value': 6, 'unit': 'weeks'}) with confidence + citations. Computed, never LLM-extracted. The stocked signal itself lives in `availability`; this field covers published vendor/family lead-time statements and their provenance.
+   */
+  lead_time_estimate?: SourcedFigure | null;
   warranty?: ValueUnit | null;
   /**
    * Expected delivery / lead time for the product. Typically a ValueUnit with unit='days' (e.g. {'value': 30, 'unit': 'days'}). Sourced from manufacturer or distributor data, not the datasheet.
@@ -1542,6 +1651,14 @@ export interface RobotArm {
    * ISO 8601 timestamp when availability was last fetched.
    */
   availability_fetched_at?: string | null;
+  /**
+   * Inferred price when no listed msrp exists. Computed by specodex.pricing.inference from DB comparables — never LLM-extracted (see llm_schema.EXCLUDED_FIELDS). Kept distinct from msrp so an estimate can never masquerade as a listed price; carries its confidence tier and comparable citations.
+   */
+  price_estimate?: SourcedFigure | null;
+  /**
+   * Inferred lead time (e.g. {'value': 6, 'unit': 'weeks'}) with confidence + citations. Computed, never LLM-extracted. The stocked signal itself lives in `availability`; this field covers published vendor/family lead-time statements and their provenance.
+   */
+  lead_time_estimate?: SourcedFigure | null;
   warranty?: ValueUnit | null;
   /**
    * Expected delivery / lead time for the product. Typically a ValueUnit with unit='days' (e.g. {'value': 30, 'unit': 'days'}). Sourced from manufacturer or distributor data, not the datasheet.

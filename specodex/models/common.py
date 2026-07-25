@@ -22,7 +22,7 @@ from typing import Annotated, Any, List, Literal, Optional
 
 from pydantic import BaseModel, BeforeValidator, model_validator
 
-from specodex.units import normalize_unit_value
+from specodex.units import INERTIA_UNIT_STRINGS, normalize_unit_value
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -158,7 +158,10 @@ def _strip_value_qualifiers(v: Any) -> Optional[float]:
     if isinstance(v, Decimal):
         return float(v)
     if isinstance(v, str):
-        cleaned = v.strip().strip("+~><")
+        cleaned = v.strip().strip("+~><≤≥±").strip()
+        # Drop a trailing parenthetical annotation ("340 (360 option)").
+        if cleaned.endswith(")") and "(" in cleaned:
+            cleaned = cleaned[: cleaned.rindex("(")].strip()
         if not cleaned:
             return None
         try:
@@ -166,6 +169,17 @@ def _strip_value_qualifiers(v: Any) -> Optional[float]:
         except ValueError:
             return None
     return None
+
+
+def _recover_glyph_unit(value_part: str, unit: str) -> tuple[str, str]:
+    """Recover a trailing unit glyph from the value side of a legacy
+    compact string whose unit slot is a placeholder ("±180°;null").
+    Returns (value_part, unit), possibly unchanged."""
+    from specodex.placeholders import is_placeholder
+
+    if is_placeholder(unit) and value_part.endswith("°"):
+        return value_part[:-1].strip(), "°"
+    return value_part, unit
 
 
 def _coerce_str_to_value_unit_dict(s: str) -> Optional[dict]:
@@ -180,9 +194,27 @@ def _coerce_str_to_value_unit_dict(s: str) -> Optional[dict]:
         val_str, unit = parts[0].strip(), parts[1].strip()
         if not unit:
             return None
+        val_str, unit = _recover_glyph_unit(val_str, unit)
         val = _strip_value_qualifiers(val_str)
+        if val is None and "/" in val_str:
+            # Slash-separated per-variant alternatives ("±180 / ±165",
+            # "+140/-140"). Take the first segment that parses.
+            for segment in val_str.split("/"):
+                val = _strip_value_qualifiers(segment)
+                if val is not None:
+                    break
         if val is None:
-            return None
+            # Legacy compact strings sometimes carry a range in a
+            # scalar slot ("-90-135°;null" as a working_range). Collapse
+            # to min — the same convention as MinMaxUnit → ValueUnit
+            # instance coercion — instead of killing the whole row.
+            as_range = _coerce_str_to_min_max_unit_dict(s)
+            if as_range is None:
+                return None
+            scalar = as_range["min"] if as_range["min"] is not None else as_range["max"]
+            if scalar is None:
+                return None
+            return {"value": scalar, "unit": as_range["unit"]}
         return {"value": val, "unit": unit}
     parts = s.split()
     if len(parts) >= 2:
@@ -229,11 +261,17 @@ def _coerce_str_to_min_max_unit_dict(s: str) -> Optional[dict]:
     range_part, unit = parts[0].strip(), parts[1].strip()
     if not unit:
         return None
+    range_part, unit = _recover_glyph_unit(range_part, unit)
     range_part = range_part.replace(" to ", "-")
-    # Try range "lo-hi" (handle leading negative on lo).
     import re
 
-    m = re.match(r"^(-?\d+(?:\.\d+)?)-(-?\d+(?:\.\d+)?)$", range_part)
+    # Symmetric range "±N" → [-N, N] ("±180°;null" working ranges).
+    pm = re.match(r"^±\s*(\d+(?:\.\d+)?)$", range_part)
+    if pm:
+        bound = float(pm.group(1))
+        return {"min": -bound, "max": bound, "unit": unit}
+    # Try range "lo-hi" (handle leading negative on lo).
+    m = re.match(r"^([+-]?\d+(?:\.\d+)?)-([+-]?\d+(?:\.\d+)?)$", range_part)
     if m:
         try:
             return {
@@ -453,9 +491,11 @@ TORQUE = UnitFamily(
             "Nm",
             "N-m",
             "N·m",
+            "N.m",
             "mNm",
             "mN-m",
             "mN·m",
+            "mN.m",
             "μNm",
             "oz-in",
             "oz·in",
@@ -476,7 +516,7 @@ TORQUE = UnitFamily(
 SPEED = UnitFamily(
     "speed",
     "rpm",
-    frozenset({"rpm", "RPM", "rad/s", "rps"}),
+    frozenset({"rpm", "RPM", "r/min", "rev/min", "rad/s", "rps"}),
 )
 FORCE = UnitFamily(
     "force",
@@ -507,29 +547,9 @@ FREQUENCY = UnitFamily(
 INERTIA = UnitFamily(
     "inertia",
     "kg·cm²",
-    frozenset(
-        {
-            "kg·cm²",
-            "kg-cm²",
-            "kgcm²",
-            "g·cm²",
-            "g-cm²",
-            "gcm²",
-            "g.cm²",
-            "g·cm2",
-            "gcm2",
-            "kg·m²",
-            "kg-m²",
-            "kgm²",
-            "kg.m²",
-            "kg·m2",
-            "kgm2",
-            "oz-in²",
-            "oz·in²",
-            "oz-in2",
-            "oz·in2",
-        }
-    ),
+    # Derived from units.py so the accepted set and the conversion table
+    # can't drift: every accepted spelling is guaranteed to normalize.
+    INERTIA_UNIT_STRINGS,
 )
 RESISTANCE = UnitFamily(
     "resistance",
@@ -647,6 +667,42 @@ def _typed_min_max_unit(family: UnitFamily):
         BeforeValidator(_coerce),
         MinMaxUnitMarker(family=family),
     ]
+
+
+# --- Lenient generic types ---------------------------------------------------
+#
+# For spec fields with no unit family (arcmin backlash, dBA noise, service
+# hours, compound units). Same failure philosophy as the typed aliases: an
+# unparseable input degrades the FIELD to None instead of raising and
+# killing the whole row. Gemini's empty-object stubs (``{}``, all-null
+# leaves) are the canonical trigger — the 2026-07-24 Nidec ABLE VR ingest
+# lost every row on a ``service_life: {}``.
+
+
+def _lenient_value_unit_coerce(v: Any) -> Any:
+    if v is None or isinstance(v, ValueUnit):
+        return v
+    try:
+        return ValueUnit.model_validate(v)
+    except (ValueError, TypeError):
+        return None
+
+
+def _lenient_min_max_unit_coerce(v: Any) -> Any:
+    if v is None or isinstance(v, MinMaxUnit):
+        return v
+    try:
+        return MinMaxUnit.model_validate(v)
+    except (ValueError, TypeError):
+        return None
+
+
+LenientValueUnit = Annotated[
+    Optional[ValueUnit], BeforeValidator(_lenient_value_unit_coerce)
+]
+LenientMinMaxUnit = Annotated[
+    Optional[MinMaxUnit], BeforeValidator(_lenient_min_max_unit_coerce)
+]
 
 
 # --- Scalar quantity types ---------------------------------------------------

@@ -31,7 +31,7 @@
     "cdk:diff": "cd infrastructure && npm run diff"
   },
   "devDependencies": {
-    "concurrently": "^10.0.1"
+    "concurrently": "^10.0.3"
   },
   "engines": {
     "node": ">=18.0.0",

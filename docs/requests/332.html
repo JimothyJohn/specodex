@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Specodex PR #332 — deterministic price inference from DB comparables (price-comps-v1): family-ladder log-log fit + KNN fallback, honesty gates, full citation trail.">
+    <meta name="theme-color" content="#3A2C1C">
+    <title>Specodex — PR #332: deterministic price inference (price-comps-v1)</title>
+    <link rel="icon" type="image/svg+xml" href="../logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-issue="PR-332">
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="band">
+        <div class="band-inner">
+            <a class="band-brand" href="../index.html">
+                <svg class="band-mark" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <rect width="120" height="120" fill="#E8E2C9"/>
+                    <rect x="14" y="14" width="92" height="92" fill="none" stroke="#1A1A14" stroke-width="3"/>
+                    <rect x="14" y="14" width="92" height="22" fill="#3A2C1C"/>
+                    <rect x="62" y="60" width="40" height="10" fill="#A88A1C"/>
+                    <line x1="14" y1="56" x2="106" y2="56" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="74" x2="106" y2="74" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="92" x2="106" y2="92" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="60" y1="36" x2="60" y2="106" stroke="#1A1A14" stroke-width="2"/>
+                </svg>
+                <span class="wordmark">SPECODEX</span>
+            </a>
+            <nav class="band-nav" aria-label="Section">
+                <a href="../index.html">Catalog</a>
+                <a href="./" class="active">Pull Requests</a>
+                <a href="https://github.com/JimothyJohn/specodex" rel="noreferrer">GitHub</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="hero-tag">▮▮▮ PULL REQUEST #332 ▮▮▮</div>
+            <h1 class="hero-title">Deterministic price inference from DB comparables — price-comps-v1</h1>
+            <p class="hero-sub">
+                <code>todo/COMMERCIAL.md</code> Phase 2 — the engine
+                that fills price gaps from what the catalog already
+                knows. No LLM, no RNG, no clock read: a least-squares
+                fit of <code>log10(price)</code> vs
+                <code>log10(spec)</code> up a same-family product
+                ladder, with a distance-weighted KNN fallback, and a
+                chain of honesty gates that ends in
+                <code>None</code> rather than a junk figure. Output
+                is a <code>SourcedFigure</code> (PR #331) carrying
+                the sorted comparable IDs and method version — rerun
+                against the same DB snapshot and you reproduce the
+                figure bit-for-bit.
+            </p>
+            <dl class="pr-meta">
+                <div><dt>Branch</dt><dd><code>feat/commercial-inference-20260721</code></dd></div>
+                <div><dt>Merged</dt><dd>2026-07-22</dd></div>
+                <div><dt>Diff</dt><dd>+1,357 / −3 across 9 files</dd></div>
+                <div><dt>Plan</dt><dd><code>todo/COMMERCIAL.md</code> Phase 2</dd></div>
+                <div><dt>CLI</dt><dd><code>./Quickstart price-infer</code> (dry-run default)</dd></div>
+            </dl>
+            <div class="cta-row">
+                <a class="cta cta-primary" href="https://github.com/JimothyJohn/specodex/pull/332" rel="noreferrer">View on GitHub →</a>
+                <a class="cta cta-ghost" href="./">All requests</a>
+            </div>
+        </section>
+
+        <section aria-label="Method">
+            <div class="divider"><span>▮▮▮ METHOD ▮▮▮</span></div>
+            <ol class="cell-list">
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">M-1</span><h2 class="cell-title">Rung 1 — family ladder (log-log fit)</h2></div>
+                    <p class="cell-body">
+                        <code>price-comps-v1:family-ladder</code> —
+                        comparables sharing the target's manufacturer
+                        AND <code>product_family</code> (both
+                        non-empty), with ≥3 priced points carrying the
+                        type's primary sizing spec. Industrial pricing
+                        is power-law in size, so a least-squares fit
+                        of <code>log10(price)</code> vs
+                        <code>log10(spec)</code> interpolates the
+                        target's price exactly on a clean ladder.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">M-2</span><h2 class="cell-title">Rung 2 — KNN fallback</h2></div>
+                    <p class="cell-body">
+                        <code>price-comps-v1:knn</code> — distance-
+                        weighted median (weight <code>1/(d + 0.1)</code>)
+                        of the k≤8 nearest priced comparables by RMS
+                        distance in log10-spec space, over whichever
+                        dominant specs the target carries (≥1 shared
+                        spec required; distance ties break on
+                        <code>product_id</code>). Pool is same
+                        <code>product_type</code>, <code>msrp.unit ==
+                        "USD"</code>, <code>msrp.value &gt; 0</code>,
+                        target excluded.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">M-3</span><h2 class="cell-title">Dominant sizing specs per type</h2></div>
+                    <p class="cell-body">
+                        motor <code>(rated_power, rated_torque)</code>;
+                        drive <code>(rated_power, rated_current)</code>;
+                        gearhead <code>(max_continuous_torque, gear_ratio)</code>;
+                        electric_cylinder <code>(continuous_force, stroke)</code>;
+                        linear_actuator <code>(max_push_force, stroke)</code>;
+                        robot_arm <code>(payload, reach)</code>;
+                        contactor <code>(conventional_thermal_current,
+                        rated_operational_voltage_max)</code>.
+                        ValueUnit uses the scalar, MinMaxUnit the
+                        midpoint. <strong>Units are never
+                        converted</strong> — the store is canonical
+                        per key, so a comparable whose spec unit
+                        differs from the target's is dropped, not
+                        converted.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">G-1</span><h2 class="cell-title">Honesty gates — None over junk</h2></div>
+                    <p class="cell-body">
+                        Used comparable pool &lt; 3 → no estimate.
+                        p75/p25 price dispersion of the used pool
+                        &gt; 4× → no estimate. Family ladder would
+                        extrapolate beyond <code>[min_spec/2,
+                        max_spec*2]</code> → fall back to KNN, which
+                        then applies its own gates — so the chain
+                        ends in <code>None</code>, never a junk
+                        figure.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">R-1</span><h2 class="cell-title">Replicability by construction</h2></div>
+                    <p class="cell-body">
+                        Output is a <code>SourcedFigure</code>
+                        (<code>confidence="inferred"</code>,
+                        <code>observed_range</code> = p25–p75 of the
+                        used prices) with a single
+                        <code>db_inference</code> citation carrying
+                        the <strong>sorted comparable product_ids</strong>
+                        and the <strong>method version string</strong>.
+                        The pool is sorted by <code>product_id</code>
+                        before any float arithmetic, ties break on
+                        <code>product_id</code>, there is no RNG and
+                        no clock read (<code>retrieved_at</code> is
+                        injected by the caller). The property suite
+                        pins bit-identical output under input
+                        permutation.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">C-1</span><h2 class="cell-title">CLI — dry-run by default, prod excluded</h2></div>
+                    <p class="cell-body">
+                        <code>./Quickstart price-infer [--stage
+                        dev|staging] [--type X] [--limit N]
+                        [--dry-run|--apply] [--refresh]</code> —
+                        dry-run prints a per-estimate table (part
+                        number, estimate, p25–p75 range, method,
+                        comparable count) so an operator can eyeball
+                        the reasoning. <code>--apply</code> writes
+                        <code>price_estimate</code> onto the row;
+                        <code>msrp</code> is never touched. Prod is
+                        not an accepted stage — estimate writes to
+                        prod are out of scope for this tool.
+                    </p>
+                </li>
+            </ol>
+        </section>
+
+        <section aria-label="Files touched">
+            <div class="divider"><span>▮▮▮ FILES TOUCHED ▮▮▮</span></div>
+            <table class="spec-table">
+                <thead><tr><th>File</th><th>Lines</th><th>Note</th></tr></thead>
+                <tbody>
+                    <tr><td><code>specodex/pricing/inference.py</code></td><td class="num">+359</td><td>NEW — the price-comps-v1 engine</td></tr>
+                    <tr><td><code>cli/price_infer.py</code></td><td class="num">+243</td><td>NEW — dry-run/apply CLI</td></tr>
+                    <tr><td><code>cli/quickstart.py</code></td><td class="num">+12</td><td>wire <code>price-infer</code> subcommand</td></tr>
+                    <tr><td><code>tests/unit/test_price_inference.py</code></td><td class="num">+353</td><td>NEW — 25 example-based cases</td></tr>
+                    <tr><td><code>tests/unit/test_price_inference_property.py</code></td><td class="num">+191</td><td>NEW — 5 properties × 200 examples</td></tr>
+                    <tr><td><code>tests/unit/test_price_infer.py</code></td><td class="num">+190</td><td>NEW — 7 moto-backed apply-path tests</td></tr>
+                    <tr><td><code>CLAUDE.md</code> / <code>todo/COMMERCIAL.md</code> / <code>docs/roadmap/commercial.html</code></td><td class="num">+9 / −2</td><td>docs: CLI entry, phase status, roadmap</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section aria-label="How to verify">
+            <div class="divider"><span>▮▮▮ HOW TO VERIFY ▮▮▮</span></div>
+            <ol class="cell-list">
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">V-1</span><h2 class="cell-title">Example-based suite</h2></div>
+                    <p class="cell-body">
+                        <code>tests/unit/test_price_inference.py</code>
+                        (25 cases) — log-log exactness on a perfect
+                        power-law Acme ladder, KNN nearest/weighting,
+                        every gate, unit-mismatch drop, citation
+                        shape, shuffle determinism.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">V-2</span><h2 class="cell-title">Adversarial property suite</h2></div>
+                    <p class="cell-body">
+                        <code>tests/unit/test_price_inference_property.py</code>
+                        — hypothesis over adversarial pools (NaN/inf
+                        prices+specs, non-USD, missing specs, MinMax
+                        ranges, giants): never raises,
+                        None-or-valid-figure with round-trip
+                        validation, bit-identical under permutation.
+                        Registered in CLAUDE.md's property-coverage
+                        table.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">V-3</span><h2 class="cell-title">Apply path against real DynamoDB shape</h2></div>
+                    <p class="cell-body">
+                        <code>tests/unit/test_price_infer.py</code>
+                        (7, moto-backed table) — apply writes a valid
+                        <code>SourcedFigure</code> that round-trips
+                        through Decimal serialization,
+                        <code>msrp</code> untouched, priced
+                        comparables untouched, second run skips,
+                        dry-run writes nothing, stage→table
+                        resolution. <code>./Quickstart verify --only
+                        python</code> green.
+                    </p>
+                </li>
+            </ol>
+        </section>
+
+        <a class="back-link" href="./">← back to requests log</a>
+    </main>
+
+    <footer>
+        <div class="footer-inner">
+            <span>© 2026 Specodex · PR #332</span>
+            <span class="footer-rule" aria-hidden="true"></span>
+            <a class="footer-link" href="https://github.com/JimothyJohn/specodex/pull/332" rel="noreferrer">View on GitHub</a>
+            <a class="footer-link" href="./">All requests</a>
+        </div>
+    </footer>
+</body>
+</html>

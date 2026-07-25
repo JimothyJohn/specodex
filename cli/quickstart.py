@@ -20,6 +20,15 @@ Usage:
                                   (try: ./Quickstart price-enrich --help)
     ./Quickstart price-book       Backfill MSRP from a public price book (XLSX/PDF)
                                   (try: ./Quickstart price-book --help)
+    ./Quickstart price-infer      Deterministic price estimates from DB
+                                  comparables (price-comps-v1: family ladder /
+                                  KNN). --lead-times mode instead applies
+                                  published vendor lead-time statements from
+                                  the citation-audited registry as
+                                  lead_time_estimate (no invented lead times).
+                                  Dry-run default; --apply writes estimates
+                                  on dev/staging only.
+                                  (try: ./Quickstart price-infer --help)
     ./Quickstart availability-enrich  Backfill stock availability (schema.org
                                   ItemAvailability) from distributor pages
                                   (try: ./Quickstart availability-enrich --help)
@@ -52,6 +61,13 @@ Usage:
                                   Run after editing any Pydantic model. CI fails
                                   if the committed file drifts from source.
                                   See todo/PYTHON_BACKEND.md (Phase 0).
+    ./Quickstart vendor-facts validate|verify
+                                  Citation-required vendor-facts registry
+                                  (data/vendors/*.json). validate = schema +
+                                  citation gate; verify = re-fetch every cited
+                                  URL and re-check the verbatim excerpts.
+                                  See todo/COMMERCIAL.md (Phase 4).
+                                  (try: ./Quickstart vendor-facts --help)
 
 Zero external dependencies — stdlib only.
 """
@@ -1152,6 +1168,13 @@ def main() -> None:
         )
         return
 
+    if len(sys.argv) >= 2 and sys.argv[1] == "price-infer":
+        run(
+            ["uv", "run", "python", "-m", "cli.price_infer", *sys.argv[2:]],
+            cwd=ROOT,
+        )
+        return
+
     if len(sys.argv) >= 2 and sys.argv[1] == "price-book":
         run(
             ["uv", "run", "python", "-m", "cli.price_book", *sys.argv[2:]],
@@ -1219,6 +1242,18 @@ def main() -> None:
         info("Building Python FastAPI Lambda bundle (app/backend_py/dist/)")
         run(["bash", "scripts/build_backend_py.sh"], cwd=ROOT)
         return
+
+    if len(sys.argv) >= 2 and sys.argv[1] == "vendor-facts":
+        # Vendor-facts registry: `validate` gates schema + citation
+        # completeness; `verify` is the replicability audit (re-fetch
+        # every cited URL, re-check the verbatim excerpt). See
+        # todo/COMMERCIAL.md Phase 4. Exit codes matter (validate → 1
+        # on violation), so propagate rc instead of wrapping in run().
+        rc = subprocess.call(
+            ["uv", "run", "python", "-m", "cli.vendor_facts", *sys.argv[2:]],
+            cwd=ROOT,
+        )
+        sys.exit(rc)
 
     if len(sys.argv) >= 2 and sys.argv[1] == "gen-types":
         # Regenerate app/frontend/src/types/generated.ts from Pydantic models.

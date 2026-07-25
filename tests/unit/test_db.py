@@ -336,6 +336,28 @@ class TestBatchCreate:
         count = client.batch_create(motors)
         assert count == 3
 
+    @patch("specodex.db.dynamo.boto3")
+    def test_batch_flush_failure_not_counted(self, mock_boto3: MagicMock) -> None:
+        """Regression: items were counted as they were buffered into the
+        batch_writer, but the write happens on context exit. A flush
+        failure (boto3's unprocessed-items retries exhausted) reported
+        every buffered item as written — process_datasheet then logged
+        success and marked the ingest-log STATUS_SUCCESS for rows that
+        never landed."""
+        client, mock_table = _make_client(mock_boto3)
+        mock_writer = MagicMock()
+        mock_table.batch_writer.return_value.__enter__ = MagicMock(
+            return_value=mock_writer
+        )
+        mock_table.batch_writer.return_value.__exit__ = MagicMock(
+            side_effect=RuntimeError("flush failed after retries")
+        )
+        motors = [
+            Motor(product_name=f"Motor{i}", product_type="motor", manufacturer="Acme")
+            for i in range(3)
+        ]
+        assert client.batch_create(motors) == 0
+
 
 # ---------------------------------------------------------------------------
 # TestDatasheetOps

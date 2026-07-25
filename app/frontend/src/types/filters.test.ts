@@ -730,125 +730,396 @@ describe('computeVisibleColumnAttributes', () => {
   });
 });
 
-describe('commercial columns (price + lead time)', () => {
-  // The real product types — datasheet is a listing record, not a
-  // ProductBase, so it carries neither price nor availability.
+describe('commercial fields hidden (2026-07-24 removal)', () => {
+  // Commercial data (price / lead time / warranty) was pulled from the
+  // UI because the data quality made the feature unusable — the table
+  // focuses on technical specs only. The pipeline still writes these
+  // fields to the DB, so records carry them; derivation must NOT
+  // resurface them as generic columns.
+  const COMMERCIAL_KEYS = [
+    'msrp', 'msrp_source_url', 'msrp_fetched_at',
+    'availability', 'availability_source_url', 'availability_fetched_at',
+    'price_estimate', 'lead_time_estimate', 'lead_time', 'warranty',
+  ];
   const PRODUCT_TYPES = [
-    'motor',
-    'drive',
-    'robot_arm',
-    'gearhead',
-    'contactor',
-    'electric_cylinder',
-    // Derivation-only type (no static getXxxAttributes list): still must
-    // surface price + lead time pinned far-left. Regression guard for the
-    // 2026-06-13 scramble where it had no COLUMN_ORDER entry.
-    'linear_actuator',
+    'motor', 'drive', 'robot_arm', 'gearhead', 'contactor',
+    'electric_cylinder', 'linear_actuator',
   ] as const;
 
-  // Mirrors how ProductList assembles the rendered column set: static
-  // type attrs + record-derived attrs, minus identity/bookkeeping keys,
-  // ordered, then capped. This is the end-to-end "what actually renders"
-  // check — getAttributesForType alone doesn't catch a positioning bug.
-  const RENDER_EXCLUDED = new Set([
-    'part_number', 'datasheet_url', 'pages', 'PK', 'SK', 'product_id',
-    'product_type', 'msrp_source_url', 'msrp_fetched_at',
-    'availability_source_url', 'availability_fetched_at',
-  ]);
   const pricedRecord = (type: string) => ({
     PK: `PRODUCT#${type}`, SK: 'PRODUCT#x', product_id: 'x',
     product_type: type, part_number: 'PN-1', manufacturer: 'ACME',
     msrp: { value: 1234, unit: 'USD' }, availability: 'in_stock',
+    lead_time: { value: 6, unit: 'weeks' },
+    warranty: { value: 2, unit: 'years' },
+    price_estimate: { value: 999, unit: 'USD' },
   });
-  const renderedColumnKeys = (type: typeof PRODUCT_TYPES[number]) => {
-    const merged = mergeAttributesByKey(
-      getAttributesForType(type),
-      deriveAttributesFromRecords([pricedRecord(type)], type),
-    ).filter((a) => !RENDER_EXCLUDED.has(a.key));
-    return computeVisibleColumnAttributes(
-      orderColumnAttributes(merged, type), [], [], 10,
-    ).map((a) => a.key);
-  };
 
   it.each(PRODUCT_TYPES)(
-    'exposes msrp (Price) + availability (Lead Time) as default-visible for %s',
+    'static attributes for %s carry no commercial columns',
     (type) => {
-      const attrs = getAttributesForType(type);
-      const msrp = attrs.find((a) => a.key === 'msrp');
-      const avail = attrs.find((a) => a.key === 'availability');
-
-      expect(msrp).toBeDefined();
-      expect(msrp?.displayName).toBe('Price');
-      expect(msrp?.defaultVisible).toBe(true);
-      expect(msrp?.nested).toBe(true);
-
-      expect(avail).toBeDefined();
-      expect(avail?.displayName).toBe('Lead Time');
-      expect(avail?.defaultVisible).toBe(true);
+      const keys = getAttributesForType(type).map((a) => a.key);
+      for (const k of COMMERCIAL_KEYS) expect(keys).not.toContain(k);
     },
   );
 
-  it('renders price + lead time immediately after manufacturer for every type', () => {
+  it.each(PRODUCT_TYPES)(
+    'records carrying commercial fields do not resurface them via derivation for %s',
+    (type) => {
+      const merged = mergeAttributesByKey(
+        getAttributesForType(type),
+        deriveAttributesFromRecords([pricedRecord(type)], type),
+      );
+      const keys = orderColumnAttributes(merged, type).map((a) => a.key);
+      for (const k of COMMERCIAL_KEYS) expect(keys).not.toContain(k);
+    },
+  );
+
+  it('mixed "all" view carries no commercial columns', () => {
+    const keys = getAttributesForType('all').map((a) => a.key);
+    for (const k of COMMERCIAL_KEYS) expect(keys).not.toContain(k);
+  });
+
+  it('COLUMN_ORDER and DEFAULT_LEADING_ORDER reference no commercial keys', () => {
+    expect(DEFAULT_LEADING_ORDER).toEqual(['manufacturer']);
     for (const type of PRODUCT_TYPES) {
       const order = COLUMN_ORDER[type] ?? [];
-      const mfg = order.indexOf('manufacturer');
-      expect(mfg).toBeGreaterThanOrEqual(0);
-      expect(order[mfg + 1]).toBe('msrp');
-      expect(order[mfg + 2]).toBe('availability');
+      for (const k of COMMERCIAL_KEYS) expect(order).not.toContain(k);
     }
   });
+});
 
-  it.each(PRODUCT_TYPES)(
-    'renders Price + Lead Time adjacent and far-left (after manufacturer) for %s',
-    (type) => {
-      const keys = renderedColumnKeys(type);
-      const mfg = keys.indexOf('manufacturer');
-      const price = keys.indexOf('msrp');
-      const lead = keys.indexOf('availability');
-      // Both present, adjacent (price then lead), and leading the spec
-      // columns — i.e. right after the (here-excluded) part_number +
-      // manufacturer, nothing wedged between or after into the specs.
-      expect(price).toBeGreaterThanOrEqual(0);
-      expect(lead).toBe(price + 1);
-      expect(price).toBe(mfg + 1);
+// ─────────────────────────────────────────────────────────────────────────
+// REGRESSION — 2026-07-21: numeric multi-select matched by substring.
+//
+// MultiSelectFilterPopover.buildFilter stores number[] for number-typed
+// columns, but matchesFilter compared every array element with
+// String(value).includes(String(fv)). Selecting gear_ratio {4, 8} also
+// matched 48; ip_rating {5} matched 54 and 65. Numeric filter elements
+// must compare by exact numeric equality; string elements keep the
+// substring semantics (relied on by string multi-selects elsewhere).
+// ─────────────────────────────────────────────────────────────────────────
+describe('numeric multi-select filters (exact equality)', () => {
+  const gearheads: Product[] = [
+    {
+      product_id: 'g4',
+      product_type: 'gearhead',
+      manufacturer: 'ACME',
+      part_number: 'GH-4',
+      product_name: 'GH-4',
+      gear_ratio: 4,
     },
-  );
+    {
+      product_id: 'g8',
+      product_type: 'gearhead',
+      manufacturer: 'ACME',
+      part_number: 'GH-8',
+      product_name: 'GH-8',
+      gear_ratio: 8,
+    },
+    {
+      product_id: 'g48',
+      product_type: 'gearhead',
+      manufacturer: 'ACME',
+      part_number: 'GH-48',
+      product_name: 'GH-48',
+      gear_ratio: 48,
+    },
+  ];
 
-  it('pins commercial columns far-left for an unlisted type via DEFAULT_LEADING_ORDER', () => {
-    expect(DEFAULT_LEADING_ORDER).toEqual(['manufacturer', 'msrp', 'availability']);
-    // Simulate a future derivation-only type with no COLUMN_ORDER entry by
-    // dropping linear_actuator's key, then asserting the fallback orders it.
-    const saved = COLUMN_ORDER.linear_actuator;
-    delete COLUMN_ORDER.linear_actuator;
-    try {
-      const keys = renderedColumnKeys('linear_actuator');
-      const mfg = keys.indexOf('manufacturer');
-      expect(keys[mfg + 1]).toBe('msrp');
-      expect(keys[mfg + 2]).toBe('availability');
-    } finally {
-      COLUMN_ORDER.linear_actuator = saved;
-    }
+  it('selecting {4, 8} matches 4 and 8 but NOT 48', () => {
+    const filters: FilterCriterion[] = [
+      {
+        attribute: 'gear_ratio',
+        mode: 'include',
+        operator: '=',
+        value: [4, 8],
+        displayName: 'Gear Ratio',
+      },
+    ];
+    const result = applyFilters(gearheads, filters);
+    expect(result.map(p => p.product_id).sort()).toEqual(['g4', 'g8']);
   });
 
-  it('forces both columns visible past the nested-only default rule', () => {
-    // availability is a bare string — it would be hidden by the default
-    // rule (rule 6) without the defaultVisible override.
-    const attrs = getAttributesForType('motor');
-    const visible = computeVisibleColumnAttributes(attrs, [], [], 50);
-    const keys = visible.map((a) => a.key);
-    expect(keys).toContain('msrp');
-    expect(keys).toContain('availability');
+  it('selecting {5} does not substring-match ValueUnit-wrapped 54 or 65', () => {
+    const motors: Product[] = [
+      {
+        product_id: 'p5',
+        product_type: 'motor',
+        manufacturer: 'ACME',
+        part_number: 'M-5',
+        product_name: 'M-5',
+        rated_power: { value: 5, unit: 'W' },
+      },
+      {
+        product_id: 'p54',
+        product_type: 'motor',
+        manufacturer: 'ACME',
+        part_number: 'M-54',
+        product_name: 'M-54',
+        rated_power: { value: 54, unit: 'W' },
+      },
+      {
+        product_id: 'p65',
+        product_type: 'motor',
+        manufacturer: 'ACME',
+        part_number: 'M-65',
+        product_name: 'M-65',
+        rated_power: { value: 65, unit: 'W' },
+      },
+    ];
+    const filters: FilterCriterion[] = [
+      {
+        attribute: 'rated_power',
+        mode: 'include',
+        operator: '=',
+        value: [5],
+        displayName: 'Rated Power',
+      },
+    ];
+    const result = applyFilters(motors, filters);
+    expect(result.map(p => p.product_id)).toEqual(['p5']);
   });
 
-  it('mixed "all" view leads with price + lead time', () => {
-    const attrs = getAttributesForType('all');
-    expect(attrs.some((a) => a.key === 'msrp')).toBe(true);
-    expect(attrs.some((a) => a.key === 'availability')).toBe(true);
+  it('numeric filter against an array-valued attribute compares elements exactly', () => {
+    const products: Product[] = [
+      {
+        product_id: 'a',
+        product_type: 'drive',
+        manufacturer: 'ACME',
+        part_number: 'A',
+        product_name: 'A',
+        input_voltage_phases: [12, 100],
+      },
+      {
+        product_id: 'b',
+        product_type: 'drive',
+        manufacturer: 'ACME',
+        part_number: 'B',
+        product_name: 'B',
+        input_voltage_phases: [10, 20],
+      },
+    ];
+    const filters: FilterCriterion[] = [
+      {
+        attribute: 'input_voltage_phases',
+        mode: 'include',
+        operator: '=',
+        value: [10],
+        displayName: 'Input Voltage Phases',
+      },
+    ];
+    // "100".includes("10") is true — substring matching wrongly kept 'a'.
+    const result = applyFilters(products, filters);
+    expect(result.map(p => p.product_id)).toEqual(['b']);
   });
 
-  it('datasheet listings carry neither commercial column', () => {
-    const attrs = getAttributesForType('datasheet');
-    expect(attrs.some((a) => a.key === 'msrp')).toBe(false);
-    expect(attrs.some((a) => a.key === 'availability')).toBe(false);
+  it('exclude mode with numeric multi-select only excludes exact matches', () => {
+    const filters: FilterCriterion[] = [
+      {
+        attribute: 'gear_ratio',
+        mode: 'exclude',
+        operator: '=',
+        value: [4],
+        displayName: 'Gear Ratio',
+      },
+    ];
+    const result = applyFilters(gearheads, filters);
+    expect(result.map(p => p.product_id).sort()).toEqual(['g48', 'g8']);
+  });
+
+  it('string multi-select keeps case-insensitive substring semantics (pinned)', () => {
+    const products: Product[] = [
+      {
+        product_id: '1',
+        product_type: 'motor',
+        manufacturer: 'ACME Motors',
+        part_number: 'AC-1',
+        product_name: 'AC-1',
+      },
+      {
+        product_id: '2',
+        product_type: 'motor',
+        manufacturer: 'Beta Corp',
+        part_number: 'BC-1',
+        product_name: 'BC-1',
+      },
+    ];
+    const filters: FilterCriterion[] = [
+      {
+        attribute: 'manufacturer',
+        mode: 'include',
+        operator: '=',
+        value: ['acme', 'gamma'],
+        displayName: 'Manufacturer',
+      },
+    ];
+    const result = applyFilters(products, filters);
+    expect(result.map(p => p.product_id)).toEqual(['1']);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// REGRESSION — 2026-07-21: one-sided MinMaxUnit ranges silently dropped.
+//
+// For >=/> the representative bound was value.min, for </<= value.max,
+// with no null check: {min: null, max: 240} under '>=' compared
+// null >= x → false and the row vanished. The rest of the app supports
+// one-sided ranges (formatting.ts formatRange, filterValues.ts
+// numericFromValue), so the filter must fall back to the present bound;
+// both bounds missing → no match. For =/!= the representative of a
+// one-sided range is the present bound, not (null + max) / 2.
+// ─────────────────────────────────────────────────────────────────────────
+describe('one-sided MinMaxUnit range filtering', () => {
+  const make = (id: string, voltage: any): Product => ({
+    product_id: id,
+    product_type: 'motor',
+    manufacturer: 'ACME',
+    part_number: id,
+    product_name: id,
+    rated_voltage: voltage,
+  });
+
+  it('{min: null, max: 240} passes a >= filter via the max fallback', () => {
+    const products = [make('a', { min: null, max: 240, unit: 'V' })];
+    const filters: FilterCriterion[] = [
+      {
+        attribute: 'rated_voltage',
+        mode: 'include',
+        operator: '>=',
+        value: 100,
+        displayName: 'Rated Voltage',
+      },
+    ];
+    expect(applyFilters(products, filters)).toHaveLength(1);
+  });
+
+  it('{min: null, max: 240} passes a > filter via the max fallback', () => {
+    const products = [make('a', { min: null, max: 240, unit: 'V' })];
+    const filters: FilterCriterion[] = [
+      {
+        attribute: 'rated_voltage',
+        mode: 'include',
+        operator: '>',
+        value: 100,
+        displayName: 'Rated Voltage',
+      },
+    ];
+    expect(applyFilters(products, filters)).toHaveLength(1);
+  });
+
+  it('{min: 200, max: null} fails a < filter via the min fallback (no null→0 coercion)', () => {
+    // Pre-fix, null < 100 coerced null → 0 and wrongly matched.
+    const products = [make('a', { min: 200, max: null, unit: 'V' })];
+    const filters: FilterCriterion[] = [
+      {
+        attribute: 'rated_voltage',
+        mode: 'include',
+        operator: '<',
+        value: 100,
+        displayName: 'Rated Voltage',
+      },
+    ];
+    expect(applyFilters(products, filters)).toHaveLength(0);
+  });
+
+  it('= uses the present bound as representative for a one-sided range', () => {
+    const products = [make('a', { min: null, max: 240, unit: 'V' })];
+    const eq = (value: number): FilterCriterion[] => [
+      {
+        attribute: 'rated_voltage',
+        mode: 'include',
+        operator: '=',
+        value,
+        displayName: 'Rated Voltage',
+      },
+    ];
+    // Pre-fix representative was (null + 240) / 2 = 120.
+    expect(applyFilters(products, eq(240))).toHaveLength(1);
+    expect(applyFilters(products, eq(120))).toHaveLength(0);
+  });
+
+  it('both bounds missing → no match, even under >=', () => {
+    // Pre-fix, representative null under '>=' coerced to 0 → 0 >= 0 matched.
+    const products = [make('a', { min: null, max: null, unit: 'V' })];
+    const filters: FilterCriterion[] = [
+      {
+        attribute: 'rated_voltage',
+        mode: 'include',
+        operator: '>=',
+        value: 0,
+        displayName: 'Rated Voltage',
+      },
+    ];
+    expect(applyFilters(products, filters)).toHaveLength(0);
+  });
+
+  it('two-sided ranges keep strict-bound matching (pinned)', () => {
+    const products = [make('a', { min: 200, max: 240, unit: 'V' })];
+    const f = (operator: '>=' | '<=', value: number): FilterCriterion[] => [
+      {
+        attribute: 'rated_voltage',
+        mode: 'include',
+        operator,
+        value,
+        displayName: 'Rated Voltage',
+      },
+    ];
+    expect(applyFilters(products, f('>=', 200))).toHaveLength(1);
+    expect(applyFilters(products, f('>=', 220))).toHaveLength(0); // min misses the bar
+    expect(applyFilters(products, f('<=', 240))).toHaveLength(1);
+    expect(applyFilters(products, f('<=', 220))).toHaveLength(0); // max exceeds
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// REGRESSION — 2026-07-21: midpoint sort key corrupted for one-sided
+// ranges. extractNumericValue did (min + max) / 2 unconditionally:
+// {min: 200, max: null} → 100 (null → 0), {min: 200, max: undefined} →
+// NaN (which passes typeof === 'number' guards downstream). One-sided
+// ranges must sort by their present bound, agreeing with
+// filterValues.ts numericFromValue.
+// ─────────────────────────────────────────────────────────────────────────
+describe('one-sided MinMaxUnit range sorting', () => {
+  const make = (id: string, voltage: any): Product => ({
+    product_id: id,
+    product_type: 'motor',
+    manufacturer: 'ACME',
+    part_number: id,
+    product_name: id,
+    rated_voltage: voltage,
+  });
+  const sort: SortConfig = {
+    attribute: 'rated_voltage',
+    direction: 'asc',
+    displayName: 'Rated Voltage',
+  };
+
+  it('{min: 220, max: null} sorts by its min bound, not the null→0 midpoint', () => {
+    // Pre-fix key was (220 + 0) / 2 = 110 → wrongly sorted before 150.
+    const products = [make('half-open', { min: 220, max: null, unit: 'V' }), make('scalar', { value: 150, unit: 'V' })];
+    const result = sortProducts(products, sort);
+    expect(result.map(p => p.product_id)).toEqual(['scalar', 'half-open']);
+  });
+
+  it('{min: null, max: 240} sorts by its max bound', () => {
+    // Pre-fix key was (0 + 240) / 2 = 120 → wrongly sorted before 200.
+    const products = [make('half-open', { min: null, max: 240, unit: 'V' }), make('scalar', { value: 200, unit: 'V' })];
+    const result = sortProducts(products, sort);
+    expect(result.map(p => p.product_id)).toEqual(['scalar', 'half-open']);
+  });
+
+  it('{min: 200, max: undefined} sorts by min instead of producing a NaN key', () => {
+    // Pre-fix key was (200 + undefined) / 2 = NaN → comparator returned NaN.
+    const products = [make('half-open', { min: 200, max: undefined, unit: 'V' }), make('scalar', { value: 100, unit: 'V' })];
+    const result = sortProducts(products, sort);
+    expect(result.map(p => p.product_id)).toEqual(['scalar', 'half-open']);
+  });
+
+  it('two-sided ranges keep the midpoint sort key (pinned)', () => {
+    const products = [make('range', { min: 90, max: 110, unit: 'V' }), make('scalar', { value: 100.1, unit: 'V' })];
+    const result = sortProducts(products, sort);
+    // midpoint 100 < 100.1
+    expect(result.map(p => p.product_id)).toEqual(['range', 'scalar']);
   });
 });

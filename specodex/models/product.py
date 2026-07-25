@@ -12,7 +12,8 @@ from pydantic import BaseModel, BeforeValidator, Field
 from typing_extensions import Annotated
 
 
-from specodex.models.common import Mass, ProductType, ValueUnit
+from specodex.models.commercial import SourcedFigure
+from specodex.models.common import Mass, ProductType, LenientValueUnit
 from specodex.placeholders import is_placeholder
 
 
@@ -87,7 +88,7 @@ class ProductBase(BaseModel):
     release_year: Optional[int] = None
     dimensions: Optional[Dimensions] = None
     weight: Mass = None
-    msrp: Optional[ValueUnit] = None
+    msrp: LenientValueUnit = None
     msrp_source_url: Optional[str] = Field(
         None,
         description="URL the MSRP was scraped from. Populated by price-enrich.",
@@ -122,8 +123,28 @@ class ProductBase(BaseModel):
     availability_fetched_at: Optional[str] = Field(
         None, description="ISO 8601 timestamp when availability was last fetched."
     )
-    warranty: Optional[ValueUnit] = None
-    lead_time: Optional[ValueUnit] = Field(
+    price_estimate: Optional[SourcedFigure] = Field(
+        None,
+        description=(
+            "Inferred price when no listed msrp exists. Computed by "
+            "specodex.pricing.inference from DB comparables — never "
+            "LLM-extracted (see llm_schema.EXCLUDED_FIELDS). Kept distinct "
+            "from msrp so an estimate can never masquerade as a listed "
+            "price; carries its confidence tier and comparable citations."
+        ),
+    )
+    lead_time_estimate: Optional[SourcedFigure] = Field(
+        None,
+        description=(
+            "Inferred lead time (e.g. {'value': 6, 'unit': 'weeks'}) with "
+            "confidence + citations. Computed, never LLM-extracted. The "
+            "stocked signal itself lives in `availability`; this field "
+            "covers published vendor/family lead-time statements and "
+            "their provenance."
+        ),
+    )
+    warranty: LenientValueUnit = None
+    lead_time: LenientValueUnit = Field(
         None,
         description=(
             "Expected delivery / lead time for the product. Typically a "

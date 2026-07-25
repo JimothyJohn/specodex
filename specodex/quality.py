@@ -42,6 +42,11 @@ _META_FIELDS = frozenset(
         "availability",
         "availability_source_url",
         "availability_fetched_at",
+        # Computed commercial estimates (specodex.pricing.inference) —
+        # never extracted from the datasheet, so they must not count
+        # toward extraction quality. Same rationale as lead_time.
+        "price_estimate",
+        "lead_time_estimate",
     }
 )
 
