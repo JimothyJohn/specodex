@@ -28,6 +28,15 @@ class TestNormalizeUnitValue:
         assert unit == "Nm"
         assert val == pytest.approx(1.35582, rel=1e-3)
 
+    def test_in_first_pound_inch_spellings_to_Nm(self):
+        # US gear-unit catalogs print the inch first (Stober MGS
+        # "in. lbs.", Sumitomo Cyclo "in•lbs") — regression for the
+        # 2026-07-25 ingests where these fell through as unknown units.
+        for alias in ("in-lb", "in-lbs", "in.lbs", "in lbs", "in. lbs.", "in•lbs"):
+            val, unit = normalize_unit_value(291, alias)
+            assert unit == "Nm", alias
+            assert val == pytest.approx(32.8786, rel=1e-4), alias
+
     def test_kgf_cm_to_Nm(self):
         val, unit = normalize_unit_value(10, "kgf·cm")
         assert unit == "Nm"
