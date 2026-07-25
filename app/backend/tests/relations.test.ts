@@ -263,13 +263,22 @@ describe('GET /api/v1/relations/gearheads-for-motor', () => {
         product_id: 'g-too-slow',
         max_input_speed: { value: 2000, unit: 'rpm' },
       },
+      {
+        // No published mount list — mount is contradiction-only
+        // (2026-07-25 relaxation), so this row is judged on
+        // bore/torque/speed alone and passes.
+        ...gearheadNema23,
+        product_id: 'g-no-mount-list',
+        input_motor_mount: null,
+      },
     ]);
     const res = await request(app).get('/api/v1/relations/gearheads-for-motor?id=m-23');
     expect(res.status).toBe(200);
-    expect(res.body.count).toBe(2);
+    expect(res.body.count).toBe(3);
     expect(res.body.data.map((g: { product_id: string }) => g.product_id)).toEqual([
       'g-23',
       'g-bore-larger',
+      'g-no-mount-list',
     ]);
   });
 });

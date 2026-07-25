@@ -342,8 +342,16 @@ def compatible_gearheads(
     """Gearheads whose input side accepts this motor as an ideal match.
 
     A gearhead is compatible if all four hold:
-    1. Its `input_motor_mount` list contains the motor's
-       `motor_mount_pattern`.
+    1. Mount does not CONTRADICT: when both sides publish mount info,
+       the gearhead's `input_motor_mount` list must contain the motor's
+       `motor_mount_pattern`. When either side lacks it, the mount
+       check is skipped — precision-gearbox vendors sell adapter
+       plates instead of publishing NEMA-style patterns (only ~5% of
+       ingested gearheads carry a list, 2026-07-25), so treating a
+       missing list as a mismatch would exclude nearly the whole
+       catalog on a field the vendor never states. This is a
+       deliberate, documented exception to the module's
+       exclude-on-missing rule; the physical checks below stay hard.
     2. The motor's `shaft_diameter` fits within its
        `input_shaft_diameter` (max-bore semantics, 0.1mm rounding
        grace — see `_shaft_compatible`).
@@ -354,15 +362,12 @@ def compatible_gearheads(
        continuous input-torque capacity, referred from output torque
        through ratio and efficiency (see `input_torque_capacity`).
 
-    Returns empty list if the motor lacks any of `motor_mount_pattern`,
-    `shaft_diameter`, `rated_speed`, or `rated_torque` — mirroring
-    `compatible_drives`' treatment of required motor fields. The
-    compatibility query is precise; "show every gearhead" is the wrong
-    fallback.
+    Returns empty list if the motor lacks any of `shaft_diameter`,
+    `rated_speed`, or `rated_torque` — mirroring `compatible_drives`'
+    treatment of required motor fields.
     """
     if (
-        motor.motor_mount_pattern is None
-        or motor.shaft_diameter is None
+        motor.shaft_diameter is None
         or motor.rated_speed is None
         or motor.rated_torque is None
     ):
@@ -370,9 +375,11 @@ def compatible_gearheads(
 
     out: List[Gearhead] = []
     for g in gearhead_db:
-        if not g.input_motor_mount:
-            continue
-        if motor.motor_mount_pattern not in g.input_motor_mount:
+        if (
+            motor.motor_mount_pattern is not None
+            and g.input_motor_mount
+            and motor.motor_mount_pattern not in g.input_motor_mount
+        ):
             continue
         if not _shaft_compatible(motor.shaft_diameter, g.input_shaft_diameter):
             continue

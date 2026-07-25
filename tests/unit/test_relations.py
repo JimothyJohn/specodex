@@ -506,17 +506,21 @@ class TestCompatibleGearheads:
         assert compatible_gearheads(_motor(rated_speed=None), [gear]) == []
         assert compatible_gearheads(_motor(shaft_dia=None), [gear]) == []
 
-    def test_motor_with_no_mount_excluded(self):
+    def test_motor_without_mount_falls_through_to_physical_checks(self):
+        # Mount relaxation (2026-07-25): mount only disqualifies when
+        # both sides publish and contradict. A motor without a pattern
+        # is judged on bore/speed/torque alone.
         motor = _motor(mount=None)
         gear = _gearhead(input_mounts=["NEMA 23"])
 
-        assert compatible_gearheads(motor, [gear]) == []
+        assert compatible_gearheads(motor, [gear]) == [gear]
 
-    def test_gearhead_with_no_input_mount_excluded(self):
+    def test_gearhead_without_mount_list_falls_through(self):
         motor = _motor(mount="NEMA 23")
         # Construct directly rather than via the _gearhead helper so we
         # actually get input_motor_mount=None instead of the helper's
-        # default replacement.
+        # default replacement. Physical ratings sized to accept the
+        # default motor (capacity 100/10 = 10 Nm ≥ 1; 6000 ≥ 3000 rpm).
         gear = Gearhead(
             product_name="G_no_mount",
             product_type="gearhead",
@@ -524,7 +528,19 @@ class TestCompatibleGearheads:
             part_number="PN-noMount",
             input_motor_mount=None,
             input_shaft_diameter={"value": 14.0, "unit": "mm"},
+            gear_ratio=10.0,
+            max_continuous_torque={"value": 100.0, "unit": "Nm"},
+            max_input_speed={"value": 6000, "unit": "rpm"},
         )
+
+        assert compatible_gearheads(motor, [gear]) == [gear]
+
+    def test_gearhead_without_mount_still_needs_physical_fit(self):
+        # Relaxed mount is not a free pass — the same no-mount gearhead
+        # with an undersized torque capacity stays excluded.
+        motor = _motor(mount="NEMA 23", rated_torque=1.0)
+        gear = _gearhead(input_mounts=None, max_continuous_torque=5.0)
+        gear.input_motor_mount = None
 
         assert compatible_gearheads(motor, [gear]) == []
 
