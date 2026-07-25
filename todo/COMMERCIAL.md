@@ -1,8 +1,14 @@
 # COMMERCIAL — sourced, confidence-scored commercial data (price, lead time, vendor facts) as first-class citizens
 
-> 🚧 in progress — designed 2026-07-21. Phase 1 (provenance schema) and
-> Phase 2 (inference engine) land first; Phase 3 (UI overhaul) and
-> Phase 4 (vendor-facts registry) follow. Extends PRICING.md — that doc
+> 🔴 needs sign-off — UI surface REMOVED 2026-07-24 (PR #341): the
+> commercial data quality was bad enough to make the feature unusable,
+> so the Phase 3/4 frontend (Price/Lead Time columns, balance toggle,
+> stocked filter, vendor drawer, confidence chips) was pulled and the
+> UI is technical-specs-only again. The Phase 1 schema, Phase 2
+> inference engine, and vendor-facts registry are untouched and keep
+> writing to the DB. Do NOT re-ship the UI until the data-quality bar
+> is agreed with Nick — the blocker is coverage/accuracy of the
+> underlying data, not the presentation. Extends PRICING.md — that doc
 > owns *acquisition* of listed prices; this doc owns *confidence,
 > inference, lead time, vendor facts, and presentation*.
 
