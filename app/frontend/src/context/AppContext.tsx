@@ -310,22 +310,39 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setLoadProgress(null);
 
       // ===== BACKGROUND REFRESH =====
-      // Fetch fresh data without blocking the UI or showing loading states
-      console.log(`[AppContext] Starting background refresh for ${type}`);
-      apiClient.listProducts(type).then(data => {
+      // Freshness check first: the categories endpoint returns per-type
+      // counts in one cheap request. Re-downloading the entire type on
+      // every cache hit (9,392 gearhead rows after the 2026-07-25
+      // ingests) and double-JSON.stringify-ing it on the main thread
+      // cost megabytes of transfer + a visible main-thread stall — to
+      // usually conclude "unchanged". Counts differing is our actual
+      // change signal: rows arrive via ingests, which change counts.
+      // (A same-count edit stays stale until forceRefresh — acceptable
+      // for a catalog browser, and the deliberate trade here.)
+      console.log(`[AppContext] Background freshness check for ${type}`);
+      apiClient.getCategories().then(cats => {
+        if (currentProductTypeRef.current !== type) {
+          return null; // type switched — drop silently
+        }
+        const expected =
+          type === 'all'
+            ? cats.reduce((sum, c) => sum + c.count, 0)
+            : cats.find(c => c.type === type)?.count ?? null;
+        if (expected !== null && expected === cached.length) {
+          console.log(`[AppContext] Cache fresh for ${type} (${expected} rows) — skipping refetch`);
+          return null;
+        }
+        console.log(`[AppContext] Count changed for ${type} (${cached.length} -> ${expected ?? '?'}) — refetching`);
+        return apiClient.listProducts(type);
+      }).then(data => {
+        if (!data) return;
         // Guard: discard if user switched types before this resolved
         if (currentProductTypeRef.current !== type) {
           console.log(`[AppContext] Background refresh discarded (type changed to ${currentProductTypeRef.current})`);
           return;
         }
-        // Only update if data actually changed (prevents unnecessary re-renders)
-        if (JSON.stringify(data) !== JSON.stringify(cached)) {
-          console.log(`[AppContext] Background refresh found ${data.length} products (changed from cache)`);
-          setProducts(data);
-          setProductCache(prev => new Map(prev).set(type, data));
-        } else {
-          console.log(`[AppContext] Background refresh complete, data unchanged`);
-        }
+        setProducts(data);
+        setProductCache(prev => new Map(prev).set(type, data));
       }).catch((err) => {
         // Silently fail background refresh - cached data is still valid
         console.warn(`[AppContext] Background refresh failed (non-critical):`, err);
