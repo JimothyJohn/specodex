@@ -12,8 +12,8 @@ from specodex.models.common import (
     MotorMountPattern,
     Power,
     TemperatureRange,
-    ValueUnit,
     VoltageRange,
+    LenientValueUnit,
 )
 from specodex.models.encoder import EncoderFeedback
 from specodex.models.product import ProductBase
@@ -51,7 +51,7 @@ class ElectricCylinder(ProductBase):
         None, description="Continuous rated force (e.g., in N)"
     )
     # mm/s is compound (length/time) — keep generic.
-    max_linear_speed: Optional[ValueUnit] = Field(
+    max_linear_speed: LenientValueUnit = Field(
         None, description="Maximum linear speed unloaded (e.g., in mm/s)"
     )
     positioning_repeatability: Length = Field(
@@ -79,7 +79,7 @@ class ElectricCylinder(ProductBase):
 
     # --- Mechanical ---
     # mm/rev is compound — keep generic.
-    lead_screw_pitch: Optional[ValueUnit] = Field(
+    lead_screw_pitch: LenientValueUnit = Field(
         None, description="Lead screw pitch (e.g., in mm/rev)"
     )
     backlash: Length = Field(None, description="Mechanical backlash (e.g., in mm)")
@@ -106,9 +106,9 @@ class ElectricCylinder(ProductBase):
         None, description="Operating temperature range"
     )
     # Time family not introduced — hours/cycles stay generic.
-    service_life: Optional[ValueUnit] = Field(
+    service_life: LenientValueUnit = Field(
         None, description="Expected service life (e.g., in hours or cycles)"
     )
-    noise_level: Optional[ValueUnit] = Field(
+    noise_level: LenientValueUnit = Field(
         None, description="Noise level (e.g., in dBA)"
     )

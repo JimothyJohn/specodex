@@ -505,3 +505,85 @@ class TestLegacyCompactStringRecovery:
         assert j.working_range is not None
         assert j.working_range.value == 180.0
         assert j.working_range.unit == "°"
+
+
+class TestLenientGenericAliases:
+    """REGRESSION — 2026-07-24: Gemini empty-object stubs killed whole rows.
+
+    The Nidec ABLE VR planetary ingest emitted ``service_life: {}`` and
+    the bare ``Optional[ValueUnit]`` field raised (``could not extract
+    value+unit from {}``), killing every row on the page. Typed family
+    aliases (Torque, Speed, ...) already drop unparseable input to None;
+    the generic fields (service_life, backlash, noise_level, ...) had no
+    such dropper. LenientValueUnit / LenientMinMaxUnit close that gap:
+    a malformed optional spec degrades to None, never a dead row.
+    """
+
+    def test_gearhead_survives_empty_object_stub(self):
+        from specodex.models.gearhead import Gearhead
+
+        g = Gearhead(
+            product_name="ABLE VR Series",
+            manufacturer="Nidec Drive Technology",
+            part_number="VRXF-B-3-3",
+            service_life={},
+        )
+        assert g.service_life is None
+        assert g.part_number == "VRXF-B-3-3"
+
+    @pytest.mark.parametrize(
+        "bad",
+        [
+            {},
+            {"unit": "h"},
+            {"value": None},
+            {"value": None, "unit": None},
+            "not a spec at all",
+            ["20000", "h"],
+            12j,
+        ],
+    )
+    def test_lenient_value_unit_drops_garbage(self, bad):
+        from specodex.models.common import LenientValueUnit
+
+        class M(BaseModel):
+            f: LenientValueUnit = None
+
+        assert M(f=bad).f is None
+
+    def test_lenient_value_unit_still_parses_good_input(self):
+        from specodex.models.common import LenientValueUnit
+
+        class M(BaseModel):
+            f: LenientValueUnit = None
+
+        m = M(f={"value": 20000, "unit": "h"})
+        assert m.f is not None
+        assert m.f.value == 20000.0
+        assert m.f.unit == "h"
+        m2 = M(f="15 arcmin")
+        assert m2.f is not None
+        assert m2.f.value == 15.0
+
+    @pytest.mark.parametrize(
+        "bad",
+        [{}, {"unit": "°C"}, {"min": None, "max": None}, "garbage", 3 + 4j],
+    )
+    def test_lenient_min_max_unit_drops_garbage(self, bad):
+        from specodex.models.common import LenientMinMaxUnit
+
+        class M(BaseModel):
+            f: LenientMinMaxUnit = None
+
+        assert M(f=bad).f is None
+
+    def test_lenient_min_max_unit_still_parses_good_input(self):
+        from specodex.models.common import LenientMinMaxUnit
+
+        class M(BaseModel):
+            f: LenientMinMaxUnit = None
+
+        m = M(f={"min": 35, "max": 40, "unit": "ms"})
+        assert m.f is not None
+        assert m.f.min == 35.0
+        assert m.f.max == 40.0

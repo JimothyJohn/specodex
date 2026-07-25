@@ -22,6 +22,7 @@ from specodex.models.common import (
     ValueUnit,
     Voltage,
     VoltageRange,
+    LenientValueUnit,
 )
 from specodex.models.product import ProductBase
 
@@ -32,12 +33,10 @@ class JointSpecs(BaseModel):
     joint_name: str = Field(
         ..., description="Name of the joint (e.g., 'Base', 'Wrist 1')"
     )
-    working_range: Optional[ValueUnit] = Field(
+    working_range: LenientValueUnit = Field(
         None, description="The rotational range of the joint"
     )
-    max_speed: Optional[ValueUnit] = Field(
-        None, description="Maximum speed of the joint"
-    )
+    max_speed: LenientValueUnit = Field(None, description="Maximum speed of the joint")
 
 
 class ForceTorqueSensor(BaseModel):
@@ -168,7 +167,7 @@ class RobotArm(ProductBase):
         None, description="Pose repeatability per ISO 9283 (e.g., in mm)"
     )
     # m/s is compound — keep generic.
-    max_tcp_speed: Optional[ValueUnit] = Field(
+    max_tcp_speed: LenientValueUnit = Field(
         None, description="Maximum speed of the Tool Center Point (e.g., in m/s)"
     )
 
@@ -181,7 +180,7 @@ class RobotArm(ProductBase):
         "ISO Class 5",
         description="Cleanroom classification (ISO 14644-1)",  #
     )
-    noise_level: Optional[ValueUnit] = Field(
+    noise_level: LenientValueUnit = Field(
         None,
         description="Typical noise level (e.g., in dB(A))",  #
     )

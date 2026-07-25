@@ -669,6 +669,42 @@ def _typed_min_max_unit(family: UnitFamily):
     ]
 
 
+# --- Lenient generic types ---------------------------------------------------
+#
+# For spec fields with no unit family (arcmin backlash, dBA noise, service
+# hours, compound units). Same failure philosophy as the typed aliases: an
+# unparseable input degrades the FIELD to None instead of raising and
+# killing the whole row. Gemini's empty-object stubs (``{}``, all-null
+# leaves) are the canonical trigger — the 2026-07-24 Nidec ABLE VR ingest
+# lost every row on a ``service_life: {}``.
+
+
+def _lenient_value_unit_coerce(v: Any) -> Any:
+    if v is None or isinstance(v, ValueUnit):
+        return v
+    try:
+        return ValueUnit.model_validate(v)
+    except (ValueError, TypeError):
+        return None
+
+
+def _lenient_min_max_unit_coerce(v: Any) -> Any:
+    if v is None or isinstance(v, MinMaxUnit):
+        return v
+    try:
+        return MinMaxUnit.model_validate(v)
+    except (ValueError, TypeError):
+        return None
+
+
+LenientValueUnit = Annotated[
+    Optional[ValueUnit], BeforeValidator(_lenient_value_unit_coerce)
+]
+LenientMinMaxUnit = Annotated[
+    Optional[MinMaxUnit], BeforeValidator(_lenient_min_max_unit_coerce)
+]
+
+
 # --- Scalar quantity types ---------------------------------------------------
 Voltage = _typed_value_unit(VOLTAGE)
 Current = _typed_value_unit(CURRENT)
