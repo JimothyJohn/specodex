@@ -141,6 +141,11 @@ export interface AttributeMetadata {
   // with (e.g. motor → rated torque + rated speed). Keep it tightly
   // curated; default chips that nobody touches become noise.
   defaultFilter?: boolean;
+  // Operator a fresh chip for this attribute starts with. Unset means
+  // the generic default ('>=' when the data supports comparisons).
+  // Set '<' for lower-is-better specs — backlash, noise, weight — where
+  // users spec a ceiling, not a floor.
+  defaultOperator?: ComparisonOperator;
 }
 
 // ========== Attribute Categories ==========
@@ -444,11 +449,17 @@ export const getGearheadAttributes = (): AttributeMetadata[] => [
   { key: 'manufacturer', displayName: 'Manufacturer', type: 'string', applicableTypes: ['gearhead'], defaultVisible: true },
   { key: 'part_number', displayName: 'Part Number', type: 'string', applicableTypes: ['gearhead'] },
   { key: 'gear_ratio', displayName: 'Gear Ratio', type: 'number', applicableTypes: ['gearhead'], defaultVisible: true },
-  { key: 'gear_type', displayName: 'Gear Type', type: 'string', applicableTypes: ['gearhead'], defaultVisible: true },
-  { key: 'rated_torque', displayName: 'Rated Torque', type: 'object', applicableTypes: ['gearhead'], nested: true, unit: 'Nm', defaultVisible: true },
-  { key: 'peak_torque', displayName: 'Peak Torque', type: 'object', applicableTypes: ['gearhead'], nested: true, unit: 'Nm', defaultVisible: true },
-  { key: 'backlash', displayName: 'Backlash', type: 'object', applicableTypes: ['gearhead'], nested: true, unit: 'arcmin', defaultVisible: true },
-  { key: 'efficiency', displayName: 'Efficiency', type: 'number', applicableTypes: ['gearhead'], unit: '%', defaultVisible: true },
+  // Selection is dimension-driven; gear technology is informational.
+  { key: 'gear_type', displayName: 'Gear Type', type: 'string', applicableTypes: ['gearhead'], defaultVisible: false },
+  // Model fields are max_continuous_torque / max_peak_torque — the
+  // previous rated_torque / peak_torque keys matched nothing and
+  // rendered dead columns (field-audit finding, fixed 2026-07-25).
+  { key: 'max_continuous_torque', displayName: 'Rated Torque', type: 'object', applicableTypes: ['gearhead'], nested: true, unit: 'Nm', defaultVisible: true },
+  { key: 'max_peak_torque', displayName: 'Peak Torque', type: 'object', applicableTypes: ['gearhead'], nested: true, unit: 'Nm', defaultVisible: true },
+  // Users spec a backlash ceiling — chips start at '<'.
+  { key: 'backlash', displayName: 'Backlash', type: 'object', applicableTypes: ['gearhead'], nested: true, unit: 'arcmin', defaultVisible: true, defaultOperator: '<' },
+  // Stored as a 0-1 fraction; no unit label (a '%' header over 0.9 lies).
+  { key: 'efficiency', displayName: 'Efficiency', type: 'number', applicableTypes: ['gearhead'], defaultVisible: true },
   { key: 'nominal_input_speed', displayName: 'Nominal Input Speed', type: 'object', applicableTypes: ['gearhead'], nested: true, unit: 'rpm', defaultVisible: false },
   { key: 'max_input_speed', displayName: 'Max Input Speed', type: 'object', applicableTypes: ['gearhead'], nested: true, unit: 'rpm', defaultVisible: false },
   { key: 'stages', displayName: 'Stages', type: 'number', applicableTypes: ['gearhead'] },
@@ -456,8 +467,12 @@ export const getGearheadAttributes = (): AttributeMetadata[] => [
   { key: 'rotor_inertia', displayName: 'Rotor Inertia', type: 'object', applicableTypes: ['gearhead'], nested: true, unit: 'kg·cm²', defaultVisible: false },
   { key: 'noise_level', displayName: 'Noise Level', type: 'object', applicableTypes: ['gearhead'], nested: true, unit: 'dBA', defaultVisible: false },
   { key: 'frame_size', displayName: 'Frame Size', type: 'string', applicableTypes: ['gearhead'] },
-  { key: 'input_shaft_diameter', displayName: 'Input Shaft Diameter', type: 'object', applicableTypes: ['gearhead'], nested: true, unit: 'mm', defaultVisible: false },
-  { key: 'output_shaft_diameter', displayName: 'Output Shaft Diameter', type: 'object', applicableTypes: ['gearhead'], nested: true, unit: 'mm', defaultVisible: false },
+  // The clamping-bushing bound: compatible motor shaft ≤ this value —
+  // so the display name says Max, and chips default to '>=' ("accepts
+  // at least my motor's shaft"). Selection is dimension-driven
+  // (gear_type above is defaultVisible: false for the same reason).
+  { key: 'input_shaft_diameter', displayName: 'Max Input Shaft Diameter', type: 'object', applicableTypes: ['gearhead'], nested: true, unit: 'mm', defaultVisible: true, defaultOperator: '>=' },
+  { key: 'output_shaft_diameter', displayName: 'Output Shaft Diameter', type: 'object', applicableTypes: ['gearhead'], nested: true, unit: 'mm', defaultVisible: true },
   { key: 'max_radial_load', displayName: 'Max Radial Load', type: 'object', applicableTypes: ['gearhead'], nested: true, unit: 'N', defaultVisible: false },
   { key: 'max_axial_load', displayName: 'Max Axial Load', type: 'object', applicableTypes: ['gearhead'], nested: true, unit: 'N', defaultVisible: false },
   { key: 'ip_rating', displayName: 'IP Rating', type: 'number', applicableTypes: ['gearhead'] },
@@ -775,7 +790,7 @@ export const buildDefaultFiltersForType = (
       return {
         attribute: a.key,
         mode: 'include' as const,
-        operator: (wantsRange ? '>=' : '=') as ComparisonOperator,
+        operator: a.defaultOperator ?? ((wantsRange ? '>=' : '=') as ComparisonOperator),
         displayName: a.displayName,
       };
     });

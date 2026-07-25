@@ -1123,3 +1123,43 @@ describe('one-sided MinMaxUnit range sorting', () => {
     expect(result.map(p => p.product_id)).toEqual(['range', 'scalar']);
   });
 });
+
+describe('gearhead curated attributes (2026-07-25 fixes)', () => {
+  const gearheadAttrs = getAttributesForType('gearhead');
+  const byKey = (k: string) => gearheadAttrs.find(a => a.key === k);
+
+  it('torque columns point at real model fields, not the dead legacy keys', () => {
+    // rated_torque / peak_torque matched nothing on the Gearhead model
+    // (fields are max_continuous_torque / max_peak_torque) and rendered
+    // permanently empty columns — 2026-05-07 field-audit finding.
+    expect(byKey('max_continuous_torque')).toBeDefined();
+    expect(byKey('max_peak_torque')).toBeDefined();
+    expect(byKey('rated_torque')).toBeUndefined();
+    expect(byKey('peak_torque')).toBeUndefined();
+  });
+
+  it('backlash chips start at "<" — users spec a ceiling, not a floor', () => {
+    expect(byKey('backlash')?.defaultOperator).toBe('<');
+  });
+
+  it('gear type is not a default column; the shaft dimensions are', () => {
+    expect(byKey('gear_type')?.defaultVisible).toBe(false);
+    expect(byKey('input_shaft_diameter')?.defaultVisible).toBe(true);
+    expect(byKey('input_shaft_diameter')?.displayName).toBe('Max Input Shaft Diameter');
+    expect(byKey('output_shaft_diameter')?.defaultVisible).toBe(true);
+  });
+
+  it('efficiency carries no % unit label over its 0-1 fraction values', () => {
+    expect(byKey('efficiency')?.unit).toBeUndefined();
+  });
+});
+
+describe('buildDefaultFiltersForType honors defaultOperator', () => {
+  it('an attribute with defaultFilter + defaultOperator seeds its chip with it', async () => {
+    const { buildDefaultFiltersForType } = await import('./filters');
+    // Motor defaults exist and have no defaultOperator — generic '>='.
+    for (const f of buildDefaultFiltersForType('motor')) {
+      expect(f.operator).toBe('>=');
+    }
+  });
+});

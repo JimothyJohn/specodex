@@ -149,7 +149,11 @@ export default function FilterChip({
   // sorted array so position→value can map by empirical CDF (see
   // positionToValue). Outliers no longer dominate the track.
   const rangeInfo = useMemo(() => {
-    if (attributeType !== 'object' && attributeType !== 'range') {
+    if (
+      attributeType !== 'object' &&
+      attributeType !== 'range' &&
+      attributeType !== 'number'
+    ) {
       return null;
     }
 
@@ -180,6 +184,7 @@ export default function FilterChip({
       min: values[0],
       max: values[values.length - 1],
       sortedValues: values,
+      distinct: new Set(values).size,
       unit: unit || attributeMetadata?.unit || ''
     };
   }, [products, allProducts, filter.attribute, attributeType, attributeMetadata]);
@@ -197,8 +202,14 @@ export default function FilterChip({
 
   // Determine if we should show a slider (must be stable)
   const showSlider = useMemo(() => {
-    // Show slider for 'object' and 'range' types that have numeric values
-    return (attributeType === 'object' || attributeType === 'range') && rangeInfo !== null;
+    if (rangeInfo === null) return false;
+    // Unit-bearing kinds always slide.
+    if (attributeType === 'object' || attributeType === 'range') return true;
+    // Bare numeric attributes (gear_ratio, efficiency): slide when the
+    // value space is continuous-ish. Below the threshold — the same cap
+    // the value-list UI can actually display — a discrete pick list
+    // (stages: 1/2/3/4) beats a slider.
+    return attributeType === 'number' && rangeInfo.distinct > 10;
   }, [attributeType, rangeInfo]);
 
   // Slider value defaults to undefined ("any") so the chip doesn't filter

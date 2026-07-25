@@ -340,3 +340,54 @@ describe('FilterChip', () => {
     });
   });
 });
+
+describe('bare-number attributes get the slider comparator (2026-07-25)', () => {
+  // gear_ratio / efficiency are plain floats, not ValueUnit objects. They
+  // used to fall through to the value-list UI ("a selection") because the
+  // slider gated on attributeType ∈ {'object','range'}. Continuous-ish
+  // numeric attributes (> 10 distinct values) now slide; small discrete
+  // sets (stages: 1..4) keep the pick list.
+  const ratioAttribute: AttributeMetadata = {
+    key: 'gear_ratio',
+    displayName: 'Gear Ratio',
+    type: 'number',
+    applicableTypes: ['gearhead'],
+  };
+
+  const manyRatioProducts = Array.from({ length: 15 }, (_, i) => ({
+    gear_ratio: 3 + i * 7.5,
+    product_type: 'gearhead' as const,
+    manufacturer: 'X',
+  })) as any;
+
+  const fewStagesProducts = Array.from({ length: 15 }, (_, i) => ({
+    stages: (i % 3) + 1,
+    product_type: 'gearhead' as const,
+    manufacturer: 'X',
+  })) as any;
+
+  const chip = (attribute: string, displayName: string, products: any) =>
+    render(
+      <FilterChip
+        filter={{ attribute, mode: 'include', operator: '>=', displayName }}
+        attributeType="number"
+        attributeMetadata={{ ...ratioAttribute, key: attribute, displayName }}
+        products={products}
+        allProducts={products}
+        suggestedValues={[]}
+        onUpdate={vi.fn()}
+        onRemove={vi.fn()}
+        onEditAttribute={vi.fn()}
+      />,
+    );
+
+  it('renders a slider for a high-cardinality numeric attribute', () => {
+    chip('gear_ratio', 'Gear Ratio', manyRatioProducts);
+    expect(screen.getByRole('slider')).toBeInTheDocument();
+  });
+
+  it('keeps the discrete pick list for low-cardinality numerics (stages)', () => {
+    chip('stages', 'Stages', fewStagesProducts);
+    expect(screen.queryByRole('slider')).not.toBeInTheDocument();
+  });
+});
