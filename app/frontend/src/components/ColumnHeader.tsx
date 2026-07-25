@@ -165,12 +165,21 @@ function ColumnHeader({
       min: values[0],
       max: values[values.length - 1],
       sortedValues: values,
+      distinct: new Set(values).size,
       unit: attrUnit ?? attribute.unit ?? '',
     };
   }, [allProducts, attribute.key, attribute.unit]);
 
+  // Unit-bearing kinds always slide. Bare numerics (gear_ratio,
+  // efficiency) slide when the value space is continuous-ish — beyond
+  // what a pick list can usefully display; small discrete sets
+  // (stages: 1..4) keep the multi-select. Mirror of the FilterChip
+  // rule (PR #356); this component is the products-page filter UI.
   const isSliderEligible =
-    (attribute.type === 'object' || attribute.type === 'range') && rangeInfo !== null;
+    rangeInfo !== null &&
+    (attribute.type === 'object' ||
+      attribute.type === 'range' ||
+      (attribute.type === 'number' && rangeInfo.distinct > 10));
 
   // For non-slider columns (string, number, array) — the values the
   // multi-select popover offers. Strings/numbers come straight off the
@@ -974,6 +983,11 @@ function arePropsEqual(
   if (prev.width !== next.width) return false;
   if (prev.unitSystem !== next.unitSystem) return false;
 
+  // Deliberately does NOT include 'number' columns even though
+  // high-cardinality ones render the slider: low-cardinality numerics
+  // use the multi-select popover, whose option list derives from
+  // allFilters — skipping their re-render would serve stale options.
+  // Slider-y number columns just re-render harmlessly.
   const isSlider =
     next.attribute.type === 'object' || next.attribute.type === 'range';
   if (!isSlider && prev.allFilters !== next.allFilters) return false;
