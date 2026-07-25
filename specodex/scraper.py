@@ -692,9 +692,13 @@ def process_datasheet(
     group quality-fails by manufacturer for vendor outreach.
 
     Args:
-        force: if True, ignore the ingest log and re-run even on URLs
-            that previously succeeded. The in-DB ``product_exists`` check
-            still runs (to avoid UUID collisions on repeat rows).
+        force: if True, ignore the ingest log AND the in-DB
+            ``product_exists`` short-circuit and re-run the datasheet.
+            Safe because product IDs are deterministic (UUID5 over
+            manufacturer/part_number/name/family) — repeat rows
+            overwrite in place rather than duplicating. This is the
+            recovery path for partially ingested datasheets, which
+            share product_name with their own rows.
         save_failed_to: directory to drop a snapshot (source PDF/HTML +
             metadata + partial parsed rows) into on every quality_fail
             / extract_fail. Defaults to ``outputs/failed_datasheets/``;
@@ -735,7 +739,13 @@ def process_datasheet(
             )
             return "skipped"
 
-    if client.product_exists(product_type, manufacturer, product_name, model_class):
+    # force bypasses this gate too: a partially ingested datasheet shares
+    # product_name with its own rows, so without the bypass a re-run can
+    # never finish the stragglers. Product IDs are deterministic UUID5 —
+    # a forced re-run overwrites idempotently rather than duplicating.
+    if not force and client.product_exists(
+        product_type, manufacturer, product_name, model_class
+    ):
         logger.warning(
             f"⚠️  Product '{product_name}' by manufacturer '{manufacturer}' with product_type '{product_type}' "
             f"already exists in the database. Skipping scraping to avoid duplicates."
