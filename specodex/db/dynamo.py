@@ -723,14 +723,23 @@ class DynamoDBClient:
             # old single try around the whole loop returned early on the
             # first ClientError, silently dropping every later chunk.
             try:
+                buffered = 0
                 with self.table.batch_writer(overwrite_by_pkeys=["PK", "SK"]) as writer:
                     for item in chunk:
-                        writer.put_item(Item=item)
+                        # Per-item guard: one bad item must not zero the
+                        # chunk's healthy neighbours (pinned by
+                        # test_resilience.py::test_batch_create_counts_
+                        # individual_failures).
+                        try:
+                            writer.put_item(Item=item)
+                            buffered += 1
+                        except Exception as e:
+                            logger.error("batch_create: item failed: %s", e)
                 # batch_writer flushes on context exit — only count a
                 # chunk after its flush succeeds. Counting at buffer time
                 # reported items as written that never landed when the
                 # flush failed after boto3's unprocessed-items retries.
-                success_count += len(chunk)
+                success_count += buffered
             except ClientError as e:
                 logger.error(
                     "batch_create: chunk of %d failed (%s) — continuing with "
