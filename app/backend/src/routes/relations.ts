@@ -298,18 +298,23 @@ function compatibleGearheads(
   gearheadDb: GearheadRecord[],
 ): GearheadRecord[] {
   // Required motor fields mirror compatibleDrives' early return; the
-  // four per-row checks mirror relations.py compatible_gearheads.
-  if (
-    !motor.motor_mount_pattern ||
-    !motor.shaft_diameter ||
-    !motor.rated_speed ||
-    !motor.rated_torque
-  ) {
+  // per-row checks mirror relations.py compatible_gearheads. Mount is
+  // a disqualifier only when BOTH sides publish it — vendors sell
+  // adapter plates instead of publishing mount patterns, so a missing
+  // list falls through to the physical checks (deliberate exception
+  // to exclude-on-missing; see the Python docstring).
+  if (!motor.shaft_diameter || !motor.rated_speed || !motor.rated_torque) {
     return [];
   }
   return gearheadDb.filter(g => {
-    if (!g.input_motor_mount || g.input_motor_mount.length === 0) return false;
-    if (!g.input_motor_mount.includes(motor.motor_mount_pattern!)) return false;
+    if (
+      motor.motor_mount_pattern &&
+      g.input_motor_mount &&
+      g.input_motor_mount.length > 0 &&
+      !g.input_motor_mount.includes(motor.motor_mount_pattern)
+    ) {
+      return false;
+    }
     if (!shaftCompatible(motor.shaft_diameter, g.input_shaft_diameter)) return false;
     if (!gearheadSpeedOk(motor, g)) return false;
     if (!valueGte(inputTorqueCapacity(g), motor.rated_torque)) return false;

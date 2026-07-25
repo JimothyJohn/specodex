@@ -34,10 +34,13 @@ can produce.
    never grow it.
 6. **Mount-precision rule**: ``compatible_motors`` never returns a motor
    whose ``motor_mount_pattern`` is absent from the actuator's mount
-   set. ``compatible_gearheads`` never returns a gearhead whose
-   ``input_motor_mount`` list excludes the motor's mount. Missing
-   mount data on either side yields an empty list — never a "permissive
-   fallback" result.
+   set; missing mount data yields an empty list. For
+   ``compatible_gearheads`` mount is contradiction-only (2026-07-25
+   relaxation — vendors sell adapter plates instead of publishing
+   patterns): a returned gearhead never carries a mount list that
+   excludes the motor's published pattern, but missing mount data on
+   either side falls through to the hard physical checks
+   (bore / torque / speed).
 """
 
 from __future__ import annotations
@@ -514,6 +517,9 @@ def _gearhead(
     *,
     input_mounts: List[str],
     input_shaft_dia: ValueUnit,
+    gear_ratio: Optional[float] = None,
+    max_continuous_torque: Optional[ValueUnit] = None,
+    max_input_speed: Optional[ValueUnit] = None,
 ) -> Gearhead:
     return Gearhead(
         product_name="g",
@@ -522,6 +528,9 @@ def _gearhead(
         part_number="g-pn",
         input_motor_mount=input_mounts,
         input_shaft_diameter=input_shaft_dia,
+        gear_ratio=gear_ratio,
+        max_continuous_torque=max_continuous_torque,
+        max_input_speed=max_input_speed,
     )
 
 
@@ -725,6 +734,19 @@ def _gearhead_strategy(draw: st.DrawFn) -> Gearhead:
     return _gearhead(
         input_mounts=mounts,
         input_shaft_dia=ValueUnit(value=draw(_POSITIVE_FINITE), unit="mm"),
+        gear_ratio=draw(st.one_of(st.none(), _POSITIVE_FINITE)),
+        max_continuous_torque=draw(
+            st.one_of(
+                st.none(),
+                st.builds(lambda v: ValueUnit(value=v, unit="Nm"), _POSITIVE_FINITE),
+            )
+        ),
+        max_input_speed=draw(
+            st.one_of(
+                st.none(),
+                st.builds(lambda v: ValueUnit(value=v, unit="rpm"), _POSITIVE_FINITE),
+            )
+        ),
     )
 
 
@@ -962,14 +984,21 @@ class TestCompatibleGearheadsContract:
         deadline=None,
         suppress_health_check=[HealthCheck.too_slow, HealthCheck.data_too_large],
     )
-    def test_motor_missing_mount_returns_empty(
+    def test_motor_missing_physical_fields_returns_empty(
         self, gearhead_db: List[Gearhead]
     ) -> None:
-        """The mount-precision rule applied to the gearhead side: a
-        motor with no `motor_mount_pattern` excludes every gearhead,
-        not the permissive "show every gearhead" fallback."""
-        motor = _motor(mount=None)
-        assert compatible_gearheads(motor, gearhead_db) == []
+        """The physical motor fields stay hard requirements: missing
+        shaft, rated torque, or rated speed each empties the result.
+        (Mount is deliberately NOT in this list since the 2026-07-25
+        relaxation — vendors rarely publish mount patterns.)"""
+        full = dict(
+            shaft_dia=ValueUnit(value=14.0, unit="mm"),
+            rated_torque=ValueUnit(value=1.0, unit="Nm"),
+            rated_speed=ValueUnit(value=3000, unit="rpm"),
+        )
+        for hole in ("shaft_dia", "rated_torque", "rated_speed"):
+            kwargs = {**full, hole: None}
+            assert compatible_gearheads(_motor(**kwargs), gearhead_db) == []
 
     @given(
         motor=_motor_strategy(),
@@ -980,16 +1009,17 @@ class TestCompatibleGearheadsContract:
         deadline=None,
         suppress_health_check=[HealthCheck.too_slow, HealthCheck.data_too_large],
     )
-    def test_every_returned_gearhead_accepts_motor_mount(
+    def test_no_returned_gearhead_contradicts_motor_mount(
         self, motor: Motor, gearhead_db: List[Gearhead]
     ) -> None:
-        """A returned gearhead's `input_motor_mount` list must contain
-        the motor's `motor_mount_pattern`. Missing-data rows that
-        slipped past this check would mis-pair hardware."""
+        """Mount is contradiction-only (2026-07-25 relaxation): a
+        returned gearhead either has no mount list, or the motor has
+        no pattern, or the pattern is in the list. A published
+        mismatch must never be returned."""
         result = compatible_gearheads(motor, gearhead_db)
         for gearhead in result:
-            assert motor.motor_mount_pattern is not None
-            assert gearhead.input_motor_mount is not None
+            if motor.motor_mount_pattern is None or not gearhead.input_motor_mount:
+                continue
             assert motor.motor_mount_pattern in gearhead.input_motor_mount
 
 
