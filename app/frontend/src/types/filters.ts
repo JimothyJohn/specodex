@@ -84,12 +84,6 @@ export interface FilterCriterion {
   value?: FilterValue;        // Filter value (optional for existence checks)
   operator?: ComparisonOperator; // Comparison operator (for numbers)
   displayName: string;        // Human-readable attribute name for UI
-  // Price filters only (attribute 'msrp' / 'msrp.*'): when true, rows
-  // without a listed price fall back to `price_estimate.value` for this
-  // criterion. Default off — listed prices only — so an estimate never
-  // silently satisfies a price constraint (todo/COMMERCIAL.md ground
-  // rule 3). The per-filter toggle lives in the price column header.
-  includeEstimates?: boolean;
 }
 
 /**
@@ -635,45 +629,6 @@ export const getElectricCylinderAttributes = (): AttributeMetadata[] => [
   { key: 'weight', displayName: 'Weight', type: 'object', applicableTypes: ['electric_cylinder'], nested: true, unit: 'kg', defaultVisible: false },
 ];
 
-// =====================================================================
-// Commercial columns (price + lead time)
-// =====================================================================
-//
-// Every ProductBase carries `msrp` (list price, populated by
-// price-enrich) and `availability` (the *honest* lead-time signal —
-// schema.org stock status scraped by availability-enrich). The
-// `availability` field docstring in specodex/models/product.py is
-// explicit that "no honest public numeric lead time exists per part,"
-// so the populated stock snapshot — not the near-always-empty numeric
-// `lead_time` field — is what surfaces under the "Lead Time" column.
-//
-// These two are forced default-visible (`defaultVisible: true`) for
-// every concrete product type and the 'all' view, and pinned to the
-// far left (right after Part Number + Manufacturer) by columnOrder.ts.
-// They render even when null (cell shows N/A) so the buyer-facing
-// columns are always present, not just when a record happens to be
-// enriched.
-export const commercialAttributes = (
-  productType: string,
-): AttributeMetadata[] => [
-  {
-    key: 'msrp',
-    displayName: 'Price',
-    type: 'object',
-    applicableTypes: [productType],
-    nested: true,
-    unit: 'USD',
-    defaultVisible: true,
-  },
-  {
-    key: 'availability',
-    displayName: 'Lead Time',
-    type: 'string',
-    applicableTypes: [productType],
-    defaultVisible: true,
-  },
-];
-
 /**
  * Get all attributes for a specific product type
  *
@@ -700,15 +655,13 @@ export const getAttributesForType = (productType: ProductType): AttributeMetadat
   // Handle null productType (no selection)
   if (productType === null) return [];
 
-  // Fast path: type-specific attributes. Every real product type leads
-  // with the two commercial columns (price + lead time); `datasheet` is
-  // a listing record, not a ProductBase, so it has neither.
-  if (productType === 'motor') return [...commercialAttributes('motor'), ...getMotorAttributes()];
-  if (productType === 'drive') return [...commercialAttributes('drive'), ...getDriveAttributes()];
-  if (productType === 'robot_arm') return [...commercialAttributes('robot_arm'), ...getRobotArmAttributes()];
-  if (productType === 'gearhead') return [...commercialAttributes('gearhead'), ...getGearheadAttributes()];
-  if (productType === 'contactor') return [...commercialAttributes('contactor'), ...getContactorAttributes()];
-  if ((productType as string) === 'electric_cylinder') return [...commercialAttributes('electric_cylinder'), ...getElectricCylinderAttributes()];
+  // Fast path: type-specific attributes.
+  if (productType === 'motor') return getMotorAttributes();
+  if (productType === 'drive') return getDriveAttributes();
+  if (productType === 'robot_arm') return getRobotArmAttributes();
+  if (productType === 'gearhead') return getGearheadAttributes();
+  if (productType === 'contactor') return getContactorAttributes();
+  if ((productType as string) === 'electric_cylinder') return getElectricCylinderAttributes();
   if (productType === 'datasheet') return getDatasheetAttributes();
 
   // ===== COMPUTE COMMON ATTRIBUTES =====
@@ -790,9 +743,7 @@ export const getAttributesForType = (productType: ProductType): AttributeMetadat
   });
 
   console.log(`[filters] Found ${commonAttrs.length} common attributes for 'all' type`);
-  // Price + lead time are common to every concrete product type, so the
-  // mixed 'all' view leads with them too.
-  return [...commercialAttributes('all'), ...commonAttrs];
+  return commonAttrs;
 };
 
 /**
@@ -871,14 +822,19 @@ const DERIVATION_EXCLUDED_KEYS: ReadonlySet<string> = new Set([
   'product_type',
   'datasheet_url',
   'pages',
+  // Commercial fields (price / lead time / warranty and their provenance)
+  // — hidden while the commercial data stays unreliable; the UI focuses
+  // on technical specs only. The pipeline still writes these to the DB.
+  'msrp',
   'msrp_source_url',
   'msrp_fetched_at',
+  'availability',
   'availability_source_url',
   'availability_fetched_at',
-  // SourcedFigure objects — rendered inside the Price / Lead Time cells
-  // (with confidence chips + source popovers), never as their own columns.
   'price_estimate',
   'lead_time_estimate',
+  'lead_time',
+  'warranty',
 ]);
 
 function toDisplayName(snake: string): string {
@@ -985,38 +941,6 @@ export const mergeAttributesByKey = (
 // Authored column order for the results table lives in a sibling file
 // so it's trivially findable: app/frontend/src/types/columnOrder.ts.
 export { COLUMN_ORDER, orderColumnAttributes } from './columnOrder';
-
-// =====================================================================
-// Commercial quick filters (todo/COMMERCIAL.md Phase 3)
-// =====================================================================
-
-/**
- * Availability values that count as "stocked" for the quick filter.
- * Mirrors utils/commercial.ts STOCKED_AVAILABILITY_VALUES — the badge
- * and the filter must agree on what STOCKED means.
- */
-export const STOCKED_FILTER_VALUES = ['in_stock', 'limited'];
-
-/**
- * The stocked-only quick-filter chip. A plain FilterCriterion so it
- * flows through applyFilters' existing multi-select (string[]) matching
- * — no bespoke filter path.
- */
-export const buildStockedOnlyFilter = (): FilterCriterion => ({
-  attribute: 'availability',
-  mode: 'include',
-  operator: '=',
-  value: [...STOCKED_FILTER_VALUES],
-  displayName: 'Stocked',
-});
-
-/** Recognize the quick-filter chip so the toolbar toggle can remove it. */
-export const isStockedOnlyFilter = (f: FilterCriterion): boolean =>
-  f.attribute === 'availability' &&
-  f.mode === 'include' &&
-  Array.isArray(f.value) &&
-  f.value.length === STOCKED_FILTER_VALUES.length &&
-  STOCKED_FILTER_VALUES.every((v) => (f.value as unknown[]).includes(v));
 
 /**
  * Get available comparison operators for an attribute based on actual data values
@@ -1147,25 +1071,7 @@ export const applyFilters = (products: Product[], filters: FilterCriterion[]): P
       if (filter.mode === 'neutral') continue;
 
       // Extract value using dot notation (e.g., 'rated_voltage.min')
-      let value = getNestedValue(product, filter.attribute);
-
-      // Price filters may opt into estimates: when the row has no listed
-      // msrp and the criterion carries includeEstimates, substitute the
-      // inferred price (price_estimate.value, a ValueUnit) so the
-      // comparison logic below sees the same shape a listed msrp has.
-      if (
-        (value === undefined || value === null) &&
-        filter.includeEstimates &&
-        (filter.attribute === 'msrp' || filter.attribute.startsWith('msrp.'))
-      ) {
-        const estimated = getNestedValue(product, 'price_estimate.value');
-        if (estimated !== undefined && estimated !== null) {
-          value =
-            filter.attribute === 'msrp'
-              ? estimated
-              : getNestedValue(estimated, filter.attribute.slice('msrp.'.length));
-        }
-      }
+      const value = getNestedValue(product, filter.attribute);
 
       // ===== HANDLE MISSING VALUES =====
       if (value === undefined || value === null) {
