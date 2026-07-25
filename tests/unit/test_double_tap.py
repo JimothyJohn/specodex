@@ -246,6 +246,20 @@ class TestRunner:
         assert "rated_torque" in result.fields_recovered
         assert result.did_second_pass is True
 
+    def test_caller_prefix_forwarded_and_composed(self) -> None:
+        """A caller prompt_prefix rides the first pass as-is and is
+        prepended to the priming block on the second pass."""
+        dirty_first = _motor(rated_torque=None)
+        recovered = _motor(rated_torque="3;Nm")
+        patcher, calls = self._patch_llm([[dirty_first], [recovered]])
+        with patcher:
+            extract_with_recovery(
+                b"pdf", "key", "motor", {}, "pdf", prompt_prefix="STEER-BLOCK"
+            )
+        assert calls[0]["prompt_prefix"] == "STEER-BLOCK"
+        assert calls[1]["prompt_prefix"].startswith("STEER-BLOCK\n\n")
+        assert "rated_torque" in calls[1]["prompt_prefix"]
+
     def test_second_pass_does_not_regress_unprobed_fields(self) -> None:
         """If second-pass returns a different value for an UNprobed field,
         we keep the first-pass value. The merge is conservative on purpose."""
