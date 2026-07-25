@@ -30,6 +30,8 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+from specodex.db.lookups import scan_first_match
+
 # ---------------------------------------------------------------------------
 # Logging — all on stderr so stdout stays clean JSON
 # ---------------------------------------------------------------------------
@@ -524,12 +526,10 @@ def cmd_process_all(args: argparse.Namespace) -> None:
         # Fetch metadata from DB — try datasheet_id first, fall back to s3_key
         record: dict[str, Any] | None = None
         if ds_id:
-            resp = table.scan(
+            record = scan_first_match(
+                table,
                 FilterExpression=Attr("datasheet_id").eq(ds_id),
-                Limit=1,
             )
-            db_items = resp.get("Items", [])
-            record = db_items[0] if db_items else None
 
         if not record:
             record = _lookup_datasheet_by_s3_key(s3_key)
@@ -695,14 +695,12 @@ def _update_datasheet_status(table: Any, datasheet_id: str, status: str) -> None
     import datetime
 
     try:
-        resp = table.scan(
+        item = scan_first_match(
+            table,
             FilterExpression=Attr("datasheet_id").eq(datasheet_id),
-            Limit=1,
         )
-        items = resp.get("Items", [])
-        if not items:
+        if item is None:
             return
-        item = items[0]
         table.update_item(
             Key={"PK": item["PK"], "SK": item["SK"]},
             UpdateExpression="SET #s = :s, processed_at = :t",
@@ -727,12 +725,11 @@ def _lookup_datasheet_by_s3_key(s3_key: str) -> dict[str, Any] | None:
     table = ddb.Table(table_name)
 
     # No Limit — scan evaluates items before filtering, so Limit=1 can miss matches
-    resp = table.scan(
+    return scan_first_match(
+        table,
         FilterExpression=Attr("s3_key").eq(s3_key)
         & Attr("PK").begins_with("DATASHEET#"),
     )
-    items = resp.get("Items", [])
-    return items[0] if items else None
 
 
 # Maximum extraction failures before auto-blacklisting

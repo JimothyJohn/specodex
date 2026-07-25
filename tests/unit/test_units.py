@@ -104,9 +104,13 @@ class TestNormalizeUnitValue:
         assert unit == "kg·cm²"
 
     def test_oz_in2_to_kgcm2(self):
+        # 1 oz·in² = 0.028349523125 kg × 6.4516 cm² = 0.18289978 kg·cm².
+        # This test previously asserted 0.720078 for 10 oz·in² — that
+        # constant was the true factor ÷ 2.54 (the inch→cm conversion
+        # applied linearly instead of squared) and enshrined the bug.
         val, unit = normalize_unit_value(10, "oz-in²")
         assert unit == "kg·cm²"
-        assert val == pytest.approx(0.720078, rel=1e-3)
+        assert val == pytest.approx(1.8289978, rel=1e-3)
 
     # --- Inductance ---
     def test_H_to_mH(self):
@@ -178,6 +182,101 @@ class TestNormalizeUnitValue:
         val, unit = normalize_unit_value(8, "kHz")
         assert val == 8
         assert unit == "kHz"
+
+
+@pytest.mark.unit
+class TestGlyphAndCaseAliasNormalization:
+    """Variants the model families accept but that previously stored
+    verbatim (or dropped the field entirely), breaking the exact-string
+    unit comparisons in relations.py and corrupting magnitudes.
+    """
+
+    # --- Torque glyph variants → Nm ---
+    def test_N_middot_m_normalizes_to_Nm(self):
+        assert normalize_unit_value(5, "N·m") == (5, "Nm")
+
+    def test_N_dash_m_normalizes_to_Nm(self):
+        assert normalize_unit_value(5, "N-m") == (5, "Nm")
+
+    def test_N_dot_m_normalizes_to_Nm(self):
+        assert normalize_unit_value(5, "N.m") == (5, "Nm")
+
+    def test_mN_middot_m_scales_to_Nm(self):
+        # Previously accepted-but-unscaled: 500 mN·m stored as 500,
+        # a 1000× error against any Nm comparison.
+        val, unit = normalize_unit_value(500, "mN·m")
+        assert unit == "Nm"
+        assert val == pytest.approx(0.5)
+
+    # --- Speed case/spelling variants → rpm ---
+    def test_uppercase_RPM_normalizes(self):
+        assert normalize_unit_value(3000, "RPM") == (3000, "rpm")
+
+    def test_r_per_min_normalizes(self):
+        # "r/min" is common LLM output (see benchmark caches); it was
+        # previously not accepted at all, silently dropping the field.
+        assert normalize_unit_value(3000, "r/min") == (3000, "rpm")
+
+    def test_rev_per_min_normalizes(self):
+        assert normalize_unit_value(3000, "rev/min") == (3000, "rpm")
+
+    # --- Temperature bare-letter variants → °C ---
+    def test_bare_C_normalizes(self):
+        assert normalize_unit_value(25, "C") == (25, "°C")
+
+    def test_bare_F_converts(self):
+        val, unit = normalize_unit_value(212, "F")
+        assert unit == "°C"
+        assert val == 100
+
+    def test_kelvin_converts(self):
+        val, unit = normalize_unit_value(298.15, "K")
+        assert unit == "°C"
+        assert val == 25
+
+    def test_kelvin_zero_is_absolute_zero(self):
+        val, unit = normalize_unit_value(0, "K")
+        assert unit == "°C"
+        assert val == pytest.approx(-273.15)
+
+    # --- Inertia separator/superscript variants → kg·cm² ---
+    def test_caret_superscript_kgm2(self):
+        # "kg·m^2" appears verbatim in the benchmark LLM caches; it was
+        # previously rejected by the INERTIA family (field → None).
+        val, unit = normalize_unit_value(0.001, "kg·m^2")
+        assert unit == "kg·cm²"
+        assert val == 10
+
+    def test_dash_separator_kgcm2_identity(self):
+        assert normalize_unit_value(2.5, "kg-cm²") == (2.5, "kg·cm²")
+
+    def test_bare_gcm_caret_2(self):
+        val, unit = normalize_unit_value(500, "gcm^2")
+        assert unit == "kg·cm²"
+        assert val == 0.5
+
+    def test_oz_in_caret_2_uses_corrected_factor(self):
+        val, unit = normalize_unit_value(10, "oz-in^2")
+        assert unit == "kg·cm²"
+        assert val == pytest.approx(1.8289978, rel=1e-3)
+
+    def test_canonical_inertia_untouched(self):
+        # The canonical spelling must never round-trip through the alias
+        # table (rounding would alter stored precision).
+        assert normalize_unit_value(1.2345678, "kg·cm²") == (1.2345678, "kg·cm²")
+
+
+@pytest.mark.unit
+class TestInertiaFamilyDerivation:
+    def test_every_accepted_inertia_spelling_normalizes_to_canonical(self):
+        """INERTIA.accepted derives from the conversion table, so every
+        accepted spelling must land on the canonical unit — the drift
+        this guards against is an accepted-but-unnormalized alias."""
+        from specodex.models.common import INERTIA
+
+        for spelling in INERTIA.accepted:
+            _, unit = normalize_unit_value(1.0, spelling)
+            assert unit == "kg·cm²", f"{spelling!r} does not normalize"
 
 
 @pytest.mark.unit

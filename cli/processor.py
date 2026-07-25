@@ -118,14 +118,16 @@ def find_datasheet_record(dynamo, datasheet_id: str) -> dict | None:
     )
     table = dynamodb.Table(table_name)
 
+    from specodex.db.lookups import scan_first_match
+
     # Primary: look for approved (intake flow) then fall back to queued (legacy)
-    resp = table.scan(
+    # No Limit — DynamoDB applies Limit before FilterExpression, so Limit=1
+    # examines one arbitrary item and misses the target on a populated table.
+    return scan_first_match(
+        table,
         FilterExpression=Attr("datasheet_id").eq(datasheet_id)
         & Attr("status").is_in(["approved", "queued"]),
-        Limit=1,
     )
-    items = resp.get("Items", [])
-    return items[0] if items else None
 
 
 def process_pdf(
@@ -248,15 +250,15 @@ def update_datasheet_status(datasheet_id: str, status: str) -> None:
     # Find the record first to get PK/SK
     from boto3.dynamodb.conditions import Attr
 
-    resp = table.scan(
+    from specodex.db.lookups import scan_first_match
+
+    item = scan_first_match(
+        table,
         FilterExpression=Attr("datasheet_id").eq(datasheet_id),
-        Limit=1,
     )
-    items = resp.get("Items", [])
-    if not items:
+    if item is None:
         return
 
-    item = items[0]
     table.update_item(
         Key={"PK": item["PK"], "SK": item["SK"]},
         UpdateExpression="SET #s = :s, processed_at = :t",

@@ -1,0 +1,45 @@
+{
+  "slug": "yaskawa",
+  "display_name": "Yaskawa",
+  "facts": [
+    {
+      "label": "Standard product warranty (Drives & Motion)",
+      "value": "1 year from date of first use or 18 months from date of shipment, whichever occurs first",
+      "kind": "warranty",
+      "sources": [
+        {
+          "url": "https://www.yaskawa.com/support-training/support/warranty-policy",
+          "kind": "oem",
+          "retrieved_at": "2026-07-22T02:27:42Z",
+          "excerpt": "D&M warrants that for a period of one (1) year from the date the product is first used by Buyer, or 18 months from the date of shipment, whichever occurs first, if any product or part is found by D&M to be defective"
+        }
+      ]
+    },
+    {
+      "label": "US technical phone support",
+      "value": "1-800-YASKAWA (927-5292) or 1-847-887-7457; drives support 7:00am-7:00pm CT Mon-Fri, motion & CNC support 8:00am-5:00pm CT Mon-Fri",
+      "kind": "support",
+      "sources": [
+        {
+          "url": "https://www.yaskawa.com/support-training/support",
+          "kind": "oem",
+          "retrieved_at": "2026-07-22T02:27:42Z",
+          "excerpt": "Phone: 1-800-YASKAWA (927-5292), dial 2 or 1-847-887-7457 , dial 2 Drives Support Hours: 7:00am to 7:00pm (CT) Mon-Fri Motion & CNC Support Hours: 8:00am to 5:00pm (CT) Mon-Fri"
+        }
+      ]
+    },
+    {
+      "label": "Quality management certification",
+      "value": "ISO 9001:2015 certified",
+      "kind": "certification",
+      "sources": [
+        {
+          "url": "https://www.yaskawa.com/about-us/corporate-data/quality-assurance",
+          "kind": "oem",
+          "retrieved_at": "2026-07-22T02:27:42Z",
+          "excerpt": "One example of this commitment is Yaskawa’s acceptance into the ISO 9001:2015 family of certified organizations."
+        }
+      ]
+    }
+  ]
+}

@@ -231,6 +231,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [currentProductType, setCurrentProductType] = useState<ProductType>(null);
   const currentProductTypeRef = useRef<ProductType>(null);
 
+  // Monotonic sequence for loadProducts calls — lets a superseded
+  // cache-miss load recognise it's stale before writing state.
+  const loadSeqRef = useRef(0);
+
   // ========== Data Loading Methods ==========
 
   /**
@@ -252,11 +256,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const loadProducts = useCallback(async (type: ProductType = 'all') => {
     console.log(`[AppContext] loadProducts called with type: ${type}`);
 
+    // Every call claims a sequence number; only the latest call may
+    // write products/loading/error from its async continuations. The
+    // background-refresh path keeps its own currentProductTypeRef guard.
+    const seq = ++loadSeqRef.current;
+
     // Don't load if type is null (no selection)
     if (type === null) {
       console.log(`[AppContext] Skipping loadProducts - no product type selected`);
       setProducts([]);
       setCurrentProductType(null);
+      // Keep the ref in sync so an in-flight background refresh for the
+      // previous type can't resurrect its rows after the user cleared
+      // the selection.
+      currentProductTypeRef.current = null;
       return;
     }
 
@@ -273,6 +286,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setProducts(cached);
       setCurrentProductType(type);
       currentProductTypeRef.current = type;
+      // A superseded cache-miss load skips its own setLoading(false) —
+      // as the now-latest load, clear the flag here.
+      setLoading(false);
 
       // ===== BACKGROUND REFRESH =====
       // Fetch fresh data without blocking the UI or showing loading states
@@ -309,6 +325,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const data = await apiClient.listProducts(type);
       console.log(`[AppContext] API returned ${data.length} products for ${type}`);
 
+      // Guard: a newer loadProducts call started while this request was
+      // in flight — its data owns the UI now. Still cache the response
+      // (it's fresh data for its own type), but don't touch products
+      // or currentProductType.
+      if (seq !== loadSeqRef.current) {
+        console.log(`[AppContext] Discarding stale response for ${type} (superseded)`);
+        setProductCache(prev => new Map(prev).set(type, data));
+        return;
+      }
+
       setProducts(data);
 
       // ===== UPDATE CACHE =====
@@ -318,12 +344,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
       currentProductTypeRef.current = type;
 
     } catch (err) {
+      if (seq !== loadSeqRef.current) {
+        console.warn(`[AppContext] Stale load for ${type} failed after being superseded:`, err);
+        return;
+      }
       const errorMsg = err instanceof Error ? err.message : 'Failed to load products';
       console.error(`[AppContext] Failed to load products:`, err);
       setError(errorMsg);
 
     } finally {
-      setLoading(false);
+      // Only the latest load may clear the shared loading flag —
+      // otherwise the first of two concurrent loads to settle hides
+      // the spinner while the newer request is still in flight.
+      if (seq === loadSeqRef.current) {
+        setLoading(false);
+      }
     }
   }, [productCache]);
 

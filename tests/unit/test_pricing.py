@@ -117,6 +117,44 @@ def test_extract_regex_uses_domain_selector():
     assert extractor == "regex"
 
 
+def test_extract_regex_domain_starting_with_w_uses_selector():
+    """Regression: the host was computed with ``lstrip("www.")``, which
+    strips any leading run of {'w', '.'} characters — so
+    ``wolfautomation.com`` became ``olfautomation.com`` and its entry in
+    _DOMAIN_SELECTORS never matched. The extractor then fell through to
+    the first-dollar-in-body fallback and returned the wrong price."""
+    html = """
+<html><body>
+<p>Coupon callout worth $99.00 for members.</p>
+<div class="price">$2,499.99</div>
+</body></html>
+"""
+    got = extract_price(
+        html, "https://www.wolfautomation.com/product/x", "Acme", "X100"
+    )
+    assert got is not None
+    price, extractor = got
+    assert price == Decimal("2499.99")
+    assert extractor == "regex"
+
+
+def test_extract_regex_bare_w_domain_uses_selector():
+    """Same lstrip bug without the www. prefix: bare
+    ``wolfautomation.com`` also had its leading 'w' stripped. The decoy
+    dollar amount comes first in body order so the first-in-body
+    fallback (same "regex" label) can't mask a selector miss."""
+    html = """
+<html><body>
+<p>Members save $99.00 today.</p>
+<div class="price">$150.00</div>
+</body></html>
+"""
+    got = extract_price(html, "https://wolfautomation.com/product/x", "Acme", "X100")
+    assert got is not None
+    assert got[0] == Decimal("150.00")
+    assert got[1] == "regex"
+
+
 def test_extract_body_fallback_finds_first_in_band():
     html = "<html><body>Special pricing: $875.00 for list quantity.</body></html>"
     got = extract_price(html, "https://unknown.example/x", "Acme", "X100")

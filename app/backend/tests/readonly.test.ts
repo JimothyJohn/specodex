@@ -104,6 +104,35 @@ describe('readonlyGuard', () => {
       expect(nextCalled).toBe(true);
     });
 
+    // The compat check is a read-only computation that uses POST only to
+    // carry a body ({a, b} product refs) — it must survive public mode.
+    // The guard is mounted at app.use('/api', ...) in src/index.ts, so the
+    // path it sees for POST /api/v1/compat/check is /v1/compat/check.
+    it('POST /v1/compat/check passes through (read-only computation)', () => {
+      const req = mockReq('POST', '/v1/compat/check');
+      const res = mockRes();
+      readonlyGuard(req as Request, res as Response, next);
+      expect(nextCalled).toBe(true);
+      expect(res._status).toBe(0);
+    });
+
+    it('POST /v1/compat/check/ passes through (trailing slash)', () => {
+      const req = mockReq('POST', '/v1/compat/check/');
+      const res = mockRes();
+      readonlyGuard(req as Request, res as Response, next);
+      expect(nextCalled).toBe(true);
+    });
+
+    it('compat exemption is exact-match — sibling compat paths still 403', () => {
+      for (const path of ['/v1/compat', '/v1/compat/adjacent', '/v1/compat/checkother', '/v1/compat/check/extra']) {
+        const req = mockReq('POST', path);
+        const res = mockRes();
+        nextCalled = false;
+        readonlyGuard(req as Request, res as Response, next);
+        expect(nextCalled).toBe(false);
+        expect(res._status).toBe(403);
+      }
+    });
   });
 
   // =================== Edge Cases ===================

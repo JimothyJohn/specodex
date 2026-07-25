@@ -15,8 +15,8 @@ from specodex.models.common import (
     Power,
     TemperatureRange,
     Torque,
-    ValueUnit,
     VoltageRange,
+    LenientValueUnit,
 )
 from specodex.models.encoder import EncoderFeedback
 from specodex.models.product import ProductBase
@@ -65,16 +65,16 @@ class LinearActuator(ProductBase):
         description="Static load rating for bearing capacity (e.g., in N)",
     )
     # mm/s and mm/s^2 are compound — keep generic.
-    max_linear_speed: Optional[ValueUnit] = Field(
+    max_linear_speed: LenientValueUnit = Field(
         None, description="Maximum linear speed (e.g., in mm/s)"
     )
-    max_acceleration: Optional[ValueUnit] = Field(
+    max_acceleration: LenientValueUnit = Field(
         None, description="Maximum linear acceleration (e.g., in mm/s²)"
     )
     positioning_repeatability: Length = Field(
         None, description="Repeatability of positioning (e.g., in mm)"
     )
-    backlash: Optional[ValueUnit] = Field(
+    backlash: LenientValueUnit = Field(
         None, description="Mechanical backlash (e.g., in mm or arcmin)"
     )
 
@@ -83,7 +83,7 @@ class LinearActuator(ProductBase):
         Literal["ball_screw", "lead_screw", "belt", "linear_motor"]
     ] = Field(None, description="Primary drive mechanism for linear motion.")
     # mm/rev is compound — keep generic.
-    lead_screw_pitch: Optional[ValueUnit] = Field(
+    lead_screw_pitch: LenientValueUnit = Field(
         None, description="Lead screw pitch (e.g., in mm/rev)"
     )
     screw_diameter: Length = Field(
@@ -147,7 +147,7 @@ class LinearActuator(ProductBase):
         None, description="Operating temperature range"
     )
     # %RH is its own family — keep generic.
-    operating_humidity_range: Optional[ValueUnit] = Field(
+    operating_humidity_range: LenientValueUnit = Field(
         None, description="Operating humidity range (e.g., in %RH)"
     )
     cleanroom_class: Optional[str] = Field(
