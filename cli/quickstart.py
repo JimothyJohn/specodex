@@ -68,6 +68,17 @@ Usage:
                                   URL and re-check the verbatim excerpts.
                                   See todo/COMMERCIAL.md (Phase 4).
                                   (try: ./Quickstart vendor-facts --help)
+    ./Quickstart configurator recon|walk|schema
+                                  Harvest product data from a vendor's online
+                                  JS configurator by driving its JSON API from
+                                  a headless-browser session (passes the WAF
+                                  that drops non-browser POSTs). Prints the
+                                  product tree + the typed requirement schema
+                                  (numeric sliders w/ units + ranges, mapped to
+                                  Gearhead fields). Live; needs network + a
+                                  Playwright Chromium binary.
+                                  See todo/CONFIGURATOR_HARVEST.md.
+                                  (try: ./Quickstart configurator --help)
 
 Zero external dependencies — stdlib only.
 """
@@ -1251,6 +1262,17 @@ def main() -> None:
         # on violation), so propagate rc instead of wrapping in run().
         rc = subprocess.call(
             ["uv", "run", "python", "-m", "cli.vendor_facts", *sys.argv[2:]],
+            cwd=ROOT,
+        )
+        sys.exit(rc)
+
+    if len(sys.argv) >= 2 and sys.argv[1] == "configurator":
+        # Harvest product data from a vendor's online JS configurator by
+        # driving its JSON API from a headless-browser session (passes the
+        # WAF that drops non-browser POSTs). Live subcommands need network +
+        # a Playwright Chromium binary. See todo/CONFIGURATOR_HARVEST.md.
+        rc = subprocess.call(
+            ["uv", "run", "python", "-m", "cli.configurator", *sys.argv[2:]],
             cwd=ROOT,
         )
         sys.exit(rc)
