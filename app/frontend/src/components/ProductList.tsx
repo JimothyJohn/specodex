@@ -786,11 +786,14 @@ export default function ProductList() {
     const hasComparison = availableOperators.some(
       op => op === '>' || op === '>=' || op === '<' || op === '<=',
     );
-    const defaultOperator = hasComparison
-      ? '>='
-      : availableOperators.length > 0
-        ? availableOperators[0]
-        : '=';
+    // Per-attribute override first (e.g. backlash starts at '<' — users
+    // spec a ceiling); generic '>=' floor otherwise.
+    const defaultOperator = attributeMetadata.defaultOperator
+      ?? (hasComparison
+        ? '>='
+        : availableOperators.length > 0
+          ? availableOperators[0]
+          : '=');
     setFilters(prev => {
       if (prev.some(
         f => f.attribute === attribute || f.attribute.startsWith(attribute + '.'),
@@ -832,7 +835,14 @@ export default function ProductList() {
   // columns.
   const handleAddColumn = (attribute: ReturnType<typeof getAttributesForType>[0]) => {
     setUserHiddenKeys(userHiddenKeys.filter(k => k !== attribute.key));
-    if (!attribute.nested && !userRestoredKeys.includes(attribute.key)) {
+    // EVERY added column goes into userRestoredKeys — that's the
+    // "explicit restores always render, even past the cap" carve-out
+    // in computeVisibleColumnAttributes. The old !attribute.nested
+    // condition assumed unit-bearing columns are visible by default,
+    // but past the cap they aren't: adding a nested spec (e.g.
+    // input_shaft_diameter on gearheads, whose default set fills the
+    // cap) silently did nothing. Reported 2026-07-25.
+    if (!userRestoredKeys.includes(attribute.key)) {
       setUserRestoredKeys([...userRestoredKeys, attribute.key]);
     }
     setShowSortSelector(false);
