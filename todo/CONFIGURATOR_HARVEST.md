@@ -1,6 +1,7 @@
 # CONFIGURATOR_HARVEST — pull specs + part numbers from vendors' online configurators
 
-> 📐 planned — spike proven against Stober (2026-07-25). No code merged yet.
+> 🚧 in progress — P0 shipped (2026-07-25): `ConfiguratorClient` + Stober
+> adapter behind `./Quickstart configurator`. P1–P4 below still planned.
 
 ## Why
 
@@ -119,15 +120,24 @@ wrong, configurator says X").
 
 ## Phases (independently shippable PRs)
 
-- **P0 — `ConfiguratorClient` base + Stober recon adapter.** Playwright
-  session bootstrap, in-page fetch, robots/rate-limit, endpoint-map
-  dump. `./Quickstart configurator stober recon`. Ships the spike as
-  real code + a drift test that re-derives the endpoint map (fails when
-  Stober redeploys and the routes move).
+- **P0 — `ConfiguratorClient` base + Stober adapter. ✅ shipped 2026-07-25.**
+  `specodex/configurators/{base,stober}.py`, `cli/configurator.py`,
+  `./Quickstart configurator recon|walk|schema`. Playwright session
+  bootstrap + in-page fetch (WAF bypass), SSRF/robots/rate-limit, the
+  type→group→series walk, and pure parsers that extract the typed
+  requirement schema (numeric sliders w/ units+ranges, enumerated
+  selections) mapped to Gearhead fields. Fixture-based contract tests
+  (captured live responses) + adversarial malformed-payload cases +
+  client guardrails. Live-verified against Stober. *Deferred to a
+  follow-up:* an endpoint-map drift test that re-derives routes from the
+  SPA bundle (fails when Stober redeploys) — the fixture tests pin the
+  response contract but not the route strings.
 - **P1 — Stober forward path.** Requirements → `bestMatchProduct` +
-  order code. Property test on the filter-payload builder (adversarial
-  values: out-of-range, NaN, unit mismatch). Cross-check against one
-  `/actuators` synthesized part number.
+  order code. The best-match handshake is two-step (set a filter, then
+  set `findBestMatchBy` before `bestMatchProduct` populates) — capture it
+  by sniffing the SPA's own best-match click. Property test on the
+  filter-payload builder (adversarial values: out-of-range, NaN, unit
+  mismatch). Cross-check against one `/actuators` synthesized part number.
 - **P2 — Stober inverse path + normalize.** Walk the full servo-gearbox
   space → Pydantic `Gearhead` instances with `source=configurator:stober`.
   Dry-run DB diff against existing Stober rows; no writes outside dev.

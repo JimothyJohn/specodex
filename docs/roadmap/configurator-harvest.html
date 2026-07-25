@@ -51,7 +51,8 @@
         <article class="doc-body">
 <h1 id="configurator_harvest-pull-specs-part-numbers-from-vendors-online-configurators">CONFIGURATOR_HARVEST — pull specs + part numbers from vendors' online configurators</h1>
 <blockquote>
-<p>📐 planned — spike proven against Stober (2026-07-25). No code merged yet.</p>
+<p>🚧 in progress — P0 shipped (2026-07-25): <code>ConfiguratorClient</code> + Stober
+adapter behind <code>./Quickstart configurator</code>. P1–P4 below still planned.</p>
 </blockquote>
 <h2 id="why">Why</h2>
 <p>Today every product row comes from a <strong>PDF catalog</strong> through
@@ -159,15 +160,24 @@ numeric field beyond tolerance → triage item ("PDF extraction likely
 wrong, configurator says X").</p>
 <h2 id="phases-independently-shippable-prs">Phases (independently shippable PRs)</h2>
 <ul>
-<li><strong>P0 — <code>ConfiguratorClient</code> base + Stober recon adapter.</strong> Playwright
-  session bootstrap, in-page fetch, robots/rate-limit, endpoint-map
-  dump. <code>./Quickstart configurator stober recon</code>. Ships the spike as
-  real code + a drift test that re-derives the endpoint map (fails when
-  Stober redeploys and the routes move).</li>
+<li><strong>P0 — <code>ConfiguratorClient</code> base + Stober adapter. ✅ shipped 2026-07-25.</strong>
+  <code>specodex/configurators/{base,stober}.py</code>, <code>cli/configurator.py</code>,
+  <code>./Quickstart configurator recon|walk|schema</code>. Playwright session
+  bootstrap + in-page fetch (WAF bypass), SSRF/robots/rate-limit, the
+  type→group→series walk, and pure parsers that extract the typed
+  requirement schema (numeric sliders w/ units+ranges, enumerated
+  selections) mapped to Gearhead fields. Fixture-based contract tests
+  (captured live responses) + adversarial malformed-payload cases +
+  client guardrails. Live-verified against Stober. <em>Deferred to a
+  follow-up:</em> an endpoint-map drift test that re-derives routes from the
+  SPA bundle (fails when Stober redeploys) — the fixture tests pin the
+  response contract but not the route strings.</li>
 <li><strong>P1 — Stober forward path.</strong> Requirements → <code>bestMatchProduct</code> +
-  order code. Property test on the filter-payload builder (adversarial
-  values: out-of-range, NaN, unit mismatch). Cross-check against one
-  <code>/actuators</code> synthesized part number.</li>
+  order code. The best-match handshake is two-step (set a filter, then
+  set <code>findBestMatchBy</code> before <code>bestMatchProduct</code> populates) — capture it
+  by sniffing the SPA's own best-match click. Property test on the
+  filter-payload builder (adversarial values: out-of-range, NaN, unit
+  mismatch). Cross-check against one <code>/actuators</code> synthesized part number.</li>
 <li><strong>P2 — Stober inverse path + normalize.</strong> Walk the full servo-gearbox
   space → Pydantic <code>Gearhead</code> instances with <code>source=configurator:stober</code>.
   Dry-run DB diff against existing Stober rows; no writes outside dev.</li>
