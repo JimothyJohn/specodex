@@ -50,7 +50,7 @@ from typing import Any, List, Optional
 import pytest
 from hypothesis import HealthCheck, given, settings, strategies as st
 
-from specodex.models.common import MinMaxUnit, ValueUnit
+from specodex.models.common import FlangeMountingDimensions, MinMaxUnit, ValueUnit
 from specodex.models.drive import Drive
 from specodex.models.encoder import EncoderFeedback
 from specodex.models.gearhead import Gearhead
@@ -58,6 +58,7 @@ from specodex.models.linear_actuator import LinearActuator
 from specodex.models.motor import Motor
 from specodex.relations import (
     _encoder_protocol_intersect,
+    _length_mismatch,
     _meets_floor,
     _range_within,
     _shaft_compatible,
@@ -67,6 +68,7 @@ from specodex.relations import (
     compatible_drives,
     compatible_gearheads,
     compatible_motors,
+    mounting_conflicts,
 )
 
 
@@ -1063,3 +1065,140 @@ class TestInternalPredicatesNeverRaiseOnNoneInputs:
     @settings(max_examples=50, deadline=None)
     def test_meets_floor_none_value(self, floor: float, unit: str) -> None:
         assert _meets_floor(None, floor, unit) is False
+
+
+class TestLengthMismatchContract:
+    """`_length_mismatch` — the predicate behind `mounting_conflicts`'
+    bolt-circle/bolt-hole/pilot-diameter checks. Same shape as
+    `_shaft_compatible`'s contract tests above: total, missing-data-safe,
+    unit-aware.
+    """
+
+    @given(
+        a=st.one_of(st.none(), _value_unit()),
+        b=st.one_of(st.none(), _value_unit()),
+    )
+    @settings(
+        max_examples=200, deadline=None, suppress_health_check=[HealthCheck.too_slow]
+    )
+    def test_never_raises_returns_bool(
+        self, a: Optional[ValueUnit], b: Optional[ValueUnit]
+    ) -> None:
+        try:
+            result = _length_mismatch(a, b)
+        except Exception as exc:  # pragma: no cover
+            pytest.fail(
+                f"_length_mismatch raised {type(exc).__name__}: {exc!r}\n"
+                f"a={a!r}, b={b!r}"
+            )
+        assert isinstance(result, bool)
+
+    @given(v=_value_unit())
+    @settings(max_examples=100, deadline=None)
+    def test_none_inputs_are_never_a_mismatch(self, v: ValueUnit) -> None:
+        assert _length_mismatch(None, v) is False
+        assert _length_mismatch(v, None) is False
+        assert _length_mismatch(None, None) is False
+
+    @given(a=_value_unit(), b=_value_unit())
+    @settings(max_examples=200, deadline=None)
+    def test_unit_mismatch_is_never_a_mismatch(
+        self, a: ValueUnit, b: ValueUnit
+    ) -> None:
+        if a.unit == b.unit:
+            return
+        assert _length_mismatch(a, b) is False
+
+    @given(v=_value_unit())
+    @settings(max_examples=100, deadline=None)
+    def test_reflexive_on_finite(self, v: ValueUnit) -> None:
+        assert _length_mismatch(v, v) is False
+
+    @given(v=_value_unit(), tolerance=st.floats(min_value=0.11, max_value=1e6))
+    @settings(max_examples=200, deadline=None)
+    def test_beyond_default_tolerance_is_flagged(
+        self, v: ValueUnit, tolerance: float
+    ) -> None:
+        shifted = ValueUnit(value=v.value + tolerance, unit=v.unit)
+        assert _length_mismatch(v, shifted) is True
+
+
+@st.composite
+def _flange_strategy(draw: st.DrawFn) -> FlangeMountingDimensions:
+    """Adversarial-ish FlangeMountingDimensions: every field independently
+    present or absent, so `mounting_conflicts` sees every combination of
+    known/missing sub-fields on both sides of the comparison."""
+    return FlangeMountingDimensions(
+        bolt_circle_diameter=draw(st.one_of(st.none(), _value_unit())),
+        bolt_hole_diameter=draw(st.one_of(st.none(), _value_unit())),
+        bolt_hole_count=draw(
+            st.one_of(st.none(), st.integers(min_value=0, max_value=20))
+        ),
+        pilot_diameter=draw(st.one_of(st.none(), _value_unit())),
+        pilot_depth=draw(st.one_of(st.none(), _value_unit())),
+        mounting_standard=draw(
+            st.one_of(
+                st.none(), st.sampled_from(["NEMA", "IEC", "JIS", "DIN", "proprietary"])
+            )
+        ),
+    )
+
+
+class TestMountingConflictsContract:
+    """`mounting_conflicts` — every input combination must be total
+    (never raise) and every reported conflict must name a real
+    difference, never a coincidence of missing data on either side.
+    """
+
+    @given(
+        motor_shaft=st.one_of(st.none(), _value_unit()),
+        gearhead_shaft=st.one_of(st.none(), _value_unit()),
+        motor_mount=st.one_of(
+            st.none(), st.sampled_from(["NEMA 23", "NEMA 34", "IEC 80"])
+        ),
+        gearhead_mounts=st.one_of(
+            st.none(),
+            st.lists(st.sampled_from(["NEMA 23", "NEMA 34", "IEC 80"]), max_size=3),
+        ),
+        motor_flange=st.one_of(st.none(), _flange_strategy()),
+        gearhead_flange=st.one_of(st.none(), _flange_strategy()),
+    )
+    @settings(
+        max_examples=200,
+        deadline=None,
+        suppress_health_check=[HealthCheck.too_slow],
+    )
+    def test_never_raises_returns_list_of_str(
+        self,
+        motor_shaft: Optional[ValueUnit],
+        gearhead_shaft: Optional[ValueUnit],
+        motor_mount: Optional[str],
+        gearhead_mounts: Optional[list],
+        motor_flange: Optional[FlangeMountingDimensions],
+        gearhead_flange: Optional[FlangeMountingDimensions],
+    ) -> None:
+        motor = Motor(
+            product_name="M",
+            manufacturer="TestVendor",
+            shaft_diameter=motor_shaft,
+            motor_mount_pattern=motor_mount,
+            mounting_flange=motor_flange,
+        )
+        gear = Gearhead(
+            product_name="G",
+            manufacturer="TestVendor",
+            input_shaft_diameter=gearhead_shaft,
+            input_motor_mount=gearhead_mounts,
+            input_mounting_flange=gearhead_flange,
+        )
+        try:
+            result = mounting_conflicts(motor, gear)
+        except Exception as exc:  # pragma: no cover
+            pytest.fail(f"mounting_conflicts raised {type(exc).__name__}: {exc!r}")
+        assert isinstance(result, list)
+        assert all(isinstance(c, str) for c in result)
+
+    def test_both_sides_empty_reports_nothing(self) -> None:
+        motor = Motor(product_name="M", manufacturer="TestVendor")
+        gear = Gearhead(product_name="G", manufacturer="TestVendor")
+        assert mounting_conflicts(motor, gear) == []
