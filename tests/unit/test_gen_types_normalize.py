@@ -53,6 +53,24 @@ class TestUnwrapMultilineUnions:
         assert _unwrap(UNWRAPPED) == UNWRAPPED
         assert _unwrap(_unwrap(WRAPPED)) == _unwrap(WRAPPED)
 
+    def test_break_after_colon_shape_unwraps(self):
+        """CI's prettier emits this shape (no pipes, whole type on the next
+        line) for Manufacturer.offered_product_types — the exact diff that
+        failed Test Codegen on PR #367's first run."""
+        wrapped = (
+            "  offered_product_types?:\n"
+            '    ("motor" | "drive" | "gearhead")[] | null;\n'
+        )
+        expected = (
+            '  offered_product_types?: ("motor" | "drive" | "gearhead")[] | null;\n'
+        )
+        assert _unwrap(wrapped) == expected
+
+    def test_jsdoc_trailing_colon_does_not_join(self):
+        """A JSDoc body line ending in ':' must not swallow the next line."""
+        src = "/**\n * Options:\n */\nexport interface Foo {\n}\n"
+        assert _unwrap(src) == src
+
     def test_nested_paren_group_unwraps(self):
         wrapped = (
             "  contactor_type?:\n"
