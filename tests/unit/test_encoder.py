@@ -275,7 +275,9 @@ class TestCoerceFieldbusList:
 
     def _drive(self, fieldbus):
         return Drive(
-            product_name="D", product_type="drive", manufacturer="Acme",
+            product_name="D",
+            product_type="drive",
+            manufacturer="Acme",
             fieldbus=fieldbus,
         )
 
@@ -288,9 +290,15 @@ class TestCoerceFieldbusList:
         assert d.fieldbus == ["Modbus RTU", "Modbus TCP"]
 
     def test_case_and_separator_variants(self):
-        d = self._drive(["ethercat", "Ethernet/IP", "Profinet", "CClink IE", "modbus_rtu"])
+        d = self._drive(
+            ["ethercat", "Ethernet/IP", "Profinet", "CClink IE", "modbus_rtu"]
+        )
         assert d.fieldbus == [
-            "EtherCAT", "EtherNet/IP", "PROFINET", "CC-Link IE", "Modbus RTU",
+            "EtherCAT",
+            "EtherNet/IP",
+            "PROFINET",
+            "CC-Link IE",
+            "Modbus RTU",
         ]
 
     def test_canonical_values_pass_through(self):
