@@ -933,6 +933,21 @@ export interface EncoderFeedback {
   [k: string]: unknown;
 }
 /**
+ * Motor-mount flange geometry: bolt pattern + pilot/register fit.
+ *
+ * Shared shape between a motor's own mounting face (``Motor.mounting_flange``)
+ * and a gearhead's input flange (``Gearhead.input_mounting_flange``) so the
+ * two can be compared field-for-field.
+ */
+export interface FlangeMountingDimensions {
+  bolt_circle_diameter?: ValueUnit | null;
+  bolt_hole_diameter?: ValueUnit | null;
+  bolt_hole_count?: number | null;
+  pilot_diameter?: ValueUnit | null;
+  pilot_depth?: ValueUnit | null;
+  mounting_standard?: ("NEMA" | "IEC" | "JIS" | "DIN" | "proprietary") | null;
+}
+/**
  * Defines the specifications of the built-in force/torque sensor.
  */
 export interface ForceTorqueSensor {
@@ -1233,6 +1248,10 @@ export interface Gearhead {
         | "custom"
       )
     | null;
+  /**
+   * Input flange bolt-circle/pilot geometry (from a dimensional drawing).
+   */
+  input_mounting_flange?: FlangeMountingDimensions | null;
   /**
    * Maximum radial load (F2m) (e.g., in N)
    */
@@ -1725,6 +1744,11 @@ export interface Motor {
         | "custom"
       )
     | null;
+  shaft_length?: ValueUnit | null;
+  shaft_modification?:
+    | ("none" | "keyway" | "double_keyway" | "flat" | "double_flat" | "splined" | "tapped_hole" | "tapered" | "other")[]
+    | null;
+  mounting_flange?: FlangeMountingDimensions | null;
 }
 /**
  * A base model for products with common attributes, designed for DynamoDB.

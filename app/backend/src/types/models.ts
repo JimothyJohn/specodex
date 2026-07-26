@@ -70,6 +70,42 @@ export type MotorType =
   | 'hybrid';
 
 /**
+ * Mounting-standard designator for a dimensional-drawing-sourced flange.
+ * Mirrors specodex/models/common.py MountingStandard.
+ */
+export type MountingStandard = 'NEMA' | 'IEC' | 'JIS' | 'DIN' | 'proprietary';
+
+/**
+ * Enumerated motor-shaft end modification. Mirrors
+ * specodex/models/common.py ShaftModification.
+ */
+export type ShaftModification =
+  | 'none'
+  | 'keyway'
+  | 'double_keyway'
+  | 'flat'
+  | 'double_flat'
+  | 'splined'
+  | 'tapped_hole'
+  | 'tapered'
+  | 'other';
+
+/**
+ * Motor-mount flange geometry (bolt pattern + pilot/register fit), read off
+ * a dimensional drawing. Shared shape between Motor.mounting_flange and
+ * Gearhead.input_mounting_flange. Mirrors specodex/models/common.py
+ * FlangeMountingDimensions.
+ */
+export interface FlangeMountingDimensions {
+  bolt_circle_diameter?: ValueUnit;
+  bolt_hole_diameter?: ValueUnit;
+  bolt_hole_count?: number;
+  pilot_diameter?: ValueUnit;
+  pilot_depth?: ValueUnit;
+  mounting_standard?: MountingStandard;
+}
+
+/**
  * Motor model matching specodex/models/motor.py
  */
 export interface Motor extends ProductBase {
@@ -93,6 +129,11 @@ export interface Motor extends ProductBase {
   rotor_inertia?: ValueUnit;
   shaft_diameter?: ValueUnit;
   frame_size?: string;
+  // Dimensional-drawing fields — see specodex/mounting/extract.py and
+  // relations.py mounting_conflicts().
+  shaft_length?: ValueUnit;
+  shaft_modification?: ShaftModification[];
+  mounting_flange?: FlangeMountingDimensions;
 }
 
 /**
@@ -168,6 +209,9 @@ export interface Gearhead extends ProductBase {
   operating_temp?: MinMaxUnit;
   service_life?: ValueUnit;
   lubrication_type?: string;
+  // Input-flange dimensional-drawing geometry — see
+  // specodex/mounting/extract.py and relations.py mounting_conflicts().
+  input_mounting_flange?: FlangeMountingDimensions;
 }
 
 /**
