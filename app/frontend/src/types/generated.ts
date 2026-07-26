@@ -91,18 +91,7 @@ export interface Contactor {
    * 1-indexed PDF pages where this product's specs were found. Used for #page=N deep-linking.
    */
   pages?: number[] | null;
-  type?:
-    | (
-        | "ac operated"
-        | "dc operated"
-        | "mechanically latched"
-        | "reversing"
-        | "delay open"
-        | "solid state"
-        | "vacuum"
-        | "definite purpose"
-      )
-    | null;
+  type?: ("ac operated" | "dc operated" | "mechanically latched" | "reversing" | "delay open" | "solid state" | "vacuum" | "definite purpose") | null;
   series?: string | null;
   /**
    * Vendor-specific frame/size code as printed on the datasheet (e.g. ABB 'AF09', Siemens 'S00', Fuji 'SC-N1', Mitsubishi 'T10'). Not portable across vendors; kept only for cross-referencing a specific datasheet.
@@ -550,45 +539,8 @@ export interface Drive {
   peak_current?: ValueUnit | null;
   rated_power?: ValueUnit | null;
   switching_frequency?: (ValueUnit | null)[] | null;
-  fieldbus?:
-    | (
-        | "EtherCAT"
-        | "EtherNet/IP"
-        | "PROFINET"
-        | "Modbus TCP"
-        | "Modbus RTU"
-        | "CANopen"
-        | "POWERLINK"
-        | "Sercos III"
-        | "CC-Link IE"
-      )[]
-    | null;
-  encoder_feedback_support?:
-    | (
-        | "quadrature_ttl"
-        | "open_collector"
-        | "hall_uvw"
-        | "sin_cos_1vpp"
-        | "ssi"
-        | "biss_c"
-        | "endat_2_1"
-        | "endat_2_2"
-        | "hiperface"
-        | "hiperface_dsl"
-        | "tamagawa_t_format"
-        | "mitsubishi_j3"
-        | "mitsubishi_j4"
-        | "mitsubishi_j5"
-        | "panasonic_a6"
-        | "yaskawa_sigma"
-        | "fanuc_serial"
-        | "drive_cliq"
-        | "oct_beckhoff"
-        | "resolver_analog"
-        | "proprietary_other"
-        | "unknown"
-      )[]
-    | null;
+  fieldbus?: ("EtherCAT" | "EtherNet/IP" | "PROFINET" | "Modbus TCP" | "Modbus RTU" | "CANopen" | "POWERLINK" | "Sercos III" | "CC-Link IE")[] | null;
+  encoder_feedback_support?: ("quadrature_ttl" | "open_collector" | "hall_uvw" | "sin_cos_1vpp" | "ssi" | "biss_c" | "endat_2_1" | "endat_2_2" | "hiperface" | "hiperface_dsl" | "tamagawa_t_format" | "mitsubishi_j3" | "mitsubishi_j4" | "mitsubishi_j5" | "panasonic_a6" | "yaskawa_sigma" | "fanuc_serial" | "drive_cliq" | "oct_beckhoff" | "resolver_analog" | "proprietary_other" | "unknown")[] | null;
   ethernet_ports?: number | null;
   digital_inputs?: number | null;
   digital_outputs?: number | null;
@@ -724,76 +676,7 @@ export interface ElectricCylinder {
   /**
    * Motor frame designator the cylinder mounts to (e.g. 'NEMA 23').
    */
-  motor_mount_pattern?:
-    | (
-        | "NEMA 8"
-        | "NEMA 11"
-        | "NEMA 14"
-        | "NEMA 17"
-        | "NEMA 23"
-        | "NEMA 34"
-        | "NEMA 42"
-        | "NEMA 48"
-        | "NEMA 56"
-        | "NEMA 143T"
-        | "NEMA 145T"
-        | "NEMA 182T"
-        | "NEMA 184T"
-        | "NEMA 213T"
-        | "NEMA 215T"
-        | "NEMA 254T"
-        | "NEMA 256T"
-        | "NEMA 284T"
-        | "NEMA 286T"
-        | "NEMA 324T"
-        | "NEMA 326T"
-        | "NEMA 364T"
-        | "NEMA 365T"
-        | "NEMA 56C"
-        | "NEMA 143TC"
-        | "NEMA 145TC"
-        | "NEMA 182TC"
-        | "NEMA 184TC"
-        | "NEMA 213TC"
-        | "NEMA 215TC"
-        | "NEMA 254TC"
-        | "NEMA 256TC"
-        | "NEMA 284TC"
-        | "NEMA 286TC"
-        | "NEMA 324TC"
-        | "NEMA 326TC"
-        | "NEMA 364TC"
-        | "NEMA 365TC"
-        | "IEC 56"
-        | "IEC 63"
-        | "IEC 71"
-        | "IEC 80"
-        | "IEC 90"
-        | "IEC 100"
-        | "IEC 112"
-        | "IEC 132"
-        | "MAX 8"
-        | "MAX 13"
-        | "MAX 16"
-        | "MAX 20"
-        | "MAX 25"
-        | "MAX 30"
-        | "MAX 35"
-        | "MAX 40"
-        | "SQ 20"
-        | "SQ 28"
-        | "SQ 40"
-        | "SQ 42"
-        | "SQ 60"
-        | "SQ 80"
-        | "SQ 86"
-        | "SQ 90"
-        | "SQ 110"
-        | "SQ 130"
-        | "SQ 180"
-        | "custom"
-      )
-    | null;
+  motor_mount_pattern?: ("NEMA 8" | "NEMA 11" | "NEMA 14" | "NEMA 17" | "NEMA 23" | "NEMA 34" | "NEMA 42" | "NEMA 48" | "NEMA 56" | "NEMA 143T" | "NEMA 145T" | "NEMA 182T" | "NEMA 184T" | "NEMA 213T" | "NEMA 215T" | "NEMA 254T" | "NEMA 256T" | "NEMA 284T" | "NEMA 286T" | "NEMA 324T" | "NEMA 326T" | "NEMA 364T" | "NEMA 365T" | "NEMA 56C" | "NEMA 143TC" | "NEMA 145TC" | "NEMA 182TC" | "NEMA 184TC" | "NEMA 213TC" | "NEMA 215TC" | "NEMA 254TC" | "NEMA 256TC" | "NEMA 284TC" | "NEMA 286TC" | "NEMA 324TC" | "NEMA 326TC" | "NEMA 364TC" | "NEMA 365TC" | "IEC 56" | "IEC 63" | "IEC 71" | "IEC 80" | "IEC 90" | "IEC 100" | "IEC 112" | "IEC 132" | "MAX 8" | "MAX 13" | "MAX 16" | "MAX 20" | "MAX 25" | "MAX 30" | "MAX 35" | "MAX 40" | "SQ 20" | "SQ 28" | "SQ 40" | "SQ 42" | "SQ 60" | "SQ 80" | "SQ 86" | "SQ 90" | "SQ 110" | "SQ 130" | "SQ 180" | "custom") | null;
   /**
    * Lead screw pitch (e.g., in mm/rev)
    */
@@ -851,49 +734,11 @@ export interface EncoderFeedback {
   /**
    * Physical sensor type. Use 'incremental_optical' for plain quadrature optical encoders; 'absolute_optical' for single-turn absolute optical (BiSS-C, EnDat, etc.); 'absolute_optical_multiturn' when the spec mentions multi-turn or 'MT'; 'resolver' for resolvers; 'none' for sensorless / open-loop; 'unknown' only when the catalog text doesn't fit any enum.
    */
-  device?:
-    | "incremental_optical"
-    | "absolute_optical"
-    | "absolute_optical_multiturn"
-    | "incremental_magnetic"
-    | "absolute_magnetic"
-    | "sin_cos_analog"
-    | "resolver"
-    | "inductive"
-    | "capacitive"
-    | "tachometer_dc"
-    | "hall_only"
-    | "none"
-    | "unknown";
+  device?: "incremental_optical" | "absolute_optical" | "absolute_optical_multiturn" | "incremental_magnetic" | "absolute_magnetic" | "sin_cos_analog" | "resolver" | "inductive" | "capacitive" | "tachometer_dc" | "hall_only" | "none" | "unknown";
   /**
    * Wire / digital interface protocol. Map vendor names to enums: 'EnDat 2.2'→'endat_2_2', 'BiSS-C'→'biss_c', 'Hiperface DSL'→'hiperface_dsl' (vs bare 'Hiperface'→'hiperface'), 'Mitsubishi MR-J5'→'mitsubishi_j5'. Bare 'EnDat' with no version → 'endat_2_2'. Bare 'N-bit absolute' with no vendor name → leave null and set bits_per_turn=N — DO NOT guess the protocol from the bit count alone.
    */
-  protocol?:
-    | (
-        | "quadrature_ttl"
-        | "open_collector"
-        | "hall_uvw"
-        | "sin_cos_1vpp"
-        | "ssi"
-        | "biss_c"
-        | "endat_2_1"
-        | "endat_2_2"
-        | "hiperface"
-        | "hiperface_dsl"
-        | "tamagawa_t_format"
-        | "mitsubishi_j3"
-        | "mitsubishi_j4"
-        | "mitsubishi_j5"
-        | "panasonic_a6"
-        | "yaskawa_sigma"
-        | "fanuc_serial"
-        | "drive_cliq"
-        | "oct_beckhoff"
-        | "resolver_analog"
-        | "proprietary_other"
-        | "unknown"
-      )
-    | null;
+  protocol?: ("quadrature_ttl" | "open_collector" | "hall_uvw" | "sin_cos_1vpp" | "ssi" | "biss_c" | "endat_2_1" | "endat_2_2" | "hiperface" | "hiperface_dsl" | "tamagawa_t_format" | "mitsubishi_j3" | "mitsubishi_j4" | "mitsubishi_j5" | "panasonic_a6" | "yaskawa_sigma" | "fanuc_serial" | "drive_cliq" | "oct_beckhoff" | "resolver_analog" | "proprietary_other" | "unknown") | null;
   /**
    * 'incremental' (relative position) or 'absolute'.
    */
@@ -1124,149 +969,11 @@ export interface Gearhead {
   /**
    * Motor frames this gearhead accepts on its input flange (e.g. ['NEMA 23', 'NEMA 34']).
    */
-  input_motor_mount?:
-    | (
-        | "NEMA 8"
-        | "NEMA 11"
-        | "NEMA 14"
-        | "NEMA 17"
-        | "NEMA 23"
-        | "NEMA 34"
-        | "NEMA 42"
-        | "NEMA 48"
-        | "NEMA 56"
-        | "NEMA 143T"
-        | "NEMA 145T"
-        | "NEMA 182T"
-        | "NEMA 184T"
-        | "NEMA 213T"
-        | "NEMA 215T"
-        | "NEMA 254T"
-        | "NEMA 256T"
-        | "NEMA 284T"
-        | "NEMA 286T"
-        | "NEMA 324T"
-        | "NEMA 326T"
-        | "NEMA 364T"
-        | "NEMA 365T"
-        | "NEMA 56C"
-        | "NEMA 143TC"
-        | "NEMA 145TC"
-        | "NEMA 182TC"
-        | "NEMA 184TC"
-        | "NEMA 213TC"
-        | "NEMA 215TC"
-        | "NEMA 254TC"
-        | "NEMA 256TC"
-        | "NEMA 284TC"
-        | "NEMA 286TC"
-        | "NEMA 324TC"
-        | "NEMA 326TC"
-        | "NEMA 364TC"
-        | "NEMA 365TC"
-        | "IEC 56"
-        | "IEC 63"
-        | "IEC 71"
-        | "IEC 80"
-        | "IEC 90"
-        | "IEC 100"
-        | "IEC 112"
-        | "IEC 132"
-        | "MAX 8"
-        | "MAX 13"
-        | "MAX 16"
-        | "MAX 20"
-        | "MAX 25"
-        | "MAX 30"
-        | "MAX 35"
-        | "MAX 40"
-        | "SQ 20"
-        | "SQ 28"
-        | "SQ 40"
-        | "SQ 42"
-        | "SQ 60"
-        | "SQ 80"
-        | "SQ 86"
-        | "SQ 90"
-        | "SQ 110"
-        | "SQ 130"
-        | "SQ 180"
-        | "custom"
-      )[]
-    | null;
+  input_motor_mount?: ("NEMA 8" | "NEMA 11" | "NEMA 14" | "NEMA 17" | "NEMA 23" | "NEMA 34" | "NEMA 42" | "NEMA 48" | "NEMA 56" | "NEMA 143T" | "NEMA 145T" | "NEMA 182T" | "NEMA 184T" | "NEMA 213T" | "NEMA 215T" | "NEMA 254T" | "NEMA 256T" | "NEMA 284T" | "NEMA 286T" | "NEMA 324T" | "NEMA 326T" | "NEMA 364T" | "NEMA 365T" | "NEMA 56C" | "NEMA 143TC" | "NEMA 145TC" | "NEMA 182TC" | "NEMA 184TC" | "NEMA 213TC" | "NEMA 215TC" | "NEMA 254TC" | "NEMA 256TC" | "NEMA 284TC" | "NEMA 286TC" | "NEMA 324TC" | "NEMA 326TC" | "NEMA 364TC" | "NEMA 365TC" | "IEC 56" | "IEC 63" | "IEC 71" | "IEC 80" | "IEC 90" | "IEC 100" | "IEC 112" | "IEC 132" | "MAX 8" | "MAX 13" | "MAX 16" | "MAX 20" | "MAX 25" | "MAX 30" | "MAX 35" | "MAX 40" | "SQ 20" | "SQ 28" | "SQ 40" | "SQ 42" | "SQ 60" | "SQ 80" | "SQ 86" | "SQ 90" | "SQ 110" | "SQ 130" | "SQ 180" | "custom")[] | null;
   /**
    * Output flange pattern (matches downstream device's input mount).
    */
-  output_motor_mount?:
-    | (
-        | "NEMA 8"
-        | "NEMA 11"
-        | "NEMA 14"
-        | "NEMA 17"
-        | "NEMA 23"
-        | "NEMA 34"
-        | "NEMA 42"
-        | "NEMA 48"
-        | "NEMA 56"
-        | "NEMA 143T"
-        | "NEMA 145T"
-        | "NEMA 182T"
-        | "NEMA 184T"
-        | "NEMA 213T"
-        | "NEMA 215T"
-        | "NEMA 254T"
-        | "NEMA 256T"
-        | "NEMA 284T"
-        | "NEMA 286T"
-        | "NEMA 324T"
-        | "NEMA 326T"
-        | "NEMA 364T"
-        | "NEMA 365T"
-        | "NEMA 56C"
-        | "NEMA 143TC"
-        | "NEMA 145TC"
-        | "NEMA 182TC"
-        | "NEMA 184TC"
-        | "NEMA 213TC"
-        | "NEMA 215TC"
-        | "NEMA 254TC"
-        | "NEMA 256TC"
-        | "NEMA 284TC"
-        | "NEMA 286TC"
-        | "NEMA 324TC"
-        | "NEMA 326TC"
-        | "NEMA 364TC"
-        | "NEMA 365TC"
-        | "IEC 56"
-        | "IEC 63"
-        | "IEC 71"
-        | "IEC 80"
-        | "IEC 90"
-        | "IEC 100"
-        | "IEC 112"
-        | "IEC 132"
-        | "MAX 8"
-        | "MAX 13"
-        | "MAX 16"
-        | "MAX 20"
-        | "MAX 25"
-        | "MAX 30"
-        | "MAX 35"
-        | "MAX 40"
-        | "SQ 20"
-        | "SQ 28"
-        | "SQ 40"
-        | "SQ 42"
-        | "SQ 60"
-        | "SQ 80"
-        | "SQ 86"
-        | "SQ 90"
-        | "SQ 110"
-        | "SQ 130"
-        | "SQ 180"
-        | "custom"
-      )
-    | null;
+  output_motor_mount?: ("NEMA 8" | "NEMA 11" | "NEMA 14" | "NEMA 17" | "NEMA 23" | "NEMA 34" | "NEMA 42" | "NEMA 48" | "NEMA 56" | "NEMA 143T" | "NEMA 145T" | "NEMA 182T" | "NEMA 184T" | "NEMA 213T" | "NEMA 215T" | "NEMA 254T" | "NEMA 256T" | "NEMA 284T" | "NEMA 286T" | "NEMA 324T" | "NEMA 326T" | "NEMA 364T" | "NEMA 365T" | "NEMA 56C" | "NEMA 143TC" | "NEMA 145TC" | "NEMA 182TC" | "NEMA 184TC" | "NEMA 213TC" | "NEMA 215TC" | "NEMA 254TC" | "NEMA 256TC" | "NEMA 284TC" | "NEMA 286TC" | "NEMA 324TC" | "NEMA 326TC" | "NEMA 364TC" | "NEMA 365TC" | "IEC 56" | "IEC 63" | "IEC 71" | "IEC 80" | "IEC 90" | "IEC 100" | "IEC 112" | "IEC 132" | "MAX 8" | "MAX 13" | "MAX 16" | "MAX 20" | "MAX 25" | "MAX 30" | "MAX 35" | "MAX 40" | "SQ 20" | "SQ 28" | "SQ 40" | "SQ 42" | "SQ 60" | "SQ 80" | "SQ 86" | "SQ 90" | "SQ 110" | "SQ 130" | "SQ 180" | "custom") | null;
   /**
    * Input flange bolt-circle/pilot geometry (from a dimensional drawing).
    */
@@ -1473,76 +1180,7 @@ export interface LinearActuator {
   /**
    * Motor frames this actuator can accept (e.g. ['NEMA 23', 'NEMA 34']). Drives compatible-motor queries on the /actuators page.
    */
-  compatible_motor_mounts?:
-    | (
-        | "NEMA 8"
-        | "NEMA 11"
-        | "NEMA 14"
-        | "NEMA 17"
-        | "NEMA 23"
-        | "NEMA 34"
-        | "NEMA 42"
-        | "NEMA 48"
-        | "NEMA 56"
-        | "NEMA 143T"
-        | "NEMA 145T"
-        | "NEMA 182T"
-        | "NEMA 184T"
-        | "NEMA 213T"
-        | "NEMA 215T"
-        | "NEMA 254T"
-        | "NEMA 256T"
-        | "NEMA 284T"
-        | "NEMA 286T"
-        | "NEMA 324T"
-        | "NEMA 326T"
-        | "NEMA 364T"
-        | "NEMA 365T"
-        | "NEMA 56C"
-        | "NEMA 143TC"
-        | "NEMA 145TC"
-        | "NEMA 182TC"
-        | "NEMA 184TC"
-        | "NEMA 213TC"
-        | "NEMA 215TC"
-        | "NEMA 254TC"
-        | "NEMA 256TC"
-        | "NEMA 284TC"
-        | "NEMA 286TC"
-        | "NEMA 324TC"
-        | "NEMA 326TC"
-        | "NEMA 364TC"
-        | "NEMA 365TC"
-        | "IEC 56"
-        | "IEC 63"
-        | "IEC 71"
-        | "IEC 80"
-        | "IEC 90"
-        | "IEC 100"
-        | "IEC 112"
-        | "IEC 132"
-        | "MAX 8"
-        | "MAX 13"
-        | "MAX 16"
-        | "MAX 20"
-        | "MAX 25"
-        | "MAX 30"
-        | "MAX 35"
-        | "MAX 40"
-        | "SQ 20"
-        | "SQ 28"
-        | "SQ 40"
-        | "SQ 42"
-        | "SQ 60"
-        | "SQ 80"
-        | "SQ 86"
-        | "SQ 90"
-        | "SQ 110"
-        | "SQ 130"
-        | "SQ 180"
-        | "custom"
-      )[]
-    | null;
+  compatible_motor_mounts?: ("NEMA 8" | "NEMA 11" | "NEMA 14" | "NEMA 17" | "NEMA 23" | "NEMA 34" | "NEMA 42" | "NEMA 48" | "NEMA 56" | "NEMA 143T" | "NEMA 145T" | "NEMA 182T" | "NEMA 184T" | "NEMA 213T" | "NEMA 215T" | "NEMA 254T" | "NEMA 256T" | "NEMA 284T" | "NEMA 286T" | "NEMA 324T" | "NEMA 326T" | "NEMA 364T" | "NEMA 365T" | "NEMA 56C" | "NEMA 143TC" | "NEMA 145TC" | "NEMA 182TC" | "NEMA 184TC" | "NEMA 213TC" | "NEMA 215TC" | "NEMA 254TC" | "NEMA 256TC" | "NEMA 284TC" | "NEMA 286TC" | "NEMA 324TC" | "NEMA 326TC" | "NEMA 364TC" | "NEMA 365TC" | "IEC 56" | "IEC 63" | "IEC 71" | "IEC 80" | "IEC 90" | "IEC 100" | "IEC 112" | "IEC 132" | "MAX 8" | "MAX 13" | "MAX 16" | "MAX 20" | "MAX 25" | "MAX 30" | "MAX 35" | "MAX 40" | "SQ 20" | "SQ 28" | "SQ 40" | "SQ 42" | "SQ 60" | "SQ 80" | "SQ 86" | "SQ 90" | "SQ 110" | "SQ 130" | "SQ 180" | "custom")[] | null;
   /**
    * Rated input voltage (e.g., in V)
    */
@@ -1596,8 +1234,7 @@ export interface Manufacturer {
   /**
    * List of product types offered (e.g., 'motor', 'drive')
    */
-  offered_product_types?:
-    ("motor" | "drive" | "gearhead" | "robot_arm" | "contactor" | "electric_cylinder" | "linear_actuator")[] | null;
+  offered_product_types?: ("motor" | "drive" | "gearhead" | "robot_arm" | "contactor" | "electric_cylinder" | "linear_actuator")[] | null;
 }
 /**
  * A Pydantic model representing the specifications of a motor.
@@ -1669,9 +1306,7 @@ export interface Motor {
    * 1-indexed PDF pages where this product's specs were found. Used for #page=N deep-linking.
    */
   pages?: number[] | null;
-  type?:
-    | ("brushless dc" | "brushed dc" | "ac induction" | "ac synchronous" | "ac servo" | "permanent magnet" | "hybrid")
-    | null;
+  type?: ("brushless dc" | "brushed dc" | "ac induction" | "ac synchronous" | "ac servo" | "permanent magnet" | "hybrid") | null;
   series?: string | null;
   rated_voltage?: MinMaxUnit | null;
   rated_speed?: ValueUnit | null;
@@ -1693,80 +1328,9 @@ export interface Motor {
   radial_load_force_rating?: MinMaxUnit | null;
   shaft_diameter?: ValueUnit | null;
   frame_size?: string | null;
-  motor_mount_pattern?:
-    | (
-        | "NEMA 8"
-        | "NEMA 11"
-        | "NEMA 14"
-        | "NEMA 17"
-        | "NEMA 23"
-        | "NEMA 34"
-        | "NEMA 42"
-        | "NEMA 48"
-        | "NEMA 56"
-        | "NEMA 143T"
-        | "NEMA 145T"
-        | "NEMA 182T"
-        | "NEMA 184T"
-        | "NEMA 213T"
-        | "NEMA 215T"
-        | "NEMA 254T"
-        | "NEMA 256T"
-        | "NEMA 284T"
-        | "NEMA 286T"
-        | "NEMA 324T"
-        | "NEMA 326T"
-        | "NEMA 364T"
-        | "NEMA 365T"
-        | "NEMA 56C"
-        | "NEMA 143TC"
-        | "NEMA 145TC"
-        | "NEMA 182TC"
-        | "NEMA 184TC"
-        | "NEMA 213TC"
-        | "NEMA 215TC"
-        | "NEMA 254TC"
-        | "NEMA 256TC"
-        | "NEMA 284TC"
-        | "NEMA 286TC"
-        | "NEMA 324TC"
-        | "NEMA 326TC"
-        | "NEMA 364TC"
-        | "NEMA 365TC"
-        | "IEC 56"
-        | "IEC 63"
-        | "IEC 71"
-        | "IEC 80"
-        | "IEC 90"
-        | "IEC 100"
-        | "IEC 112"
-        | "IEC 132"
-        | "MAX 8"
-        | "MAX 13"
-        | "MAX 16"
-        | "MAX 20"
-        | "MAX 25"
-        | "MAX 30"
-        | "MAX 35"
-        | "MAX 40"
-        | "SQ 20"
-        | "SQ 28"
-        | "SQ 40"
-        | "SQ 42"
-        | "SQ 60"
-        | "SQ 80"
-        | "SQ 86"
-        | "SQ 90"
-        | "SQ 110"
-        | "SQ 130"
-        | "SQ 180"
-        | "custom"
-      )
-    | null;
+  motor_mount_pattern?: ("NEMA 8" | "NEMA 11" | "NEMA 14" | "NEMA 17" | "NEMA 23" | "NEMA 34" | "NEMA 42" | "NEMA 48" | "NEMA 56" | "NEMA 143T" | "NEMA 145T" | "NEMA 182T" | "NEMA 184T" | "NEMA 213T" | "NEMA 215T" | "NEMA 254T" | "NEMA 256T" | "NEMA 284T" | "NEMA 286T" | "NEMA 324T" | "NEMA 326T" | "NEMA 364T" | "NEMA 365T" | "NEMA 56C" | "NEMA 143TC" | "NEMA 145TC" | "NEMA 182TC" | "NEMA 184TC" | "NEMA 213TC" | "NEMA 215TC" | "NEMA 254TC" | "NEMA 256TC" | "NEMA 284TC" | "NEMA 286TC" | "NEMA 324TC" | "NEMA 326TC" | "NEMA 364TC" | "NEMA 365TC" | "IEC 56" | "IEC 63" | "IEC 71" | "IEC 80" | "IEC 90" | "IEC 100" | "IEC 112" | "IEC 132" | "MAX 8" | "MAX 13" | "MAX 16" | "MAX 20" | "MAX 25" | "MAX 30" | "MAX 35" | "MAX 40" | "SQ 20" | "SQ 28" | "SQ 40" | "SQ 42" | "SQ 60" | "SQ 80" | "SQ 86" | "SQ 90" | "SQ 110" | "SQ 130" | "SQ 180" | "custom") | null;
   shaft_length?: ValueUnit | null;
-  shaft_modification?:
-    | ("none" | "keyway" | "double_keyway" | "flat" | "double_flat" | "splined" | "tapped_hole" | "tapered" | "other")[]
-    | null;
+  shaft_modification?: ("none" | "keyway" | "double_keyway" | "flat" | "double_flat" | "splined" | "tapped_hole" | "tapered" | "other")[] | null;
   mounting_flange?: FlangeMountingDimensions | null;
 }
 /**

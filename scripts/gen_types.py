@@ -176,6 +176,43 @@ def _backend_constants_module() -> str:
     )
 
 
+def _unwrap_multiline_unions(source: str) -> str:
+    """Collapse prettier-wrapped union types back onto one line.
+
+    ``npx --yes json-schema-to-typescript`` resolves whatever version the
+    local npx cache holds; version skew flips prettier's wrap *threshold*
+    on borderline-length union types (e.g.
+    ``Manufacturer.offered_product_types``), producing wrap-only
+    ``generated.ts`` diffs that fail CI's ``test-codegen`` drift gate with
+    no semantic change. Rather than guess which lines any given prettier
+    would wrap, canonicalise to the fully-unwrapped form: join every
+    continuation line prettier emits when wrapping a union — leading-``|``
+    member lines and the ``)`` / ``)[]`` group closers — back onto the
+    line that opened them. The canonical form is then independent of
+    prettier's wrap decisions entirely. Idempotent: input with no
+    continuation lines passes through byte-identical.
+    """
+    out: list[str] = []
+    for raw in source.split("\n"):
+        stripped = raw.lstrip()
+        if not out or not stripped or stripped[0] not in "|)":
+            out.append(raw)
+            continue
+        prev = out[-1].rstrip()
+        if stripped[0] == ")":
+            # Group closer: rejoin flush against the last member.
+            out[-1] = prev + stripped
+        elif prev.endswith((":", "=")):
+            # First wrapped member: unwrapped form has no leading pipe.
+            out[-1] = prev + " " + stripped[1:].lstrip()
+        elif prev.endswith("("):
+            # First member inside a paren group: no pipe, no space.
+            out[-1] = prev + stripped[1:].lstrip()
+        else:
+            out[-1] = prev + " " + stripped
+    return "\n".join(out)
+
+
 def main() -> int:
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT_BACKEND_CONSTANTS.parent.mkdir(parents=True, exist_ok=True)
@@ -209,7 +246,7 @@ def main() -> int:
     # itself, and the Phase 0a-ii rewire needs it generated, not hand-typed.
     OUTPUT.write_text(
         banner
-        + OUTPUT.read_text()
+        + _unwrap_multiline_unions(OUTPUT.read_text())
         + "\n"
         + _product_types_constant()
         + _product_union_type()
