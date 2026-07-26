@@ -41,6 +41,17 @@ Everything goes through `./Quickstart <command>`. It's a bash shim that delegate
                                   (XLSX or PDF, path or URL). Dry-run first:
                                   --manufacturer <substr> --dry-run prints the
                                   join table. See todo/PRICING.md Phase 1.
+    ./Quickstart mounting-extract Extract motor mounting-flange dimensions
+                                  (bolt circle diameter, pilot/register
+                                  diameter, shaft length, shaft modification,
+                                  mounting standard) from dimensional-drawing
+                                  pages — a different page set than the
+                                  cached spec-table pages — and backfill onto
+                                  existing Motor rows. Enrich-only: skips
+                                  rows that already carry mounting_flange.
+                                  Dry-run by default; --apply writes on
+                                  dev/staging only, never prod. See
+                                  .claude/skills/mounting-dimension-extract.
     ./Quickstart ingest-report    Group ingest-log quality-fails by manufacturer
                                   for vendor outreach. --email-template emits
                                   a ready-to-send email body per manufacturer.
