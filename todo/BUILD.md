@@ -918,6 +918,16 @@ Backend logic per `todo/SCHEMA.md` Part 3 `compatible_gearheads()`:
    `gearhead.gear_ratio ≥ min_torque_multiplier` (using the
    `snapGearUp()` heuristic from `ProductList`).
 
+**Available, not yet wired:** `specodex/relations.py:mounting_conflicts(motor,
+gearhead) -> List[str]` (shipped alongside the mounting-flange dimensional-
+drawing extraction pipeline) returns human-readable mismatch strings —
+bolt circle/hole diameter, bolt hole count, pilot diameter, mounting
+standard, shaft-vs-bore fit — for any motor/gearhead pair that both carry
+`mounting_flange` / `input_mounting_flange` data. This is the natural
+source for a `_warnings`-style field on this endpoint (same precedent as
+the encoder-check-disabled warning above) once mounting-flange data is
+populated on enough rows to be worth surfacing — not done in this PR.
+
 ### The frontend call pattern
 
 Build issues these in a deliberate fan-out order, not all at once:

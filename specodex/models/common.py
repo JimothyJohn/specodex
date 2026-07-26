@@ -54,6 +54,27 @@ MotorMountPattern = Literal[
     "NEMA 23",
     "NEMA 34",
     "NEMA 42",
+    # Plain NEMA fractional / T-frame (foot-mount) designators — the
+    # 2026-07-25 mount-extraction audit found 2,000+ industrial AC
+    # motors (Marathon, Elektrim, Baldor, US Motors) whose frame_size
+    # is a bare T-frame with no C-face. Distinct from the TC entries
+    # below: T = foot mount, TC = C-face flange.
+    "NEMA 48",
+    "NEMA 56",
+    "NEMA 143T",
+    "NEMA 145T",
+    "NEMA 182T",
+    "NEMA 184T",
+    "NEMA 213T",
+    "NEMA 215T",
+    "NEMA 254T",
+    "NEMA 256T",
+    "NEMA 284T",
+    "NEMA 286T",
+    "NEMA 324T",
+    "NEMA 326T",
+    "NEMA 364T",
+    "NEMA 365T",
     # NEMA C-face induction-motor frames — surfaced by the Stober MGS
     # and Sumitomo Cyclo 6000 gear-unit catalogs (2026-07-25), which
     # spec input compatibility by C-face frame, not step-motor size.
@@ -88,6 +109,20 @@ MotorMountPattern = Literal[
     "MAX 30",
     "MAX 35",
     "MAX 40",
+    # Metric square servo flanges ("60 mm sq." in Panasonic / Sanyo
+    # Denki / Oriental Motor catalogs). Sizes are the flange edge in
+    # mm — not IEC shaft heights, hence the separate SQ family.
+    "SQ 20",
+    "SQ 28",
+    "SQ 40",
+    "SQ 42",
+    "SQ 60",
+    "SQ 80",
+    "SQ 86",
+    "SQ 90",
+    "SQ 110",
+    "SQ 130",
+    "SQ 180",
     "custom",
 ]
 
@@ -761,3 +796,56 @@ def find_min_max_unit_marker(metadata) -> Optional[MinMaxUnitMarker]:
         if isinstance(m, MinMaxUnitMarker):
             return m
     return None
+
+
+# ---------------------------------------------------------------------------
+# Motor mounting-flange geometry — read off a mechanical/dimensional
+# drawing rather than a spec table, hence a separate extraction pass
+# (specodex/mounting/extract.py) from the main product pipeline. Exists
+# to make motor<->gearhead fit-checking explicit instead of relying on
+# `motor_mount_pattern` string equality alone (see relations.py
+# `mounting_conflicts`).
+# ---------------------------------------------------------------------------
+
+MountingStandard = Literal["NEMA", "IEC", "JIS", "DIN", "proprietary"]
+
+# Enumerated rather than free text so downstream compatibility checks can
+# do exact matching instead of parsing vendor prose. "none" is a real,
+# distinct value (a plain/smooth shaft) — not the same as "unknown"
+# (unknown stays None at the field level).
+ShaftModification = Literal[
+    "none",
+    "keyway",
+    "double_keyway",
+    "flat",
+    "double_flat",
+    "splined",
+    "tapped_hole",
+    "tapered",
+    "other",
+]
+
+
+class FlangeMountingDimensions(BaseModel):
+    """Motor-mount flange geometry: bolt pattern + pilot/register fit.
+
+    Shared shape between a motor's own mounting face (``Motor.mounting_flange``)
+    and a gearhead's input flange (``Gearhead.input_mounting_flange``) so the
+    two can be compared field-for-field.
+    """
+
+    model_config = {"populate_by_name": True}
+
+    # Length family — a Gemini empty-object stub ({}) degrades to None
+    # instead of raising and killing the whole row (same failure mode
+    # LenientValueUnit exists for; Length gets it "for free" via the
+    # typed-alias BeforeValidator, plus a length-unit family check).
+    # Bolt circle diameter (a.k.a. PCD) — the circle the mounting bolts sit on.
+    bolt_circle_diameter: Length = None
+    # Thru-hole clearance diameter for the mounting bolts (not thread size).
+    bolt_hole_diameter: Length = None
+    bolt_hole_count: Optional[int] = None
+    # Register/spigot diameter that centers the two flanges on each other.
+    pilot_diameter: Length = None
+    pilot_depth: Length = None
+    mounting_standard: Optional[MountingStandard] = None

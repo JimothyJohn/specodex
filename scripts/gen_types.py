@@ -176,6 +176,54 @@ def _backend_constants_module() -> str:
     )
 
 
+def _unwrap_multiline_unions(source: str) -> str:
+    """Collapse prettier-wrapped union types back onto one line.
+
+    ``npx --yes json-schema-to-typescript`` resolves whatever version the
+    local npx cache holds; version skew flips prettier's wrap *threshold*
+    on borderline-length union types (e.g.
+    ``Manufacturer.offered_product_types``), producing wrap-only
+    ``generated.ts`` diffs that fail CI's ``test-codegen`` drift gate with
+    no semantic change. Rather than guess which lines any given prettier
+    would wrap, canonicalise to the fully-unwrapped form: join every
+    continuation shape prettier emits when wrapping a type — leading-``|``
+    member lines, the ``)`` / ``)[]`` group closers, and the break-after-
+    colon form where the whole type moves to the next line with no pipe
+    (CI's prettier emits that one for ``Manufacturer.offered_product_types``)
+    — back onto the line that opened them. The canonical form is then
+    independent of prettier's wrap decisions entirely. Idempotent: input
+    with no continuation lines passes through byte-identical.
+    """
+    out: list[str] = []
+    for raw in source.split("\n"):
+        stripped = raw.lstrip()
+        prev = out[-1].rstrip() if out else ""
+        prev_is_code = bool(prev) and not prev.lstrip().startswith(("*", "/"))
+        if not out or not stripped or stripped.startswith(("*", "/")):
+            # Blank lines and comment lines (JSDoc bodies can end in ':')
+            # are never join targets or join sources.
+            out.append(raw)
+        elif stripped[0] == ")":
+            # Group closer: rejoin flush against the last member.
+            out[-1] = prev + stripped
+        elif stripped[0] == "|":
+            member = stripped[1:].lstrip()
+            if prev.endswith((":", "=")):
+                # First wrapped member: unwrapped form has no leading pipe.
+                out[-1] = prev + " " + member
+            elif prev.endswith("("):
+                # First member inside a paren group: no pipe, no space.
+                out[-1] = prev + member
+            else:
+                out[-1] = prev + " " + stripped
+        elif prev_is_code and prev.endswith((":", "=")):
+            # Break-after-colon: the whole type on its own line, no pipe.
+            out[-1] = prev + " " + stripped
+        else:
+            out.append(raw)
+    return "\n".join(out)
+
+
 def main() -> int:
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT_BACKEND_CONSTANTS.parent.mkdir(parents=True, exist_ok=True)
@@ -209,7 +257,7 @@ def main() -> int:
     # itself, and the Phase 0a-ii rewire needs it generated, not hand-typed.
     OUTPUT.write_text(
         banner
-        + OUTPUT.read_text()
+        + _unwrap_multiline_unions(OUTPUT.read_text())
         + "\n"
         + _product_types_constant()
         + _product_union_type()

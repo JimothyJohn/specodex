@@ -389,3 +389,116 @@ def compatible_gearheads(
             continue
         out.append(g)
     return out
+
+
+def _fmt(v: Optional[ValueUnit]) -> str:
+    if v is None or v.value is None:
+        return "?"
+    return f"{v.value:g} {v.unit}" if v.unit else f"{v.value:g}"
+
+
+def _length_mismatch(
+    a: Optional[ValueUnit], b: Optional[ValueUnit], tolerance: float = 0.1
+) -> bool:
+    """True only when both sides are known, same unit, and differ by more
+    than `tolerance` (catalog-rounding grace, same as `_shaft_compatible`).
+    Missing data or a unit mismatch is NOT a claimed conflict — this
+    module's exclude-on-missing rule applies to what gets reported, too.
+    """
+    if a is None or b is None:
+        return False
+    if a.value is None or b.value is None:
+        return False
+    if a.unit is None or b.unit is None or a.unit != b.unit:
+        return False
+    return abs(a.value - b.value) > tolerance
+
+
+def mounting_conflicts(motor: Motor, gearhead: Gearhead) -> List[str]:
+    """Human-readable mounting-geometry mismatches between a motor and a
+    gearhead's input flange.
+
+    Unlike `compatible_gearheads` (which filters silently), this reports
+    WHY two specific parts don't fit — intended for a build/BOM UI
+    surfacing explicit conflict reasons (see `todo/BUILD.md` Part 4's
+    planned `_warnings` response field; not wired to the relations API
+    yet — that's Build's job). Each string names the dimension and both
+    sides' values, matching the style already used client-side in
+    `app/frontend/src/utils/compat.ts`'s `detail` strings.
+
+    Only compares a dimension when BOTH sides have it — missing data is
+    never reported as a conflict, per this module's exclude-on-missing
+    philosophy. An empty return means "no *known* conflict", which may
+    mean compatible OR insufficient data; callers needing to
+    distinguish those should check the relevant fields directly.
+
+    Deliberately NOT checked (schema doesn't support it yet):
+    - `shaft_length` vs. anything on Gearhead — `Gearhead` has no field
+      for input-coupling engagement depth. `input_mounting_flange.
+      pilot_depth` is a different physical dimension (flange register
+      depth, for centering) and comparing shaft length against it would
+      be a category error, not an approximation.
+    - `shaft_modification` — `Gearhead` has no "required shaft
+      modification" field to compare against.
+    """
+    conflicts: List[str] = []
+
+    if motor.shaft_diameter is not None and gearhead.input_shaft_diameter is not None:
+        if not _shaft_compatible(motor.shaft_diameter, gearhead.input_shaft_diameter):
+            conflicts.append(
+                f"shaft diameter: motor {_fmt(motor.shaft_diameter)} exceeds "
+                f"gearhead input bore {_fmt(gearhead.input_shaft_diameter)}"
+            )
+
+    if (
+        motor.motor_mount_pattern is not None
+        and gearhead.input_motor_mount
+        and motor.motor_mount_pattern not in gearhead.input_motor_mount
+    ):
+        conflicts.append(
+            f"mount pattern: motor {motor.motor_mount_pattern!r} not in gearhead "
+            f"input_motor_mount {sorted(gearhead.input_motor_mount)}"
+        )
+
+    mf = motor.mounting_flange
+    gf = gearhead.input_mounting_flange
+    if mf is not None and gf is not None:
+        if (
+            mf.mounting_standard is not None
+            and gf.mounting_standard is not None
+            and mf.mounting_standard != gf.mounting_standard
+        ):
+            conflicts.append(
+                f"mounting standard: motor {mf.mounting_standard} vs gearhead "
+                f"input {gf.mounting_standard}"
+            )
+        if _length_mismatch(mf.bolt_circle_diameter, gf.bolt_circle_diameter):
+            conflicts.append(
+                f"bolt circle diameter: motor {_fmt(mf.bolt_circle_diameter)} vs "
+                f"gearhead input {_fmt(gf.bolt_circle_diameter)}"
+            )
+        if _length_mismatch(mf.bolt_hole_diameter, gf.bolt_hole_diameter):
+            conflicts.append(
+                f"bolt hole diameter: motor {_fmt(mf.bolt_hole_diameter)} vs "
+                f"gearhead input {_fmt(gf.bolt_hole_diameter)}"
+            )
+        if (
+            mf.bolt_hole_count is not None
+            and gf.bolt_hole_count is not None
+            and mf.bolt_hole_count != gf.bolt_hole_count
+        ):
+            conflicts.append(
+                f"bolt hole count: motor {mf.bolt_hole_count} vs gearhead input "
+                f"{gf.bolt_hole_count}"
+            )
+        # Register/spigot fit — treated as an equality check like bolt
+        # circle diameter. Vendors differ on which side is male/female,
+        # so this doesn't assume a shaft-into-bushing "motor <= bore"
+        # relationship the way `_shaft_compatible` does.
+        if _length_mismatch(mf.pilot_diameter, gf.pilot_diameter):
+            conflicts.append(
+                f"pilot diameter: motor {_fmt(mf.pilot_diameter)} vs gearhead "
+                f"input {_fmt(gf.pilot_diameter)}"
+            )
+
+    return conflicts

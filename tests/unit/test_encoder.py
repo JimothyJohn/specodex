@@ -260,3 +260,109 @@ class TestModelIntegration:
             encoder_feedback_support=["endat_2_2", "biss_c"],
         )
         assert d.encoder_feedback_support == ["endat_2_2", "biss_c"]
+
+
+@pytest.mark.unit
+class TestCoerceFieldbusList:
+    """fieldbus had no coercer — a legacy prod row with 'ModbusRTU'
+    (missing space) failed the whole Drive on readback (2026-07-25).
+
+    Normalization is spacing/case ONLY. Modbus RTU and Modbus TCP are
+    distinct fieldbuses — RTU is serial (RS-485/DB9), TCP is Ethernet
+    (RJ-45) — and must NEVER be merged, even though TCP is RTU's
+    modern successor.
+    """
+
+    def _drive(self, fieldbus):
+        return Drive(
+            product_name="D",
+            product_type="drive",
+            manufacturer="Acme",
+            fieldbus=fieldbus,
+        )
+
+    def test_modbus_rtu_spacing_variant_normalizes(self):
+        d = self._drive(["ModbusRTU"])
+        assert d.fieldbus == ["Modbus RTU"]
+
+    def test_rtu_never_becomes_tcp_and_vice_versa(self):
+        d = self._drive(["ModbusRTU", "ModbusTCP"])
+        assert d.fieldbus == ["Modbus RTU", "Modbus TCP"]
+
+    def test_case_and_separator_variants(self):
+        d = self._drive(
+            ["ethercat", "Ethernet/IP", "Profinet", "CClink IE", "modbus_rtu"]
+        )
+        assert d.fieldbus == [
+            "EtherCAT",
+            "EtherNet/IP",
+            "PROFINET",
+            "CC-Link IE",
+            "Modbus RTU",
+        ]
+
+    def test_canonical_values_pass_through(self):
+        d = self._drive(["Modbus RTU", "Sercos III"])
+        assert d.fieldbus == ["Modbus RTU", "Sercos III"]
+
+    def test_unrecognized_entry_dropped_not_fatal(self):
+        # No 'unknown' sentinel in CommunicationProtocol — drop the bad
+        # entry, keep the row and its recognizable neighbours.
+        d = self._drive(["EtherCAT", "wibble"])
+        assert d.fieldbus == ["EtherCAT"]
+
+    def test_all_unrecognized_collapses_to_none(self):
+        d = self._drive(["wibble"])
+        assert d.fieldbus is None
+
+    def test_none_passes_through(self):
+        assert self._drive(None).fieldbus is None
+
+    def test_empty_input_list_stays_empty(self):
+        # [] in -> [] out (test_resilience.py API contract); only a
+        # list whose entries all DROPPED collapses to None.
+        assert self._drive([]).fieldbus == []
+
+
+@pytest.mark.unit
+class TestResolutionCountsPerRev:
+    """Unified precision metric (2026-07-25): bits/PPR/lines are
+    incommensurable across encoder families; resolution_counts_per_rev
+    derives one comparable counts-per-rev number."""
+
+    def test_absolute_bits(self):
+        fb = EncoderFeedback(device="absolute_optical", bits_per_turn=17)
+        assert fb.resolution_counts_per_rev == 131072
+
+    def test_incremental_ppr(self):
+        fb = EncoderFeedback(device="incremental_optical", pulses_per_rev=2500)
+        assert fb.resolution_counts_per_rev == 2500
+
+    def test_sincos_lines(self):
+        fb = EncoderFeedback(device="sin_cos_analog", lines_per_rev=2048)
+        assert fb.resolution_counts_per_rev == 2048
+
+    def test_bits_take_precedence(self):
+        fb = EncoderFeedback(
+            device="absolute_optical", bits_per_turn=20, pulses_per_rev=2500
+        )
+        assert fb.resolution_counts_per_rev == 1048576
+
+    def test_none_when_no_resolution_field(self):
+        assert EncoderFeedback(device="resolver").resolution_counts_per_rev is None
+
+    def test_serializes_in_model_dump(self):
+        fb = EncoderFeedback(device="absolute_optical", bits_per_turn=17)
+        assert fb.model_dump()["resolution_counts_per_rev"] == 131072
+
+    def test_readback_ignores_stale_stored_copy(self):
+        # DynamoDB rows will carry the serialized value; readback must
+        # recompute from the raw fields, not trust the stored number.
+        fb = EncoderFeedback.model_validate(
+            {
+                "device": "absolute_optical",
+                "bits_per_turn": 20,
+                "resolution_counts_per_rev": 42,
+            }
+        )
+        assert fb.resolution_counts_per_rev == 1048576

@@ -371,6 +371,10 @@ export const getMotorAttributes = (): AttributeMetadata[] => [
   { key: 'rated_current', displayName: 'Rated Current', type: 'object', applicableTypes: ['motor'], nested: true, unit: 'A', defaultVisible: true },
   { key: 'rotor_inertia', displayName: 'Rotor Inertia', type: 'object', applicableTypes: ['motor'], nested: true, unit: 'kg·cm²', defaultVisible: true },
   { key: 'encoder_feedback_support', displayName: 'Encoder Feedback', type: 'string', applicableTypes: ['motor'] },
+  // Unified precision metric computed on EncoderFeedback (2^bits, PPR,
+  // or lines — see encoder.py). Numeric so the >10-distinct slider rule
+  // gives it the comparator UI.
+  { key: 'encoder_feedback_support.resolution_counts_per_rev', displayName: 'Encoder Resolution (counts/rev)', type: 'number', applicableTypes: ['motor'] },
   { key: 'poles', displayName: 'Poles', type: 'number', applicableTypes: ['motor'] },
   { key: 'peak_current', displayName: 'Peak Current', type: 'object', applicableTypes: ['motor'], nested: true, unit: 'A', defaultVisible: false },
   { key: 'voltage_constant', displayName: 'Voltage Constant', type: 'object', applicableTypes: ['motor'], nested: true, unit: 'V/krpm', defaultVisible: false },

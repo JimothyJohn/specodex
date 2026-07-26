@@ -58,7 +58,7 @@ class TestNormalizeFrameToMount:
             # Unrecognised vendor-specific encodings — per design,
             # these need a per-vendor lookup that's deliberately out
             # of MVP scope. Return None so they stay backfill-pending.
-            "60mm",
+            # ("60mm" moved to the recognised SQ family, 2026-07-25.)
             "60",
             "frame size 7",
             "1.5",
@@ -91,3 +91,55 @@ class TestNormalizeFrameToMount:
             assert once is not None
             twice = normalize_frame_to_mount(once)
             assert twice == once
+
+
+@pytest.mark.unit
+class TestNormalizeExtendedFamilies:
+    """2026-07-25 mount-extraction audit: 6,626 dev motors had a
+    frame_size the normalizer couldn't map. The dominant families are
+    bare NEMA T/TC/C designators (industrial AC motors) and metric
+    square servo flanges."""
+
+    @pytest.mark.parametrize(
+        "frame,expected",
+        [
+            # Bare T-frames (foot mount)
+            ("184T", "NEMA 184T"),
+            ("143T", "NEMA 143T"),
+            ("326T", "NEMA 326T"),
+            # C-face
+            ("56C", "NEMA 56C"),
+            ("145TC", "NEMA 145TC"),
+            # Special-shaft prefix
+            ("S56C", "NEMA 56C"),
+            # Dual designators map to the FIRST frame (shared face)
+            ("143/5T", "NEMA 143T"),
+            ("182/4T", "NEMA 182T"),
+            ("213/5T", "NEMA 213T"),
+            # Prefixed spellings with suffix survive
+            ("NEMA 184T", "NEMA 184T"),
+            ("NEMA 56C", "NEMA 56C"),
+            # Metric square flanges need an explicit mm marker
+            ("60 mm", "SQ 60"),
+            ("42mm", "SQ 42"),
+            ("80 mm sq. or less", "SQ 80"),
+            ("90 mm", "SQ 90"),
+        ],
+    )
+    def test_maps(self, frame, expected):
+        assert normalize_frame_to_mount(frame) == expected
+
+    @pytest.mark.parametrize(
+        "frame",
+        [
+            "56",  # bare number: NEMA-vs-IEC-vs-mm ambiguous
+            "80",
+            "355",
+            "42A",  # vendor codes are not mount patterns
+            "34B",
+            "56H",  # H-base is a distinct foot pattern; no entry
+            "999T",  # T-frame not in the literal
+        ],
+    )
+    def test_stays_unmapped(self, frame):
+        assert normalize_frame_to_mount(frame) is None
