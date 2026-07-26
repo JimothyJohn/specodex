@@ -98,17 +98,23 @@ build artifact. The check lives in the `test-codegen` job in
 `generated.ts` says so. If the generated TS is wrong, fix the Pydantic
 model and re-generate; never patch the TS.
 
-**Known trap: wrap-only formatting drift.** Local
-`json-schema-to-typescript` version skew can wrap long union types
+**Wrap-only formatting drift — FIXED (PR #367, 2026-07-26).** Local
+`json-schema-to-typescript` version skew used to wrap long union types
 differently than CI's regeneration (e.g. the
 `Manufacturer.offered_product_types` union), failing the
-`test-codegen` gate with a diff that contains no semantic change.
-When that happens, revert only the wrap-only hunk to CI's form (the
-`+` side of the gate's diff in the failed job log) and keep your real
-changes — do not commit the local wrapping, and do not chase it by
-reinstalling Node deps. The one exception to "don't hand-edit":
-matching CI's whitespace is fixing the artifact, not the types.
-Bit PRs #344-era work and again on PR #348 (2026-07-25).
+`test-codegen` gate with a diff that contained no semantic change
+(bit PRs #344-era, #348, and three CI runs on 2026-07-25).
+`scripts/gen_types.py:_unwrap_multiline_unions` now canonicalises the
+output to the fully-unwrapped form — every prettier continuation shape
+(leading-`|` members, `)` / `)[]` closers, break-after-colon) is joined
+back onto its opening line, so the committed artifact is independent of
+prettier's wrap decisions entirely.
+`tests/unit/test_gen_types_normalize.py` pins the committed
+`generated.ts` as a fixed point of the normalizer. If `test-codegen`
+ever fails with a whitespace-looking diff again, that's a NEW
+continuation shape the normalizer doesn't join yet — extend the
+normalizer (with a regression test pinning the shape), don't hand-edit
+the artifact.
 
 **Background and roadmap.** This is Phase 0 of the Python-backend
 migration plan in `todo/PYTHON_BACKEND.md`, which retires the hand-synced
