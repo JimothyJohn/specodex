@@ -309,3 +309,8 @@ class TestCoerceFieldbusList:
 
     def test_none_passes_through(self):
         assert self._drive(None).fieldbus is None
+
+    def test_empty_input_list_stays_empty(self):
+        # [] in -> [] out (test_resilience.py API contract); only a
+        # list whose entries all DROPPED collapses to None.
+        assert self._drive([]).fieldbus == []

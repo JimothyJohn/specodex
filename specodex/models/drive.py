@@ -49,10 +49,20 @@ def _coerce_fieldbus_list(v: Any) -> Any:
     Normalization is spacing/case ONLY: Modbus RTU (serial, RS-485)
     and Modbus TCP (Ethernet) are distinct fieldbuses and are never
     merged. Entries matching no canonical name are dropped (there is
-    no "unknown" sentinel in CommunicationProtocol); an emptied list
-    becomes None.
+    no "unknown" sentinel in CommunicationProtocol). A list whose
+    entries ALL dropped becomes None; an empty input list stays []
+    (pinned API contract — see test_resilience.py).
+
+    Supersedes the earlier strict-rejection stance in test_models.py
+    ("canonical enum values plus a data rewrite"): the data rewrite
+    never reached prod, and a rejected field makes the WHOLE row
+    unreadable — invisible to listings and product_exists. Coerce on
+    read, store canonical, like every other legacy-variant surface
+    (encoder protocols, ambient_temp, gearhead string fields).
     """
     if v is None or not isinstance(v, list):
+        return v
+    if not v:
         return v
     out: list[Any] = []
     for item in v:

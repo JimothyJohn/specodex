@@ -52,6 +52,9 @@ def test_never_raises_and_output_shape(v):
         # Pass-through is by identity — == would fail on NaN.
         assert out is v
         return
+    if v == []:
+        assert out == []  # empty-in/empty-out API contract
+        return
     assert out is None or (isinstance(out, list) and len(out) > 0)
     if isinstance(out, list):
         for item in out:
