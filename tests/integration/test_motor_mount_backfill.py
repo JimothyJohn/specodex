@@ -55,7 +55,7 @@ def _seed_motors(client: DynamoDBClient) -> list[Motor]:
     - 2 derivable (NEMA 17, NEMA 23)
     - 1 already-set (motor_mount_pattern present)
     - 1 no-frame-size
-    - 1 unmatched-frame ("60mm")
+    - 1 unmatched-frame ("42A" — vendor code; "60mm" maps to SQ 60 since 2026-07-25)
     """
     motors = [
         Motor(
@@ -91,7 +91,7 @@ def _seed_motors(client: DynamoDBClient) -> list[Motor]:
             product_name="Unknown-Frame",
             manufacturer="Acme",
             part_number="A5",
-            frame_size="60mm",
+            frame_size="42A",
         ),
     ]
     for m in motors:
