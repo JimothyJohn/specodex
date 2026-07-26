@@ -54,6 +54,27 @@ MotorMountPattern = Literal[
     "NEMA 23",
     "NEMA 34",
     "NEMA 42",
+    # Plain NEMA fractional / T-frame (foot-mount) designators — the
+    # 2026-07-25 mount-extraction audit found 2,000+ industrial AC
+    # motors (Marathon, Elektrim, Baldor, US Motors) whose frame_size
+    # is a bare T-frame with no C-face. Distinct from the TC entries
+    # below: T = foot mount, TC = C-face flange.
+    "NEMA 48",
+    "NEMA 56",
+    "NEMA 143T",
+    "NEMA 145T",
+    "NEMA 182T",
+    "NEMA 184T",
+    "NEMA 213T",
+    "NEMA 215T",
+    "NEMA 254T",
+    "NEMA 256T",
+    "NEMA 284T",
+    "NEMA 286T",
+    "NEMA 324T",
+    "NEMA 326T",
+    "NEMA 364T",
+    "NEMA 365T",
     # NEMA C-face induction-motor frames — surfaced by the Stober MGS
     # and Sumitomo Cyclo 6000 gear-unit catalogs (2026-07-25), which
     # spec input compatibility by C-face frame, not step-motor size.
@@ -88,6 +109,20 @@ MotorMountPattern = Literal[
     "MAX 30",
     "MAX 35",
     "MAX 40",
+    # Metric square servo flanges ("60 mm sq." in Panasonic / Sanyo
+    # Denki / Oriental Motor catalogs). Sizes are the flange edge in
+    # mm — not IEC shaft heights, hence the separate SQ family.
+    "SQ 20",
+    "SQ 28",
+    "SQ 40",
+    "SQ 42",
+    "SQ 60",
+    "SQ 80",
+    "SQ 86",
+    "SQ 90",
+    "SQ 110",
+    "SQ 130",
+    "SQ 180",
     "custom",
 ]
 
