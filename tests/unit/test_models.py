@@ -280,13 +280,15 @@ class TestDrive:
         )
         assert drive.fieldbus == ["Modbus RTU", "CANopen"]
 
-    def test_drive_fieldbus_non_canonical_spelling_still_rejected(self):
-        # "ModbusRTU" (no space) stays invalid on purpose — the fix is
-        # canonical enum values plus a data rewrite, not a spelling
-        # free-for-all. Gemini is constrained by response_schema, so
-        # only canonical spellings can enter going forward.
-        with pytest.raises(ValidationError):
-            Drive(product_name="Test", manufacturer=MFG, fieldbus=["ModbusRTU"])
+    def test_drive_fieldbus_non_canonical_spelling_coerces(self):
+        # SUPERSEDED 2026-07-25: this test previously pinned strict
+        # rejection ("canonical enum values plus a data rewrite, not a
+        # spelling free-for-all"). The data rewrite never reached prod
+        # and the rejected field made the whole row unreadable for
+        # months — invisible to listings and product_exists. Spacing
+        # variants now coerce on read (never RTU<->TCP; distinct buses).
+        drive = Drive(product_name="Test", manufacturer=MFG, fieldbus=["ModbusRTU"])
+        assert drive.fieldbus == ["Modbus RTU"]
 
 
 @pytest.mark.unit
