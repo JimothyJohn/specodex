@@ -177,8 +177,11 @@ class TestFindTriageCandidates:
         db.list.return_value = [motor]
         mock_dynamo.return_value = db
 
-        # Low threshold — should not flag
-        candidates = find_triage_candidates(threshold=0.1)
+        # Low threshold — should not flag. threshold=0.05 rather than 0.1:
+        # `total` (the score denominator) grows whenever Motor gains a new
+        # spec field, so a threshold pinned just above this fixture's score
+        # is a magic-number trap, not a real regression check.
+        candidates = find_triage_candidates(threshold=0.05)
         assert len(candidates) == 0
 
         # High threshold — should flag

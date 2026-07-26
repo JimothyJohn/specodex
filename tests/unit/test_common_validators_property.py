@@ -361,3 +361,75 @@ class TestTypedMinMaxUnitProperties:
             )
         if probe.force_range is not None:
             assert isinstance(probe.force_range, MinMaxUnit)
+
+
+class TestFlangeMountingDimensionsProperty:
+    """FlangeMountingDimensions' four numeric fields are all ``Length``
+    (the same ``_typed_value_unit`` alias fuzzed above) — the coercer
+    robustness is already covered by ``TestTypedValueUnitProperties``.
+    What's new here is the *composition*: garbage fed into every field
+    of the nested model at once (mirroring a fully-malformed Gemini
+    drawing-extraction payload) must never raise anything other than
+    Pydantic's own ``ValidationError`` — the Length fields degrade to
+    None, ``bolt_hole_count``/``mounting_standard`` either validate or
+    raise ValidationError like any plain-typed field.
+    """
+
+    @given(
+        bolt_circle_diameter=_ANY_VALUE,
+        bolt_hole_diameter=_ANY_VALUE,
+        bolt_hole_count=_ADVERSARIAL_PRIMITIVE,
+        pilot_diameter=_ANY_VALUE,
+        pilot_depth=_ANY_VALUE,
+        mounting_standard=_ADVERSARIAL_PRIMITIVE,
+    )
+    @settings(
+        max_examples=200,
+        deadline=None,
+        suppress_health_check=[HealthCheck.too_slow],
+    )
+    def test_never_raises_outside_validation_error(
+        self,
+        bolt_circle_diameter: Any,
+        bolt_hole_diameter: Any,
+        bolt_hole_count: Any,
+        pilot_diameter: Any,
+        pilot_depth: Any,
+        mounting_standard: Any,
+    ) -> None:
+        from pydantic import ValidationError
+
+        from specodex.models.common import FlangeMountingDimensions
+
+        try:
+            FlangeMountingDimensions(
+                bolt_circle_diameter=bolt_circle_diameter,
+                bolt_hole_diameter=bolt_hole_diameter,
+                bolt_hole_count=bolt_hole_count,
+                pilot_diameter=pilot_diameter,
+                pilot_depth=pilot_depth,
+                mounting_standard=mounting_standard,
+            )
+        except ValidationError:
+            pass
+        except Exception as exc:  # pragma: no cover
+            pytest.fail(
+                f"FlangeMountingDimensions raised {type(exc).__name__} "
+                f"instead of ValidationError: {exc!r}"
+            )
+
+    @given(v=_value_unit_ish_dict_strategy())
+    @settings(
+        max_examples=200,
+        deadline=None,
+        suppress_health_check=[HealthCheck.too_slow],
+    )
+    def test_length_fields_degrade_to_none_on_garbage_dicts(self, v: dict) -> None:
+        """value/unit-shaped garbage (wrong family, malformed value) never
+        raises — the Length alias's family check drops it to None, same
+        contract as every other Length-typed field on Motor/Gearhead."""
+        from specodex.models.common import FlangeMountingDimensions, ValueUnit
+
+        f = FlangeMountingDimensions(bolt_circle_diameter=v)
+        if f.bolt_circle_diameter is not None:
+            assert isinstance(f.bolt_circle_diameter, ValueUnit)

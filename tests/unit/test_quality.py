@@ -94,6 +94,15 @@ class TestScoreProduct:
             shaft_diameter="14;mm",
             frame_size="60",
             motor_mount_pattern="NEMA 23",
+            shaft_length="30;mm",
+            shaft_modification=["keyway"],
+            mounting_flange={
+                "bolt_circle_diameter": {"value": 63, "unit": "mm"},
+                "bolt_hole_diameter": {"value": 5.5, "unit": "mm"},
+                "bolt_hole_count": 4,
+                "pilot_diameter": {"value": 40, "unit": "mm"},
+                "mounting_standard": "NEMA",
+            },
             part_number="MTR-001",
             release_year=2024,
             weight="2.5;kg",
@@ -115,7 +124,10 @@ class TestScoreProduct:
             part_number="MTR-002",
         )
         score, filled, total, missing = score_product(motor)
-        assert 0.2 < score < 0.8
+        # Bound stays loose deliberately — `total` (the denominator) grows
+        # whenever Motor gains a new spec field, so a tight bound here is a
+        # magic-number trap disguised as a regression test.
+        assert 0.1 < score < 0.8
         assert "rated_voltage" not in missing
         assert "peak_torque" in missing
 

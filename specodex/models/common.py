@@ -796,3 +796,56 @@ def find_min_max_unit_marker(metadata) -> Optional[MinMaxUnitMarker]:
         if isinstance(m, MinMaxUnitMarker):
             return m
     return None
+
+
+# ---------------------------------------------------------------------------
+# Motor mounting-flange geometry — read off a mechanical/dimensional
+# drawing rather than a spec table, hence a separate extraction pass
+# (specodex/mounting/extract.py) from the main product pipeline. Exists
+# to make motor<->gearhead fit-checking explicit instead of relying on
+# `motor_mount_pattern` string equality alone (see relations.py
+# `mounting_conflicts`).
+# ---------------------------------------------------------------------------
+
+MountingStandard = Literal["NEMA", "IEC", "JIS", "DIN", "proprietary"]
+
+# Enumerated rather than free text so downstream compatibility checks can
+# do exact matching instead of parsing vendor prose. "none" is a real,
+# distinct value (a plain/smooth shaft) — not the same as "unknown"
+# (unknown stays None at the field level).
+ShaftModification = Literal[
+    "none",
+    "keyway",
+    "double_keyway",
+    "flat",
+    "double_flat",
+    "splined",
+    "tapped_hole",
+    "tapered",
+    "other",
+]
+
+
+class FlangeMountingDimensions(BaseModel):
+    """Motor-mount flange geometry: bolt pattern + pilot/register fit.
+
+    Shared shape between a motor's own mounting face (``Motor.mounting_flange``)
+    and a gearhead's input flange (``Gearhead.input_mounting_flange``) so the
+    two can be compared field-for-field.
+    """
+
+    model_config = {"populate_by_name": True}
+
+    # Length family — a Gemini empty-object stub ({}) degrades to None
+    # instead of raising and killing the whole row (same failure mode
+    # LenientValueUnit exists for; Length gets it "for free" via the
+    # typed-alias BeforeValidator, plus a length-unit family check).
+    # Bolt circle diameter (a.k.a. PCD) — the circle the mounting bolts sit on.
+    bolt_circle_diameter: Length = None
+    # Thru-hole clearance diameter for the mounting bolts (not thread size).
+    bolt_hole_diameter: Length = None
+    bolt_hole_count: Optional[int] = None
+    # Register/spigot diameter that centers the two flanges on each other.
+    pilot_diameter: Length = None
+    pilot_depth: Length = None
+    mounting_standard: Optional[MountingStandard] = None

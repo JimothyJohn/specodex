@@ -587,3 +587,87 @@ class TestLenientGenericAliases:
         assert m.f is not None
         assert m.f.min == 35.0
         assert m.f.max == 40.0
+
+
+class TestFlangeMountingDimensions:
+    """Motor/gearhead mounting-flange geometry read off dimensional drawings."""
+
+    def test_full_construction(self):
+        from specodex.models.common import FlangeMountingDimensions
+
+        f = FlangeMountingDimensions(
+            bolt_circle_diameter={"value": 63, "unit": "mm"},
+            bolt_hole_diameter={"value": 5.5, "unit": "mm"},
+            bolt_hole_count=4,
+            pilot_diameter={"value": 40, "unit": "mm"},
+            pilot_depth={"value": 3, "unit": "mm"},
+            mounting_standard="NEMA",
+        )
+        assert f.bolt_circle_diameter.value == 63.0
+        assert f.bolt_hole_diameter.unit == "mm"
+        assert f.bolt_hole_count == 4
+        assert f.pilot_diameter.value == 40.0
+        assert f.pilot_depth.value == 3.0
+        assert f.mounting_standard == "NEMA"
+
+    def test_all_fields_optional(self):
+        from specodex.models.common import FlangeMountingDimensions
+
+        f = FlangeMountingDimensions()
+        assert f.bolt_circle_diameter is None
+        assert f.mounting_standard is None
+
+    def test_rejects_unknown_mounting_standard(self):
+        from specodex.models.common import FlangeMountingDimensions
+
+        with pytest.raises(Exception):
+            FlangeMountingDimensions(mounting_standard="ANSI")
+
+    def test_motor_carries_shaft_length_and_modification(self):
+        from specodex.models.motor import Motor
+
+        m = Motor(
+            product_name="Test Motor",
+            manufacturer="Acme",
+            shaft_length={"value": 50, "unit": "mm"},
+            shaft_modification=["keyway", "flat"],
+            mounting_flange={
+                "bolt_circle_diameter": {"value": 63, "unit": "mm"},
+                "mounting_standard": "NEMA",
+            },
+        )
+        assert m.shaft_length.value == 50.0
+        assert m.shaft_modification == ["keyway", "flat"]
+        assert m.mounting_flange.bolt_circle_diameter.value == 63.0
+
+    def test_motor_shaft_modification_rejects_unknown_value(self):
+        from specodex.models.motor import Motor
+
+        with pytest.raises(Exception):
+            Motor(
+                product_name="Test Motor",
+                manufacturer="Acme",
+                shaft_modification=["welded"],
+            )
+
+    def test_gearhead_input_mounting_flange(self):
+        from specodex.models.gearhead import Gearhead
+
+        g = Gearhead(
+            product_name="Test Gearhead",
+            manufacturer="Acme",
+            input_mounting_flange={
+                "bolt_circle_diameter": {"value": 70, "unit": "mm"},
+                "bolt_hole_count": 4,
+            },
+        )
+        assert g.input_mounting_flange.bolt_circle_diameter.value == 70.0
+        assert g.input_mounting_flange.bolt_hole_count == 4
+
+    def test_motor_mounting_flange_defaults_to_none(self):
+        from specodex.models.motor import Motor
+
+        m = Motor(product_name="Test Motor", manufacturer="Acme")
+        assert m.mounting_flange is None
+        assert m.shaft_length is None
+        assert m.shaft_modification is None

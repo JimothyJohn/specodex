@@ -13,6 +13,7 @@ from typing import Any, List, Literal, Optional
 from pydantic import Field, model_validator
 
 from specodex.models.common import (
+    FlangeMountingDimensions,
     Force,
     Inertia,
     IpRating,
@@ -149,6 +150,14 @@ class Gearhead(ProductBase):
     output_motor_mount: Optional[MotorMountPattern] = Field(
         None,
         description="Output flange pattern (matches downstream device's input mount).",
+    )
+    # Dimensional-drawing geometry for the input flange — sourced from a
+    # separate extraction pass (specodex/mounting/extract.py), same shared
+    # shape as Motor.mounting_flange so the two compare field-for-field.
+    # See relations.py `mounting_conflicts`.
+    input_mounting_flange: Optional[FlangeMountingDimensions] = Field(
+        None,
+        description="Input flange bolt-circle/pilot geometry (from a dimensional drawing).",
     )
     max_radial_load: Force = Field(
         None, description="Maximum radial load (F2m) (e.g., in N)"

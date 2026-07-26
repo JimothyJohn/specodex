@@ -10,6 +10,7 @@
   "gear_ratio": null,
   "gear_type": "helical planetary",
   "input_motor_mount": null,
+  "input_mounting_flange": null,
   "input_shaft_diameter": null,
   "ip_rating": null,
   "lead_time": null,
