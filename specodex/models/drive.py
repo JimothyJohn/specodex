@@ -20,9 +20,51 @@ from specodex.models.common import (
     TemperatureRange,
     VoltageRange,
 )
-from specodex.models.communication_protocol import CommunicationProtocol
+from specodex.models.communication_protocol import (
+    COMMUNICATION_PROTOCOLS,
+    CommunicationProtocol,
+)
 from specodex.models.encoder import EncoderProtocol, coerce_protocol_string
 from specodex.models.product import ProductBase
+
+
+def _fieldbus_key(s: str) -> str:
+    """Spacing/case-insensitive comparison key for fieldbus names."""
+    return "".join(ch for ch in s.lower() if ch.isalnum() or ch == "/")
+
+
+_FIELDBUS_BY_KEY: dict[str, str] = {
+    _fieldbus_key(p): p for p in COMMUNICATION_PROTOCOLS
+}
+
+
+def _coerce_fieldbus_list(v: Any) -> Any:
+    """Normalize fieldbus spelling variants to canonical literals.
+
+    Legacy DB rows and LLM payloads emit spacing/case variants —
+    ``"ModbusRTU"``, ``"Profinet"``, ``"modbus_rtu"`` — and the bare
+    ``Literal`` rejected the whole Drive row over one of them
+    (surfaced by a 2026-07-25 prod readback failure).
+
+    Normalization is spacing/case ONLY: Modbus RTU (serial, RS-485)
+    and Modbus TCP (Ethernet) are distinct fieldbuses and are never
+    merged. Entries matching no canonical name are dropped (there is
+    no "unknown" sentinel in CommunicationProtocol); an emptied list
+    becomes None.
+    """
+    if v is None or not isinstance(v, list):
+        return v
+    out: list[Any] = []
+    for item in v:
+        if isinstance(item, str):
+            mapped = _FIELDBUS_BY_KEY.get(
+                _fieldbus_key(item.replace("_", " ").replace("-", " "))
+            )
+            if mapped is not None:
+                out.append(mapped)
+        else:
+            out.append(item)
+    return out or None
 
 
 def _coerce_protocol_list(v: Any) -> Any:
@@ -72,7 +114,9 @@ class Drive(ProductBase):
     peak_current: Current = None
     rated_power: Power = None
     switching_frequency: Optional[List[Frequency]] = None
-    fieldbus: Optional[List[CommunicationProtocol]] = None
+    fieldbus: Annotated[
+        Optional[List[CommunicationProtocol]], BeforeValidator(_coerce_fieldbus_list)
+    ] = None
     # control_modes: Optional[List[str]] = None
     # Drives accept a list of wire protocols. The compat layer
     # (`integration/compat.py:_compare_feedback`) checks membership

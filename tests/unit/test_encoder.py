@@ -260,3 +260,52 @@ class TestModelIntegration:
             encoder_feedback_support=["endat_2_2", "biss_c"],
         )
         assert d.encoder_feedback_support == ["endat_2_2", "biss_c"]
+
+
+@pytest.mark.unit
+class TestCoerceFieldbusList:
+    """fieldbus had no coercer — a legacy prod row with 'ModbusRTU'
+    (missing space) failed the whole Drive on readback (2026-07-25).
+
+    Normalization is spacing/case ONLY. Modbus RTU and Modbus TCP are
+    distinct fieldbuses — RTU is serial (RS-485/DB9), TCP is Ethernet
+    (RJ-45) — and must NEVER be merged, even though TCP is RTU's
+    modern successor.
+    """
+
+    def _drive(self, fieldbus):
+        return Drive(
+            product_name="D", product_type="drive", manufacturer="Acme",
+            fieldbus=fieldbus,
+        )
+
+    def test_modbus_rtu_spacing_variant_normalizes(self):
+        d = self._drive(["ModbusRTU"])
+        assert d.fieldbus == ["Modbus RTU"]
+
+    def test_rtu_never_becomes_tcp_and_vice_versa(self):
+        d = self._drive(["ModbusRTU", "ModbusTCP"])
+        assert d.fieldbus == ["Modbus RTU", "Modbus TCP"]
+
+    def test_case_and_separator_variants(self):
+        d = self._drive(["ethercat", "Ethernet/IP", "Profinet", "CClink IE", "modbus_rtu"])
+        assert d.fieldbus == [
+            "EtherCAT", "EtherNet/IP", "PROFINET", "CC-Link IE", "Modbus RTU",
+        ]
+
+    def test_canonical_values_pass_through(self):
+        d = self._drive(["Modbus RTU", "Sercos III"])
+        assert d.fieldbus == ["Modbus RTU", "Sercos III"]
+
+    def test_unrecognized_entry_dropped_not_fatal(self):
+        # No 'unknown' sentinel in CommunicationProtocol — drop the bad
+        # entry, keep the row and its recognizable neighbours.
+        d = self._drive(["EtherCAT", "wibble"])
+        assert d.fieldbus == ["EtherCAT"]
+
+    def test_all_unrecognized_collapses_to_none(self):
+        d = self._drive(["wibble"])
+        assert d.fieldbus is None
+
+    def test_none_passes_through(self):
+        assert self._drive(None).fieldbus is None
