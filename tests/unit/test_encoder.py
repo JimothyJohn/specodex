@@ -322,3 +322,47 @@ class TestCoerceFieldbusList:
         # [] in -> [] out (test_resilience.py API contract); only a
         # list whose entries all DROPPED collapses to None.
         assert self._drive([]).fieldbus == []
+
+
+@pytest.mark.unit
+class TestResolutionCountsPerRev:
+    """Unified precision metric (2026-07-25): bits/PPR/lines are
+    incommensurable across encoder families; resolution_counts_per_rev
+    derives one comparable counts-per-rev number."""
+
+    def test_absolute_bits(self):
+        fb = EncoderFeedback(device="absolute_optical", bits_per_turn=17)
+        assert fb.resolution_counts_per_rev == 131072
+
+    def test_incremental_ppr(self):
+        fb = EncoderFeedback(device="incremental_optical", pulses_per_rev=2500)
+        assert fb.resolution_counts_per_rev == 2500
+
+    def test_sincos_lines(self):
+        fb = EncoderFeedback(device="sin_cos_analog", lines_per_rev=2048)
+        assert fb.resolution_counts_per_rev == 2048
+
+    def test_bits_take_precedence(self):
+        fb = EncoderFeedback(
+            device="absolute_optical", bits_per_turn=20, pulses_per_rev=2500
+        )
+        assert fb.resolution_counts_per_rev == 1048576
+
+    def test_none_when_no_resolution_field(self):
+        assert EncoderFeedback(device="resolver").resolution_counts_per_rev is None
+
+    def test_serializes_in_model_dump(self):
+        fb = EncoderFeedback(device="absolute_optical", bits_per_turn=17)
+        assert fb.model_dump()["resolution_counts_per_rev"] == 131072
+
+    def test_readback_ignores_stale_stored_copy(self):
+        # DynamoDB rows will carry the serialized value; readback must
+        # recompute from the raw fields, not trust the stored number.
+        fb = EncoderFeedback.model_validate(
+            {
+                "device": "absolute_optical",
+                "bits_per_turn": 20,
+                "resolution_counts_per_rev": 42,
+            }
+        )
+        assert fb.resolution_counts_per_rev == 1048576

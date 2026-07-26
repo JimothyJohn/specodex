@@ -930,6 +930,25 @@ export interface EncoderFeedback {
    * Original catalog text. Populated by the back-compat shim when legacy free-text payloads are coerced; the verifier uses it to drive the primed second-pass extraction.
    */
   raw?: string | null;
+  /**
+   * Unified single-turn precision metric, in counts per revolution.
+   *
+   * The three raw resolution fields are incommensurable across
+   * encoder families (17 bits vs 2,500 PPR vs 2,048 lines), which
+   * made precision unfilterable as a spec. This derives one
+   * comparable number:
+   *
+   * - absolute: 2**bits_per_turn
+   * - incremental: pulses_per_rev (catalog value, pre-quadrature)
+   * - sin/cos analog: lines_per_rev (before interpolation — the
+   *   interpolated resolution depends on the drive's ADC, not the
+   *   encoder)
+   *
+   * Serialized by ``model_dump`` like a normal field, so it flows
+   * to DynamoDB, the API JSON, and generated.ts without a backfill;
+   * readback recomputes and ignores the stored copy.
+   */
+  resolution_counts_per_rev: number | null;
   [k: string]: unknown;
 }
 /**
@@ -1578,7 +1597,8 @@ export interface Manufacturer {
    * List of product types offered (e.g., 'motor', 'drive')
    */
   offered_product_types?:
-    ("motor" | "drive" | "gearhead" | "robot_arm" | "contactor" | "electric_cylinder" | "linear_actuator")[] | null;
+    | ("motor" | "drive" | "gearhead" | "robot_arm" | "contactor" | "electric_cylinder" | "linear_actuator")[]
+    | null;
 }
 /**
  * A Pydantic model representing the specifications of a motor.
