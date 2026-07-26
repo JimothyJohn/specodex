@@ -16,6 +16,7 @@ from specodex.models.gearhead import Gearhead
 from specodex.models.linear_actuator import LinearActuator
 from specodex.models.motor import Motor
 from specodex.relations import (
+    _length_mismatch,
     _range_within,
     _shaft_compatible,
     _value_gte,
@@ -24,6 +25,7 @@ from specodex.relations import (
     compatible_drives,
     compatible_gearheads,
     compatible_motors,
+    mounting_conflicts,
 )
 
 MFG = "TestVendor"
@@ -643,3 +645,229 @@ class TestCompatibleActuators:
         result = compatible_actuators([no_force], min_stroke_mm=200)
 
         assert [a.product_name for a in result] == ["no_force"]
+
+
+def _flange(**overrides) -> dict:
+    defaults = dict(
+        bolt_circle_diameter={"value": 63, "unit": "mm"},
+        bolt_hole_diameter={"value": 5.5, "unit": "mm"},
+        bolt_hole_count=4,
+        pilot_diameter={"value": 40, "unit": "mm"},
+        mounting_standard="NEMA",
+    )
+    defaults.update(overrides)
+    return defaults
+
+
+class TestLengthMismatch:
+    def test_both_missing_is_not_a_mismatch(self):
+        assert _length_mismatch(None, None) is False
+
+    def test_one_missing_is_not_a_mismatch(self):
+        v = {"value": 63, "unit": "mm"}
+        from specodex.models.common import ValueUnit
+
+        assert _length_mismatch(ValueUnit(**v), None) is False
+
+    def test_unit_mismatch_is_not_a_mismatch(self):
+        from specodex.models.common import ValueUnit
+
+        a = ValueUnit(value=63, unit="mm")
+        b = ValueUnit(value=63, unit="in")
+        assert _length_mismatch(a, b) is False
+
+    def test_within_tolerance_is_not_a_mismatch(self):
+        from specodex.models.common import ValueUnit
+
+        a = ValueUnit(value=63.0, unit="mm")
+        b = ValueUnit(value=63.05, unit="mm")
+        assert _length_mismatch(a, b) is False
+
+    def test_beyond_tolerance_is_a_mismatch(self):
+        from specodex.models.common import ValueUnit
+
+        a = ValueUnit(value=63.0, unit="mm")
+        b = ValueUnit(value=70.0, unit="mm")
+        assert _length_mismatch(a, b) is True
+
+
+class TestMountingConflicts:
+    """mounting_conflicts() — explicit motor<->gearhead flange fit-checking."""
+
+    def test_no_data_on_either_side_returns_empty(self):
+        motor = Motor(product_name="M", manufacturer=MFG)
+        gear = Gearhead(product_name="G", manufacturer=MFG)
+        assert mounting_conflicts(motor, gear) == []
+
+    def test_matching_flanges_report_no_conflicts(self):
+        motor = Motor(
+            product_name="M",
+            manufacturer=MFG,
+            shaft_diameter={"value": 14, "unit": "mm"},
+            motor_mount_pattern="NEMA 23",
+            mounting_flange=_flange(),
+        )
+        gear = Gearhead(
+            product_name="G",
+            manufacturer=MFG,
+            input_shaft_diameter={"value": 14, "unit": "mm"},
+            input_motor_mount=["NEMA 23"],
+            input_mounting_flange=_flange(),
+        )
+        assert mounting_conflicts(motor, gear) == []
+
+    def test_shaft_diameter_exceeds_bore_is_a_conflict(self):
+        motor = Motor(
+            product_name="M",
+            manufacturer=MFG,
+            shaft_diameter={"value": 15, "unit": "mm"},
+        )
+        gear = Gearhead(
+            product_name="G",
+            manufacturer=MFG,
+            input_shaft_diameter={"value": 14, "unit": "mm"},
+        )
+        conflicts = mounting_conflicts(motor, gear)
+        assert len(conflicts) == 1
+        assert "shaft diameter" in conflicts[0]
+        assert "15" in conflicts[0] and "14" in conflicts[0]
+
+    def test_shaft_diameter_within_rounding_grace_no_conflict(self):
+        motor = Motor(
+            product_name="M",
+            manufacturer=MFG,
+            shaft_diameter={"value": 14.05, "unit": "mm"},
+        )
+        gear = Gearhead(
+            product_name="G",
+            manufacturer=MFG,
+            input_shaft_diameter={"value": 14, "unit": "mm"},
+        )
+        assert mounting_conflicts(motor, gear) == []
+
+    def test_mount_pattern_contradiction_is_a_conflict(self):
+        motor = Motor(product_name="M", manufacturer=MFG, motor_mount_pattern="NEMA 17")
+        gear = Gearhead(
+            product_name="G", manufacturer=MFG, input_motor_mount=["NEMA 23"]
+        )
+        conflicts = mounting_conflicts(motor, gear)
+        assert any("mount pattern" in c for c in conflicts)
+
+    def test_mount_pattern_missing_on_gearhead_is_not_a_conflict(self):
+        # Mirrors compatible_gearheads' deliberate exception: most
+        # gearheads don't publish input_motor_mount.
+        motor = Motor(product_name="M", manufacturer=MFG, motor_mount_pattern="NEMA 17")
+        gear = Gearhead(product_name="G", manufacturer=MFG, input_motor_mount=None)
+        assert mounting_conflicts(motor, gear) == []
+
+    def test_bolt_circle_diameter_mismatch(self):
+        motor = Motor(
+            product_name="M",
+            manufacturer=MFG,
+            mounting_flange=_flange(bolt_circle_diameter={"value": 63, "unit": "mm"}),
+        )
+        gear = Gearhead(
+            product_name="G",
+            manufacturer=MFG,
+            input_mounting_flange=_flange(
+                bolt_circle_diameter={"value": 70, "unit": "mm"}
+            ),
+        )
+        conflicts = mounting_conflicts(motor, gear)
+        assert any("bolt circle diameter" in c for c in conflicts)
+
+    def test_bolt_hole_diameter_mismatch(self):
+        motor = Motor(
+            product_name="M",
+            manufacturer=MFG,
+            mounting_flange=_flange(bolt_hole_diameter={"value": 5.5, "unit": "mm"}),
+        )
+        gear = Gearhead(
+            product_name="G",
+            manufacturer=MFG,
+            input_mounting_flange=_flange(
+                bolt_hole_diameter={"value": 6.6, "unit": "mm"}
+            ),
+        )
+        conflicts = mounting_conflicts(motor, gear)
+        assert any("bolt hole diameter" in c for c in conflicts)
+
+    def test_bolt_hole_count_mismatch(self):
+        motor = Motor(
+            product_name="M",
+            manufacturer=MFG,
+            mounting_flange=_flange(bolt_hole_count=4),
+        )
+        gear = Gearhead(
+            product_name="G",
+            manufacturer=MFG,
+            input_mounting_flange=_flange(bolt_hole_count=6),
+        )
+        conflicts = mounting_conflicts(motor, gear)
+        assert any("bolt hole count" in c for c in conflicts)
+
+    def test_pilot_diameter_mismatch(self):
+        motor = Motor(
+            product_name="M",
+            manufacturer=MFG,
+            mounting_flange=_flange(pilot_diameter={"value": 40, "unit": "mm"}),
+        )
+        gear = Gearhead(
+            product_name="G",
+            manufacturer=MFG,
+            input_mounting_flange=_flange(pilot_diameter={"value": 45, "unit": "mm"}),
+        )
+        conflicts = mounting_conflicts(motor, gear)
+        assert any("pilot diameter" in c for c in conflicts)
+
+    def test_mounting_standard_mismatch(self):
+        motor = Motor(
+            product_name="M",
+            manufacturer=MFG,
+            mounting_flange=_flange(mounting_standard="NEMA"),
+        )
+        gear = Gearhead(
+            product_name="G",
+            manufacturer=MFG,
+            input_mounting_flange=_flange(mounting_standard="IEC"),
+        )
+        conflicts = mounting_conflicts(motor, gear)
+        assert any("mounting standard" in c for c in conflicts)
+
+    def test_missing_flange_on_one_side_reports_nothing_for_flange_dims(self):
+        motor = Motor(
+            product_name="M",
+            manufacturer=MFG,
+            mounting_flange=_flange(bolt_circle_diameter={"value": 999, "unit": "mm"}),
+        )
+        gear = Gearhead(product_name="G", manufacturer=MFG, input_mounting_flange=None)
+        assert mounting_conflicts(motor, gear) == []
+
+    def test_multiple_conflicts_all_reported(self):
+        motor = Motor(
+            product_name="M",
+            manufacturer=MFG,
+            shaft_diameter={"value": 20, "unit": "mm"},
+            motor_mount_pattern="NEMA 17",
+            mounting_flange=_flange(
+                bolt_circle_diameter={"value": 63, "unit": "mm"},
+                mounting_standard="NEMA",
+            ),
+        )
+        gear = Gearhead(
+            product_name="G",
+            manufacturer=MFG,
+            input_shaft_diameter={"value": 14, "unit": "mm"},
+            input_motor_mount=["NEMA 23"],
+            input_mounting_flange=_flange(
+                bolt_circle_diameter={"value": 70, "unit": "mm"},
+                mounting_standard="IEC",
+            ),
+        )
+        conflicts = mounting_conflicts(motor, gear)
+        assert len(conflicts) == 4
+        joined = " | ".join(conflicts)
+        assert "shaft diameter" in joined
+        assert "mount pattern" in joined
+        assert "bolt circle diameter" in joined
+        assert "mounting standard" in joined
