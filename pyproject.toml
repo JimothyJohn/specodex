@@ -46,7 +46,7 @@ dev = [
     # render todo/*.md into docs/roadmap/<slug>.html. Dev-only; never
     # imported at runtime by specodex/ or cli/.
     "markdown>=3.7",
-    "moto[dynamodb]>=5.2.1",
+    "moto[dynamodb]>=5.2.2",
     # Mutation testing — measures real assertion strength rather than
     # line coverage. Run as a periodic job (not a CI gate) until a
     # baseline mutation-catch rate is established.
