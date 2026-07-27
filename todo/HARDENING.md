@@ -138,7 +138,8 @@ All 16 `app/backend/tests/*.test.ts` files do `jest.mock('../src/db/dynamodb')`.
 - ✅ `routes.test.ts` migration to real-DAL — shipped 2026-06-10 (`tests/integration/routes.real-dal.test.ts`: aggregation/CRUD/dedupe/datasheet routes end-to-end). Error-injection cases (DB throws → 500) deliberately stay in the mocked sibling.
 - ✅ The contract round-trip test (step 4) — same PR: fully-structured Motor (ValueUnit fields, explicit nulls) survives POST → DynamoDB → GET without coercion, typed against `generated.ts`'s `Motor`.
 - ✅ Latent race fixed in the same PR: all integration suites share the one `specodex-test` table and truncate in beforeEach; parallel jest workers raced each other's seeds once a third suite existed. `maxWorkers: 1` in `jest.integration.config.js`.
-- The remaining 13 mocked tests (step 5). Each migration is mechanical given the foundation, but each test needs its own seed/cleanup so the diff is non-trivial — better split across PRs.
+- ✅ `search.attribute-safety.test.ts` migration to real-DAL — shipped 2026-07-27 (`tests/integration/search.attribute-safety.real-dal.test.ts`). Adds one new assertion the mocked sibling could not verify: DB-round-tripped Products from `db.list()` carry no reserved-word own properties (so `getProductField` reserved-word lookups still evaluate to `undefined`, not to a stray own-property collision).
+- The remaining mocked tests (step 5). Each migration is mechanical given the foundation, but each test needs its own seed/cleanup so the diff is non-trivial — better split across PRs.
 - Wire `verify --integration` into the `Test Backend` CI job (currently runs unit only via plain `verify --only backend`). One-line workflow change; needs draft PR.
 
 ### 2.3 IDOR + cross-tenant auth tests (M, P1)
