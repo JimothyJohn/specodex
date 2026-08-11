@@ -55,10 +55,15 @@ export class FrontendStack extends cdk.Stack {
       : undefined;
 
     // Edge WAF (Phase 5b). Rate limits + AWS managed common rules.
-    // Opt-out via WAF_ENABLED=false on the deploy environment if a
-    // rule unexpectedly blocks legitimate traffic — the absence of
-    // a WAF is the previous behavior.
-    const wafEnabled = (process.env.WAF_ENABLED ?? 'true').toLowerCase() !== 'false';
+    // Prod-only by default: WAF standing fees are ~$8/mo per stage
+    // ($5 ACL + $1/rule) regardless of traffic, and dev/staging see a
+    // few hundred requests a day (2026-08 cost audit). WAF_ENABLED
+    // overrides in both directions — false is the break-glass switch
+    // if a rule blocks legitimate prod traffic, true restores the old
+    // WAF-on-every-stage behavior.
+    const wafEnabled = process.env.WAF_ENABLED
+      ? process.env.WAF_ENABLED.toLowerCase() !== 'false'
+      : config.stage === 'prod';
     const siteWebAcl = wafEnabled
       ? new SiteWebAcl(this, 'EdgeAcl', {
           stage: config.stage,
