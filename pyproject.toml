@@ -63,6 +63,13 @@ dev = [
     "ruff>=0.16.1",
 ]
 
+[tool.ruff.lint]
+# ruff>=0.16 dropped the implicit default rule selection (E4, E7, E9, F)
+# when no [tool.ruff.lint] table is present, and lints with the full
+# rule set instead. Pin the previous default explicitly so upgrading
+# ruff doesn't silently change which rules gate CI.
+select = ["E4", "E7", "E9", "F"]
+
 [tool.setuptools]
 packages = ["specodex", "cli"]
 
