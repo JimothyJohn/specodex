@@ -19,7 +19,10 @@ module.exports = {
   roots: ['<rootDir>/tests/integration'],
   testMatch: ['**/?(*.)+(spec|test).ts'],
   transform: {
-    '^.+\\.ts$': ['ts-jest', { isolatedModules: true }],
+    // See jest.config.js for why the compiler is pinned to
+    // @typescript/typescript6 (TS7's native "typescript" package doesn't
+    // expose the Program API ts-jest needs).
+    '^.+\\.ts$': ['ts-jest', { isolatedModules: true, compiler: '@typescript/typescript6' }],
   },
   moduleFileExtensions: ['ts', 'js', 'json', 'node'],
   // AWS SDK v3 uses lazy submodule imports under @smithy/* that jest
