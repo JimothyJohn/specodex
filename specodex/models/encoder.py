@@ -31,7 +31,7 @@ from __future__ import annotations
 import re
 from typing import Any, ClassVar, Literal, Optional, get_args
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, computed_field, model_validator
 
 
 # ---------------------------------------------------------------------------
@@ -349,6 +349,34 @@ class EncoderFeedback(BaseModel):
             "uses it to drive the primed second-pass extraction."
         ),
     )
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def resolution_counts_per_rev(self) -> Optional[int]:
+        """Unified single-turn precision metric, in counts per revolution.
+
+        The three raw resolution fields are incommensurable across
+        encoder families (17 bits vs 2,500 PPR vs 2,048 lines), which
+        made precision unfilterable as a spec. This derives one
+        comparable number:
+
+        - absolute: 2**bits_per_turn
+        - incremental: pulses_per_rev (catalog value, pre-quadrature)
+        - sin/cos analog: lines_per_rev (before interpolation — the
+          interpolated resolution depends on the drive's ADC, not the
+          encoder)
+
+        Serialized by ``model_dump`` like a normal field, so it flows
+        to DynamoDB, the API JSON, and generated.ts without a backfill;
+        readback recomputes and ignores the stored copy.
+        """
+        if self.bits_per_turn is not None:
+            return 2**self.bits_per_turn
+        if self.pulses_per_rev is not None:
+            return self.pulses_per_rev
+        if self.lines_per_rev is not None:
+            return self.lines_per_rev
+        return None
 
     # Class-level lookup tables exposed for tests + the verifier prompt.
     PROTOCOL_SYNONYMS: ClassVar[tuple[tuple[str, str], ...]] = _PROTOCOL_SYNONYMS

@@ -51,16 +51,47 @@ def normalize_frame_to_mount(frame: Optional[str]) -> Optional[str]:
 
     upper = raw.upper()
 
-    # NEMA / IEC / MAX prefixes — extract trailing digits.
+    # NEMA / IEC / MAX prefixes — extract trailing digits (plus the
+    # T/TC/C suffix families below when present).
     for prefix in ("NEMA", "IEC", "MAX"):
         if upper.startswith(prefix):
-            digits = re.sub(r"\D", "", upper)
-            if not digits:
-                continue
-            candidate = f"{prefix} {digits}"
-            if candidate in _VALID_PATTERNS:
-                return candidate
+            body = upper[len(prefix) :].strip()
+            m = re.fullmatch(r"(\d+)\s*(TC|T|C)?", body)
+            if m:
+                digits, suffix = m.group(1), m.group(2) or ""
+                candidate = f"{prefix} {digits}{suffix}"
+                if candidate in _VALID_PATTERNS:
+                    return candidate
+            digits = re.sub(r"\D", "", body)
+            if digits:
+                candidate = f"{prefix} {digits}"
+                if candidate in _VALID_PATTERNS:
+                    return candidate
             return None  # prefix matched but size unknown — skip, don't guess.
+
+    # Bare NEMA T-frame / TC / C-face designators, the dominant
+    # industrial-motor spellings (2026-07-25 audit): "184T", "145TC",
+    # "56C", special-shaft variants "S56C", and dual designators
+    # "143/5T" / "182/4T" (motor fits both; map to the FIRST — the
+    # mounting face is shared, only frame length differs).
+    m = re.fullmatch(r"S?(\d{2,3})(?:/\d)?\s*(TC|T|C)", upper)
+    if m:
+        candidate = f"NEMA {m.group(1)}{m.group(2)}"
+        if candidate in _VALID_PATTERNS:
+            return candidate
+        # "184TC" printed but only the T entry exists (or vice versa):
+        # don't cross-map — the C-face is a physical claim.
+        return None
+
+    # Metric square servo flanges: "60 mm", "42mm", "80 mm sq. or
+    # less", "60 mm sq.". Requires an explicit mm marker — a bare
+    # number ("56", "80") is ambiguous between NEMA fractional, IEC
+    # shaft height, and mm flange, so it stays unmapped.
+    m = re.match(r"(\d{2,3})\s*MM(?:\s+SQ\.?.*)?$", upper)
+    if m:
+        candidate = f"SQ {m.group(1)}"
+        if candidate in _VALID_PATTERNS:
+            return candidate
 
     return None
 

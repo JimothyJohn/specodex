@@ -360,6 +360,199 @@ def find_spec_pages_scored(
     return selected_pages, page_scores
 
 
+# ---------------------------------------------------------------------------
+# Dimensional-drawing page detection — mounting-flange geometry (bolt
+# circle diameter, pilot diameter, shaft length/modification, ...) lives
+# on mechanical/dimensional-drawing pages, not the spec-table pages
+# SPEC_KEYWORDS targets above. Free/no-API-call, same text-heuristic +
+# composite-score pattern as the spec-table finder. These are frequently
+# DIFFERENT pages than a product's already-cached spec pages, so callers
+# should re-scan the full PDF rather than filtering a prior page list.
+# See specodex/mounting/extract.py for the extraction pass that consumes
+# the page numbers these functions return.
+# ---------------------------------------------------------------------------
+
+DRAWING_KEYWORDS: list[list[str]] = [
+    [
+        "dimensional drawing",
+        "outline drawing",
+        "installation dimensions",
+        "external dimensions",
+        "mounting dimensions",
+    ],
+    [
+        "bolt circle",
+        "b.c.d",
+        "bcd",
+        "pcd",
+        "bolt hole circle",
+    ],
+    [
+        "keyway",
+        "shaft key",
+        "d-cut",
+        "shaft end",
+        "shaft extension",
+    ],
+    [
+        "pilot diameter",
+        "spigot",
+        "register diameter",
+        "rabbet",
+        "flange dimensions",
+    ],
+]
+DRAWING_KEYWORD_THRESHOLD = 2  # Must match at least 2 distinct groups
+
+_MIN_DRAWING_SCORE = 0.15
+
+
+def find_drawing_pages_by_text(pdf_bytes: bytes) -> list[int]:
+    """Find dimensional/mechanical-drawing pages using text search — free,
+    no API calls.
+
+    Mirrors `find_spec_pages_by_text` but targets the drawing-page
+    vocabulary in `DRAWING_KEYWORDS` instead of `SPEC_KEYWORDS`.
+
+    Returns 0-indexed page numbers. Falls back to empty list if
+    PyMuPDF is unavailable or the PDF has no extractable text.
+    """
+    try:
+        import fitz
+    except ImportError:
+        logger.warning("PyMuPDF not installed, skipping text-based drawing detection")
+        return []
+
+    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+    total_pages = len(doc)
+    drawing_pages: list[int] = []
+
+    for i in range(total_pages):
+        text = doc[i].get_text().lower()
+        if not text.strip():
+            continue
+        matches = sum(
+            1 for group in DRAWING_KEYWORDS if any(kw in text for kw in group)
+        )
+        if matches >= DRAWING_KEYWORD_THRESHOLD:
+            drawing_pages.append(i)  # 0-indexed
+
+    doc.close()
+    logger.info(
+        f"Text-based drawing detection: {len(drawing_pages)}/{total_pages} pages "
+        f"matched drawing keywords"
+    )
+    return drawing_pages
+
+
+def _score_drawing_page(text: str, drawings_count: int) -> dict:
+    """Score a single page for dimensional-drawing likelihood.
+
+    Mirrors `_score_page`'s composite-score shape but substitutes a
+    vector-path count (line art) for the table-cell signal: a
+    dimensional drawing is the near-opposite of a spec table — sparse
+    text, dense line art.
+    """
+    lines = [line for line in text.split("\n") if line.strip()]
+    n_lines = max(len(lines), 1)
+    text_lower = text.lower()
+
+    groups_matched = sum(
+        1 for group in DRAWING_KEYWORDS if any(kw in text_lower for kw in group)
+    )
+    keyword_hits = sum(
+        sum(1 for kw in group if kw in text_lower) for group in DRAWING_KEYWORDS
+    )
+
+    raw_density = keyword_hits / n_lines
+    if n_lines < _MIN_LINES_FOR_DENSITY:
+        raw_density *= n_lines / _MIN_LINES_FOR_DENSITY
+
+    group_coverage = groups_matched / len(DRAWING_KEYWORDS)
+    # Drawing-heavy pages carry many vector paths (line art) with very
+    # little text — the inverse of the table-cell signal used for
+    # spec pages.
+    vector_signal = min(drawings_count / 150.0, 1.0)
+
+    composite = (
+        min(raw_density / 0.08, 1.0) * 0.20
+        + group_coverage * 0.35
+        + vector_signal * 0.45
+    )
+
+    return {
+        "groups_matched": groups_matched,
+        "keyword_hits": keyword_hits,
+        "n_lines": n_lines,
+        "keyword_density": round(raw_density, 4),
+        "drawings_count": drawings_count,
+        "score": round(composite, 4),
+    }
+
+
+def find_drawing_pages_scored(
+    pdf_bytes: bytes,
+    max_pages: int | None = None,
+    min_score: float = _MIN_DRAWING_SCORE,
+) -> tuple[list[int], list[dict]]:
+    """Find dimensional-drawing pages using keyword + vector-path scoring.
+
+    Mirrors `find_spec_pages_scored`, substituting PyMuPDF's
+    `page.get_drawings()` path count for the table-cell signal. Unlike
+    the spec-table finder, a page with no extractable text is still
+    scored (on vector-path density alone) rather than zero-scored — a
+    drawing page can be little more than a title block and dimension
+    callouts rendered as vector paths.
+
+    Args:
+        pdf_bytes: Raw PDF bytes.
+        max_pages: Override the adaptive page cap. None = auto.
+        min_score: Minimum composite score to include a page.
+
+    Returns:
+        Tuple of (page_numbers 0-indexed sorted, page_details for all pages).
+    """
+    try:
+        import fitz
+    except ImportError:
+        logger.warning("PyMuPDF not installed, falling back to text-only heuristic")
+        pages = find_drawing_pages_by_text(pdf_bytes)
+        return pages, []
+
+    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+    total_pages = len(doc)
+
+    if max_pages is None:
+        max_pages = _MAX_PAGES_SMALL_DOC if total_pages <= 20 else _MAX_PAGES_LARGE_DOC
+
+    page_scores: list[dict] = []
+    for i in range(total_pages):
+        text = doc[i].get_text()
+        try:
+            drawings_count = len(doc[i].get_drawings())
+        except Exception:
+            drawings_count = 0
+        info = _score_drawing_page(text, drawings_count)
+        info["page"] = i
+        if not text.strip():
+            info["empty_text"] = True
+        page_scores.append(info)
+
+    doc.close()
+
+    candidates = [p for p in page_scores if p.get("score", 0) >= min_score]
+    candidates.sort(key=lambda p: -p["score"])
+    selected = candidates[:max_pages]
+    selected_pages = sorted(p["page"] for p in selected)
+
+    logger.info(
+        f"Scored drawing detection: {len(selected_pages)}/{total_pages} pages selected "
+        f"(cap={max_pages})"
+    )
+
+    return selected_pages, page_scores
+
+
 def pdf_pages_to_images(pdf_bytes: bytes, dpi: int = 100) -> List[bytes]:
     """Convert each page of a PDF to a JPEG image.
 

@@ -20,6 +20,13 @@ Usage:
                                   (try: ./Quickstart price-enrich --help)
     ./Quickstart price-book       Backfill MSRP from a public price book (XLSX/PDF)
                                   (try: ./Quickstart price-book --help)
+    ./Quickstart mounting-extract Extract motor mounting-flange dimensions
+                                  (bolt circle, pilot diameter, shaft length/
+                                  modification) from dimensional-drawing pages
+                                  and backfill onto existing Motor rows.
+                                  Dry-run default; --apply writes (dev/staging
+                                  only). See .claude/skills/mounting-dimension-extract.
+                                  (try: ./Quickstart mounting-extract --help)
     ./Quickstart price-infer      Deterministic price estimates from DB
                                   comparables (price-comps-v1: family ladder /
                                   KNN). --lead-times mode instead applies
@@ -1189,6 +1196,13 @@ def main() -> None:
     if len(sys.argv) >= 2 and sys.argv[1] == "price-book":
         run(
             ["uv", "run", "python", "-m", "cli.price_book", *sys.argv[2:]],
+            cwd=ROOT,
+        )
+        return
+
+    if len(sys.argv) >= 2 and sys.argv[1] == "mounting-extract":
+        run(
+            ["uv", "run", "python", "-m", "cli.mounting_extract", *sys.argv[2:]],
             cwd=ROOT,
         )
         return

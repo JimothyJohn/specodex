@@ -6,10 +6,11 @@
 # and provides a clear, maintainable structure for working with motor specifications.
 
 from __future__ import annotations
-from typing import Literal, Optional
+from typing import List, Literal, Optional
 
 from specodex.models.common import (
     Current,
+    FlangeMountingDimensions,
     ForceRange,
     Inductance,
     Inertia,
@@ -18,6 +19,7 @@ from specodex.models.common import (
     MotorMountPattern,
     Power,
     Resistance,
+    ShaftModification,
     Speed,
     Torque,
     VoltageRange,
@@ -77,3 +79,10 @@ class Motor(ProductBase):
     # SCHEMA.md Phase 2). New extractions populate this directly when the
     # LLM sees an unambiguous "NEMA 23" / "IEC 80" frame in the catalog.
     motor_mount_pattern: Optional[MotorMountPattern] = None
+    # Dimensional-drawing fields — sourced from a separate extraction pass
+    # (specodex/mounting/extract.py) over drawing pages, not the main spec-
+    # table pipeline. See relations.py `mounting_conflicts` for how these
+    # feed into explicit motor<->gearhead fit checks.
+    shaft_length: Length = None
+    shaft_modification: Optional[List[ShaftModification]] = None
+    mounting_flange: Optional[FlangeMountingDimensions] = None
