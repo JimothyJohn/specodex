@@ -199,6 +199,35 @@ class TestFindDrawingPagesScored:
         assert len(pages) <= _MAX_PAGES_LARGE_DOC
         assert len(details) == 25
 
+    def test_negative_max_pages_selects_nothing(self) -> None:
+        """A negative cap must not act as a Python negative slice.
+
+        Regression for the bug the property companion found: `selected =
+        candidates[:max_pages]` with `max_pages=-1` dropped the single
+        lowest-scoring candidate and kept the rest, so the "cap" flag
+        *expanded* the selection. Reachable from `./Quickstart
+        mounting-extract --max-pages -1` (argparse `type=int`, no lower
+        bound), where every extra page is another billed Gemini image
+        call.
+        """
+        import fitz
+
+        doc = fitz.open()
+        for _ in range(6):
+            page = doc.new_page()
+            page.insert_text((50, 72), _drawing_text(len(DRAWING_KEYWORDS)))
+            for i in range(150):
+                page.draw_rect(fitz.Rect(10 + i, 100 + i, 30 + i, 120 + i))
+        pdf = doc.tobytes()
+        doc.close()
+
+        # All six pages qualify when uncapped.
+        assert find_drawing_pages_scored(pdf)[0] == list(range(6))
+        # ...and any non-positive cap selects none of them.
+        assert find_drawing_pages_scored(pdf, max_pages=0)[0] == []
+        assert find_drawing_pages_scored(pdf, max_pages=-1)[0] == []
+        assert find_drawing_pages_scored(pdf, max_pages=-3)[0] == []
+
     def test_explicit_max_pages_overrides_adaptive(self) -> None:
         import fitz
 
