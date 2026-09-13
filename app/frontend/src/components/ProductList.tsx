@@ -902,6 +902,24 @@ export default function ProductList() {
                 </div>
               </div>
             )}
+            {/* Restore-hidden-column button — only rendered when
+                there's something to restore. Lives here, not at the end
+                of the header row, so it doesn't hang past the table. */}
+            {productType && hiddenColumnAttributes.length > 0 && (
+              <Tooltip content={`Add spec column (${hiddenColumnAttributes.length} available)`}>
+                <button
+                  type="button"
+                  ref={(el) => setAddColumnBtnRef(el)}
+                  className="add-column-btn"
+                  onClick={(e) => {
+                    setColumnSelectorCursor({ x: e.clientX, y: e.clientY });
+                    setShowSortSelector(true);
+                  }}
+                >
+                  + Add Spec
+                </button>
+              </Tooltip>
+            )}
             {filters.length > 0 && (
               <Tooltip content="Clear all filters and sorts">
                 <button
@@ -1023,13 +1041,14 @@ export default function ProductList() {
             <div className={`product-grid density-${rowDensity}`}>
             {/* Column headers */}
             <div className="product-grid-headers">
-              <Tooltip content="Click anywhere to sort • click again to reverse, again to clear">
               <div
                 className="product-grid-header-part clickable"
                 style={{ width: columnWidths['part_number'] ?? defaultPartWidth }}
                 onClick={() => handleColumnSort('part_number')}
               >
-                Part Number
+                <Tooltip content="Click anywhere to sort • click again to reverse, again to clear">
+                  <span className="product-grid-header-part-label">Part Number</span>
+                </Tooltip>
                 <span className="sort-indicator">
                   {sorts.find(s => s.attribute === 'part_number')?.direction === 'asc' && '↑'}
                   {sorts.find(s => s.attribute === 'part_number')?.direction === 'desc' && '↓'}
@@ -1039,7 +1058,6 @@ export default function ProductList() {
                 </span>
                 <div className="col-resize-handle" onMouseDown={(e) => startResize('part_number', e)} />
               </div>
-              </Tooltip>
               {/* Gear ratio (computed). Always visible on the motor view;
                   displays '—' for direct drive (gearMap unset or ratio 1).
                   Per-row value comes from gearMap; rated_torque and
@@ -1112,22 +1130,6 @@ export default function ProductList() {
                   );
                 });
               })()}
-              {/* Restore-hidden-column button — only rendered when
-                  there's something to restore. */}
-              {hiddenColumnAttributes.length > 0 && (
-                <Tooltip content={`Add spec column (${hiddenColumnAttributes.length} available)`}>
-                  <button
-                    ref={(el) => setAddColumnBtnRef(el)}
-                    className="add-column-btn"
-                    onClick={(e) => {
-                      setColumnSelectorCursor({ x: e.clientX, y: e.clientY });
-                      setShowSortSelector(true);
-                    }}
-                  >
-                    + Add Spec
-                  </button>
-                </Tooltip>
-              )}
             </div>
 
               {paginatedProducts.map((product) => (

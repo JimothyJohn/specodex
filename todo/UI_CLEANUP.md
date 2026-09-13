@@ -1,8 +1,9 @@
 # UI_CLEANUP — de-crowd and de-jank the catalog UI
 
 > **Status:** 🔴 needs sign-off. Audit done 2026-09-13 (headless Chromium
-> screenshots of local dev at 1440 / 1024 / 390 px, both themes). Phases 0–1
-> are unambiguous and can ship on autopilot; Phase 2 needs Nick to pick a
+> screenshots of local dev at 1440 / 1024 / 390 px, both themes).
+> **Phase 0 shipped 2026-09-13** in the same PR as this doc. Phase 1 is
+> unambiguous and can ship on autopilot; Phase 2 needs Nick to pick a
 > direction (see "Open question" at the bottom).
 >
 > Nick's brief, verbatim: "The interface needs a lot of work, it's very
@@ -30,8 +31,8 @@ Ranked by how much of the "crowded / janky" impression each one causes.
 |---|---|---|---|
 | B1 | Light theme: `FEEDBACK` and `SIGN IN` are near-invisible on the header band. The header stays dark in both themes but these two buttons colour with `--text-primary` (ink). | `components/ui/FeedbackModal.css:103`, `App.css:6303` | screenshot 06 |
 | B2 | Engineering-paper grid shows only as a ~50 px strip under the table. The body carries the grid, the table/toolbar are opaque, so the grid only peeks out below the last row and reads as a rendering glitch. | `App.css:5534` (body background stack) | 03, 06, 07, 09 |
-| B3 | Tooltip "Click anywhere to sort…" renders at the viewport top-left, overlapping the type dropdown, right after picking a product type. Anchor is the Part Number header; positioning falls back to (0,0)-ish. | `ProductList.tsx:1026`, `ui/Tooltip.tsx` | 03 |
-| B4 | 390 px: header overflows horizontally (SIGN IN clipped), `MANUFACTURE R` wraps mid-word, `28%` clips to `2°`, toolbar wraps to two rows. 1024 px: table is cut at the right edge with no scroll affordance. | header, `.column-header-label-text`, `.results-table-wrap` | 07, 08 |
+| B3 | Tooltip "Click anywhere to sort…" pops up over the type dropdown whenever the mouse rests anywhere on the Part Number header. Not a positioning bug: the tooltip was anchored to the whole 200 px-tall cell, so "above the anchor" is the toolbar. Fixed by anchoring it to the label text only. | `ProductList.tsx` Part Number header | 03 |
+| B4 | 390 px: header overflows horizontally (SIGN IN clipped), `MANUFACTURE R` wraps mid-word, `28%` clips to `2°`, toolbar wraps to two rows. 1024 px: table is cut at the right edge with no scroll affordance. **Phase 0 fixed only the header overflow** (GitHub icon hidden ≤ 480 px); the label wrap, `%` clip, and scroll affordance are mobile layout work → S3. | header, `.column-header-label-text`, `.results-table-wrap` | 07, 08 |
 | B5 | Manufacturer legend clips without ellipsis: `BODINE EL`, `MITSUBISI`. | ColumnHeader manufacturer legend | 03, 09 |
 | B6 | Drives: `+ Add Spec` hangs off the end of the header row outside the table's right border; table doesn't fill the content width. | `ProductList.tsx:1127` | 09 |
 
@@ -57,8 +58,14 @@ Ranked by how much of the "crowded / janky" impression each one causes.
 
 ## 2. Phases
 
-- **Phase 0 — bugs.** B1–B6. One PR each or grouped by file; vitest + the
-  existing screenshots as before/after. No design decision needed.
+- **Phase 0 — bugs.** B1–B6. ✅ Shipped 2026-09-13 (one PR with this
+  doc). B4 only partially — see the row. Side effect worth knowing: the
+  catalog page is now exactly viewport-height (`.page-products-layout`
+  = `100dvh - --header-h`, flex chain down to `.product-grid-scroll`),
+  so the body's engineering-paper grid never shows on the catalog at
+  all. It only ever showed as the 50 px strip, so nothing visible was
+  lost; if the grid is wanted back it belongs on the empty state, not
+  under the table.
 - **Phase 1 — noise.** N1–N7. Each is a one-file diff. Ship as 2–3 PRs.
 - **Phase 2 — header structure.** S1 + S2 after sign-off. Then S3.
 
