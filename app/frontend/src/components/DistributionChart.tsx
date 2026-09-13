@@ -399,7 +399,6 @@ export default function DistributionChart({
                       height: bin.count === 0 ? '0%' : `max(2px, ${pct}%)`,
                       backgroundColor: 'var(--accent-primary)',
                       opacity: bin.count === 0 ? 0 : 0.35 + 0.65 * (pct / 100),
-                      borderRadius: '1px',
                       transition: 'height 0.2s ease, opacity 0.2s ease',
                     }}
                   />
@@ -441,7 +440,6 @@ export default function DistributionChart({
                 flex: 1,
                 height: '5px',
                 backgroundColor: 'var(--bg-tertiary)',
-                borderRadius: '3px',
                 overflow: 'hidden'
               }}>
                 <div style={{
@@ -449,7 +447,6 @@ export default function DistributionChart({
                   height: '100%',
                   backgroundColor: outlined ? 'transparent' : color,
                   boxShadow: outlined ? `inset 0 0 0 1px ${color}` : undefined,
-                  borderRadius: '3px',
                   opacity: getOpacity(index, item.name),
                   transition: 'width 0.3s ease'
                 }} />
