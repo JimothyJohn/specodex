@@ -1,0 +1,86 @@
+# UI_CLEANUP — de-crowd and de-jank the catalog UI
+
+> **Status:** 🔴 needs sign-off. Audit done 2026-09-13 (headless Chromium
+> screenshots of local dev at 1440 / 1024 / 390 px, both themes). Phases 0–1
+> are unambiguous and can ship on autopilot; Phase 2 needs Nick to pick a
+> direction (see "Open question" at the bottom).
+>
+> Nick's brief, verbatim: "The interface needs a lot of work, it's very
+> crowded and janky looking."
+
+---
+
+## 0. Where the crowding actually comes from
+
+The Bauhaus port (todo/BAUHAUS.md, May 2026) got the *vocabulary* right —
+the detail modal is clean and is the reference surface. What's crowded is
+the catalog table header: every column permanently carries six controls
+(histogram, two-thumb slider, `any` pill, `≥` op toggle, unit toggle,
+close-X). At 10 default columns that is ~60 interactive elements in a
+210 px band above the first data row. Everything else on the list is
+smaller, but it all stacks on top of that.
+
+Ranked by how much of the "crowded / janky" impression each one causes.
+
+## 1. Findings
+
+### Bugs (Phase 0 — no design decision needed)
+
+| # | What | Where | Evidence |
+|---|---|---|---|
+| B1 | Light theme: `FEEDBACK` and `SIGN IN` are near-invisible on the header band. The header stays dark in both themes but these two buttons colour with `--text-primary` (ink). | `components/ui/FeedbackModal.css:103`, `App.css:6303` | screenshot 06 |
+| B2 | Engineering-paper grid shows only as a ~50 px strip under the table. The body carries the grid, the table/toolbar are opaque, so the grid only peeks out below the last row and reads as a rendering glitch. | `App.css:5534` (body background stack) | 03, 06, 07, 09 |
+| B3 | Tooltip "Click anywhere to sort…" renders at the viewport top-left, overlapping the type dropdown, right after picking a product type. Anchor is the Part Number header; positioning falls back to (0,0)-ish. | `ProductList.tsx:1026`, `ui/Tooltip.tsx` | 03 |
+| B4 | 390 px: header overflows horizontally (SIGN IN clipped), `MANUFACTURE R` wraps mid-word, `28%` clips to `2°`, toolbar wraps to two rows. 1024 px: table is cut at the right edge with no scroll affordance. | header, `.column-header-label-text`, `.results-table-wrap` | 07, 08 |
+| B5 | Manufacturer legend clips without ellipsis: `BODINE EL`, `MITSUBISI`. | ColumnHeader manufacturer legend | 03, 09 |
+| B6 | Drives: `+ Add Spec` hangs off the end of the header row outside the table's right border; table doesn't fill the content width. | `ProductList.tsx:1127` | 09 |
+
+### Noise (Phase 1 — small, low-risk, opinionated but safe)
+
+| # | What | Why it reads as crowded |
+|---|---|---|
+| N1 | Result count stated twice: `1-25 of 4265` (mono, left) and `4265 / 12936 MATCHING 33%` + bar (Oswald, right). Same fact, two type systems, plus a streaming "Loading records…" bar between toolbar and table while loading. | `ProductList.tsx:874-888` |
+| N2 | `GEAR (ratio)` column on motors shows `—` on every row until a torque filter exists. Always-empty column by default. | `ProductList.tsx:457` |
+| N3 | Dashed underline on every manufacturer cell (vendor-drawer affordance) = 25 dashed rules per page. Hover/focus-only is enough. | manufacturer cell CSS |
+| N4 | Header decoration with no function: `▸ ◂` glyphs flanking the wordmark, the `OPTIONS` eyebrow, GitHub button in primary nav position. | `App.tsx` header |
+| N5 | Ragged row heights when manufacturer wraps (`Mitsubishi Electric`, `Advanced Motion Controls`). One-line + ellipsis + Tooltip. | manufacturer cell |
+| N6 | Welcome page renders "T1 — Ratio Studies" logo explorations and a favicon strip below the hero — design scratch on the public landing. | `Welcome.tsx:180-207` |
+| N7 | Column tint on the gear-cascade key columns (Rated Torque / Rated Speed) is a full-height background band. A header-only marker would carry the same meaning. | ColumnHeader / ProductList |
+
+### Structure (Phase 2 — needs direction)
+
+| # | What |
+|---|---|
+| S1 | Per-column inline filter panel in the permanent header (the 210 px band). See open question. |
+| S2 | Sparse columns get the widest slots: Axial Load Force Rating is ~90% empty on motors and the widest column. Default column set should favour fill rate. |
+| S3 | Mobile layout has no real design; depends on S1. |
+
+## 2. Phases
+
+- **Phase 0 — bugs.** B1–B6. One PR each or grouped by file; vitest + the
+  existing screenshots as before/after. No design decision needed.
+- **Phase 1 — noise.** N1–N7. Each is a one-file diff. Ship as 2–3 PRs.
+- **Phase 2 — header structure.** S1 + S2 after sign-off. Then S3.
+
+Exit criteria for the whole doc: catalog header ≤ 56 px at rest, no
+duplicated count, no always-empty default column, both themes legible in
+the header, 390 px usable, no grid strip.
+
+## 3. Open question for Nick (S1)
+
+The header band is the crowding. Three ways to shrink it:
+
+- **A — popover per column (recommended).** Header = label + sort + a
+  hairline sparkline. Clicking the label opens the existing histogram /
+  slider / op / unit as a popover. Active filters render as chips in one
+  row above the table, reusing `FilterChip` / `MultiSelectFilterPopover`.
+  Keeps "filter in place", drops the header to ~48 px, all primitives
+  already exist.
+- **B — collapsed by default.** Keep the inline controls but show one
+  row at rest; a `FILTERS` toggle (or hover/focus) expands the band.
+  Least code change, least improvement.
+- **C — left rail.** The original Bauhaus mock's `aside.rail`. Plain
+  table headers, all filters in a 280 px rail. Biggest layout change;
+  costs horizontal room the wide tables already lack.
+
+Recommendation: **A**.
