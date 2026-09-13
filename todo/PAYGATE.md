@@ -81,7 +81,10 @@ fail-open).
 - **Rate-limit the free anonymous path** if programmatic users route
   around the paygate by simply not sending a key (the paygate charges
   key holders; it doesn't *force* keys). Product call, not a bug.
-- **Pre-existing bug (separate):** the Express `reportUsage` sends
-  `{user_id, tokens}` but the Lambda's `UsageRequest` wants
-  `{input_tokens, output_tokens}` — token metering silently no-ops
-  today. Out of scope here; flag for a token-metering fix.
+- ✅ **Pre-existing bug, fixed 2026-09-13:** the Express `reportUsage`
+  (and the FastAPI `report_usage`) sent `{user_id, tokens}` but the
+  Lambda's `UsageRequest` wants `{input_tokens, output_tokens}` —
+  token metering silently no-opped. Both clients now send the
+  `UsageRequest` shape and take `(input_tokens, output_tokens)`; the
+  Python test validates the captured payload against the real
+  `stripe_py` model. Neither function has a caller yet.
