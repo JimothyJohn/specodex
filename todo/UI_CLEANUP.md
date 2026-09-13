@@ -3,9 +3,9 @@
 > **Status:** 🚧 in progress. Audit done 2026-09-13 (headless Chromium
 > screenshots of local dev at 1440 / 1024 / 390 px, both themes).
 > **Phase 0 shipped 2026-09-13** in the same PR as this doc.
-> **Phase 1a (N1, N2, N3, N5, N7) shipped 2026-09-13.** Phase 1b (N4,
-> N6) next. **Phase 2 direction decided 2026-09-13: A — popover per
-> column** (see §3); S1 + S2 are the next structural PRs.
+> **Phase 1 shipped 2026-09-13** in two PRs (1a: N1, N2, N3, N5, N7 —
+> #415; 1b: N4, N6). **Phase 2 direction decided 2026-09-13: A —
+> popover per column** (see §3); S1 + S2 are the next structural PRs.
 >
 > Nick's brief, verbatim: "The interface needs a lot of work, it's very
 > crowded and janky looking."
@@ -44,9 +44,9 @@ Ranked by how much of the "crowded / janky" impression each one causes.
 | N1 | ✅ Result count stated twice: `1-25 of 4265` (mono, left) and `4265 / 12936 MATCHING 33%` + bar (Oswald, right). Same fact, two type systems. **Decision:** the Bauhaus match block stays; the mono count is gone. The streaming "Loading records…" bar is functional status, not a count — kept. | `ProductList.tsx` toolbar |
 | N2 | ✅ `GEAR (ratio)` column on motors shows `—` on every row until a torque filter exists. Always-empty column by default. **Decision:** column appears only once a torque floor is set (undoes the always-on choice from PR #201). | `ProductList.tsx` `showGearColumn` |
 | N3 | ✅ Dashed underline on every manufacturer cell (vendor-drawer affordance) = 25 dashed rules per page. Now hover/focus-only; the global `:where(button)` stamp shadow is also dropped on the link, it drew a faint box behind every name once the underline went. | `VendorDrawer.css` `.vendor-link` |
-| N4 | Header decoration with no function: `▸ ◂` glyphs flanking the wordmark, the `OPTIONS` eyebrow, GitHub button in primary nav position. | `App.tsx` header |
+| N4 | ✅ Header decoration with no function: `▸ ◂` glyphs flanking the wordmark, the `OPTIONS` eyebrow (and the hairline it anchored), GitHub button in primary nav position. **Decision:** all three go; the GitHub link now sits in the right-hand options cluster between the theme toggle and the account menu. | `App.tsx` header, `App.css` |
 | N5 | ✅ Ragged row heights when manufacturer wraps (`Mitsubishi Electric`, `Advanced Motion Controls`). One line + ellipsis; the existing "Vendor facts for …" Tooltip carries the full name. | `VendorDrawer.css` `.vendor-link` |
-| N6 | Welcome page renders "T1 — Ratio Studies" logo explorations and a favicon strip below the hero — design scratch on the public landing. | `Welcome.tsx:180-207` |
+| N6 | ✅ Welcome page rendered "T1 — Ratio Studies" logo explorations and a favicon strip below the hero — design scratch on the public landing. Section, data, and CSS deleted; recoverable via `git log -S T1_RATIO_STUDIES`. | `Welcome.tsx`, `Welcome.css` |
 | N7 | ✅ Column tint on the gear-cascade key columns (Rated Torque / Rated Speed) was a full-height background band. Root cause: `getProximityColor` painted the percentile gradient for any column with a filter *entry*, including the valueless seeded chips — so both columns were banded on every motor load with no filter set. Fixed by skipping valueless chips. The cascade meaning now lives in a header-only `GEARED` marker (`cascadeKey` prop on `ColumnHeader`) shown on torque/speed columns while a torque floor is active. | `ProductList.tsx` `getProximityColor`, `ColumnHeader.tsx` |
 
 ### Structure (Phase 2 — needs direction)
@@ -67,11 +67,8 @@ Ranked by how much of the "crowded / janky" impression each one causes.
   all. It only ever showed as the 50 px strip, so nothing visible was
   lost; if the grid is wanted back it belongs on the empty state, not
   under the table.
-- **Phase 1 — noise.** N1–N7. **1a (N1, N2, N3, N5, N7) ✅ shipped
-  2026-09-13.** 1b (N4, N6) follows in its own PR — decisions taken:
-  all three N4 decorations go (wordmark glyphs, `OPTIONS` eyebrow,
-  GitHub button leaves primary nav for the options cluster); N6 marks
-  section deleted from the public landing (recoverable from git).
+- **Phase 1 — noise.** N1–N7. ✅ Shipped 2026-09-13 in two PRs: 1a
+  (N1, N2, N3, N5, N7 — #415) and 1b (N4, N6).
 - **Phase 2 — header structure.** Direction **A (popover per column)**
   decided 2026-09-13. S1 + S2 next. Then S3.
 
