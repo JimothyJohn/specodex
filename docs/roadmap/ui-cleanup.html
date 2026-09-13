@@ -51,11 +51,12 @@
         <article class="doc-body">
 <h1 id="ui_cleanup-de-crowd-and-de-jank-the-catalog-ui">UI_CLEANUP — de-crowd and de-jank the catalog UI</h1>
 <blockquote>
-<p><strong>Status:</strong> 🔴 needs sign-off. Audit done 2026-09-13 (headless Chromium
+<p><strong>Status:</strong> 🚧 in progress. Audit done 2026-09-13 (headless Chromium
 screenshots of local dev at 1440 / 1024 / 390 px, both themes).
-<strong>Phase 0 shipped 2026-09-13</strong> in the same PR as this doc. Phase 1 is
-unambiguous and can ship on autopilot; Phase 2 needs Nick to pick a
-direction (see "Open question" at the bottom).</p>
+<strong>Phase 0 shipped 2026-09-13</strong> in the same PR as this doc.
+<strong>Phase 1a (N1, N2, N3, N5, N7) shipped 2026-09-13.</strong> Phase 1b (N4,
+N6) next. <strong>Phase 2 direction decided 2026-09-13: A — popover per
+column</strong> (see §3); S1 + S2 are the next structural PRs.</p>
 <p>Nick's brief, verbatim: "The interface needs a lot of work, it's very
 crowded and janky looking."</p>
 </blockquote>
@@ -131,18 +132,18 @@ smaller, but it all stacks on top of that.</p>
 <tbody>
 <tr>
 <td>N1</td>
-<td>Result count stated twice: <code>1-25 of 4265</code> (mono, left) and <code>4265 / 12936 MATCHING 33%</code> + bar (Oswald, right). Same fact, two type systems, plus a streaming "Loading records…" bar between toolbar and table while loading.</td>
-<td><code>ProductList.tsx:874-888</code></td>
+<td>✅ Result count stated twice: <code>1-25 of 4265</code> (mono, left) and <code>4265 / 12936 MATCHING 33%</code> + bar (Oswald, right). Same fact, two type systems. <strong>Decision:</strong> the Bauhaus match block stays; the mono count is gone. The streaming "Loading records…" bar is functional status, not a count — kept.</td>
+<td><code>ProductList.tsx</code> toolbar</td>
 </tr>
 <tr>
 <td>N2</td>
-<td><code>GEAR (ratio)</code> column on motors shows <code>—</code> on every row until a torque filter exists. Always-empty column by default.</td>
-<td><code>ProductList.tsx:457</code></td>
+<td>✅ <code>GEAR (ratio)</code> column on motors shows <code>—</code> on every row until a torque filter exists. Always-empty column by default. <strong>Decision:</strong> column appears only once a torque floor is set (undoes the always-on choice from PR #201).</td>
+<td><code>ProductList.tsx</code> <code>showGearColumn</code></td>
 </tr>
 <tr>
 <td>N3</td>
-<td>Dashed underline on every manufacturer cell (vendor-drawer affordance) = 25 dashed rules per page. Hover/focus-only is enough.</td>
-<td>manufacturer cell CSS</td>
+<td>✅ Dashed underline on every manufacturer cell (vendor-drawer affordance) = 25 dashed rules per page. Now hover/focus-only; the global <code>:where(button)</code> stamp shadow is also dropped on the link, it drew a faint box behind every name once the underline went.</td>
+<td><code>VendorDrawer.css</code> <code>.vendor-link</code></td>
 </tr>
 <tr>
 <td>N4</td>
@@ -151,8 +152,8 @@ smaller, but it all stacks on top of that.</p>
 </tr>
 <tr>
 <td>N5</td>
-<td>Ragged row heights when manufacturer wraps (<code>Mitsubishi Electric</code>, <code>Advanced Motion Controls</code>). One-line + ellipsis + Tooltip.</td>
-<td>manufacturer cell</td>
+<td>✅ Ragged row heights when manufacturer wraps (<code>Mitsubishi Electric</code>, <code>Advanced Motion Controls</code>). One line + ellipsis; the existing "Vendor facts for …" Tooltip carries the full name.</td>
+<td><code>VendorDrawer.css</code> <code>.vendor-link</code></td>
 </tr>
 <tr>
 <td>N6</td>
@@ -161,8 +162,8 @@ smaller, but it all stacks on top of that.</p>
 </tr>
 <tr>
 <td>N7</td>
-<td>Column tint on the gear-cascade key columns (Rated Torque / Rated Speed) is a full-height background band. A header-only marker would carry the same meaning.</td>
-<td>ColumnHeader / ProductList</td>
+<td>✅ Column tint on the gear-cascade key columns (Rated Torque / Rated Speed) was a full-height background band. Root cause: <code>getProximityColor</code> painted the percentile gradient for any column with a filter <em>entry</em>, including the valueless seeded chips — so both columns were banded on every motor load with no filter set. Fixed by skipping valueless chips. The cascade meaning now lives in a header-only <code>GEARED</code> marker (<code>cascadeKey</code> prop on <code>ColumnHeader</code>) shown on torque/speed columns while a torque floor is active.</td>
+<td><code>ProductList.tsx</code> <code>getProximityColor</code>, <code>ColumnHeader.tsx</code></td>
 </tr>
 </tbody>
 </table>
@@ -199,14 +200,20 @@ smaller, but it all stacks on top of that.</p>
   all. It only ever showed as the 50 px strip, so nothing visible was
   lost; if the grid is wanted back it belongs on the empty state, not
   under the table.</li>
-<li><strong>Phase 1 — noise.</strong> N1–N7. Each is a one-file diff. Ship as 2–3 PRs.</li>
-<li><strong>Phase 2 — header structure.</strong> S1 + S2 after sign-off. Then S3.</li>
+<li><strong>Phase 1 — noise.</strong> N1–N7. <strong>1a (N1, N2, N3, N5, N7) ✅ shipped
+  2026-09-13.</strong> 1b (N4, N6) follows in its own PR — decisions taken:
+  all three N4 decorations go (wordmark glyphs, <code>OPTIONS</code> eyebrow,
+  GitHub button leaves primary nav for the options cluster); N6 marks
+  section deleted from the public landing (recoverable from git).</li>
+<li><strong>Phase 2 — header structure.</strong> Direction <strong>A (popover per column)</strong>
+  decided 2026-09-13. S1 + S2 next. Then S3.</li>
 </ul>
 <p>Exit criteria for the whole doc: catalog header ≤ 56 px at rest, no
 duplicated count, no always-empty default column, both themes legible in
 the header, 390 px usable, no grid strip.</p>
-<h2 id="3-open-question-for-nick-s1">3. Open question for Nick (S1)</h2>
-<p>The header band is the crowding. Three ways to shrink it:</p>
+<h2 id="3-s1-direction-decided-2026-09-13-a-popover-per-column">3. S1 direction — decided 2026-09-13: <strong>A, popover per column</strong></h2>
+<p>The header band is the crowding. Three options were on the table;
+Nick picked A. Kept for the record:</p>
 <ul>
 <li><strong>A — popover per column (recommended).</strong> Header = label + sort + a
   hairline sparkline. Clicking the label opens the existing histogram /

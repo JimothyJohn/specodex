@@ -61,6 +61,11 @@ interface ColumnHeaderProps {
   sortConfig: SortConfig | null;
   sortIndex: number;
   totalSorts: number;
+  /** True while the parent's gear-ratio cascade is rescaling this
+   *  column's values (motor torque / speed under an active torque
+   *  filter). Renders a small "geared" marker under the label so the
+   *  displayed numbers are labelled as post-gear, not catalog. */
+  cascadeKey?: boolean;
   width: number;
   /** Effective unit system for this column. Per-column, not global —
    *  flipping one column doesn't drag its neighbors. */
@@ -110,6 +115,7 @@ const sniffUnit = (val: unknown): string | null => {
 function ColumnHeader({
   attribute,
   label,
+  cascadeKey = false,
   products,
   allProducts,
   filter,
@@ -557,6 +563,13 @@ function ColumnHeader({
           </button>
         </Tooltip>
         </div>
+        {cascadeKey && (
+          <div className="column-header-cascade-row">
+            <Tooltip content="Values shown are scaled by each row's gear ratio">
+              <span className="column-header-cascade">geared</span>
+            </Tooltip>
+          </div>
+        )}
 
         {hasControls && (
         <div className="compact-header-row compact-header-controls">
@@ -723,6 +736,13 @@ function ColumnHeader({
         </button>
         </Tooltip>
       </div>
+      {cascadeKey && (
+        <div className="column-header-cascade-row">
+          <Tooltip content="Values shown are scaled by each row's gear ratio">
+            <span className="column-header-cascade">geared</span>
+          </Tooltip>
+        </div>
+      )}
 
       {/* Histogram strip — anchored to allProducts for a stable x-range,
        * but the bar heights come from the filtered set so the user sees
@@ -980,6 +1000,7 @@ function arePropsEqual(
   if (prev.sortConfig !== next.sortConfig) return false;
   if (prev.sortIndex !== next.sortIndex) return false;
   if (prev.totalSorts !== next.totalSorts) return false;
+  if (prev.cascadeKey !== next.cascadeKey) return false;
   if (prev.width !== next.width) return false;
   if (prev.unitSystem !== next.unitSystem) return false;
 
