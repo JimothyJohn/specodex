@@ -11,7 +11,9 @@
 
     <!-- PWA: Make app installable on mobile devices -->
     <meta name="theme-color" content="#3b4a2a" />
-    <meta name="description" content="Specodex — a product selection frontend for industrial spec data. Filter chips, metric/imperial toggle, datasheet links, BOM-style export." />
+    <meta name="description" content="Specodex indexes industrial electromechanical specs — servo motors, drives, gearheads, contactors, electric cylinders, robot arms — across vendors. Filter by the number you need and go straight to the datasheet that produced it. No quote gates." />
+    <meta name="robots" content="index,follow" />
+    <link rel="canonical" href="https://www.specodex.com/" />
 
     <!-- iOS PWA: Enable standalone mode (hides Safari UI) -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -32,7 +34,50 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
 
-    <title>Specodex — Product selection</title>
+    <title>Specodex — Cross-vendor industrial spec database</title>
+
+    <!-- ===== SEO: social cards + structured data (todo/SEO.md Phase 0) =====
+         Homepage only. Per-product titles / cards / Product JSON-LD wait
+         on prerender (SEO Phase 1a/1d). og-default.png is a follow-up. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Specodex" />
+    <meta property="og:title" content="Specodex — Cross-vendor industrial spec database" />
+    <meta property="og:description" content="Servo motors, drives, gearheads, contactors and actuators indexed across vendors. Filter by the number you need, straight to the datasheet. No quote gates." />
+    <meta property="og:url" content="https://www.specodex.com/" />
+    <meta property="og:image" content="https://www.specodex.com/og-default.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:locale" content="en_US" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Specodex — Cross-vendor industrial spec database" />
+    <meta name="twitter:description" content="Servo motors, drives, gearheads, contactors and actuators indexed across vendors. Filter by the number you need, straight to the datasheet. No quote gates." />
+    <meta name="twitter:image" content="https://www.specodex.com/og-default.png" />
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebSite",
+          "@id": "https://www.specodex.com/#website",
+          "url": "https://www.specodex.com/",
+          "name": "Specodex",
+          "description": "Cross-vendor industrial electromechanical spec database",
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": { "@type": "EntryPoint", "urlTemplate": "https://www.specodex.com/?q={search_term_string}" },
+            "query-input": "required name=search_term_string"
+          }
+        },
+        {
+          "@type": "Organization",
+          "@id": "https://www.specodex.com/#organization",
+          "name": "Specodex",
+          "url": "https://www.specodex.com/",
+          "description": "A product selection frontend for industrial spec data."
+        }
+      ]
+    }
+    </script>
   </head>
   <body>
     <div id="root"></div>

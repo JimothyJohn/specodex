@@ -1,8 +1,9 @@
 # SEO plan: make Specodex the answer when an engineer searches a part number
 
-Status: 🚧 in progress. Phase 0 metadata foundation shipped 2026-04-28
+Status: 🚧 in progress. Phase 0 metadata foundation shipped 2026-09-13
 (robots.txt, static sitemap, OG/Twitter cards, JSON-LD `WebSite` +
-`Organization`, canonical URL). The structural lifts — SPA crawlability,
+`Organization`, canonical URL) — the 2026-04-28 entry below recorded the
+`index.html` half as shipped, but it never reached git (see that entry). The structural lifts — SPA crawlability,
 per-product titles/meta, dynamic sitemap, category/manufacturer/comparison
 pages, OG image generator — remain. The product *is* the SEO asset; every
 product row in DynamoDB is a long-tail landing page waiting to be rendered.
@@ -10,7 +11,31 @@ product row in DynamoDB is a long-tail landing page waiting to be rendered.
 This doc is the **how**. Audience and channels live in
 [MARKETING.md](MARKETING.md); the two are paired.
 
-## What's shipped (2026-04-28)
+## What's shipped
+
+### 2026-09-13 — `index.html` head actually landed; robots sitemap host fixed
+
+Audit found `app/frontend/index.html` at its REBRAND-era head (`f2e77cf`):
+no canonical, no OG/Twitter, no JSON-LD, old title, old description —
+the 2026-04-28 entry below described work that never reached the repo
+(`git log -S 'og:title' -- app/frontend/index.html` is empty at every
+ref; the live site served `<title>Specodex — Product selection</title>`).
+`public/robots.txt` was worse: the blanket `*.txt` rule in `.gitignore`
+had kept it out of git entirely (`git ls-files app/frontend/public`
+listed only `manifest.json` and `sitemap.xml`), so prod served the
+SPA's `index.html` at `/robots.txt` — Googlebot got HTML. Its Sitemap
+line also still pointed at the retired `datasheets.advin.io` host while
+`sitemap.xml` already used `www.specodex.com`. Fixed with a
+`!app/frontend/public/robots.txt` exception and the file tracked.
+
+Landed now, per the `/seo` runbook: title → "Specodex — Cross-vendor
+industrial spec database"; refined description; `robots: index,follow`;
+canonical `https://www.specodex.com/`; full OG block (with 1200×630
+`og-default.png` placeholder reference — the PNG is still a follow-up);
+Twitter `summary_large_image` card; JSON-LD `WebSite` (+`SearchAction`)
+and `Organization`; robots Sitemap line → `www.specodex.com`.
+
+### 2026-04-28 (recorded then; `index.html` half did not land)
 
 Landed in `app/frontend/`:
 
@@ -65,16 +90,16 @@ What exists at `<https://www.specodex.com>` (the canonical prod host post-cutove
 
 | Item | State | Remaining action |
 |---|---|---|
-| `robots.txt` | ✅ shipped 2026-04-28 — `app/frontend/public/robots.txt` | Verify in prod; flip canonical URL post-DNS-cutover. |
+| `robots.txt` | ✅ shipped 2026-04-28 — `app/frontend/public/robots.txt`; Sitemap host fixed to `www.specodex.com` 2026-09-13 | Verify in prod after the next `dev` → `master` promote. |
 | `sitemap.xml` (static, homepage only) | ✅ shipped 2026-04-28 | — |
 | `sitemap.xml` (per-product, dynamic) | ❌ missing | Auto-generate from DynamoDB on every deploy (Phase 1b). |
-| `<title>`, `<meta description>` (homepage) | ✅ shipped 2026-04-28 | — |
+| `<title>`, `<meta description>` (homepage) | ✅ shipped 2026-09-13 (the 2026-04-28 claim never reached git) | — |
 | `<title>`, `<meta description>` (per-product) | ❌ static (SPA) — same `<title>` on every route | Per-product values via prerender or SSR (Phase 1a/1d). |
-| Open Graph / Twitter cards (homepage) | ✅ shipped 2026-04-28 | Generate `og-default.png` (1200×630). |
+| Open Graph / Twitter cards (homepage) | ✅ shipped 2026-09-13 | Generate `og-default.png` (1200×630) — tags reference it; until it exists unfurls fall back to text. |
 | Open Graph / Twitter cards (per-product) | ❌ missing | Per-product OG tags + per-product OG image (Phase 1d, 2e). |
-| Schema.org structured data (`WebSite` + `Organization`) | ✅ shipped 2026-04-28 | — |
+| Schema.org structured data (`WebSite` + `Organization`) | ✅ shipped 2026-09-13 | — |
 | Schema.org structured data (`Product` per page) | ❌ missing | Inject `Product` JSON-LD per product page (Phase 1d). |
-| Canonical URL (homepage) | ✅ shipped 2026-04-28; canonical is `www.specodex.com` post-cutover | — |
+| Canonical URL (homepage) | ✅ shipped 2026-09-13; canonical is `https://www.specodex.com/` | — |
 | Canonical URLs (per-product) | ❌ missing | Set canonical to the `/products/{type}/{slug}` route (Phase 1e). |
 | Crawlability of SPA routes | ❌ poor — Vite SPA renders client-side | **The big one.** Prerender or SSR all product pages (Phase 1a). |
 | Internal linking | ❌ none — no link graph between products | Comparison links, "similar products", category indexes (Phase 2). |
@@ -401,7 +426,7 @@ KPIs by month-6 (calibrate as we measure):
 
 | Phase | Window | Gate to next |
 |---|---|---|
-| **0 — Audit.** ✅ done 2026-04-28. Static metadata baseline shipped: `robots.txt`, static homepage `sitemap.xml`, homepage `<title>`/`<meta>`, canonical, OG/Twitter cards, JSON-LD `WebSite` + `Organization`. | — | Phase 1 begins. |
+| **0 — Audit.** ✅ done 2026-09-13 (robots/sitemap 2026-04-28; `index.html` head 2026-09-13). Static metadata baseline shipped: `robots.txt`, static homepage `sitemap.xml`, homepage `<title>`/`<meta>`, canonical, OG/Twitter cards, JSON-LD `WebSite` + `Organization`. | — | Phase 1 begins. |
 | **1 — Foundation.** Prerender (1a), dynamic per-product sitemap (1b), per-product meta + JSON-LD (1d), per-product canonical (1e), Lighthouse CI (1f). Also: generate `og-default.png`. | 2-3 weeks. | Search Console shows ≥ 100 indexed product pages; Lighthouse SEO score > 95. |
 | **2 — Content scaffolding.** Category, manufacturer, comparison pages. Blog scaffolding + first 3 posts. OG images. | 4-6 weeks. | Internal link graph has ≥ 5 inbound links per product page on average. |
 | **3 — Amplify.** Coordinate with [MARKETING.md](MARKETING.md) launch. Search Console + Bing live. | Concurrent with marketing Phase 1. | First HN front-page; first organic position-1 ranking on a tier-1 query. |
