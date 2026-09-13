@@ -241,24 +241,19 @@ describe('POST /api/upload — real-DAL abuse-input contract', () => {
   // ------------------------------------------------------------------
 
   describe('type-coercion surprises', () => {
-    it('a numeric product_type is a 500 against the real DAL, and writes nothing', async () => {
+    it('a numeric product_type is a 400 against the real DAL, and writes nothing', async () => {
       const res = await request(app)
         .post('/api/upload')
         .send({ ...baseBody, product_type: 42 });
 
-      // THE DISCREPANCY. The mocked sibling asserts `< 500` here and
-      // passes, because its stubbed `create()` never runs
-      // `serializeItem`. In reality `ds.product_type.toUpperCase()`
-      // throws a TypeError on a number; `DynamoDBService.create()`
-      // catches it and returns false; the route maps that to 500.
-      //
-      // Pinned as-is rather than fixed: the route's validation gap
-      // (`!product_type` only checks truthiness, never the type) is a
-      // production change, out of scope for a test migration. Filed as a
-      // follow-up in todo/HARDENING.md. If that follow-up lands and the
-      // endpoint starts answering 400, flip this expectation — the point
-      // is that the behaviour is asserted somewhere real.
-      expect(res.status).toBe(500);
+      // History: until 2026-09-13 this was a 500. The mocked sibling's
+      // stubbed `create()` never ran `serializeItem`, so it couldn't see
+      // `ds.product_type.toUpperCase()` throw a TypeError on a number;
+      // the DAL swallowed it into `false` and the route answered 500.
+      // The type guard in routes/upload.ts now rejects non-string
+      // fields with a 400 before anything touches the DAL. The real
+      // table stays the witness that nothing was written.
+      expect(res.status).toBe(400);
       expect(res.body.success).toBe(false);
       expect(await scanAllRows()).toHaveLength(0);
     });
@@ -284,18 +279,17 @@ describe('POST /api/upload — real-DAL abuse-input contract', () => {
       expect(list.body.data[0].component_type).toBe('not-a-real-type');
     });
 
-    it('a product_name array is marshalled as a list, not stringified', async () => {
+    it('a product_name array is a 400 and never reaches the table', async () => {
       const res = await request(app)
         .post('/api/upload')
         .send({ ...baseBody, product_name: ['a', 'b'] });
-      expect(res.status).toBe(201);
-
-      const row = await onlyRow();
-      // The DAL performs no coercion: an array in, an array out. The
-      // frontend's `Datasheet.product_name: string` contract is therefore
-      // only as strong as the route's (absent) type validation.
-      expect(Array.isArray(row.product_name)).toBe(true);
-      expect(row.product_name).toEqual(['a', 'b']);
+      // Until 2026-09-13 this was a 201 and the DAL marshalled the array
+      // as a DynamoDB list — the frontend's `Datasheet.product_name:
+      // string` contract was only as strong as the route's (absent)
+      // type validation. The type guard closes that: 400, no row.
+      expect(res.status).toBe(400);
+      expect(res.body.error).toMatch(/product_name/);
+      expect(await scanAllRows()).toHaveLength(0);
     });
 
     it('a string "pages" is stored as a string, not coerced to a list', async () => {

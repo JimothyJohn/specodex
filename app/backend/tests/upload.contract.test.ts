@@ -106,16 +106,24 @@ describe('POST /api/upload — type coercion surprises', () => {
     ok();
   });
 
-  it('product_type as number is treated as truthy — no 500', async () => {
+  it('product_type as number is a 400 (type guard), never a 500', async () => {
     const res = await request(app).post('/api/upload').send({ ...baseBody, product_type: 42 });
-    expect(res.status).toBeLessThan(500);
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/product_type/);
   });
 
-  it('product_name as array is either rejected or coerced, never crashes', async () => {
+  it('product_name as array is a 400 (type guard), never a 500', async () => {
     const res = await request(app)
       .post('/api/upload')
       .send({ ...baseBody, product_name: ['a', 'b'] });
-    expect(res.status).toBeLessThan(500);
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/product_name/);
+  });
+
+  it('filename as number is a 400, not a TypeError on toLowerCase', async () => {
+    const res = await request(app).post('/api/upload').send({ ...baseBody, filename: 7 });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/filename/);
   });
 
   it('pages as non-array (string) is passed through without crash', async () => {

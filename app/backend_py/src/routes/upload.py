@@ -63,7 +63,17 @@ def create_upload(payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
             ),
         )
 
-    filename = str(payload["filename"])
+    # Type guard — mirrors the Express route. `str()` used to coerce a
+    # numeric filename silently; a non-string in any required field is
+    # the caller's error, not ours.
+    non_string = [k for k in required if not isinstance(payload.get(k), str)]
+    if non_string:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Fields must be strings: {', '.join(non_string)}",
+        )
+
+    filename: str = payload["filename"]
     if not filename.lower().endswith(".pdf"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
