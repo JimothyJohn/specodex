@@ -1,17 +1,31 @@
 /**
- * Column header that combines the histogram, sortable label, and inline
- * slider for one product attribute. Replaces the separate filter pane:
- * every filter lives in the column it filters.
+ * Column header: sortable label, a hairline sparkline, and one trigger
+ * that summarises the column's filter. Every filter still lives in the
+ * column it filters — but the controls (histogram, slider, value box,
+ * operator / unit pills) sit in a popover under the trigger instead of
+ * permanently in the header (UI_CLEANUP Phase 2, direction A).
  *
- * Layout (fixed-height rows so the grid lines up across columns):
+ * Layout at rest (cozy density):
  *
  *   ┌───────────────────────────┐
- *   │ RATED TORQUE  ↑       [X] │  TOP_H — label + close X share one row
- *   │ ▁▂▅▇▅▂▁ histogram         │  HIST_H
- *   │ ━━━━●━━━━━━━━━━━━         │  SLIDER_H — sits tight under the histogram
- *   │       0.3                 │  VALUE_H — value box, full width, prominent
- *   │ ≥                    Nm   │  BOTTOM_H — operator left, unit right
+ *   │ RATED TORQUE  ↑       [X] │  label + close X share one row
+ *   │ ▁▂▅▇▅▂▁                   │  10 px sparkline (numeric: histogram
+ *   │                           │  bars; categorical: stacked share bar)
+ *   │ [      ≥ 10 Nm       ]    │  trigger — "any" until a value is set
  *   └───────────────────────────┘
+ *
+ * Clicking the trigger opens the popover:
+ *
+ *   ┌─ RATED TORQUE ────── clear ┐
+ *   │ ▁▂▅▇▅▂▁ histogram + ticks  │
+ *   │ ━━━━●━━━━━━━━━━━━          │  slider
+ *   │        10.0                │  value box (click to type)
+ *   │ ≥                     Nm   │  operator left, unit right
+ *   └────────────────────────────┘
+ *
+ * Before 2026-09-13 all of that was inline: six controls per column,
+ * ~60 interactive elements across a default motor view, 210 px of
+ * header before the first row. That band was the crowding.
  *
  * Histogram and slider scale are anchored to `allProducts` (the
  * unfiltered, linearized source) so the visual reference stays put as
@@ -43,6 +57,8 @@ import { useApp } from '../context/AppContext';
 import DistributionChart from './DistributionChart';
 import MultiSelectFilterPopover from './MultiSelectFilterPopover';
 import Tooltip from './ui/Tooltip';
+import AnchoredPopover from './ui/AnchoredPopover';
+import { summarizeFilter, formatCompactNumber } from '../utils/filterSummary';
 import './ColumnHeader.css';
 
 interface ColumnHeaderProps {
@@ -136,6 +152,8 @@ function ColumnHeader({
   const sliderTrackRef = useRef<HTMLDivElement>(null);
   const sliderInputRef = useRef<HTMLInputElement>(null);
   const multiTriggerRef = useRef<HTMLButtonElement>(null);
+  const filterTriggerRef = useRef<HTMLButtonElement>(null);
+  const [filterOpen, setFilterOpen] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [editingValue, setEditingValue] = useState(false);
   const [valueDraft, setValueDraft] = useState('');
@@ -444,6 +462,12 @@ function ColumnHeader({
     if (editingValue) sliderInputRef.current?.focus();
   }, [editingValue]);
 
+  // Keyboard users land on the slider (arrow keys / Home / End work)
+  // as soon as the popover opens.
+  useEffect(() => {
+    if (filterOpen) sliderTrackRef.current?.focus();
+  }, [filterOpen]);
+
   // Click the unit text to flip *this* column's unit system. Other
   // columns keep whatever unit they had — overrides are per-column.
   const handleUnitClick = () => {
@@ -690,12 +714,20 @@ function ColumnHeader({
     );
   }
 
+  // Cozy path. The trigger text is the same one-liner the active-filter
+  // chips use, so the header and the toolbar never disagree about what
+  // a column's filter says.
+  const triggerText = summarizeFilter(
+    filter ?? { attribute: attribute.key, mode: 'include', displayName: label },
+    { unit: rangeInfo?.unit || attribute.unit, unitSystem },
+  );
+  const hasSpark = isSliderEligible || multiSelectOptions.length > 0;
+
   return (
     <div className={headerClasses} style={{ width }}>
       {/* Top row: sortable label on the left, close-X on the right. The
        * label is the click target for sort; the X is the click target for
-       * hide-column. They share a flex row so the X no longer floats over
-       * the histogram. */}
+       * hide-column. */}
       <div className="column-header-top">
         <Tooltip content="Click to sort • click again to reverse, again to clear">
           <button
@@ -744,162 +776,192 @@ function ColumnHeader({
         </div>
       )}
 
-      {/* Histogram strip — anchored to allProducts for a stable x-range,
-       * but the bar heights come from the filtered set so the user sees
-       * which slice their filter has selected. Sits directly above the
-       * slider with no gap so the relationship between the distribution
-       * and the slider thumb is obvious. */}
-      {isSliderEligible && (
-        <div className="column-header-histogram">
+      {/* Hairline sparkline — the at-rest hint of the distribution. The
+       * full histogram (with ticks) is in the popover. */}
+      {hasSpark && (
+        <div className="column-header-spark">
           <DistributionChart
             products={products}
             attribute={attribute.key}
             attributeType={attribute.type}
             allProducts={allProducts}
+            variant="sparkline"
+            sparkHeight={10}
           />
         </div>
       )}
 
       {isSliderEligible && rangeInfo && (
         <>
-          <div className="column-header-slider">
-            <div
-              ref={sliderTrackRef}
-              className={`filter-slider-track-container${
-                isDragging ? ' is-dragging' : ''
-              }`}
-              role="slider"
-              tabIndex={0}
-              aria-valuemin={rangeInfo.min}
-              aria-valuemax={rangeInfo.max}
-              aria-valuenow={filterValue ?? rangeInfo.min}
-              onPointerDown={handlePointerDown}
-              onPointerMove={handlePointerMove}
-              onPointerUp={handlePointerEnd}
-              onPointerCancel={handlePointerEnd}
-              onKeyDown={handleSliderKeyDown}
+          <Tooltip content={hasActiveFilter ? 'Click to adjust the threshold' : 'Click to set a threshold'}>
+            <button
+              ref={filterTriggerRef}
+              type="button"
+              className="column-header-filter-trigger"
+              onClick={(e) => {
+                e.stopPropagation();
+                setFilterOpen(o => !o);
+              }}
+              aria-haspopup="dialog"
+              aria-expanded={filterOpen}
             >
-              <div className="filter-slider-rail" />
-              <div
-                className="filter-slider-active-region"
-                style={{
-                  left:
-                    operator === '<' || operator === '<=' ? '0%' : `${sliderPercent}%`,
-                  right:
-                    operator === '<' || operator === '<='
-                      ? `${100 - sliderPercent}%`
-                      : '0%',
-                }}
-              />
-              <div
-                className="filter-slider-thumb"
-                style={{ left: `${sliderPercent}%` }}
+              {triggerText}
+            </button>
+          </Tooltip>
+          <AnchoredPopover
+            open={filterOpen}
+            anchorEl={filterTriggerRef.current}
+            width={260}
+            onClose={() => setFilterOpen(false)}
+            className="column-filter-popover"
+            ariaLabel={`${label} filter`}
+          >
+            <div className="column-filter-popover-head">
+              <span className="column-filter-popover-title">{label}</span>
+              {hasActiveFilter && (
+                <button
+                  type="button"
+                  className="column-filter-popover-clear"
+                  onClick={() => onFilterChange(null)}
+                >
+                  clear
+                </button>
+              )}
+            </div>
+
+            {/* Histogram — anchored to allProducts for a stable x-range,
+             * bar heights from the filtered set so the user sees which
+             * slice their threshold has selected. */}
+            <div className="column-filter-popover-hist">
+              <DistributionChart
+                products={products}
+                attribute={attribute.key}
+                attributeType={attribute.type}
+                allProducts={allProducts}
               />
             </div>
-          </div>
 
-          {/* Value box — its own row, full width, big enough that the
-           * current threshold reads at a glance. Click to type an exact
-           * override. */}
-          <div className="column-header-value-row">
-            {editingValue ? (
-              <input
-                ref={sliderInputRef}
-                type="number"
-                className="readout-value-input"
-                value={valueDraft}
-                step="any"
-                onChange={(e) => setValueDraft(e.target.value)}
-                onBlur={commitOverride}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    commitOverride();
-                  } else if (e.key === 'Escape') {
-                    e.preventDefault();
-                    cancelOverride();
-                  }
-                }}
-                aria-label="Override slider with typed value"
-              />
-            ) : (
-              <Tooltip content="Click to type an exact value">
-                <button
-                  type="button"
-                  className="readout-value"
-                  onClick={() => {
-                    if (dispCurrent != null) {
-                      setValueDraft(
-                        intLikeUnit
-                          ? String(Math.round(dispCurrent))
-                          : String(Number(dispCurrent.toFixed(2))),
-                      );
-                    } else {
-                      setValueDraft('');
-                    }
-                    setEditingValue(true);
-                  }}
-                >
-                  {dispCurrent != null
-                    ? intLikeUnit
-                      ? Math.round(dispCurrent).toLocaleString()
-                      : dispCurrent.toFixed(1)
-                    : 'any'}
-                </button>
-              </Tooltip>
-            )}
-          </div>
-
-          {/* Bottom row: operator on the left, unit on the right. The two
-           * smallest controls sit at the very bottom of the header so the
-           * value box above them gets the full visual weight. */}
-          <div className="column-header-bottom">
-            <Tooltip content={`Operator ${operator} — click to flip (>= ↔ <)`}>
-              <button
-                type="button"
-                className="readout-operator"
-                onClick={cycleOperator}
-                aria-label={`Filter operator ${operator}`}
+            <div className="column-header-slider">
+              <div
+                ref={sliderTrackRef}
+                className={`filter-slider-track-container${
+                  isDragging ? ' is-dragging' : ''
+                }`}
+                role="slider"
+                tabIndex={0}
+                aria-label={`${label} threshold`}
+                aria-valuemin={rangeInfo.min}
+                aria-valuemax={rangeInfo.max}
+                aria-valuenow={filterValue ?? rangeInfo.min}
+                onPointerDown={handlePointerDown}
+                onPointerMove={handlePointerMove}
+                onPointerUp={handlePointerEnd}
+                onPointerCancel={handlePointerEnd}
+                onKeyDown={handleSliderKeyDown}
               >
-                {operator === '>=' ? '≥' : operator === '<=' ? '≤' : operator}
-              </button>
-            </Tooltip>
-            {dispUnit && (
-              <Tooltip content={`Click to switch units (currently ${unitSystem})`}>
+                <div className="filter-slider-rail" />
+                <div
+                  className="filter-slider-active-region"
+                  style={{
+                    left:
+                      operator === '<' || operator === '<=' ? '0%' : `${sliderPercent}%`,
+                    right:
+                      operator === '<' || operator === '<='
+                        ? `${100 - sliderPercent}%`
+                        : '0%',
+                  }}
+                />
+                <div
+                  className="filter-slider-thumb"
+                  style={{ left: `${sliderPercent}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Value box — full width, click to type an exact override. */}
+            <div className="column-header-value-row">
+              {editingValue ? (
+                <input
+                  ref={sliderInputRef}
+                  type="number"
+                  className="readout-value-input"
+                  value={valueDraft}
+                  step="any"
+                  onChange={(e) => setValueDraft(e.target.value)}
+                  onBlur={commitOverride}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      commitOverride();
+                    } else if (e.key === 'Escape') {
+                      e.preventDefault();
+                      cancelOverride();
+                    }
+                  }}
+                  aria-label="Override slider with typed value"
+                />
+              ) : (
+                <Tooltip content="Click to type an exact value">
+                  <button
+                    type="button"
+                    className="readout-value"
+                    onClick={() => {
+                      if (dispCurrent != null) {
+                        setValueDraft(
+                          intLikeUnit
+                            ? String(Math.round(dispCurrent))
+                            : String(Number(dispCurrent.toFixed(2))),
+                        );
+                      } else {
+                        setValueDraft('');
+                      }
+                      setEditingValue(true);
+                    }}
+                  >
+                    {dispCurrent != null
+                      ? formatCompactNumber(dispCurrent, rangeInfo.unit)
+                      : 'any'}
+                  </button>
+                </Tooltip>
+              )}
+            </div>
+
+            {/* Bottom row: operator on the left, unit on the right. */}
+            <div className="column-header-bottom">
+              <Tooltip content={`Operator ${operator} — click to flip (>= ↔ <)`}>
                 <button
                   type="button"
-                  className="readout-unit"
-                  onClick={handleUnitClick}
-                  aria-label={`Unit ${dispUnit} — click to swap unit system`}
+                  className="readout-operator"
+                  onClick={cycleOperator}
+                  aria-label={`Filter operator ${operator}`}
                 >
-                  {dispUnit}
+                  {operator === '>=' ? '≥' : operator === '<=' ? '≤' : operator}
                 </button>
               </Tooltip>
-            )}
-          </div>
+              {dispUnit && (
+                <Tooltip content={`Click to switch units (currently ${unitSystem})`}>
+                  <button
+                    type="button"
+                    className="readout-unit"
+                    onClick={handleUnitClick}
+                    aria-label={`Unit ${dispUnit} — click to swap unit system`}
+                  >
+                    {dispUnit}
+                  </button>
+                </Tooltip>
+              )}
+            </div>
+          </AnchoredPopover>
         </>
       )}
 
-      {/* Non-slider columns (string / number / array): replace the
-       * histogram + slider stack with a single "filter values" trigger
-       * that opens a multi-select popover. The polarity (include vs
-       * exclude) lives inside the popover; the trigger here just shows
-       * the selected count and inherits the green/red tint from the
-       * column-header's has-include/has-exclude class. */}
+      {/* Non-slider columns (string / number / array): the trigger opens
+       * the multi-select popover. Polarity (include vs exclude) lives
+       * inside the popover; the trigger shows the summary and inherits
+       * the green/red tint from the column-header's has-include /
+       * has-exclude class. */}
       {!isSliderEligible && multiSelectOptions.length > 0 && (
         <>
-          {/* Top-3 + Other breakdown of the *currently visible* rows for
-           * this column — the categorical analogue of the slider-column
-           * histogram above. Lets the user eyeball the dominant values
-           * before clicking into the multi-select. DistributionChart auto-
-           * routes string/array attributes through its categorical path
-           * and falls back gracefully when the filtered set is empty. */}
-          <DistributionChart
-            products={products}
-            attribute={attribute.key}
-            attributeType={attribute.type}
-            allProducts={allProducts}
-          />
           <Tooltip
             content={
               multiSelectedCount === 0
@@ -918,9 +980,7 @@ function ColumnHeader({
             aria-haspopup="listbox"
             aria-expanded={multiOpen}
           >
-            {multiSelectedCount === 0
-              ? 'any'
-              : `${multiSelectedCount} ${filterMode === 'exclude' ? 'excluded' : 'selected'}`}
+            {triggerText}
           </button>
           </Tooltip>
           <MultiSelectFilterPopover

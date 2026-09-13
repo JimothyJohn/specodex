@@ -22,6 +22,7 @@ import {
   isStringArray,
 } from '../utils/localStorage';
 import ColumnHeader from './ColumnHeader';
+import ActiveFilterChips from './ActiveFilterChips';
 import ProductDetailModal from './ProductDetailModal';
 import AttributeSelector from './AttributeSelector';
 import Dropdown from './Dropdown';
@@ -881,6 +882,18 @@ export default function ProductList() {
               className="page-toolbar-type-select"
             />
           </div>
+          {/* Applied constraints, one chip each — the at-a-glance record
+              now that the per-column controls live in popovers
+              (UI_CLEANUP Phase 2). Valueless seeded chips don't show. */}
+          {productType && (
+            <ActiveFilterChips
+              filters={filters}
+              attributes={columnAttributes}
+              products={compatNarrowed}
+              unitSystemFor={unitSystemFor}
+              onRemove={(f) => setFilters(prev => prev.filter(x => x !== f))}
+            />
+          )}
           <div className="page-toolbar-right">
             {productType && compatNarrowed.length > 0 && (
               <div className="page-toolbar-match">
