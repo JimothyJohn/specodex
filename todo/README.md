@@ -183,8 +183,13 @@ Status lives in two places now: the **churn plan** table further down this file 
 
 To add new work, drop a `todo/<AREA>.md` with the standard structure (H1 title, status blockquote, phased plan, optional `## Triggers` section); if the work has file-level triggers, add a row to **Trigger conditions** below. Re-run `uv run python scripts/gen_roadmap.py` to refresh the kanban.
 
-Active docs (11 total — BAUHAUS.md added 2026-05-12):
+Active docs (12 total — UI_CLEANUP.md added 2026-09-13):
 
+- **UI_CLEANUP.md** — de-crowd / de-jank the catalog UI. Screenshot
+  audit 2026-09-13: six bugs (Phase 0, shipped same day), seven noise
+  items (Phase 1, autopilot-safe), and the structural call on the
+  per-column inline filter header (Phase 2, **🔴 needs sign-off** —
+  popover-per-column vs collapsed band vs left rail).
 - **BAUHAUS.md** — 10-phase UI refresh port from
   `docs/design/bauhaus-catalog.html`. Phases 2–10 shipped end-to-end
   across the 2026-05-11 → 2026-05-13 window. **Open:** the deferred
@@ -444,6 +449,7 @@ If your current task matches any "trigger" entry, the linked doc is queued and w
 |---|---|
 | New parser, deserializer, coercer, or `BeforeValidator`; CodeQL log-injection or input-handling finding; user asks "fuzz", "property test", "input validation" | [HARDENING.md](HARDENING.md) + CLAUDE.md "Property testing — adversarial by default" |
 | `cli/processor.py`, `specodex/integration/compat.py`, `specodex/spec_rules.py`, `specodex/quality.py` | Property tests shipped (PRs #149/#185/#202/#203). Treat the existing `test_<name>_property.py` files as the contract; new edits to these modules should keep those properties green |
+| `app/frontend/src/components/{ProductList,ColumnHeader,DistributionChart}.tsx`, `.page-products-layout` / `.product-grid-scroll` sizing, `--header-h`, header-band button colours; user says "crowded", "janky", "cluttered", "too many controls", "mobile layout" | [UI_CLEANUP.md](UI_CLEANUP.md) — Phase 0 shipped; Phase 2 direction needs sign-off |
 | `app/frontend/src/App.css`, design tokens (`--paper`, `--ink`, `--brass`, `--rule-*`, `--z-*`), Oswald/Plex Mono cascade, `.filter-chip-*`, `.column-header-*`, modal patterns, `!important` clusters; user asks "Bauhaus", "design refresh", "stencil headline", "manila", "field manual" | [BAUHAUS.md](BAUHAUS.md) — 10-phase port, [BAUHAUS_FOLLOWUP.md](BAUHAUS_FOLLOWUP.md) for what's still soft |
 | Touching `Motor.type`, `ElectricCylinder.motor_type`, `LinearActuator.motor_type`, or `ElectricCylinder.fieldbus`; user asks "harmonize motor types", "MotorTechnology literal", "BREAKING schema migration" | [SCHEMA_BREAKING_HARMONIZE.md](SCHEMA_BREAKING_HARMONIZE.md) — needs sign-off |
 | `specodex/models/common.py` (`MotorMountPattern`, `ProductType`), cross-product fields on motor/drive/gearhead/actuator; user asks "compatible motor", "matching drive", "device pairing", "integration" | SCHEMA — Phase 1, 2 (CLI), 3, 4 all shipped (PRs #87, #117, #89/#90/#92, #106). Recover the design rationale via `git log --diff-filter=D --follow -- todo/SCHEMA.md` if needed |

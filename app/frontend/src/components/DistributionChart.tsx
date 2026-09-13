@@ -428,7 +428,13 @@ export default function DistributionChart({ products, attribute, heading, attrib
                   opacity: getOpacity(index, item.name),
                   flexShrink: 0
                 }} />
-                {item.name}
+                {/* Own box so text-overflow actually applies — the
+                    ellipsis on the flex parent above never fires for
+                    its anonymous text child, which is how "BODINE EL"
+                    and "MITSUBISI" were clipping bare. */}
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>
+                  {item.name}
+                </span>
               </span>
             </Tooltip>
           );
