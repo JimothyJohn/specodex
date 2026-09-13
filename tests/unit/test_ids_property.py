@@ -470,7 +470,20 @@ class TestFamilyPrefixProperties:
         name=_OPTIONAL_STR,
         fam=_OPTIONAL_STR,
     )
-    @settings(max_examples=200, deadline=None)
+    # `assume(a is not None and b is not None)` below discards the sparse
+    # slice on purpose: compute_product_id returns None when the inputs
+    # are too thin to identify a product, and the collision property only
+    # makes sense for inputs that DO yield an id. With three of four
+    # inputs drawn from st.none() | empty text, some pytest-randomly
+    # seeds discard > 80 % of examples and trip filter_too_much (seen
+    # 2026-09-13 in a full-suite run; passes in isolation). Suppress the
+    # health check rather than narrow the strategy — the sparse inputs
+    # still flow through the other properties in this file.
+    @settings(
+        max_examples=200,
+        deadline=None,
+        suppress_health_check=[HealthCheck.filter_too_much],
+    )
     def test_family_argument_never_introduces_collisions_across_mfgs(
         self,
         mfg: Optional[str],
