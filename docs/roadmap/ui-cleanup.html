@@ -54,9 +54,9 @@
 <p><strong>Status:</strong> 🚧 in progress. Audit done 2026-09-13 (headless Chromium
 screenshots of local dev at 1440 / 1024 / 390 px, both themes).
 <strong>Phase 0 shipped 2026-09-13</strong> in the same PR as this doc.
-<strong>Phase 1a (N1, N2, N3, N5, N7) shipped 2026-09-13.</strong> Phase 1b (N4,
-N6) next. <strong>Phase 2 direction decided 2026-09-13: A — popover per
-column</strong> (see §3); S1 + S2 are the next structural PRs.</p>
+<strong>Phase 1 shipped 2026-09-13</strong> in two PRs (1a: N1, N2, N3, N5, N7 —</p>
+<h1 id="415-1b-n4-n6-phase-2-direction-decided-2026-09-13-a">415; 1b: N4, N6). **Phase 2 direction decided 2026-09-13: A —</h1>
+<p>popover per column** (see §3); S1 + S2 are the next structural PRs.</p>
 <p>Nick's brief, verbatim: "The interface needs a lot of work, it's very
 crowded and janky looking."</p>
 </blockquote>
@@ -147,8 +147,8 @@ smaller, but it all stacks on top of that.</p>
 </tr>
 <tr>
 <td>N4</td>
-<td>Header decoration with no function: <code>▸ ◂</code> glyphs flanking the wordmark, the <code>OPTIONS</code> eyebrow, GitHub button in primary nav position.</td>
-<td><code>App.tsx</code> header</td>
+<td>✅ Header decoration with no function: <code>▸ ◂</code> glyphs flanking the wordmark, the <code>OPTIONS</code> eyebrow (and the hairline it anchored), GitHub button in primary nav position. <strong>Decision:</strong> all three go; the GitHub link now sits in the right-hand options cluster between the theme toggle and the account menu.</td>
+<td><code>App.tsx</code> header, <code>App.css</code></td>
 </tr>
 <tr>
 <td>N5</td>
@@ -157,8 +157,8 @@ smaller, but it all stacks on top of that.</p>
 </tr>
 <tr>
 <td>N6</td>
-<td>Welcome page renders "T1 — Ratio Studies" logo explorations and a favicon strip below the hero — design scratch on the public landing.</td>
-<td><code>Welcome.tsx:180-207</code></td>
+<td>✅ Welcome page rendered "T1 — Ratio Studies" logo explorations and a favicon strip below the hero — design scratch on the public landing. Section, data, and CSS deleted; recoverable via <code>git log -S T1_RATIO_STUDIES</code>.</td>
+<td><code>Welcome.tsx</code>, <code>Welcome.css</code></td>
 </tr>
 <tr>
 <td>N7</td>
@@ -200,11 +200,8 @@ smaller, but it all stacks on top of that.</p>
   all. It only ever showed as the 50 px strip, so nothing visible was
   lost; if the grid is wanted back it belongs on the empty state, not
   under the table.</li>
-<li><strong>Phase 1 — noise.</strong> N1–N7. <strong>1a (N1, N2, N3, N5, N7) ✅ shipped
-  2026-09-13.</strong> 1b (N4, N6) follows in its own PR — decisions taken:
-  all three N4 decorations go (wordmark glyphs, <code>OPTIONS</code> eyebrow,
-  GitHub button leaves primary nav for the options cluster); N6 marks
-  section deleted from the public landing (recoverable from git).</li>
+<li><strong>Phase 1 — noise.</strong> N1–N7. ✅ Shipped 2026-09-13 in two PRs: 1a
+  (N1, N2, N3, N5, N7 — #415) and 1b (N4, N6).</li>
 <li><strong>Phase 2 — header structure.</strong> Direction <strong>A (popover per column)</strong>
   decided 2026-09-13. S1 + S2 next. Then S3.</li>
 </ul>
