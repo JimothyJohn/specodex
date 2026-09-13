@@ -344,7 +344,11 @@ def find_spec_pages_scored(
     # Select pages above threshold, ranked by score, capped
     candidates = [p for p in page_scores if p.get("score", 0) >= min_score]
     candidates.sort(key=lambda p: -p["score"])
-    selected = candidates[:max_pages]
+    # A cap is never negative. Without the clamp, a negative `max_pages`
+    # is a Python negative slice: it drops the N lowest-scoring
+    # candidates and keeps the rest, so the "cap" silently *expands* the
+    # selection instead of shrinking it.
+    selected = candidates[: max(max_pages, 0)]
     # Return in document order
     selected_pages = sorted(p["page"] for p in selected)
 
@@ -542,7 +546,11 @@ def find_drawing_pages_scored(
 
     candidates = [p for p in page_scores if p.get("score", 0) >= min_score]
     candidates.sort(key=lambda p: -p["score"])
-    selected = candidates[:max_pages]
+    # Same clamp as `find_spec_pages_scored` — a negative cap must select
+    # nothing, not all-but-N (see the comment there). Reachable from
+    # `./Quickstart mounting-extract --max-pages -1`, where every extra
+    # selected page is another billed Gemini image call.
+    selected = candidates[: max(max_pages, 0)]
     selected_pages = sorted(p["page"] for p in selected)
 
     logger.info(

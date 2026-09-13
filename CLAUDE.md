@@ -307,6 +307,7 @@ Each one was a bug where the docstring said one thing and the code did another. 
 | `parse_gemini_response` (LLM JSON parser) | `test_parse_gemini_property.py` | inline in `test_utils.py` |
 | `common.py` BeforeValidators | `test_common_validators_property.py` | `test_models_common.py` |
 | `find_spec_pages_by_text` (PDF intake) | `test_page_finder_property.py` | `test_page_finder*.py` |
+| `find_drawing_pages_by_text` + `_score_drawing_page` + `find_drawing_pages_scored` (drawing-page intake for `mounting-extract`) | `test_drawing_page_finder_property.py` | `test_drawing_page_finder.py` |
 | `coerce_protocol_string`, `_coerce_protocol_list`, `EncoderFeedback._coerce_legacy_freetext` | `test_encoder_coercers_property.py` | `test_encoder.py` |
 | `Gearhead.coerce_string_fields` | `test_gearhead_coerce_property.py` | (via `test_models_common.py`) |
 | `validate_url` (SSRF defense) | `test_url_safety_property.py` | `test_url_safety.py` |
@@ -333,6 +334,28 @@ The 2026-05-25 round added `specodex/units.py:normalize_unit_value` and *did* su
 The 2026-05-26 round added `specodex/ids.py` (deterministic product-ID generation) — the only remaining `Optional[str]`-coercer surface in `specodex/` without a property-test companion after PR #242 covered `units.py`. No bugs surfaced; the documented sparsity rule, family-prefix safety constraint, and normalization-equivalence invariant all held under Hypothesis search.
 
 The 2026-09-02 round added `specodex/configurators/stober.py` — the deserialization boundary for vendor-controlled configurator JSON (CONFIGURATOR_HARVEST P0), and the newest untrusted-bytes parser without a property companion. It surfaced **four** real bugs, all of the same "docstring says skip, code says crash" family: (1) an unhashable `filterId` (`{}`, `[]`, `frozenset`) raised `TypeError` out of `FILTER_TO_GEARHEAD_FIELD.get(filter_id)`; (2) `group.get("parameters") or []` raised `TypeError: 'bool' object is not iterable` when the vendor put a truthy scalar where a list was documented (same shape for `filters` in `parse_group_selection`); (3) non-string `filterId` / `filterName` / option `key` values flowed straight into the frozen dataclass, violating its annotations and making `filter_id` unusable as the dedupe key; (4) `_as_float` accepted bools (`float(True) == 1.0`) and NaN/±inf, putting non-comparable bounds on a requirement slider. Any of the first two would have taken a whole harvest run down on a Stober redeploy or a WAF error document. Fixes: `_as_list` guards every nested walk, `_text` gates the string fields, `_as_float` rejects bools and non-finite values.
+
+The 2026-09-07 round added the **drawing**-page finder
+(`find_drawing_pages_by_text`, `_score_drawing_page`,
+`find_drawing_pages_scored`) — the twin of `find_spec_pages_by_text`,
+added for `./Quickstart mounting-extract` and shipped without the
+property companion its sibling already had. The byte-level and pure-scorer
+contracts held (typed fitz exceptions on bad bytes; score total, finite,
+in `[0, 1]`, and monotonic in vector-path count). The **selection**
+contract did not: `selected = candidates[:max_pages]` treats a negative
+cap as a Python negative slice, so `--max-pages -1` dropped the single
+lowest-scoring candidate and kept the rest — a "cap" flag that *expands*
+the page set, and every extra page is another billed Gemini image call.
+Reachable from `./Quickstart mounting-extract --max-pages -1` (argparse
+`type=int`, no lower bound). `find_spec_pages_scored` carried the
+identical slice. Fix: clamp with `candidates[: max(max_pages, 0)]` in
+both. Note the shape of the miss — a Hypothesis run over generated
+documents did *not* reliably catch it (it needs ≥ 2 qualifying pages
+*and* a negative cap in the same example), so the regression is pinned by
+a targeted property that builds the qualifying document directly, plus
+the two example-based cases. When a property needs a specific
+co-occurrence to bite, give it its own strategy rather than trusting the
+general one to stumble into it.
 
 When the next round of property-test gaps comes up, add them to the list above; don't leave the section empty for long.
 
