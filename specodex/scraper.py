@@ -26,6 +26,7 @@ from typing import Any, List, Optional, Type
 from specodex.config import SCHEMA_CHOICES
 from specodex.db.dynamo import DynamoDBClient
 from specodex.ids import compute_product_id
+from specodex.log_redact import redact_secrets
 from specodex.ingest_log import (
     STATUS_EXTRACT_FAIL,
     STATUS_QUALITY_FAIL,
@@ -515,7 +516,7 @@ def main() -> None:
             force=args.force,
         )
     except Exception as e:
-        logger.error(f"Error during document analysis: {e}")
+        logger.error("Error during document analysis: %s", redact_secrets(str(e)))
         sys.exit(1)
 
 
@@ -1061,7 +1062,9 @@ def process_datasheet(
         return "success"
 
     except Exception as e:
-        logger.error(f"Error during document analysis: {e}")
+        # The Gemini / boto SDKs can embed request details in an error
+        # message; scrub known secrets before it hits the log (HARDENING 4.3).
+        logger.error("Error during document analysis: %s", redact_secrets(str(e)))
         _write_ingest_log(
             client,
             url=url,

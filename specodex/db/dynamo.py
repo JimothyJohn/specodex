@@ -17,6 +17,8 @@ from uuid import UUID
 import boto3  # type: ignore
 from botocore.exceptions import ClientError  # type: ignore
 
+from specodex.log_redact import quiet_sdk_debug_logging
+
 from specodex.config import REGION, SCHEMA_CHOICES, TABLE_NAME
 from specodex.db.lookups import query_first_match, scan_first_match
 from specodex.models.datasheet import Datasheet
@@ -27,6 +29,11 @@ logger: logging.Logger = logging.getLogger(__name__)
 
 # Type variable for Pydantic models
 T = TypeVar("T", bound=Union[ProductBase, Datasheet])
+
+
+# botocore logs signed requests (session token included) at DEBUG;
+# never let LOG_LEVEL=DEBUG turn the DAL into a credential dump (HARDENING 4.3).
+quiet_sdk_debug_logging()
 
 
 class DynamoDBClient:

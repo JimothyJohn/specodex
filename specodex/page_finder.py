@@ -20,6 +20,7 @@ from typing import Any, Dict, List, Optional
 
 from google import genai
 
+from specodex.log_redact import redact_secrets
 from specodex.utils import get_document
 
 logging.basicConfig(
@@ -673,7 +674,11 @@ Respond as a JSON array with one object per page:
                             }
                         )
         except Exception as e:
-            logger.error(f"Error classifying pages {page_labels}: {e}")
+            # SDK / transport errors can echo request details; never let a
+            # credential ride along into the log (HARDENING 4.3).
+            logger.error(
+                "Error classifying pages %s: %s", page_labels, redact_secrets(str(e))
+            )
             # Mark failed pages as unknown
             for p in page_numbers:
                 results.append(
@@ -681,7 +686,7 @@ Respond as a JSON array with one object per page:
                         "page_number": p,
                         "page_display": p + 1,
                         "has_specs": False,
-                        "description": f"classification failed: {e}",
+                        "description": f"classification failed: {redact_secrets(str(e))}",
                     }
                 )
 
