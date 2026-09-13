@@ -30,10 +30,10 @@ docs only when you're about to act on that work.
 > end-to-end. Master deploy `e85bc76` was the first fully-green
 > staging deploy since 2026-05-15.
 >
-> Follow-up flagged in #225, not blocking: `app/backend_py/src/
-> routes/products.py:67` has the same no-default-limit bug in the
-> v2 FastAPI backend. v2 isn't live yet (`VITE_API_VERSION` is
-> still `v1`); fix alongside the PYTHON_BACKEND Phase 2 cutover.
+> Follow-up flagged in #225 — **since fixed**: `app/backend_py/src/
+> routes/products.py` now carries `DEFAULT_LIST_LIMIT = 2000` and the
+> same `truncated` contract as v1 (verified 2026-09-13). v2 still
+> isn't live (`VITE_API_VERSION` is `v1`).
 > Prod hasn't tripped the 6 MB cap because its drive count is
 > ~2,849 (PR #199's ingest never got promoted past dev/staging);
 > next prod deploy carries the fixes through anyway.
@@ -183,7 +183,9 @@ Status lives in two places now: the **churn plan** table further down this file 
 
 To add new work, drop a `todo/<AREA>.md` with the standard structure (H1 title, status blockquote, phased plan, optional `## Triggers` section); if the work has file-level triggers, add a row to **Trigger conditions** below. Re-run `uv run python scripts/gen_roadmap.py` to refresh the kanban.
 
-Active docs (12 total — UI_CLEANUP.md added 2026-09-13):
+Active docs (16 under `todo/` — this list was last reconciled
+2026-09-13; PAYGATE, PRICING, COMMERCIAL and CONFIGURATOR_HARVEST had
+never been listed here even though their docs were live):
 
 - **UI_CLEANUP.md** — de-crowd / de-jank the catalog UI. Screenshot
   audit 2026-09-13: six bugs (Phase 0, shipped same day), seven noise
@@ -200,9 +202,13 @@ Active docs (12 total — UI_CLEANUP.md added 2026-09-13):
   phases shipped (1.1, 1.3, 2.1, 2.3, 2.4, 3.1×3, 3.3, 3.4, 4.1, 4.3).
   The 2026-05-14 sprint closed out the four "untested adversarial
   surfaces" (`cli/processor.py`, `compat.py`, `spec_rules.py`,
-  `quality.py`) via PRs #149/#185/#202/#203. **Open:** Phase 1.2
-  (`uv sync --locked` CI sweep), 2.2 (real-DAL backend tests, L),
-  3.2 (atheris fuzz), 4.2 (lockfile-drift CI gate). 1.2 + 4.2 touch
+  `quality.py`) via PRs #149/#185/#202/#203. 1.2 (`uv sync --locked`
+  sweep) shipped #261. 4.3's Python half (log-leak tests +
+  `specodex/log_redact.py`) landed 2026-09-13. **Open:** 2.2 (real-DAL
+  backend tests — 13 of the mocked suites now have a real-DAL twin;
+  what's left is the auth / admin / paygate / resilience group plus
+  the CI `--integration` wiring), 3.2 (atheris fuzz), 4.2
+  (lockfile-drift CI gate). 4.2 and the 2.2 CI wiring touch
   `.github/workflows/` so they're skip-list for autonomous sprints.
 - **SCHEMA_BREAKING_HARMONIZE.md** — what's left of the SCHEMA plan.
   Phases 1, 2 (CLI), 3, 4 all shipped; only the BREAKING type-
@@ -219,7 +225,22 @@ Active docs (12 total — UI_CLEANUP.md added 2026-09-13):
   `lead_time` / `warranty` / `msrp`) **needs a decision** — the
   field-coverage audit recommends dropping; the original framing
   said populate. Re-decide before implementing.
-- **SEO.md**, **MARKETING.md** — public-launch readiness.
+- **SEO.md**, **MARKETING.md** — public-launch readiness. SEO Phase 0
+  (head metadata, robots, sitemap) actually landed 2026-09-13 in #418
+  — the 2026-04-28 entry had recorded `index.html` work that never
+  reached git, and `robots.txt` had been gitignored the whole time.
+- **PRICING.md** — Phase 1 (`price-book` CLI, #268), Phase 2 (Serper
+  `/shopping` tier, 2026-06-12) and Phase 3 no-key items (#270) all
+  shipped. Remaining: operator-driven backfill sweeps and the Kyklo
+  storefront roster.
+- **PAYGATE.md** — 🔴 needs sign-off (Stripe query meter). Dormant
+  until Nick configures it; contains one latent bug note
+  (`reportUsage` wire shape) with zero callers today.
+- **COMMERCIAL.md** — 🔴 needs sign-off. Phase 3 UI was pulled in
+  #341 for data quality; do not re-ship the UI until the bar is agreed.
+- **CONFIGURATOR_HARVEST.md** — P0 shipped 2026-07-25
+  (`./Quickstart configurator`); P1–P4 planned. Open follow-up: the
+  Stober endpoint-map drift test.
 - **PYTHON_BACKEND.md** — **Phase 1 code-complete** (2026-05-15
   sprint, PRs #205–#215). The entire FastAPI backend
   (`app/backend_py/`) is ported + tested: auth middleware, all 11
@@ -291,10 +312,11 @@ The remaining order, ranked by leverage / unblocked-ness:
    indexing wastes the shot).
 9. **PYTHON_BACKEND Phase 1** — FastAPI parallel deploy. Don't
    start on a moving target; do this once the above stops shifting.
-10. **HARDENING Phase 2.2 / 3.2 / 4.2 / 1.2** — the remaining
-    HARDENING items. 1.2 + 4.2 touch `.github/workflows/` so
-    they're skip-list for autonomous sprints; 2.2 + 3.2 are
-    code-only but heavier than the Phase 3.1 wins.
+10. **HARDENING Phase 2.2 / 3.2 / 4.2** — the remaining
+    HARDENING items (1.2 shipped #261). 4.2 and the 2.2 CI wiring
+    touch `.github/workflows/` so they're skip-list for autonomous
+    sprints; the 2.2 migrations + 3.2 are code-only but heavier
+    than the Phase 3.1 wins.
 
 **Out-of-band exceptions.** Urgent bugs, security issues, or
 user-visible breakage jump the queue.
@@ -315,11 +337,11 @@ Every PR ships with a per-PR HTML doc in `docs/requests/<n>.html`
 | 3 | **Property tests — `specodex/spec_rules.py:validate_product` magnitude rules** | HARDENING | ✅ shipped #202 |
 | 4 | **Property tests — `specodex/quality.py:score_product`** | HARDENING | ✅ shipped #203 |
 | 5 | **HARDENING Phase 2.2** — real-DAL backend integration tests (L) | HARDENING | ⏳ search half #246; routes + contract round-trip 2026-06-10. Remaining: 13 mocked-test sweep + CI `--integration` wiring |
-| 6 | **BUILD Phase 1** — requirements-first Build page (motion/stroke/speed/payload/orientation form → motion-system kit) | BUILD | 🚧 PR 1A nearly done: `compatible_actuators` (#247) + Express `/api/v1/relations/actuators` (#262). 1A remainder: `_distribution_position` histogram block. Then 1B strip-down → 1C page → 1D redirect |
+| 6 | **BUILD Phase 1** — requirements-first Build page (motion/stroke/speed/payload/orientation form → motion-system kit) | BUILD | 🚧 PR 1A shipped on Express: `compatible_actuators` (#247), `/api/v1/relations/actuators` (#262), `_distribution_position` block (`relations.ts:attachStrokeDistributionPositions`). Gap: no v2 (FastAPI) mirror of the actuators route yet. Then 1B strip-down → 1C page → 1D redirect |
 | 7 | **DB_CLEANUP Phase 2 decision** — populate vs drop `lead_time` / `warranty` / `msrp` | DB_CLEANUP | ✅ resolved 2026-06-12: populate, via PRICING.md (accepted by Nick) |
 | 7a | **PRICING Phase 1** — price-book ingestion CLI (`./Quickstart price-book`, XLSX + PDF, enrich-only join) | PRICING | ✅ shipped #268 |
 | 7b | **PRICING Phase 3 (no-key items)** — prune robots-dead resolver tiers, enrich all product types, templated-PN skip, serp-counter fix | PRICING | ✅ shipped #270 |
-| 7c | **PRICING Phase 2** — Serper `/shopping` tier | PRICING | ⏸ blocked: needs Nick to provision `SERPER_API_KEY` |
+| 7c | **PRICING Phase 2** — Serper `/shopping` tier | PRICING | ✅ shipped 2026-06-12 (`SERPER_API_KEY` was already in the shell env) |
 | 7d | **PRICING operator loop** — match public price books to inventory (WEG, KB/Dart after their ingests; Baldor 501 verified no-overlap) and run `price-book` per vendor | PRICING | ⚪ queued (operator-driven) |
 | 8 | **SCHEMA BREAKING harmonize** — `motor_type` → `MotorTechnology` literal + `ElectricCylinder.fieldbus` → `List[CommunicationProtocol]` + harmonize CLI. See [SCHEMA_BREAKING_HARMONIZE.md](SCHEMA_BREAKING_HARMONIZE.md). | SCHEMA_BREAKING_HARMONIZE | 🔴 needs sign-off |
 | 9 | **PYTHON_STRIPE Phase 1.x deploy** — billing Lambda goes live on dev, dev round-trip, soak | PYTHON_STRIPE | ⚪ queued (operator-driven deploy) |

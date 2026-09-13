@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Status: 🚧 in progress. Phase 0 metadata foundation shipped 2026-04-28 (robots.txt, static sitemap, OG/Twitter cards, JSON-LD WebSite + Organization, canonical U">
+    <meta name="description" content="Status: 🚧 in progress. Phase 0 metadata foundation shipped 2026-09-13 (robots.txt, static sitemap, OG/Twitter cards, JSON-LD WebSite + Organization, canonical U">
     <meta name="theme-color" content="#3A2C1C">
     <title>Specodex — SEO plan: make Specodex the answer when an engineer searches a part number</title>
     <link rel="icon" type="image/svg+xml" href="../logo.svg">
@@ -50,15 +50,36 @@
 
         <article class="doc-body">
 <h1 id="seo-plan-make-specodex-the-answer-when-an-engineer-searches-a-part-number">SEO plan: make Specodex the answer when an engineer searches a part number</h1>
-<p>Status: 🚧 in progress. Phase 0 metadata foundation shipped 2026-04-28
+<p>Status: 🚧 in progress. Phase 0 metadata foundation shipped 2026-09-13
 (robots.txt, static sitemap, OG/Twitter cards, JSON-LD <code>WebSite</code> +
-<code>Organization</code>, canonical URL). The structural lifts — SPA crawlability,
+<code>Organization</code>, canonical URL) — the 2026-04-28 entry below recorded the
+<code>index.html</code> half as shipped, but it never reached git (see that entry). The structural lifts — SPA crawlability,
 per-product titles/meta, dynamic sitemap, category/manufacturer/comparison
 pages, OG image generator — remain. The product <em>is</em> the SEO asset; every
 product row in DynamoDB is a long-tail landing page waiting to be rendered.</p>
 <p>This doc is the <strong>how</strong>. Audience and channels live in
 <a href="MARKETING.md">MARKETING.md</a>; the two are paired.</p>
-<h2 id="whats-shipped-2026-04-28">What's shipped (2026-04-28)</h2>
+<h2 id="whats-shipped">What's shipped</h2>
+<h3 id="2026-09-13-indexhtml-head-actually-landed-robots-sitemap-host-fixed">2026-09-13 — <code>index.html</code> head actually landed; robots sitemap host fixed</h3>
+<p>Audit found <code>app/frontend/index.html</code> at its REBRAND-era head (<code>f2e77cf</code>):
+no canonical, no OG/Twitter, no JSON-LD, old title, old description —
+the 2026-04-28 entry below described work that never reached the repo
+(<code>git log -S 'og:title' -- app/frontend/index.html</code> is empty at every
+ref; the live site served <code>&lt;title&gt;Specodex — Product selection&lt;/title&gt;</code>).
+<code>public/robots.txt</code> was worse: the blanket <code>*.txt</code> rule in <code>.gitignore</code>
+had kept it out of git entirely (<code>git ls-files app/frontend/public</code>
+listed only <code>manifest.json</code> and <code>sitemap.xml</code>), so prod served the
+SPA's <code>index.html</code> at <code>/robots.txt</code> — Googlebot got HTML. Its Sitemap
+line also still pointed at the retired <code>datasheets.advin.io</code> host while
+<code>sitemap.xml</code> already used <code>www.specodex.com</code>. Fixed with a
+<code>!app/frontend/public/robots.txt</code> exception and the file tracked.</p>
+<p>Landed now, per the <code>/seo</code> runbook: title → "Specodex — Cross-vendor
+industrial spec database"; refined description; <code>robots: index,follow</code>;
+canonical <code>https://www.specodex.com/</code>; full OG block (with 1200×630
+<code>og-default.png</code> placeholder reference — the PNG is still a follow-up);
+Twitter <code>summary_large_image</code> card; JSON-LD <code>WebSite</code> (+<code>SearchAction</code>)
+and <code>Organization</code>; robots Sitemap line → <code>www.specodex.com</code>.</p>
+<h3 id="2026-04-28-recorded-then-indexhtml-half-did-not-land">2026-04-28 (recorded then; <code>index.html</code> half did not land)</h3>
 <p>Landed in <code>app/frontend/</code>:</p>
 <ul>
 <li><code>public/robots.txt</code> — explicit allow + disallow <code>/admin</code>, <code>/api/</code>,
@@ -117,8 +138,8 @@ on copy, but by being the only result that's actually structured.</p>
 <tbody>
 <tr>
 <td><code>robots.txt</code></td>
-<td>✅ shipped 2026-04-28 — <code>app/frontend/public/robots.txt</code></td>
-<td>Verify in prod; flip canonical URL post-DNS-cutover.</td>
+<td>✅ shipped 2026-04-28 — <code>app/frontend/public/robots.txt</code>; Sitemap host fixed to <code>www.specodex.com</code> 2026-09-13</td>
+<td>Verify in prod after the next <code>dev</code> → <code>master</code> promote.</td>
 </tr>
 <tr>
 <td><code>sitemap.xml</code> (static, homepage only)</td>
@@ -132,7 +153,7 @@ on copy, but by being the only result that's actually structured.</p>
 </tr>
 <tr>
 <td><code>&lt;title&gt;</code>, <code>&lt;meta description&gt;</code> (homepage)</td>
-<td>✅ shipped 2026-04-28</td>
+<td>✅ shipped 2026-09-13 (the 2026-04-28 claim never reached git)</td>
 <td>—</td>
 </tr>
 <tr>
@@ -142,8 +163,8 @@ on copy, but by being the only result that's actually structured.</p>
 </tr>
 <tr>
 <td>Open Graph / Twitter cards (homepage)</td>
-<td>✅ shipped 2026-04-28</td>
-<td>Generate <code>og-default.png</code> (1200×630).</td>
+<td>✅ shipped 2026-09-13</td>
+<td>Generate <code>og-default.png</code> (1200×630) — tags reference it; until it exists unfurls fall back to text.</td>
 </tr>
 <tr>
 <td>Open Graph / Twitter cards (per-product)</td>
@@ -152,7 +173,7 @@ on copy, but by being the only result that's actually structured.</p>
 </tr>
 <tr>
 <td>Schema.org structured data (<code>WebSite</code> + <code>Organization</code>)</td>
-<td>✅ shipped 2026-04-28</td>
+<td>✅ shipped 2026-09-13</td>
 <td>—</td>
 </tr>
 <tr>
@@ -162,7 +183,7 @@ on copy, but by being the only result that's actually structured.</p>
 </tr>
 <tr>
 <td>Canonical URL (homepage)</td>
-<td>✅ shipped 2026-04-28; canonical is <code>www.specodex.com</code> post-cutover</td>
+<td>✅ shipped 2026-09-13; canonical is <code>https://www.specodex.com/</code></td>
 <td>—</td>
 </tr>
 <tr>
@@ -543,7 +564,7 @@ tool better" is a yellow flag.</p>
 </thead>
 <tbody>
 <tr>
-<td><strong>0 — Audit.</strong> ✅ done 2026-04-28. Static metadata baseline shipped: <code>robots.txt</code>, static homepage <code>sitemap.xml</code>, homepage <code>&lt;title&gt;</code>/<code>&lt;meta&gt;</code>, canonical, OG/Twitter cards, JSON-LD <code>WebSite</code> + <code>Organization</code>.</td>
+<td><strong>0 — Audit.</strong> ✅ done 2026-09-13 (robots/sitemap 2026-04-28; <code>index.html</code> head 2026-09-13). Static metadata baseline shipped: <code>robots.txt</code>, static homepage <code>sitemap.xml</code>, homepage <code>&lt;title&gt;</code>/<code>&lt;meta&gt;</code>, canonical, OG/Twitter cards, JSON-LD <code>WebSite</code> + <code>Organization</code>.</td>
 <td>—</td>
 <td>Phase 1 begins.</td>
 </tr>
