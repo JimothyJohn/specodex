@@ -5,9 +5,9 @@
 > **Phase 0 shipped 2026-09-13** in the same PR as this doc.
 > **Phase 1 shipped 2026-09-13** in two PRs (1a: N1, N2, N3, N5, N7 —
 > #415; 1b: N4, N6 — #416). **Phase 2 direction decided 2026-09-13: A —
-> popover per column** (see §3). **S1 shipped 2026-09-13**: header
-> band 210 px → 78 px at rest. S2 (default column set by fill rate)
-> and S3 (mobile) remain.
+> popover per column** (see §3). **S1 shipped 2026-09-13** (#417):
+> header band 210 px → 78 px at rest. **S2 shipped 2026-09-13**:
+> default column set gated on fill rate. S3 (mobile) remains.
 >
 > Nick's brief, verbatim: "The interface needs a lot of work, it's very
 > crowded and janky looking."
@@ -56,7 +56,7 @@ Ranked by how much of the "crowded / janky" impression each one causes.
 | # | What |
 |---|---|
 | S1 | ✅ Per-column inline filter panel in the permanent header (the 210 px band). Shipped as direction A: at rest each column is label + sort + a 10 px sparkline + one trigger that summarises the filter (`any` / `≥ 10 Nm` / `ABB, Siemens`); the histogram, slider, value box and operator/unit pills live in an `AnchoredPopover` under the trigger. Categorical columns keep the multi-select popover behind the same-sized trigger. Applied constraints render as chips in the toolbar (`ActiveFilterChips`, × removes one). Measured at rest on the motor view: 78 px (the 2-line wrapped labels set the floor — a one-line label column would be ~62 px). Compact density is unchanged (it never had the inline stack; 57 px). |
-| S2 | Sparse columns get the widest slots: Axial Load Force Rating is ~90% empty on motors and the widest column. Default column set should favour fill rate. |
+| S2 | ✅ Sparse columns got the widest slots: Axial Load Force Rating was ~90% empty on motors and the widest column. `computeVisibleColumnAttributes` now takes per-column fill rates (`computeFillRates` over the loaded rows) and the "nested → visible by default" rule only fires at ≥ 25 % fill (`DEFAULT_MIN_FILL_RATE`). Curated `defaultVisible: true` and user restores are exempt; an unmeasured key counts as full; the freed slot lets the next populated column in under the cap. Sparse columns stay one click away in `+ Add Spec`. |
 | S3 | Mobile layout has no real design; depends on S1. |
 
 ## 2. Phases
@@ -72,7 +72,7 @@ Ranked by how much of the "crowded / janky" impression each one causes.
 - **Phase 1 — noise.** N1–N7. ✅ Shipped 2026-09-13 in two PRs: 1a
   (N1, N2, N3, N5, N7 — #415) and 1b (N4, N6).
 - **Phase 2 — header structure.** Direction **A (popover per column)**
-  decided 2026-09-13. **S1 ✅ shipped 2026-09-13.** S2 next. Then S3.
+  decided 2026-09-13. **S1 ✅ and S2 ✅ shipped 2026-09-13.** S3 next.
 
 Exit criteria for the whole doc: catalog header ≤ 56 px at rest, no
 duplicated count, no always-empty default column, both themes legible in
