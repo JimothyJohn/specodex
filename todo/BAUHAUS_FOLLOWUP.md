@@ -94,7 +94,7 @@ You said *"i want the slider to have a fine resolution."* I interpreted as conti
 
 ### 3. Histogram bar styling
 
-Bars are rendered inside `DistributionChart.tsx` (component-internal SVG/canvas, didn't trace fully). The slider track around them is now Bauhaus-vocabulary (PR #177) but the histogram bars themselves haven't been touched. Likely small fix — bars are probably already squared `<rect>` SVG; need a color/tracking review. Easy follow-up.
+✅ Squared 2026-09-13. Bars are plain `<div>`s with inline styles, not SVG; the histogram bins carried `borderRadius: '1px'` and the categorical track + fill `'3px'` (web-pill corners, the "fourth amateur tell"). All three removed. Colour/opacity vocabulary was already accent-with-stepped-opacity + tertiary "Other"; the legend dots stay round on purpose (a dot is a dot).
 
 ### 4. ProductDetailModal spec-table internals
 
