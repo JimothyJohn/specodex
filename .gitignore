@@ -263,6 +263,9 @@ $RECYCLE.BIN/
 *.tmp
 *.bak
 *.txt
+# The blanket *.txt rule above swallowed robots.txt for months — prod served
+# the SPA's index.html at /robots.txt (SEO.md, 2026-09-13). Keep it tracked.
+!app/frontend/public/robots.txt
 *.cursor/
 *.claude/
 *.vscode/
