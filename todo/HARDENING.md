@@ -18,7 +18,7 @@
 | 3.4 Concurrent-write stress test | ✅ shipped | #110 |
 | 4.1 Dev-deps for adversarial testing (mutmut + pytest-randomly + freezegun) | ✅ shipped | #103 |
 | 4.2 Lockfile-drift gate post-install | ⚪ open | needs human PR (touches `.github/workflows/`) |
-| 4.3 Log secret-leak assertion tests | ✅ shipped | #102 |
+| 4.3 Log secret-leak assertion tests | ✅ shipped | #102 (TS); Python half 2026-09-13 — `tests/integration/test_log_leaks.py` + `specodex/log_redact.py` |
 
 **Three real bugs caught by the Phase 3.1 work** (each docstring vs.
 implementation disagreement, surfaced by Hypothesis): `_coerce_ip_rating`
@@ -265,6 +265,13 @@ No tests assert that secrets, tokens, JWTs, or full Stripe IDs never appear in l
 6. Mirror in Python (`tests/integration/test_log_leaks.py`) using pytest's `caplog`.
 
 **Definition of done:** TS + Python log-leak tests run in CI; both fail loudly if a known-leaking line is reintroduced.
+
+**Python half (2026-09-13).** The 2026-05 entry marked this row shipped on the TS test alone; step 6 had never landed. Writing it surfaced two live vectors, both fixed in the same PR:
+
+- `page_finder.classify_pages` logged the raw Gemini exception (`f"...: {e}"`) *and* copied it into every page's `description` — an echoing transport error would have carried the API key into the log and into the page-finder result. Both now pass through `specodex.log_redact.redact_secrets`, as do the two "Error during document analysis" sites in `scraper.py`.
+- botocore logs the signed canonical request — `x-amz-security-token:<session token>` in clear — at DEBUG, and every pipeline module sets the ROOT level from `LOG_LEVEL`. `LOG_LEVEL=DEBUG` turned the DAL into a credential dump. `quiet_sdk_debug_logging()` (called when `specodex.db.dynamo` imports) clamps botocore / boto3 / urllib3 / httpx to INFO.
+
+`redact_secrets` is env-driven (values of `SECRET_ENV_VARS` at call time, ≥ 8 chars, longest-first) so it needs no configuration; `tests/unit/test_log_redact.py` pins the contract with examples + a Hypothesis property. `test_log_leaks.py` asserts `SECRET_ENV_VARS` and its sentinel table stay in lockstep, so a new credential can't join one without the other.
 
 ## Dependencies
 

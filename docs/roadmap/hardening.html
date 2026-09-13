@@ -129,7 +129,7 @@
 <tr>
 <td>4.3 Log secret-leak assertion tests</td>
 <td>✅ shipped</td>
-<td>#102</td>
+<td>#102 (TS); Python half 2026-09-13 — <code>tests/integration/test_log_leaks.py</code> + <code>specodex/log_redact.py</code></td>
 </tr>
 </tbody>
 </table>
@@ -307,6 +307,12 @@ Wire <code>mutmut run --paths-to-mutate specodex/quality.py</code> as a weekly j
 5. After each, assert no captured string contains any sentinel value.
 6. Mirror in Python (<code>tests/integration/test_log_leaks.py</code>) using pytest's <code>caplog</code>.</p>
 <p><strong>Definition of done:</strong> TS + Python log-leak tests run in CI; both fail loudly if a known-leaking line is reintroduced.</p>
+<p><strong>Python half (2026-09-13).</strong> The 2026-05 entry marked this row shipped on the TS test alone; step 6 had never landed. Writing it surfaced two live vectors, both fixed in the same PR:</p>
+<ul>
+<li><code>page_finder.classify_pages</code> logged the raw Gemini exception (<code>f"...: {e}"</code>) <em>and</em> copied it into every page's <code>description</code> — an echoing transport error would have carried the API key into the log and into the page-finder result. Both now pass through <code>specodex.log_redact.redact_secrets</code>, as do the two "Error during document analysis" sites in <code>scraper.py</code>.</li>
+<li>botocore logs the signed canonical request — <code>x-amz-security-token:&lt;session token&gt;</code> in clear — at DEBUG, and every pipeline module sets the ROOT level from <code>LOG_LEVEL</code>. <code>LOG_LEVEL=DEBUG</code> turned the DAL into a credential dump. <code>quiet_sdk_debug_logging()</code> (called when <code>specodex.db.dynamo</code> imports) clamps botocore / boto3 / urllib3 / httpx to INFO.</li>
+</ul>
+<p><code>redact_secrets</code> is env-driven (values of <code>SECRET_ENV_VARS</code> at call time, ≥ 8 chars, longest-first) so it needs no configuration; <code>tests/unit/test_log_redact.py</code> pins the contract with examples + a Hypothesis property. <code>test_log_leaks.py</code> asserts <code>SECRET_ENV_VARS</code> and its sentinel table stay in lockstep, so a new credential can't join one without the other.</p>
 <h2 id="dependencies">Dependencies</h2>
 <p><strong>No hard blockers.</strong> Most cards are independent of each other and of the rest of the backlog (CATAGORIES, SCHEMA, STRIPE, SEO, PYTHON_BACKEND, STYLE, API, CONFIGURATION).</p>
 <p><strong>Soft sequencing:</strong>
