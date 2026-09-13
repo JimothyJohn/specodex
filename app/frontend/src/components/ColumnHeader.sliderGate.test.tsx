@@ -11,7 +11,7 @@
  */
 
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import ColumnHeader from './ColumnHeader';
 import { AppProvider } from '../context/AppContext';
 import type { AttributeMetadata } from '../types/filters';
@@ -71,9 +71,16 @@ const row = (fields: Record<string, unknown>): Product =>
   ({ product_type: 'gearhead', manufacturer: 'X', ...fields }) as Product;
 
 describe('ColumnHeader slider gate for number attributes', () => {
+  // Since UI_CLEANUP Phase 2 (2026-09-13) the slider lives in a popover
+  // under the header's filter trigger; open it before asserting.
+  const openFilterPopover = () =>
+    fireEvent.click(screen.getByRole('button', { name: /any/i }));
+
   it('high-cardinality numeric column renders the slider', () => {
     const rows = Array.from({ length: 15 }, (_, i) => row({ gear_ratio: 3 + i * 7.5 }));
     renderHeader(gearRatioAttr, rows);
+    expect(screen.queryByRole('slider')).not.toBeInTheDocument();
+    openFilterPopover();
     expect(screen.getByRole('slider')).toBeInTheDocument();
   });
 
@@ -81,7 +88,12 @@ describe('ColumnHeader slider gate for number attributes', () => {
     const rows = Array.from({ length: 15 }, (_, i) => row({ stages: (i % 3) + 1 }));
     renderHeader(stagesAttr, rows);
     expect(screen.queryByRole('slider')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /any/i })).toBeInTheDocument();
+    const trigger = screen.getByRole('button', { name: /any/i });
+    expect(trigger).toBeInTheDocument();
+    // The categorical trigger opens the multi-select listbox, not a slider.
+    fireEvent.click(trigger);
+    expect(screen.queryByRole('slider')).not.toBeInTheDocument();
+    expect(screen.getByRole('listbox')).toBeInTheDocument();
   });
 
   it('unit-bearing object column still renders the slider', () => {
@@ -98,6 +110,7 @@ describe('ColumnHeader slider gate for number attributes', () => {
       row({ max_continuous_torque: { value: 90, unit: 'Nm' } }),
     ];
     renderHeader(attr, rows);
+    openFilterPopover();
     expect(screen.getByRole('slider')).toBeInTheDocument();
   });
 });
