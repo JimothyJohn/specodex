@@ -290,6 +290,7 @@ as the Rust panic.</p>
 because <code>async-stripe</code> doesn't ship a verifier helper. The Python
 SDK does ship one:</p>
 <pre><code class="language-python">import stripe
+
 event = stripe.Webhook.construct_event(
     payload=raw_body,
     sig_header=request_headers[&quot;stripe-signature&quot;],
