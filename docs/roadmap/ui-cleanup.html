@@ -56,9 +56,9 @@ screenshots of local dev at 1440 / 1024 / 390 px, both themes).
 <strong>Phase 0 shipped 2026-09-13</strong> in the same PR as this doc.
 <strong>Phase 1 shipped 2026-09-13</strong> in two PRs (1a: N1, N2, N3, N5, N7 —</p>
 <h1 id="415-1b-n4-n6-416-phase-2-direction-decided-2026-09-13-a">415; 1b: N4, N6 — #416). **Phase 2 direction decided 2026-09-13: A —</h1>
-<p>popover per column<strong> (see §3). </strong>S1 shipped 2026-09-13**: header
-band 210 px → 78 px at rest. S2 (default column set by fill rate)
-and S3 (mobile) remain.</p>
+<p>popover per column<strong> (see §3). </strong>S1 shipped 2026-09-13<strong> (#417):
+header band 210 px → 78 px at rest. </strong>S2 shipped 2026-09-13**:
+default column set gated on fill rate. S3 (mobile) remains.</p>
 <p>Nick's brief, verbatim: "The interface needs a lot of work, it's very
 crowded and janky looking."</p>
 </blockquote>
@@ -184,7 +184,7 @@ smaller, but it all stacks on top of that.</p>
 </tr>
 <tr>
 <td>S2</td>
-<td>Sparse columns get the widest slots: Axial Load Force Rating is ~90% empty on motors and the widest column. Default column set should favour fill rate.</td>
+<td>✅ Sparse columns got the widest slots: Axial Load Force Rating was ~90% empty on motors and the widest column. <code>computeVisibleColumnAttributes</code> now takes per-column fill rates (<code>computeFillRates</code> over the loaded rows) and the "nested → visible by default" rule only fires at ≥ 25 % fill (<code>DEFAULT_MIN_FILL_RATE</code>). Curated <code>defaultVisible: true</code> and user restores are exempt; an unmeasured key counts as full; the freed slot lets the next populated column in under the cap. Sparse columns stay one click away in <code>+ Add Spec</code>.</td>
 </tr>
 <tr>
 <td>S3</td>
@@ -205,7 +205,7 @@ smaller, but it all stacks on top of that.</p>
 <li><strong>Phase 1 — noise.</strong> N1–N7. ✅ Shipped 2026-09-13 in two PRs: 1a
   (N1, N2, N3, N5, N7 — #415) and 1b (N4, N6).</li>
 <li><strong>Phase 2 — header structure.</strong> Direction <strong>A (popover per column)</strong>
-  decided 2026-09-13. <strong>S1 ✅ shipped 2026-09-13.</strong> S2 next. Then S3.</li>
+  decided 2026-09-13. <strong>S1 ✅ and S2 ✅ shipped 2026-09-13.</strong> S3 next.</li>
 </ul>
 <p>Exit criteria for the whole doc: catalog header ≤ 56 px at rest, no
 duplicated count, no always-empty default column, both themes legible in

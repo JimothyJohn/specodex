@@ -9,7 +9,7 @@ import { ProductType, Product } from '../types/models';
 import { FilterCriterion, SortConfig, applyFilters, sortProducts, getAttributesForType, deriveAttributesFromRecords, mergeAttributesByKey, AttributeMetadata, getAvailableOperators, buildDefaultFiltersForType } from '../types/filters';
 // Column order is authored in types/columnOrder.ts — edit that file to
 // change what columns appear and in what order.
-import { orderColumnAttributes, computeVisibleColumnAttributes } from '../types/columnOrder';
+import { orderColumnAttributes, computeVisibleColumnAttributes, computeFillRates } from '../types/columnOrder';
 import VendorDrawer from './VendorDrawer';
 import { formatValue, formatNumber, formatRange, computeAutoColumnWidths } from '../utils/formatting';
 import Tooltip from './ui/Tooltip';
@@ -209,6 +209,19 @@ export default function ProductList() {
   // testable. User-restored columns always render (even past the cap)
   // — without that carve-out, "Add spec" silently dropped the user's
   // column whenever the default set already filled the cap.
+  // Fill rate per column over the loaded rows — the default-visible rule
+  // drops unit-bearing columns that are mostly empty (UI_CLEANUP S2), so
+  // a 90 %-empty column doesn't hold the widest default slot. Curated
+  // `defaultVisible: true` columns and user restores are exempt.
+  const columnFillRates = useMemo(
+    () =>
+      computeFillRates(
+        products as unknown as readonly Record<string, unknown>[],
+        columnAttributes.map(a => a.key),
+      ),
+    [products, columnAttributes],
+  );
+
   const visibleColumnAttributes = useMemo<AttributeMetadata[]>(
     () =>
       computeVisibleColumnAttributes(
@@ -216,8 +229,9 @@ export default function ProductList() {
         userHiddenKeys,
         userRestoredKeys,
         MAX_VISIBLE_COLUMNS,
+        columnFillRates,
       ),
-    [columnAttributes, userHiddenKeys, userRestoredKeys, MAX_VISIBLE_COLUMNS],
+    [columnAttributes, userHiddenKeys, userRestoredKeys, MAX_VISIBLE_COLUMNS, columnFillRates],
   );
 
   // Restore-dropdown candidates: everything the user could bring back —
