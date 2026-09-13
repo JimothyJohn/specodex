@@ -4,8 +4,10 @@
 > screenshots of local dev at 1440 / 1024 / 390 px, both themes).
 > **Phase 0 shipped 2026-09-13** in the same PR as this doc.
 > **Phase 1 shipped 2026-09-13** in two PRs (1a: N1, N2, N3, N5, N7 —
-> #415; 1b: N4, N6). **Phase 2 direction decided 2026-09-13: A —
-> popover per column** (see §3); S1 + S2 are the next structural PRs.
+> #415; 1b: N4, N6 — #416). **Phase 2 direction decided 2026-09-13: A —
+> popover per column** (see §3). **S1 shipped 2026-09-13**: header
+> band 210 px → 78 px at rest. S2 (default column set by fill rate)
+> and S3 (mobile) remain.
 >
 > Nick's brief, verbatim: "The interface needs a lot of work, it's very
 > crowded and janky looking."
@@ -53,7 +55,7 @@ Ranked by how much of the "crowded / janky" impression each one causes.
 
 | # | What |
 |---|---|
-| S1 | Per-column inline filter panel in the permanent header (the 210 px band). See open question. |
+| S1 | ✅ Per-column inline filter panel in the permanent header (the 210 px band). Shipped as direction A: at rest each column is label + sort + a 10 px sparkline + one trigger that summarises the filter (`any` / `≥ 10 Nm` / `ABB, Siemens`); the histogram, slider, value box and operator/unit pills live in an `AnchoredPopover` under the trigger. Categorical columns keep the multi-select popover behind the same-sized trigger. Applied constraints render as chips in the toolbar (`ActiveFilterChips`, × removes one). Measured at rest on the motor view: 78 px (the 2-line wrapped labels set the floor — a one-line label column would be ~62 px). Compact density is unchanged (it never had the inline stack; 57 px). |
 | S2 | Sparse columns get the widest slots: Axial Load Force Rating is ~90% empty on motors and the widest column. Default column set should favour fill rate. |
 | S3 | Mobile layout has no real design; depends on S1. |
 
@@ -70,11 +72,16 @@ Ranked by how much of the "crowded / janky" impression each one causes.
 - **Phase 1 — noise.** N1–N7. ✅ Shipped 2026-09-13 in two PRs: 1a
   (N1, N2, N3, N5, N7 — #415) and 1b (N4, N6).
 - **Phase 2 — header structure.** Direction **A (popover per column)**
-  decided 2026-09-13. S1 + S2 next. Then S3.
+  decided 2026-09-13. **S1 ✅ shipped 2026-09-13.** S2 next. Then S3.
 
 Exit criteria for the whole doc: catalog header ≤ 56 px at rest, no
 duplicated count, no always-empty default column, both themes legible in
 the header, 390 px usable, no grid strip.
+
+Scorecard 2026-09-13 after S1: header 78 px (target 56 — the residual is
+the two-line label wrap, "RATED TORQUE" at ~80 px column width; a
+tighter label treatment is S2/S3 territory), count ✅, empty column ✅,
+themes ✅, grid strip ✅, 390 px ⏳ (S3).
 
 ## 3. S1 direction — decided 2026-09-13: **A, popover per column**
 
