@@ -447,14 +447,15 @@ export default function ProductList() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [compatNarrowed, torqueTargets, productType]);
 
-  /* Gear ratio is always visible on the motor view, not gated on
-   * `torqueTargets.length > 0`. Per-row value comes from gearMap
-   * (which is empty when there's no torque filter), so rows fall
-   * back to ratio 1 → "—" until a torque filter promotes them
-   * into a real gear pick. Keeps the column in the table's
-   * mental model rather than appearing/disappearing as filters
-   * are toggled. */
-  const showGearColumn = productType === 'motor';
+  /* Gear ratio column appears on the motor view once a torque filter
+   * exists (`torqueTargets` non-empty) — that is the only time gearMap
+   * can hold a ratio other than 1. PR #201 kept it always-on so the
+   * column stayed in the table's mental model, but with no torque
+   * filter every row read "—", an always-empty default column
+   * (UI_CLEANUP N2). The torque/speed headers carry a "geared" marker
+   * while the cascade is active so the scaled values are labelled. */
+  const showGearColumn = productType === 'motor' && torqueTargets.length > 0;
+  const cascadeKeys = showGearColumn ? [...TORQUE_KEYS, ...SPEED_KEYS] : [];
 
   const filteredProducts = useMemo(() => {
     return applyFilters(gearedSource, filters);
@@ -604,6 +605,12 @@ export default function ProductList() {
   const getProximityColor = (attribute: string, productValue: any): string => {
     const filter = filters.find(f => f.attribute === attribute || f.attribute.startsWith(attribute + '.'));
     if (!filter || filter.operator === '!=') return '';
+    // Default chips are seeded valueless ("any"); until the user dials
+    // in a threshold there is nothing to be near, so no gradient. Without
+    // this guard the seeded rated_torque / rated_speed chips painted a
+    // full-height percentile band down both columns on every motor load
+    // (UI_CLEANUP N7).
+    if (filter.value === undefined || filter.value === null) return '';
 
     let numericProductValue: number | null = null;
     if (filter.attribute === attribute) {
@@ -853,10 +860,12 @@ export default function ProductList() {
   return (
     <div className="page-products-layout">
       <main className="results-main">
-        {/* Single top toolbar — type selector, page-size, and result count
-         * sit on the left; match summary and Clear sit on the right. This
-         * is the only fixed chrome above the results grid; the previous
-         * `.results-header` row is gone so the table gets the height back. */}
+        {/* Single top toolbar — type selector on the left; the match
+         * summary (the one and only result count), Add Spec and Clear on
+         * the right. This is the only fixed chrome above the results
+         * grid; the previous `.results-header` row is gone so the table
+         * gets the height back. UI_CLEANUP N1 retired the second, mono
+         * "1-25 of N" count that used to sit next to the type selector. */}
         <div className="page-toolbar">
           <div className="page-toolbar-left">
             <Dropdown<string>
@@ -871,12 +880,6 @@ export default function ProductList() {
               }))}
               className="page-toolbar-type-select"
             />
-            <span className="results-count">
-              {displayProducts.length === 0
-                ? '0'
-                : `1-${paginatedProducts.length}`
-              } of {displayProducts.length}
-            </span>
           </div>
           <div className="page-toolbar-right">
             {productType && compatNarrowed.length > 0 && (
@@ -1058,8 +1061,8 @@ export default function ProductList() {
                 </span>
                 <div className="col-resize-handle" onMouseDown={(e) => startResize('part_number', e)} />
               </div>
-              {/* Gear ratio (computed). Always visible on the motor view;
-                  displays '—' for direct drive (gearMap unset or ratio 1).
+              {/* Gear ratio (computed). Shown on the motor view while a
+                  torque filter is active; '—' marks direct drive (ratio 1).
                   Per-row value comes from gearMap; rated_torque and
                   rated_speed cells display the post-gear values so the
                   table is an accurate depiction of what each motor would
@@ -1098,6 +1101,7 @@ export default function ProductList() {
                       sortConfig={sortConfig}
                       sortIndex={sortIndex}
                       totalSorts={sorts.length}
+                      cascadeKey={cascadeKeys.includes(header.key)}
                       width={columnWidths[header.key] ?? defaultColWidth}
                       unitSystem={unitSystemFor(header.key)}
                       onUnitToggle={() => toggleColumnUnit(header.key)}
