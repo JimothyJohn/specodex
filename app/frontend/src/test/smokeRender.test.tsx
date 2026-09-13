@@ -87,12 +87,29 @@ describe('AppShell smoke render', () => {
     expect(screen.queryByText(/something went wrong/i)).toBeNull();
   });
 
+  it('header carries no OPTIONS eyebrow and hosts the GitHub link in the options cluster (UI_CLEANUP N4)', async () => {
+    renderRoute('/');
+    await waitFor(() => {
+      expect(screen.getByText('Loading...')).toBeInTheDocument();
+    });
+    // The decorative eyebrow was retired 2026-09-13; a reintroduction
+    // should be deliberate, not a merge-conflict resurrection.
+    expect(screen.queryByText('OPTIONS')).toBeNull();
+    const github = screen.getByRole('link', { name: 'Source on GitHub' });
+    expect(github.closest('.header-options')).not.toBeNull();
+    expect(github.closest('.header-left')).toBeNull();
+  });
+
   it('renders /welcome (lazy-loaded landing) with the hero copy', async () => {
     renderRoute('/welcome');
     await waitFor(() => {
       expect(screen.getByText(/A product selection frontend/i)).toBeInTheDocument();
     });
     expect(screen.queryByText(/something went wrong/i)).toBeNull();
+    // The "T1 — Ratio Studies" logo explorations were design scratch on
+    // the public landing; removed in UI_CLEANUP N6 (recoverable from git).
+    expect(screen.queryByText(/Ratio Studies/i)).toBeNull();
+    expect(screen.queryByText(/Favicon/i)).toBeNull();
   });
 
   it('renders /datasheets (lazy, admin-only)', async () => {
