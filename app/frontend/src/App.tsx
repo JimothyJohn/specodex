@@ -115,7 +115,6 @@ export function AppShell() {
                   SPECODEX
                 </NavLink>
               </h1>
-              <GitHubLink />
               {(showSignedInNav || showAdminNav) && (
                 <nav className="nav-inline">
                   <NavLink to="/" end className={({ isActive }) => `nav-btn ${isActive ? 'active' : ''}`}>Selection</NavLink>
@@ -132,8 +131,12 @@ export function AppShell() {
                 </nav>
               )}
             </div>
+            {/* Right-side cluster: feedback, density, theme, source, account.
+                The OPTIONS eyebrow that used to head this cluster and the
+                ▸ ◂ glyphs around the wordmark were decoration with no
+                function — retired in UI_CLEANUP N4. The GitHub link moved
+                here from the primary-nav slot next to the wordmark. */}
             <div className="header-options">
-              <span className="header-options-label" aria-hidden="true">OPTIONS</span>
               <button
                 type="button"
                 className="feedback-trigger"
@@ -144,6 +147,7 @@ export function AppShell() {
               </button>
               <DensityToggle />
               <ThemeToggle />
+              <GitHubLink />
               <AccountMenu />
             </div>
           </header>

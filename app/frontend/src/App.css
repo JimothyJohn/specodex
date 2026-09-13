@@ -374,18 +374,6 @@ body {
   align-items: center;
 }
 
-.header-options-label {
-  font-family: var(--font-headline);
-  font-size: 0.65rem;
-  font-weight: 600;
-  color: var(--header-text);
-  text-transform: uppercase;
-  letter-spacing: 0.18em;
-  opacity: 0.7;
-  margin-right: 0.25rem;
-  user-select: none;
-}
-
 /* Hide old navigation bar */
 .nav {
   display: none;
@@ -3465,17 +3453,6 @@ button.secondary:hover {
     font-size: 1rem;
   }
 
-  /* OPTIONS label is decorative — drop it on mobile to keep the header on one row */
-  .header-options-label {
-    display: none;
-  }
-
-  /* Hide the decorative vertical hairline that the OPTIONS label
-   * anchors against — without the label the rule has nothing to
-   * separate, and on a tight bar it just adds noise. */
-  .header-options::before {
-    display: none;
-  }
   .header-options { padding-left: 0; }
 
   /* Navigation - Stack vertically on small screens */
@@ -4102,19 +4079,6 @@ code, pre, .monospace {
  * variable opt-in if anyone misses it. */
 .app::before {
   content: none;
-}
-
-/* Military stencil effect for headers */
-.header h1::before {
-  content: '▸ ';
-  color: var(--accent-primary);
-  margin-right: 0.5rem;
-}
-
-.header h1::after {
-  content: ' ◂';
-  color: var(--accent-primary);
-  margin-left: 0.5rem;
 }
 
 /* Terminal prompt style for navigation */
@@ -5811,28 +5775,14 @@ body::after {
  * (this block last) is load-bearing.
  * ========================================================================= */
 
-/* ----- Header: cluster the right-side controls. The OPTIONS label sits
- * on the inside of a vertical hairline rule, so the wordmark+nav cluster
- * reads as one group and the controls cluster reads as another. */
+/* ----- Header: cluster the right-side controls. The OPTIONS eyebrow
+ * and the hairline it anchored against were retired (UI_CLEANUP N4);
+ * the two clusters are separated by the flex gap alone. */
 .header { padding-left: 1rem; padding-right: 1rem; gap: 0.6rem; }
 .header-left { gap: 0.75rem; }
 .header-options {
   position: relative;
-  padding-left: 0.6rem;
   gap: 0.3rem;
-}
-.header-options::before {
-  content: '';
-  position: absolute;
-  left: 0; top: 18%; bottom: 18%;
-  width: 1px;
-  background: rgba(232, 226, 201, 0.25);
-}
-.header-options-label {
-  letter-spacing: 0.22em;
-  font-size: 0.6rem;
-  opacity: 0.7;
-  margin-right: 0.15rem;
 }
 
 /* Wordmark — confident lockup. Accent underline that animates on
@@ -6102,8 +6052,6 @@ body::after {
 @media (max-width: 720px) {
   .header { padding-left: 0.6rem; padding-right: 0.6rem; gap: 0.4rem; }
   .header-options { padding-left: 0; gap: 0.25rem; }
-  .header-options::before { display: none; }
-  .header-options-label { display: none; }
   .header nav { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .header nav::-webkit-scrollbar { display: none; }
   .nav-btn { flex: 0 0 auto; padding: 0.25rem 0.55rem; font-size: 0.7rem; letter-spacing: 0.1em; }
