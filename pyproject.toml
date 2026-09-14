@@ -5,16 +5,16 @@ description = "Extract technical specifications from product datasheets using AI
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "google-genai>=2.12.1",
+    "google-genai>=2.18.1",
     "pypdf2>=3.0.1",
     "pydantic>=2.13.4",
-    "boto3>=1.43.52",
+    "boto3>=1.43.71",
     "tenacity>=9.1.4",
     "pycryptodome>=3.20.0",
-    "playwright>=1.61.0",
+    "playwright>=1.62.0",
     "google-api-python-client>=2.198.0",
     "python-dotenv>=1.2.2",
-    "pymupdf>=1.28.0",
+    "pymupdf>=1.28.2",
     "httpx>=0.27.0",
     "selectolax>=0.4.11",
 ]
@@ -28,29 +28,29 @@ web-scraper = "specodex.web_scraper:main"
 
 [dependency-groups]
 dev = [
-    "awslambdaric>=4.0.1",
+    "awslambdaric>=4.0.2",
     # FastAPI backend (app/backend_py/) deps — needed so the parent
     # test runner collects + runs app/backend_py/tests/ as part of
     # `./Quickstart verify --only python`. app/backend_py/ keeps its
     # own pyproject.toml for the standalone Lambda bundle; these
     # mirror that list so one `uv sync` covers the whole monorepo.
-    "fastapi>=0.139.2",
+    "fastapi>=0.141.1",
     "mangum>=0.17.0",
     "python-jose[cryptography]>=3.5.0",
     "email-validator>=2.0.0",
     # Time mocking — required by the "Testing — adversarial by default"
     # rule in ~/.claude/CLAUDE.md ("Determinism is non-negotiable").
     "freezegun>=1.5.0",
-    "hypothesis>=6.157.2",
+    "hypothesis>=6.165.6",
     # Pure-Python Markdown renderer — used by scripts/gen_roadmap.py to
     # render todo/*.md into docs/roadmap/<slug>.html. Dev-only; never
     # imported at runtime by specodex/ or cli/.
-    "markdown>=3.7",
+    "markdown>=3.10.3",
     "moto[dynamodb]>=5.2.2",
     # Mutation testing — measures real assertion strength rather than
     # line coverage. Run as a periodic job (not a CI gate) until a
     # baseline mutation-catch rate is established.
-    "mutmut>=3.6.0",
+    "mutmut>=3.7.0",
     "mypy>=2.3.0",
     "pydantic-to-typescript>=2.0.0",
     "pytest>=9.1.1",
@@ -60,8 +60,15 @@ dev = [
     # hidden inter-test dependencies / global-state leaks. Pin a seed
     # in CI via PYTEST_RANDOMLY_SEED for reproducibility.
     "pytest-randomly>=3.15.0",
-    "ruff>=0.15.22",
+    "ruff>=0.16.3",
 ]
+
+[tool.ruff.lint]
+# ruff>=0.16 dropped the implicit default rule selection (E4, E7, E9, F)
+# when no [tool.ruff.lint] table is present, and lints with the full
+# rule set instead. Pin the previous default explicitly so upgrading
+# ruff doesn't silently change which rules gate CI.
+select = ["E4", "E7", "E9", "F"]
 
 [tool.setuptools]
 packages = ["specodex", "cli"]

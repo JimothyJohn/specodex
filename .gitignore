@@ -262,7 +262,10 @@ $RECYCLE.BIN/
 *.log
 *.tmp
 *.bak
-*.txt
+# No blanket *.txt: it swallowed app/frontend/public/robots.txt for months
+# (prod served the SPA's index.html at /robots.txt — SEO.md, 2026-09-13)
+# and, checked the day it was removed, protected nothing else in the tree.
+# Ignore generated text by location, not by extension.
 *.cursor/
 *.claude/
 *.vscode/

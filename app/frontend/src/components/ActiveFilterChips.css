@@ -1,0 +1,80 @@
+/* ActiveFilterChips — the applied-constraint row inside .page-toolbar.
+ * Stencil label + mono value, hard-bordered, square. Wraps when the
+ * toolbar runs out of width rather than scrolling. */
+
+.active-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+/* In the catalog toolbar the row takes the slack between the type
+ * selector and the match block. */
+.page-toolbar .active-filter-chips {
+  flex: 1 1 auto;
+  margin: 0 0.6rem;
+}
+
+.active-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  height: 24px;
+  padding: 0 0.15rem 0 0.5rem;
+  border: 1px solid var(--text-primary);
+  background: var(--bg-secondary);
+  font-size: 0.72rem;
+  line-height: 1;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.active-filter-chip--exclude {
+  border-color: #c2557a;
+}
+
+.active-filter-chip-label {
+  font-family: var(--font-headline);
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 16ch;
+}
+
+.active-filter-chip-value {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 18ch;
+}
+
+.active-filter-chip-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.active-filter-chip-remove:hover,
+.active-filter-chip-remove:focus-visible {
+  color: #c2557a;
+  background: color-mix(in srgb, #c2557a 16%, transparent);
+  outline: none;
+}

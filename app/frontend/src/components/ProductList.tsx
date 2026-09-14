@@ -9,7 +9,7 @@ import { ProductType, Product } from '../types/models';
 import { FilterCriterion, SortConfig, applyFilters, sortProducts, getAttributesForType, deriveAttributesFromRecords, mergeAttributesByKey, AttributeMetadata, getAvailableOperators, buildDefaultFiltersForType } from '../types/filters';
 // Column order is authored in types/columnOrder.ts — edit that file to
 // change what columns appear and in what order.
-import { orderColumnAttributes, computeVisibleColumnAttributes } from '../types/columnOrder';
+import { orderColumnAttributes, computeVisibleColumnAttributes, computeFillRates } from '../types/columnOrder';
 import VendorDrawer from './VendorDrawer';
 import { formatValue, formatNumber, formatRange, computeAutoColumnWidths } from '../utils/formatting';
 import Tooltip from './ui/Tooltip';
@@ -22,6 +22,7 @@ import {
   isStringArray,
 } from '../utils/localStorage';
 import ColumnHeader from './ColumnHeader';
+import ActiveFilterChips from './ActiveFilterChips';
 import ProductDetailModal from './ProductDetailModal';
 import AttributeSelector from './AttributeSelector';
 import Dropdown from './Dropdown';
@@ -208,6 +209,19 @@ export default function ProductList() {
   // testable. User-restored columns always render (even past the cap)
   // — without that carve-out, "Add spec" silently dropped the user's
   // column whenever the default set already filled the cap.
+  // Fill rate per column over the loaded rows — the default-visible rule
+  // drops unit-bearing columns that are mostly empty (UI_CLEANUP S2), so
+  // a 90 %-empty column doesn't hold the widest default slot. Curated
+  // `defaultVisible: true` columns and user restores are exempt.
+  const columnFillRates = useMemo(
+    () =>
+      computeFillRates(
+        products as unknown as readonly Record<string, unknown>[],
+        columnAttributes.map(a => a.key),
+      ),
+    [products, columnAttributes],
+  );
+
   const visibleColumnAttributes = useMemo<AttributeMetadata[]>(
     () =>
       computeVisibleColumnAttributes(
@@ -215,8 +229,9 @@ export default function ProductList() {
         userHiddenKeys,
         userRestoredKeys,
         MAX_VISIBLE_COLUMNS,
+        columnFillRates,
       ),
-    [columnAttributes, userHiddenKeys, userRestoredKeys, MAX_VISIBLE_COLUMNS],
+    [columnAttributes, userHiddenKeys, userRestoredKeys, MAX_VISIBLE_COLUMNS, columnFillRates],
   );
 
   // Restore-dropdown candidates: everything the user could bring back —
@@ -447,14 +462,15 @@ export default function ProductList() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [compatNarrowed, torqueTargets, productType]);
 
-  /* Gear ratio is always visible on the motor view, not gated on
-   * `torqueTargets.length > 0`. Per-row value comes from gearMap
-   * (which is empty when there's no torque filter), so rows fall
-   * back to ratio 1 → "—" until a torque filter promotes them
-   * into a real gear pick. Keeps the column in the table's
-   * mental model rather than appearing/disappearing as filters
-   * are toggled. */
-  const showGearColumn = productType === 'motor';
+  /* Gear ratio column appears on the motor view once a torque filter
+   * exists (`torqueTargets` non-empty) — that is the only time gearMap
+   * can hold a ratio other than 1. PR #201 kept it always-on so the
+   * column stayed in the table's mental model, but with no torque
+   * filter every row read "—", an always-empty default column
+   * (UI_CLEANUP N2). The torque/speed headers carry a "geared" marker
+   * while the cascade is active so the scaled values are labelled. */
+  const showGearColumn = productType === 'motor' && torqueTargets.length > 0;
+  const cascadeKeys = showGearColumn ? [...TORQUE_KEYS, ...SPEED_KEYS] : [];
 
   const filteredProducts = useMemo(() => {
     return applyFilters(gearedSource, filters);
@@ -604,6 +620,12 @@ export default function ProductList() {
   const getProximityColor = (attribute: string, productValue: any): string => {
     const filter = filters.find(f => f.attribute === attribute || f.attribute.startsWith(attribute + '.'));
     if (!filter || filter.operator === '!=') return '';
+    // Default chips are seeded valueless ("any"); until the user dials
+    // in a threshold there is nothing to be near, so no gradient. Without
+    // this guard the seeded rated_torque / rated_speed chips painted a
+    // full-height percentile band down both columns on every motor load
+    // (UI_CLEANUP N7).
+    if (filter.value === undefined || filter.value === null) return '';
 
     let numericProductValue: number | null = null;
     if (filter.attribute === attribute) {
@@ -853,10 +875,12 @@ export default function ProductList() {
   return (
     <div className="page-products-layout">
       <main className="results-main">
-        {/* Single top toolbar — type selector, page-size, and result count
-         * sit on the left; match summary and Clear sit on the right. This
-         * is the only fixed chrome above the results grid; the previous
-         * `.results-header` row is gone so the table gets the height back. */}
+        {/* Single top toolbar — type selector on the left; the match
+         * summary (the one and only result count), Add Spec and Clear on
+         * the right. This is the only fixed chrome above the results
+         * grid; the previous `.results-header` row is gone so the table
+         * gets the height back. UI_CLEANUP N1 retired the second, mono
+         * "1-25 of N" count that used to sit next to the type selector. */}
         <div className="page-toolbar">
           <div className="page-toolbar-left">
             <Dropdown<string>
@@ -871,13 +895,19 @@ export default function ProductList() {
               }))}
               className="page-toolbar-type-select"
             />
-            <span className="results-count">
-              {displayProducts.length === 0
-                ? '0'
-                : `1-${paginatedProducts.length}`
-              } of {displayProducts.length}
-            </span>
           </div>
+          {/* Applied constraints, one chip each — the at-a-glance record
+              now that the per-column controls live in popovers
+              (UI_CLEANUP Phase 2). Valueless seeded chips don't show. */}
+          {productType && (
+            <ActiveFilterChips
+              filters={filters}
+              attributes={columnAttributes}
+              products={compatNarrowed}
+              unitSystemFor={unitSystemFor}
+              onRemove={(f) => setFilters(prev => prev.filter(x => x !== f))}
+            />
+          )}
           <div className="page-toolbar-right">
             {productType && compatNarrowed.length > 0 && (
               <div className="page-toolbar-match">
@@ -901,6 +931,24 @@ export default function ProductList() {
                   />
                 </div>
               </div>
+            )}
+            {/* Restore-hidden-column button — only rendered when
+                there's something to restore. Lives here, not at the end
+                of the header row, so it doesn't hang past the table. */}
+            {productType && hiddenColumnAttributes.length > 0 && (
+              <Tooltip content={`Add spec column (${hiddenColumnAttributes.length} available)`}>
+                <button
+                  type="button"
+                  ref={(el) => setAddColumnBtnRef(el)}
+                  className="add-column-btn"
+                  onClick={(e) => {
+                    setColumnSelectorCursor({ x: e.clientX, y: e.clientY });
+                    setShowSortSelector(true);
+                  }}
+                >
+                  + Add Spec
+                </button>
+              </Tooltip>
             )}
             {filters.length > 0 && (
               <Tooltip content="Clear all filters and sorts">
@@ -1023,13 +1071,14 @@ export default function ProductList() {
             <div className={`product-grid density-${rowDensity}`}>
             {/* Column headers */}
             <div className="product-grid-headers">
-              <Tooltip content="Click anywhere to sort • click again to reverse, again to clear">
               <div
                 className="product-grid-header-part clickable"
                 style={{ width: columnWidths['part_number'] ?? defaultPartWidth }}
                 onClick={() => handleColumnSort('part_number')}
               >
-                Part Number
+                <Tooltip content="Click anywhere to sort • click again to reverse, again to clear">
+                  <span className="product-grid-header-part-label">Part Number</span>
+                </Tooltip>
                 <span className="sort-indicator">
                   {sorts.find(s => s.attribute === 'part_number')?.direction === 'asc' && '↑'}
                   {sorts.find(s => s.attribute === 'part_number')?.direction === 'desc' && '↓'}
@@ -1039,9 +1088,8 @@ export default function ProductList() {
                 </span>
                 <div className="col-resize-handle" onMouseDown={(e) => startResize('part_number', e)} />
               </div>
-              </Tooltip>
-              {/* Gear ratio (computed). Always visible on the motor view;
-                  displays '—' for direct drive (gearMap unset or ratio 1).
+              {/* Gear ratio (computed). Shown on the motor view while a
+                  torque filter is active; '—' marks direct drive (ratio 1).
                   Per-row value comes from gearMap; rated_torque and
                   rated_speed cells display the post-gear values so the
                   table is an accurate depiction of what each motor would
@@ -1080,6 +1128,7 @@ export default function ProductList() {
                       sortConfig={sortConfig}
                       sortIndex={sortIndex}
                       totalSorts={sorts.length}
+                      cascadeKey={cascadeKeys.includes(header.key)}
                       width={columnWidths[header.key] ?? defaultColWidth}
                       unitSystem={unitSystemFor(header.key)}
                       onUnitToggle={() => toggleColumnUnit(header.key)}
@@ -1112,22 +1161,6 @@ export default function ProductList() {
                   );
                 });
               })()}
-              {/* Restore-hidden-column button — only rendered when
-                  there's something to restore. */}
-              {hiddenColumnAttributes.length > 0 && (
-                <Tooltip content={`Add spec column (${hiddenColumnAttributes.length} available)`}>
-                  <button
-                    ref={(el) => setAddColumnBtnRef(el)}
-                    className="add-column-btn"
-                    onClick={(e) => {
-                      setColumnSelectorCursor({ x: e.clientX, y: e.clientY });
-                      setShowSortSelector(true);
-                    }}
-                  >
-                    + Add Spec
-                  </button>
-                </Tooltip>
-              )}
             </div>
 
               {paginatedProducts.map((product) => (

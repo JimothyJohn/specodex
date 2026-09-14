@@ -21,6 +21,7 @@ series response carries. Each maps to a Gearhead field via
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
@@ -173,17 +174,29 @@ class StoberAdapter:
 
 
 def _as_list(value: Any) -> list[dict[str, Any]]:
+    """The dict members of ``value`` when it is a list, else ``[]``.
+
+    Guards every nested walk: a vendor payload that puts a scalar where the
+    API documents a list must not raise ``TypeError`` out of the parser.
+    """
     return [v for v in value if isinstance(v, dict)] if isinstance(value, list) else []
 
 
 def _param_from_filter(f: dict[str, Any]) -> Optional[RequirementParam]:
-    """Turn one API filter object into a RequirementParam, or None to skip."""
-    filter_id = f.get("filterId")
-    if not filter_id:
+    """Turn one API filter object into a RequirementParam, or None to skip.
+
+    Never raises: the payload is vendor-controlled JSON, so anything that
+    isn't the documented shape is skipped rather than propagated. In
+    particular ``filterId`` must be a non-empty string — it is used as a
+    dict key and set member downstream, so an unhashable value (list, dict)
+    would otherwise raise ``TypeError`` out of the parser.
+    """
+    filter_id = _text(f.get("filterId"))
+    if filter_id is None:
         return None
     ftype = f.get("$type", "")
-    name = f.get("filterName") or _info_title(f) or filter_id
-    unit = (f.get("units") or None) or None
+    name = _text(f.get("filterName")) or _info_title(f) or filter_id
+    unit = _text(f.get("units"))
     mapped = FILTER_TO_GEARHEAD_FIELD.get(filter_id)
 
     if ftype == "ParameterDoubleValue":
@@ -200,7 +213,9 @@ def _param_from_filter(f: dict[str, Any]) -> Optional[RequirementParam]:
         options = tuple(
             v["key"]
             for v in f.get("values", [])
-            if isinstance(v, dict) and v.get("key") not in (None, "NoSelection")
+            if isinstance(v, dict)
+            and isinstance(v.get("key"), str)
+            and v["key"] not in ("", "NoSelection")
         )
         # A selection with no real options carries no information — skip it.
         if not options:
@@ -221,9 +236,7 @@ def parse_requirements(filter_groups: Any) -> list[RequirementParam]:
     params: list[RequirementParam] = []
     seen: set[str] = set()
     for group in _as_list(filter_groups):
-        for f in group.get("parameters") or []:
-            if not isinstance(f, dict):
-                continue
+        for f in _as_list(group.get("parameters")):
             param = _param_from_filter(f)
             if param is not None and param.filter_id not in seen:
                 seen.add(param.filter_id)
@@ -237,9 +250,7 @@ def parse_group_selection(payload: Any) -> GroupSelection:
     requirements: list[RequirementParam] = []
     seen: set[str] = set()
     for group in _as_list(body.get("productGroupFilters")):
-        for f in group.get("filters") or []:
-            if not isinstance(f, dict):
-                continue
+        for f in _as_list(group.get("filters")):
             param = _param_from_filter(f)
             if param is not None and param.filter_id not in seen:
                 seen.add(param.filter_id)
@@ -251,13 +262,27 @@ def parse_group_selection(payload: Any) -> GroupSelection:
     )
 
 
+def _text(value: Any) -> Optional[str]:
+    """Return ``value`` when it is a non-empty string, else ``None``."""
+    return value if isinstance(value, str) and value else None
+
+
 def _info_title(f: dict[str, Any]) -> Optional[str]:
     info = f.get("infoFlyoutContents")
-    return info.get("titleText") if isinstance(info, dict) else None
+    return _text(info.get("titleText")) if isinstance(info, dict) else None
 
 
 def _as_float(value: Any) -> Optional[float]:
+    """Coerce an API number to ``float``, or ``None`` when it isn't one.
+
+    Bools are not measurements (``float(True)`` would silently become a
+    ``1.0`` bound) and NaN/±inf poison every downstream range comparison,
+    so both drop to ``None``.
+    """
+    if isinstance(value, bool):
+        return None
     try:
-        return float(value)
+        result = float(value)
     except (TypeError, ValueError):
         return None
+    return result if math.isfinite(result) else None

@@ -68,23 +68,33 @@ family/vendor inference (rungs 5–6).
 New shared models, additive-only on `ProductBase`:
 
 ```python
-SourceKind = Literal["oem", "distributor", "aggregator", "price_book",
-                     "shopping", "article", "vendor_doc", "db_inference"]
+SourceKind = Literal[
+    "oem",
+    "distributor",
+    "aggregator",
+    "price_book",
+    "shopping",
+    "article",
+    "vendor_doc",
+    "db_inference",
+]
 Confidence = Literal["listed", "high", "medium", "low", "inferred"]
 
+
 class SourceCitation(BaseModel):
-    url: Optional[str]           # None only for kind="db_inference"
+    url: Optional[str]  # None only for kind="db_inference"
     kind: SourceKind
-    retrieved_at: str            # ISO 8601
-    excerpt: Optional[str]       # verbatim quote backing the figure (≤280 chars)
+    retrieved_at: str  # ISO 8601
+    excerpt: Optional[str]  # verbatim quote backing the figure (≤280 chars)
     comparable_ids: Optional[List[str]]  # db_inference: sorted product_ids used
-    method_version: Optional[str]        # db_inference: e.g. "price-comps-v1"
+    method_version: Optional[str]  # db_inference: e.g. "price-comps-v1"
+
 
 class SourcedFigure(BaseModel):
-    value: ValueUnit             # {value: 1234.0, unit: "USD"} / {value: 6, unit: "weeks"}
+    value: ValueUnit  # {value: 1234.0, unit: "USD"} / {value: 6, unit: "weeks"}
     confidence: Confidence
     observed_range: Optional[MinMaxUnit]  # dispersion across sources/comparables
-    sources: List[SourceCitation]         # min_length=1 — no orphan figures
+    sources: List[SourceCitation]  # min_length=1 — no orphan figures
 ```
 
 `ProductBase` gains `price_estimate: Optional[SourcedFigure]` and

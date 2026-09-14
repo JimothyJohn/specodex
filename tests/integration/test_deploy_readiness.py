@@ -224,6 +224,53 @@ class TestConfigConsistency:
         assert "products-" in cdk_config
 
 
+@pytest.mark.integration
+class TestInfrastructureBuild:
+    """CDK infrastructure compiles the way `cdk deploy` will compile it.
+
+    Deploy Staging runs only on push to dev, never on a PR, so a break in
+    app/infrastructure/ is invisible until after merge. Two Dependabot
+    bumps have landed that way: a source-map-support type regression
+    (fixed in PR #414) and TypeScript 7 in the infrastructure workspace,
+    whose `typescript` package no longer exposes the JavaScript compiler
+    API that ts-node (cdk.json's `app` command) requires. Both surface
+    here, at PR time.
+    """
+
+    def test_typescript_compiles(self):
+        result = subprocess.run(
+            ["npx", "tsc", "--noEmit", "-p", "."],
+            cwd=str(INFRA),
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        assert result.returncode == 0, (
+            f"Infrastructure tsc failed:\n{result.stdout}\n{result.stderr}"
+        )
+
+    def test_ts_node_can_load_compiler(self):
+        """ts-node must be able to bootstrap against the installed `typescript`.
+
+        TypeScript 7's `typescript` package is the native compiler and has
+        no `ts.sys` / Program API; ts-node 10 crashes on startup with
+        `Cannot read properties of undefined (reading 'fileExists')`.
+        `npx cdk deploy` shells out to `npx ts-node bin/app.ts`, so this
+        is the exact failure Deploy Staging would hit post-merge.
+        """
+        result = subprocess.run(
+            ["npx", "ts-node", "-e", "0"],
+            cwd=str(INFRA),
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        assert result.returncode == 0, (
+            "ts-node cannot bootstrap in app/infrastructure — is `typescript` "
+            f"there still a JS-API compiler (6.x)?\n{result.stdout}\n{result.stderr}"
+        )
+
+
 # =================== Infrastructure Files ===================
 
 

@@ -159,9 +159,16 @@ def report_query_usage(user_id: str, quantity: int) -> bool:
         return False
 
 
-def report_usage(user_id: str, tokens: int) -> Optional[dict[str, Any]]:
+def report_usage(
+    user_id: str, input_tokens: int, output_tokens: int
+) -> Optional[dict[str, Any]]:
     """Fire-and-forget usage report. Returns None on any failure so
     the caller never has to handle billing-side errors.
+
+    Wire shape is the Lambda's ``UsageRequest`` —
+    ``{user_id, input_tokens, output_tokens}``. Until 2026-09-13 this
+    sent ``{user_id, tokens}``; the Lambda's fields default to 0, so
+    every report was accepted and recorded nothing (PAYGATE.md).
     """
 
     if not _enabled():
@@ -169,7 +176,11 @@ def report_usage(user_id: str, tokens: int) -> Optional[dict[str, Any]]:
     try:
         resp = httpx.post(
             f"{_base_url().rstrip('/')}/usage",
-            json={"user_id": user_id, "tokens": tokens},
+            json={
+                "user_id": user_id,
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+            },
             timeout=5.0,
         )
         if resp.status_code >= 400:

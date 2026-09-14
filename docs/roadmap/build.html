@@ -43,7 +43,7 @@
             <div class="hero-tag">▮▮▮ BUILD ▮▮▮</div>
             <h1 class="hero-title">BUILD — requirements-first system assembler</h1>
             <div class="doc-meta">
-                <span class="status-chip status-backlog">🚧 PR 1A NEARLY DONE: `COMPATIBLE_ACTUATORS` (#247) + EXPRESS `/API/V1/RELATIONS/ACTUATORS` (#262). 1A REMAINDER: `_DISTRIBUTION_POSITION` HISTOGRAM BLOCK. THEN 1B STRIP-DOWN → 1C PAGE → 1D REDIRECT</span>
+                <span class="status-chip status-backlog">🚧 PR 1A SHIPPED ON EXPRESS: `COMPATIBLE_ACTUATORS` (#247), `/API/V1/RELATIONS/ACTUATORS` (#262), `_DISTRIBUTION_POSITION` BLOCK (`RELATIONS.TS:ATTACHSTROKEDISTRIBUTIONPOSITIONS`). GAP: NO V2 (FASTAPI) MIRROR OF THE ACTUATORS ROUTE YET. THEN 1B STRIP-DOWN → 1C PAGE → 1D REDIRECT</span>
                 <span class="doc-source"><code>todo/BUILD.md</code></span>
             </div>
         </section>
@@ -1056,6 +1056,15 @@ banner on the slot.</p>
    <code>gearhead.gear_ratio ≥ min_torque_multiplier</code> (using the
    <code>snapGearUp()</code> heuristic from <code>ProductList</code>).</li>
 </ol>
+<p><strong>Available, not yet wired:</strong> <code>specodex/relations.py:mounting_conflicts(motor,
+gearhead) -&gt; List[str]</code> (shipped alongside the mounting-flange dimensional-
+drawing extraction pipeline) returns human-readable mismatch strings —
+bolt circle/hole diameter, bolt hole count, pilot diameter, mounting
+standard, shaft-vs-bore fit — for any motor/gearhead pair that both carry
+<code>mounting_flange</code> / <code>input_mounting_flange</code> data. This is the natural
+source for a <code>_warnings</code>-style field on this endpoint (same precedent as
+the encoder-check-disabled warning above) once mounting-flange data is
+populated on enough rows to be worth surfacing — not done in this PR.</p>
 <h3 id="the-frontend-call-pattern">The frontend call pattern</h3>
 <p>Build issues these in a deliberate fan-out order, not all at once:</p>
 <pre><code>            requirements form change

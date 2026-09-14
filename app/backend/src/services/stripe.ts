@@ -15,9 +15,17 @@ interface CheckoutResponse {
   checkout_url: string;
 }
 
+/** Mirrors stripe_py `UsageResponse` (billing/models.py). */
 interface UsageResponse {
-  reported: boolean;
-  tokens: number;
+  total_tokens: number;
+  recorded: boolean;
+}
+
+/** Token counts for one metered call. Mirrors stripe_py `UsageRequest`
+ *  minus `user_id`, which the caller passes separately. */
+export interface TokenUsage {
+  inputTokens: number;
+  outputTokens: number;
 }
 
 interface ApiKeyVerifyResult {
@@ -162,14 +170,22 @@ class StripeService {
   /**
    * Report token usage for a user after an API operation (e.g., scraping).
    */
-  async reportUsage(userId: string, tokens: number): Promise<UsageResponse | null> {
+  async reportUsage(userId: string, usage: TokenUsage): Promise<UsageResponse | null> {
     if (!this.enabled) return null;
 
     try {
+      // Wire shape is the Lambda's `UsageRequest` — `{user_id,
+      // input_tokens, output_tokens}`. Until 2026-09-13 this sent
+      // `{user_id, tokens}`; the Lambda's fields default to 0, so every
+      // report was accepted and recorded nothing (PAYGATE.md).
       const res = await fetch(`${this.baseUrl}/usage`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: userId, tokens }),
+        body: JSON.stringify({
+          user_id: userId,
+          input_tokens: usage.inputTokens,
+          output_tokens: usage.outputTokens,
+        }),
       });
 
       if (!res.ok) {
