@@ -1058,6 +1058,13 @@ def cmd_deploy(args: argparse.Namespace) -> None:
         print()
 
 
+def cmd_mcp(_args: argparse.Namespace) -> None:
+    """Serve the catalog as MCP tools over stdio (see specodex/mcp/)."""
+    from specodex.mcp.server import main as mcp_main
+
+    mcp_main()
+
+
 HOOKS_DIR = ROOT / "scripts" / "hooks"
 
 
@@ -1230,6 +1237,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--integration",
         action="store_true",
         help="Add tests/integration/ to the Python stage (requires AWS creds / moto)",
+    )
+
+    # mcp — serve the public catalog API as MCP tools over stdio
+    sub.add_parser(
+        "mcp",
+        help="Run the Specodex MCP server over stdio (read-only catalog tools; SPECODEX_API_URL picks the stage)",
     )
 
     # hooks — local git hooks (pre-commit fast checks, pre-push full gate)
@@ -1485,6 +1498,7 @@ def main() -> None:
         "verify": cmd_verify,
         "ci": cmd_verify,  # alias for verify
         "hooks": cmd_hooks,
+        "mcp": cmd_mcp,
         "staging": cmd_staging,
         "deploy": cmd_deploy,
         "smoke": cmd_smoke,
