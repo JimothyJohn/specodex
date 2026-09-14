@@ -44,6 +44,22 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    // Type guard. Truthiness alone let a numeric product_type through to
+    // serializeItem's `.toUpperCase()` (a TypeError the DAL swallowed into
+    // a 500) and a non-string filename would take the same path via
+    // `.toLowerCase()` below. Caller-controlled 500s are a 400 here.
+    const stringFields: Record<string, unknown> = { product_name, manufacturer, product_type, filename };
+    const nonString = Object.entries(stringFields)
+      .filter(([, v]) => typeof v !== 'string')
+      .map(([k]) => k);
+    if (nonString.length > 0) {
+      res.status(400).json({
+        success: false,
+        error: `Fields must be strings: ${nonString.join(', ')}`,
+      });
+      return;
+    }
+
     if (!filename.toLowerCase().endsWith('.pdf')) {
       res.status(400).json({
         success: false,

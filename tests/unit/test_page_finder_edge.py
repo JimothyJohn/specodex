@@ -229,6 +229,21 @@ class TestFindSpecPagesScored:
         pages, _ = find_spec_pages_scored(pdf, max_pages=2)
         assert len(pages) == 2
 
+    def test_negative_max_pages_selects_nothing(self) -> None:
+        """A negative cap must not act as a Python negative slice.
+
+        Same regression as the drawing-finder twin (see
+        `tests/unit/test_drawing_page_finder.py`): `candidates[:-1]`
+        dropped the lowest-scoring candidate and kept the rest, so a
+        negative "cap" *expanded* the page set sent to the LLM.
+        """
+        text = _spec_text(len(SPEC_KEYWORDS))
+        pdf = _make_pdf([text] * 5)
+        assert find_spec_pages_scored(pdf)[0] == list(range(5))
+        assert find_spec_pages_scored(pdf, max_pages=0)[0] == []
+        assert find_spec_pages_scored(pdf, max_pages=-1)[0] == []
+        assert find_spec_pages_scored(pdf, max_pages=-3)[0] == []
+
     def test_cap_picks_top_scores_not_first_pages(self) -> None:
         # Page 0 has minimum keywords; page 4 has every group. With cap=1,
         # the cap must select by score, not by document order — so the

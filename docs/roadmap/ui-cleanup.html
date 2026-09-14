@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="The Bauhaus port (todo/BAUHAUS.md, May 2026) got the vocabulary right — the detail modal is clean and is the reference surface. What's crowded is the catalog ta">
+    <meta name="theme-color" content="#3A2C1C">
+    <title>Specodex — UI_CLEANUP — de-crowd and de-jank the catalog UI</title>
+    <link rel="icon" type="image/svg+xml" href="../logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-issue="UI_CLEANUP — DE-CROWD AN">
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="band">
+        <div class="band-inner">
+            <a class="band-brand" href="../index.html">
+                <svg class="band-mark" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <rect width="120" height="120" fill="#E8E2C9"/>
+                    <rect x="14" y="14" width="92" height="92" fill="none" stroke="#1A1A14" stroke-width="3"/>
+                    <rect x="14" y="14" width="92" height="22" fill="#3A2C1C"/>
+                    <rect x="62" y="60" width="40" height="10" fill="#A88A1C"/>
+                    <line x1="14" y1="56" x2="106" y2="56" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="74" x2="106" y2="74" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="92" x2="106" y2="92" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="60" y1="36" x2="60" y2="106" stroke="#1A1A14" stroke-width="2"/>
+                </svg>
+                <span class="wordmark">SPECODEX</span>
+            </a>
+            <nav class="band-nav" aria-label="Section">
+                <a href="../index.html">Catalog</a>
+                <a href="../roadmap.html">Roadmap</a>
+                <a href="https://github.com/JimothyJohn/specodex/blob/master/todo/UI_CLEANUP.md" rel="noreferrer">Source</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="doc-hero">
+            <div class="hero-tag">▮▮▮ UI CLEANUP ▮▮▮</div>
+            <h1 class="hero-title">UI_CLEANUP — de-crowd and de-jank the catalog UI</h1>
+            <div class="doc-meta">
+                <span class="status-chip status-backlog">BACKLOG</span>
+                <span class="doc-source"><code>todo/UI_CLEANUP.md</code></span>
+            </div>
+        </section>
+
+        <article class="doc-body">
+<h1 id="ui_cleanup-de-crowd-and-de-jank-the-catalog-ui">UI_CLEANUP — de-crowd and de-jank the catalog UI</h1>
+<blockquote>
+<p><strong>Status:</strong> 🚧 in progress. Audit done 2026-09-13 (headless Chromium
+screenshots of local dev at 1440 / 1024 / 390 px, both themes).
+<strong>Phase 0 shipped 2026-09-13</strong> in the same PR as this doc.
+<strong>Phase 1 shipped 2026-09-13</strong> in two PRs (1a: N1, N2, N3, N5, N7 —</p>
+<h1 id="415-1b-n4-n6-416-phase-2-direction-decided-2026-09-13-a">415; 1b: N4, N6 — #416). **Phase 2 direction decided 2026-09-13: A —</h1>
+<p>popover per column<strong> (see §3). </strong>S1 shipped 2026-09-13<strong> (#417):
+header band 210 px → 78 px at rest. </strong>S2 shipped 2026-09-13**:
+default column set gated on fill rate. S3 (mobile) remains.</p>
+<p>Nick's brief, verbatim: "The interface needs a lot of work, it's very
+crowded and janky looking."</p>
+</blockquote>
+<hr>
+<h2 id="0-where-the-crowding-actually-comes-from">0. Where the crowding actually comes from</h2>
+<p>The Bauhaus port (todo/BAUHAUS.md, May 2026) got the <em>vocabulary</em> right —
+the detail modal is clean and is the reference surface. What's crowded is
+the catalog table header: every column permanently carries six controls
+(histogram, two-thumb slider, <code>any</code> pill, <code>≥</code> op toggle, unit toggle,
+close-X). At 10 default columns that is ~60 interactive elements in a
+210 px band above the first data row. Everything else on the list is
+smaller, but it all stacks on top of that.</p>
+<p>Ranked by how much of the "crowded / janky" impression each one causes.</p>
+<h2 id="1-findings">1. Findings</h2>
+<h3 id="bugs-phase-0-no-design-decision-needed">Bugs (Phase 0 — no design decision needed)</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>What</th>
+<th>Where</th>
+<th>Evidence</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>B1</td>
+<td>Light theme: <code>FEEDBACK</code> and <code>SIGN IN</code> are near-invisible on the header band. The header stays dark in both themes but these two buttons colour with <code>--text-primary</code> (ink).</td>
+<td><code>components/ui/FeedbackModal.css:103</code>, <code>App.css:6303</code></td>
+<td>screenshot 06</td>
+</tr>
+<tr>
+<td>B2</td>
+<td>Engineering-paper grid shows only as a ~50 px strip under the table. The body carries the grid, the table/toolbar are opaque, so the grid only peeks out below the last row and reads as a rendering glitch.</td>
+<td><code>App.css:5534</code> (body background stack)</td>
+<td>03, 06, 07, 09</td>
+</tr>
+<tr>
+<td>B3</td>
+<td>Tooltip "Click anywhere to sort…" pops up over the type dropdown whenever the mouse rests anywhere on the Part Number header. Not a positioning bug: the tooltip was anchored to the whole 200 px-tall cell, so "above the anchor" is the toolbar. Fixed by anchoring it to the label text only.</td>
+<td><code>ProductList.tsx</code> Part Number header</td>
+<td>03</td>
+</tr>
+<tr>
+<td>B4</td>
+<td>390 px: header overflows horizontally (SIGN IN clipped), <code>MANUFACTURE R</code> wraps mid-word, <code>28%</code> clips to <code>2°</code>, toolbar wraps to two rows. 1024 px: table is cut at the right edge with no scroll affordance. <strong>Phase 0 fixed only the header overflow</strong> (GitHub icon hidden ≤ 480 px); the label wrap, <code>%</code> clip, and scroll affordance are mobile layout work → S3.</td>
+<td>header, <code>.column-header-label-text</code>, <code>.results-table-wrap</code></td>
+<td>07, 08</td>
+</tr>
+<tr>
+<td>B5</td>
+<td>Manufacturer legend clips without ellipsis: <code>BODINE EL</code>, <code>MITSUBISI</code>.</td>
+<td>ColumnHeader manufacturer legend</td>
+<td>03, 09</td>
+</tr>
+<tr>
+<td>B6</td>
+<td>Drives: <code>+ Add Spec</code> hangs off the end of the header row outside the table's right border; table doesn't fill the content width.</td>
+<td><code>ProductList.tsx:1127</code></td>
+<td>09</td>
+</tr>
+</tbody>
+</table>
+<h3 id="noise-phase-1-small-low-risk-opinionated-but-safe">Noise (Phase 1 — small, low-risk, opinionated but safe)</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>What</th>
+<th>Why it reads as crowded</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>N1</td>
+<td>✅ Result count stated twice: <code>1-25 of 4265</code> (mono, left) and <code>4265 / 12936 MATCHING 33%</code> + bar (Oswald, right). Same fact, two type systems. <strong>Decision:</strong> the Bauhaus match block stays; the mono count is gone. The streaming "Loading records…" bar is functional status, not a count — kept.</td>
+<td><code>ProductList.tsx</code> toolbar</td>
+</tr>
+<tr>
+<td>N2</td>
+<td>✅ <code>GEAR (ratio)</code> column on motors shows <code>—</code> on every row until a torque filter exists. Always-empty column by default. <strong>Decision:</strong> column appears only once a torque floor is set (undoes the always-on choice from PR #201).</td>
+<td><code>ProductList.tsx</code> <code>showGearColumn</code></td>
+</tr>
+<tr>
+<td>N3</td>
+<td>✅ Dashed underline on every manufacturer cell (vendor-drawer affordance) = 25 dashed rules per page. Now hover/focus-only; the global <code>:where(button)</code> stamp shadow is also dropped on the link, it drew a faint box behind every name once the underline went.</td>
+<td><code>VendorDrawer.css</code> <code>.vendor-link</code></td>
+</tr>
+<tr>
+<td>N4</td>
+<td>✅ Header decoration with no function: <code>▸ ◂</code> glyphs flanking the wordmark, the <code>OPTIONS</code> eyebrow (and the hairline it anchored), GitHub button in primary nav position. <strong>Decision:</strong> all three go; the GitHub link now sits in the right-hand options cluster between the theme toggle and the account menu.</td>
+<td><code>App.tsx</code> header, <code>App.css</code></td>
+</tr>
+<tr>
+<td>N5</td>
+<td>✅ Ragged row heights when manufacturer wraps (<code>Mitsubishi Electric</code>, <code>Advanced Motion Controls</code>). One line + ellipsis; the existing "Vendor facts for …" Tooltip carries the full name.</td>
+<td><code>VendorDrawer.css</code> <code>.vendor-link</code></td>
+</tr>
+<tr>
+<td>N6</td>
+<td>✅ Welcome page rendered "T1 — Ratio Studies" logo explorations and a favicon strip below the hero — design scratch on the public landing. Section, data, and CSS deleted; recoverable via <code>git log -S T1_RATIO_STUDIES</code>.</td>
+<td><code>Welcome.tsx</code>, <code>Welcome.css</code></td>
+</tr>
+<tr>
+<td>N7</td>
+<td>✅ Column tint on the gear-cascade key columns (Rated Torque / Rated Speed) was a full-height background band. Root cause: <code>getProximityColor</code> painted the percentile gradient for any column with a filter <em>entry</em>, including the valueless seeded chips — so both columns were banded on every motor load with no filter set. Fixed by skipping valueless chips. The cascade meaning now lives in a header-only <code>GEARED</code> marker (<code>cascadeKey</code> prop on <code>ColumnHeader</code>) shown on torque/speed columns while a torque floor is active.</td>
+<td><code>ProductList.tsx</code> <code>getProximityColor</code>, <code>ColumnHeader.tsx</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="structure-phase-2-needs-direction">Structure (Phase 2 — needs direction)</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>What</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>S1</td>
+<td>✅ Per-column inline filter panel in the permanent header (the 210 px band). Shipped as direction A: at rest each column is label + sort + a 10 px sparkline + one trigger that summarises the filter (<code>any</code> / <code>≥ 10 Nm</code> / <code>ABB, Siemens</code>); the histogram, slider, value box and operator/unit pills live in an <code>AnchoredPopover</code> under the trigger. Categorical columns keep the multi-select popover behind the same-sized trigger. Applied constraints render as chips in the toolbar (<code>ActiveFilterChips</code>, × removes one). Measured at rest on the motor view: 78 px (the 2-line wrapped labels set the floor — a one-line label column would be ~62 px). Compact density is unchanged (it never had the inline stack; 57 px).</td>
+</tr>
+<tr>
+<td>S2</td>
+<td>✅ Sparse columns got the widest slots: Axial Load Force Rating was ~90% empty on motors and the widest column. <code>computeVisibleColumnAttributes</code> now takes per-column fill rates (<code>computeFillRates</code> over the loaded rows) and the "nested → visible by default" rule only fires at ≥ 25 % fill (<code>DEFAULT_MIN_FILL_RATE</code>). Curated <code>defaultVisible: true</code> and user restores are exempt; an unmeasured key counts as full; the freed slot lets the next populated column in under the cap. Sparse columns stay one click away in <code>+ Add Spec</code>.</td>
+</tr>
+<tr>
+<td>S3</td>
+<td>Mobile layout has no real design; depends on S1.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="2-phases">2. Phases</h2>
+<ul>
+<li><strong>Phase 0 — bugs.</strong> B1–B6. ✅ Shipped 2026-09-13 (one PR with this
+  doc). B4 only partially — see the row. Side effect worth knowing: the
+  catalog page is now exactly viewport-height (<code>.page-products-layout</code>
+  = <code>100dvh - --header-h</code>, flex chain down to <code>.product-grid-scroll</code>),
+  so the body's engineering-paper grid never shows on the catalog at
+  all. It only ever showed as the 50 px strip, so nothing visible was
+  lost; if the grid is wanted back it belongs on the empty state, not
+  under the table.</li>
+<li><strong>Phase 1 — noise.</strong> N1–N7. ✅ Shipped 2026-09-13 in two PRs: 1a
+  (N1, N2, N3, N5, N7 — #415) and 1b (N4, N6).</li>
+<li><strong>Phase 2 — header structure.</strong> Direction <strong>A (popover per column)</strong>
+  decided 2026-09-13. <strong>S1 ✅ and S2 ✅ shipped 2026-09-13.</strong> S3 next.</li>
+</ul>
+<p>Exit criteria for the whole doc: catalog header ≤ 56 px at rest, no
+duplicated count, no always-empty default column, both themes legible in
+the header, 390 px usable, no grid strip.</p>
+<p>Scorecard 2026-09-13 after S1: header 78 px (target 56 — the residual is
+the two-line label wrap, "RATED TORQUE" at ~80 px column width; a
+tighter label treatment is S2/S3 territory), count ✅, empty column ✅,
+themes ✅, grid strip ✅, 390 px ⏳ (S3).</p>
+<h2 id="3-s1-direction-decided-2026-09-13-a-popover-per-column">3. S1 direction — decided 2026-09-13: <strong>A, popover per column</strong></h2>
+<p>The header band is the crowding. Three options were on the table;
+Nick picked A. Kept for the record:</p>
+<ul>
+<li><strong>A — popover per column (recommended).</strong> Header = label + sort + a
+  hairline sparkline. Clicking the label opens the existing histogram /
+  slider / op / unit as a popover. Active filters render as chips in one
+  row above the table, reusing <code>FilterChip</code> / <code>MultiSelectFilterPopover</code>.
+  Keeps "filter in place", drops the header to ~48 px, all primitives
+  already exist.</li>
+<li><strong>B — collapsed by default.</strong> Keep the inline controls but show one
+  row at rest; a <code>FILTERS</code> toggle (or hover/focus) expands the band.
+  Least code change, least improvement.</li>
+<li><strong>C — left rail.</strong> The original Bauhaus mock's <code>aside.rail</code>. Plain
+  table headers, all filters in a 280 px rail. Biggest layout change;
+  costs horizontal room the wide tables already lack.</li>
+</ul>
+<p>Recommendation: <strong>A</strong>.</p>
+        </article>
+    </main>
+
+    <footer>
+        <div class="footer-inner">
+            <a class="footer-link" href="../roadmap.html">← Back to roadmap</a>
+            <span class="footer-rule" aria-hidden="true"></span>
+            <a class="footer-link" href="https://github.com/JimothyJohn/specodex/blob/master/todo/UI_CLEANUP.md" rel="noreferrer">Edit on GitHub</a>
+        </div>
+    </footer>
+</body>
+</html>

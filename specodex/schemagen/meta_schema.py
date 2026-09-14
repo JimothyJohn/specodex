@@ -10,6 +10,7 @@ so we can't get invalid syntax out.
 
 from __future__ import annotations
 
+import keyword
 from typing import List, Literal, Optional
 
 from pydantic import BaseModel, Field, model_validator
@@ -58,6 +59,37 @@ RESERVED_FIELD_NAMES: frozenset[str] = frozenset(
 # long Literals are almost always the LLM enumerating values that vary too
 # much to be an enum (e.g. every frame size on a catalog).
 MAX_LITERAL_VALUES: int = 12
+
+
+def _reject_unsafe_identifier(value: str, what: str) -> None:
+    """Raise ``ValueError`` unless ``value`` is safe to emit as a bare name.
+
+    The renderer interpolates ``ProposedField.name`` and
+    ``ProposedModel.class_name`` into generated Python source *unquoted*, so
+    anything that isn't a plain identifier either breaks the file
+    (``"3phase"``, ``"rated current"``, ``"class"``) or — with an embedded
+    newline — injects arbitrary statements into a module the CLI writes under
+    ``specodex/models/`` and that ``config._discover_schema_models`` imports at
+    startup. The LLM controls these strings, so they get gated here rather than
+    trusted downstream.
+
+    Leading underscores are rejected too: Pydantic treats ``_foo`` as a private
+    attribute, so such a field would silently vanish from the model.
+    """
+    if not value.isidentifier():
+        raise ValueError(
+            f"{what} {value!r} is not a valid Python identifier. It is emitted "
+            "as a bare name in the generated model source."
+        )
+    if keyword.iskeyword(value):
+        raise ValueError(
+            f"{what} {value!r} is a Python keyword and cannot be used as a name."
+        )
+    if value.startswith("_"):
+        raise ValueError(
+            f"{what} {value!r} starts with an underscore; Pydantic would treat "
+            "it as a private attribute rather than a model field."
+        )
 
 
 class ProposedField(BaseModel):
@@ -125,6 +157,7 @@ class ProposedField(BaseModel):
 
     @model_validator(mode="after")
     def _check_conditional_fields(self) -> "ProposedField":
+        _reject_unsafe_identifier(self.name, "Field name")
         if self.name in RESERVED_FIELD_NAMES:
             raise ValueError(
                 f"Field name {self.name!r} is reserved (inherited from "
@@ -282,6 +315,7 @@ class ProposedModel(BaseModel):
     def _check_class_metadata(self) -> "ProposedModel":
         if not self.class_name or not self.class_name[0].isupper():
             raise ValueError(f"class_name must be PascalCase, got {self.class_name!r}")
+        _reject_unsafe_identifier(self.class_name, "class_name")
         if not self.product_type or not self.product_type.replace("_", "").isalnum():
             raise ValueError(
                 f"product_type must be snake_case alphanumeric, got "

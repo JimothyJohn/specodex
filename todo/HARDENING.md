@@ -18,7 +18,7 @@
 | 3.4 Concurrent-write stress test | ✅ shipped | #110 |
 | 4.1 Dev-deps for adversarial testing (mutmut + pytest-randomly + freezegun) | ✅ shipped | #103 |
 | 4.2 Lockfile-drift gate post-install | ⚪ open | needs human PR (touches `.github/workflows/`) |
-| 4.3 Log secret-leak assertion tests | ✅ shipped | #102 |
+| 4.3 Log secret-leak assertion tests | ✅ shipped | #102 (TS); Python half 2026-09-13 — `tests/integration/test_log_leaks.py` + `specodex/log_redact.py` |
 
 **Three real bugs caught by the Phase 3.1 work** (each docstring vs.
 implementation disagreement, surfaced by Hypothesis): `_coerce_ip_rating`
@@ -138,8 +138,13 @@ All 16 `app/backend/tests/*.test.ts` files do `jest.mock('../src/db/dynamodb')`.
 - ✅ `routes.test.ts` migration to real-DAL — shipped 2026-06-10 (`tests/integration/routes.real-dal.test.ts`: aggregation/CRUD/dedupe/datasheet routes end-to-end). Error-injection cases (DB throws → 500) deliberately stay in the mocked sibling.
 - ✅ The contract round-trip test (step 4) — same PR: fully-structured Motor (ValueUnit fields, explicit nulls) survives POST → DynamoDB → GET without coercion, typed against `generated.ts`'s `Motor`.
 - ✅ Latent race fixed in the same PR: all integration suites share the one `specodex-test` table and truncate in beforeEach; parallel jest workers raced each other's seeds once a third suite existed. `maxWorkers: 1` in `jest.integration.config.js`.
+- ✅ `search.attribute-safety.test.ts` migration to real-DAL — shipped 2026-07-27 (`tests/integration/search.attribute-safety.real-dal.test.ts`). Adds one new assertion the mocked sibling could not verify: DB-round-tripped Products from `db.list()` carry no reserved-word own properties (so `getProductField` reserved-word lookups still evaluate to `undefined`, not to a stray own-property collision).
 - ✅ `products.contract.test.ts` cursor-pagination migration to real-DAL — shipped 2026-07-28 (`tests/integration/products.contract.real-dal.test.ts`). Exercises the `LastEvaluatedKey` → `ExclusiveStartKey` round-trip end-to-end (page 1 cursor resumes page 2 with no overlap, page 3 reaches the end with `truncated=false` + `cursor=null`) plus the type-scoped-cursor-on-`type=all` walk. Cursor hardening (adversarial base64url shapes) and error-injection cases stay in the mocked sibling.
-- The remaining ~12 mocked tests (step 5). Each migration is mechanical given the foundation, but each test needs its own seed/cleanup so the diff is non-trivial — better split across PRs.
+- ✅ `projects.idor.test.ts` migration to real-DAL — shipped 2026-08-31 (`tests/integration/projects.idor.real-dal.test.ts`). The mocked sibling swaps `ProjectsService` for an in-memory `Map<sub, Map<id, Project>>`, so it can only assert the route passed the JWT sub down — it *assumes* storage enforces the isolation. The real-DAL file adds the assertions that assumption hides: cross-tenant product-ref add/remove, 404-vs-404 enumeration indistinguishability, forged `X-User-Id` / body `owner_sub`, **no phantom row** in the attacker's partition after a rejected write, and a **byte-identical victim row** after the full attack sweep. Two mutation checks confirm it bites: dropping the `USER#{sub}` prefix from `projectKey` fails all 8; dropping `ConditionExpression: attribute_exists(SK)` from `rename` (so a cross-tenant PATCH upserts into the attacker's partition and 200s) fails the sweep test alone — a regression the mocked sibling structurally cannot see.
+- ✅ `upload.contract.test.ts` abuse-input migration to real-DAL — shipped 2026-09-01 (`tests/integration/upload.contract.real-dal.test.ts`). The mocked sibling stubs `db.create()` to resolve `true`, so every hostile body it sends reports a clean 201 regardless of what the write path would do; it asserts HTTP status only. The real-DAL file re-drives the same inputs and asserts on the *stored row*: traversal filenames land in `url` verbatim but never reach PK/SK, a NUL byte round-trips intact, CRLF is stored raw (the `safeLog` strip is log-only), a 2 000-char filename never touches the 1 024-byte SK limit, every 400 leaves the table empty, and two identical POSTs are two rows rather than one PutItem overwrite. **One real discrepancy surfaced:** the mocked sibling's "`product_type: 42` → no 500" is false against the real DAL — `serializeItem` calls `ds.product_type.toUpperCase()`, which throws a TypeError on a number, so `create()` returns false and the route answers 500. Pinned as-is (see the follow-up below); the endpoint also has no allowlist between body `product_type` and the partition key, so a caller can mint arbitrary `DATASHEET#*` partitions — that too is now asserted rather than assumed.
+- ✅ **Follow-up shipped 2026-09-13:** `POST /api/upload` now type-guards `product_name` / `manufacturer` / `product_type` / `filename` (400 `Fields must be strings: …`) in both the Express route and the FastAPI mirror; the mocked sibling and the real-DAL test both pin 400 + no row written. Until then a non-string `product_type` was a caller-controlled 500 via `serializeItem`'s `.toUpperCase()`.
+- Migrations not recorded above but on disk (reconciled 2026-09-13): `compat`, `product-types`, `projects`, `relations`, `search`, `db` — 13 `*.real-dal.test.ts` files in total.
+- Still mocked-only (step 5), 2026-09-13: `adminOnly`, `adminOnly.edge`, `adminOperations`, `apiKeyPaygate`, `auth-audit`, `auth.middleware`, `auth.routes`, `blacklist`, `log`, `log-leak`, `readonly`, `readonly.edge`, `resilience`, `subscription`. Most are auth / middleware / error-injection suites where a mocked DAL is the right tool; the candidates that would gain from a real table are `blacklist`, `adminOperations` and `subscription`. Each needs its own seed/cleanup — split across PRs.
 - Wire `verify --integration` into the `Test Backend` CI job (currently runs unit only via plain `verify --only backend`). One-line workflow change; needs draft PR.
 
 ### 2.3 IDOR + cross-tenant auth tests (M, P1)
@@ -261,6 +266,13 @@ No tests assert that secrets, tokens, JWTs, or full Stripe IDs never appear in l
 6. Mirror in Python (`tests/integration/test_log_leaks.py`) using pytest's `caplog`.
 
 **Definition of done:** TS + Python log-leak tests run in CI; both fail loudly if a known-leaking line is reintroduced.
+
+**Python half (2026-09-13).** The 2026-05 entry marked this row shipped on the TS test alone; step 6 had never landed. Writing it surfaced two live vectors, both fixed in the same PR:
+
+- `page_finder.classify_pages` logged the raw Gemini exception (`f"...: {e}"`) *and* copied it into every page's `description` — an echoing transport error would have carried the API key into the log and into the page-finder result. Both now pass through `specodex.log_redact.redact_secrets`, as do the two "Error during document analysis" sites in `scraper.py`.
+- botocore logs the signed canonical request — `x-amz-security-token:<session token>` in clear — at DEBUG, and every pipeline module sets the ROOT level from `LOG_LEVEL`. `LOG_LEVEL=DEBUG` turned the DAL into a credential dump. `quiet_sdk_debug_logging()` (called when `specodex.db.dynamo` imports) clamps botocore / boto3 / urllib3 / httpx to INFO.
+
+`redact_secrets` is env-driven (values of `SECRET_ENV_VARS` at call time, ≥ 8 chars, longest-first) so it needs no configuration; `tests/unit/test_log_redact.py` pins the contract with examples + a Hypothesis property. `test_log_leaks.py` asserts `SECRET_ENV_VARS` and its sentinel table stay in lockstep, so a new credential can't join one without the other.
 
 ## Dependencies
 

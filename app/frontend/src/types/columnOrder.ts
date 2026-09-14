@@ -126,7 +126,16 @@ export const orderColumnAttributes = (
  *   2. user explicitly restored it → in (always — explicit-add contract)
  *   3. `defaultVisible === true`  → in (per-attribute expert override)
  *   4. `defaultVisible === false` → out (per-attribute expert override)
- *   5. `nested === true` → in (ValueUnit/MinMaxUnit default)
+ *   5. `nested === true` → in (ValueUnit/MinMaxUnit default) — **but only
+ *      when the column is actually populated**: with `fillRates`
+ *      supplied, a nested column whose fill rate over the loaded rows is
+ *      below `minFillRate` is out. Axial Load Force Rating was ~90 %
+ *      empty on motors and still took the widest default slot
+ *      (UI_CLEANUP S2). Explicit `defaultVisible: true` (rule 3) and
+ *      user restores (rule 2) are unaffected — curation and intent both
+ *      outrank the heuristic. A key missing from `fillRates` counts as
+ *      fully populated so the rule can't hide something it hasn't
+ *      measured.
  *   6. otherwise → out (strings, booleans, arrays, bare numbers are
  *      hidden by default; user has to opt into them)
  *
@@ -137,21 +146,26 @@ export const orderColumnAttributes = (
  * common case (motor has 8 default-visibles, cap is 10 cozy). Bug
  * reported 2026-05-23.
  */
+export const DEFAULT_MIN_FILL_RATE = 0.25;
+
 export const computeVisibleColumnAttributes = (
   columnAttributes: AttributeMetadata[],
   userHiddenKeys: readonly string[],
   userRestoredKeys: readonly string[],
   maxVisible: number,
+  fillRates?: ReadonlyMap<string, number>,
+  minFillRate: number = DEFAULT_MIN_FILL_RATE,
 ): AttributeMetadata[] => {
   const hiddenSet = new Set(userHiddenKeys);
   const restoredSet = new Set(userRestoredKeys);
+  const fillOf = (key: string): number => fillRates?.get(key) ?? 1;
 
   const wouldBeShown = columnAttributes.filter(a => {
     if (hiddenSet.has(a.key)) return false;
     if (restoredSet.has(a.key)) return true;
     if (a.defaultVisible === true) return true;
     if (a.defaultVisible === false) return false;
-    return a.nested === true;
+    return a.nested === true && fillOf(a.key) >= minFillRate;
   });
 
   // Partition: explicit restores always render; default-visibles fill
@@ -167,4 +181,47 @@ export const computeVisibleColumnAttributes = (
   // Preserve the input order — callers rely on `orderColumnAttributes`
   // having already sorted by COLUMN_ORDER.
   return wouldBeShown.filter(a => survivingKeys.has(a.key));
+};
+
+/**
+ * Fraction of `records` carrying a non-empty value for each key in
+ * `keys`. Empty = `null` / `undefined` / `''` / `[]` / a ValueUnit or
+ * MinMaxUnit object with no numeric `value` / `min` / `max`. With no
+ * records every key reports 1 (nothing measured → nothing hidden).
+ *
+ * One pass over the rows regardless of key count; called from a memo in
+ * ProductList whenever the loaded set changes.
+ */
+export const computeFillRates = (
+  records: readonly Record<string, unknown>[],
+  keys: readonly string[],
+): Map<string, number> => {
+  const out = new Map<string, number>();
+  if (records.length === 0) {
+    for (const k of keys) out.set(k, 1);
+    return out;
+  }
+  const counts = new Map<string, number>(keys.map(k => [k, 0]));
+  for (const r of records) {
+    for (const k of keys) {
+      if (isFilled(r[k])) counts.set(k, (counts.get(k) ?? 0) + 1);
+    }
+  }
+  for (const k of keys) out.set(k, (counts.get(k) ?? 0) / records.length);
+  return out;
+};
+
+const isFilled = (v: unknown): boolean => {
+  if (v === null || v === undefined || v === '') return false;
+  if (Array.isArray(v)) return v.length > 0;
+  if (typeof v === 'object') {
+    const o = v as { value?: unknown; min?: unknown; max?: unknown };
+    if ('value' in o || 'min' in o || 'max' in o) {
+      return (
+        typeof o.value === 'number' || typeof o.min === 'number' || typeof o.max === 'number'
+      );
+    }
+    return Object.keys(o).length > 0;
+  }
+  return true;
 };

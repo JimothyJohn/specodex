@@ -88,7 +88,7 @@ concept:</p>
 write a single query that covers all three product types.</p>
 <p><strong>Proposed unified literal</strong> (in <code>specodex/models/common.py</code>):</p>
 <pre><code class="language-python">MotorTechnology = Literal[
-    &quot;brushless_dc&quot;,      # BLDC servo, most common modern type
+    &quot;brushless_dc&quot;,  # BLDC servo, most common modern type
     &quot;brushed_dc&quot;,
     &quot;ac_servo&quot;,
     &quot;ac_induction&quot;,
@@ -97,7 +97,7 @@ write a single query that covers all three product types.</p>
     &quot;stepper&quot;,
     &quot;hybrid_stepper&quot;,
     &quot;linear_motor&quot;,
-    &quot;motorless&quot;,         # actuator ships without a motor (customer-supplied)
+    &quot;motorless&quot;,  # actuator ships without a motor (customer-supplied)
 ]
 </code></pre>
 <p><strong>Migration:</strong>

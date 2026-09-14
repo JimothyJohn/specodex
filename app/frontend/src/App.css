@@ -144,6 +144,12 @@
   --header-bg-start: #1a1209;
   --header-bg-end: #1a1209;
   --header-text: #e8e2c9;
+  /* Sticky header band height (32px control + padding + 3px ink rule).
+   * .page-products-layout subtracts it from 100dvh, so it must be a
+   * fixed number, not whatever the content happens to measure. Lives
+   * in this block because `:root` here is the theme-agnostic default —
+   * the light block above is data-theme="light" only. */
+  --header-h: 48px;
 
   /* Navigation — bg rotated onto the 30° warm family (was 51°, leaned
    * slightly green-yellow against the new accents). */
@@ -236,7 +242,9 @@ body {
 .header {
   background-color: var(--header-bg-start);
   color: var(--header-text);
-  padding: 0.4rem 1rem;
+  padding: 0 1rem;
+  height: var(--header-h);
+  box-sizing: border-box;
   /* Bauhaus rule line in place of the soft shadow. A hard 3px ink
    * border below the chrome reads as a section boundary on the field
    * manual; the prior `box-shadow: 0 2px 6px ...` softened that into
@@ -333,6 +341,26 @@ body {
   transform: translateY(-1px);
 }
 
+/* The header band is ink in BOTH themes, but the feedback trigger and
+ * the account-menu buttons colour themselves with the body's
+ * --text-primary (ink in light mode) — invisible on the band. Scope
+ * them to the band's own palette. */
+.header .feedback-trigger,
+.header .account-menu-signin,
+.header .account-menu-trigger {
+  color: var(--header-text);
+  border-color: color-mix(in srgb, var(--header-text) 55%, transparent);
+}
+.header .feedback-trigger:hover,
+.header .feedback-trigger:focus-visible {
+  background: var(--header-text);
+  color: var(--header-bg-start);
+}
+.header .account-menu-signin:hover,
+.header .account-menu-trigger:hover {
+  background: color-mix(in srgb, var(--header-text) 12%, transparent);
+}
+
 .icon-link svg {
   display: block;
   width: 18px;
@@ -344,18 +372,6 @@ body {
   display: flex;
   gap: 0.3rem;
   align-items: center;
-}
-
-.header-options-label {
-  font-family: var(--font-headline);
-  font-size: 0.65rem;
-  font-weight: 600;
-  color: var(--header-text);
-  text-transform: uppercase;
-  letter-spacing: 0.18em;
-  opacity: 0.7;
-  margin-right: 0.25rem;
-  user-select: none;
 }
 
 /* Hide old navigation bar */
@@ -2186,18 +2202,6 @@ button.secondary:hover {
   gap: 0.4rem;
 }
 
-/* Bauhaus phase 2a: results-count uses the headline family so the
- * "N of M" numerals look like catalog figures rather than UI chrome,
- * matching the mock's `.results-counts strong` pattern. */
-.results-count {
-  font-family: var(--font-headline);
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--text-primary);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0;
-}
-
 /* Pagination controls */
 .pagination-controls {
   display: flex;
@@ -2545,12 +2549,16 @@ button.secondary:hover {
   width: 100%;
   /* Single scrollport for BOTH axes. Sticky headers pin to the nearest
    * scrolling ancestor, so vertical scrolling must happen here (not on
-   * .results-main or the window) for the header row to stick. The
-   * max-height bounds the grid to the viewport minus the app header +
-   * page toolbar stack above it (~140px measured); the global
-   * *::-webkit-scrollbar theme covers the scrollbars. */
+   * .results-main or the window) for the header row to stick. Height
+   * comes from the flex chain (.page-products-layout → .results-main →
+   * here), so the box ends exactly at the viewport bottom. The old
+   * `max-height: calc(100dvh - 150px)` guessed the chrome height and
+   * left a ~50px strip of bare engineering paper under the table that
+   * read as a rendering glitch. The global *::-webkit-scrollbar theme
+   * covers the scrollbars. */
   overflow: auto;
-  max-height: calc(100dvh - 150px);
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 /* Sticky column headers: position: sticky lives on the cell rules
@@ -2786,24 +2794,28 @@ button.secondary:hover {
   box-shadow: none;
 }
 
+/* "+ Add Spec" lives in the page toolbar next to Clear (it used to be an
+ * inline-block hanging off the end of the header row, past the table's
+ * right border). Same vocabulary as .page-toolbar-clear. */
 .add-column-btn {
-  display: table-cell;
-  padding: 0.4rem 0.6rem;
-  background: var(--accent-primary);
-  color: white;
-  border: none;
-  border-bottom: 2px solid var(--border-color);
-  font-size: 0.8rem;
+  padding: 0.4rem 0.85rem;
+  font-family: var(--font-headline);
+  font-size: 0.72rem;
   font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  border: 1px solid var(--text-primary);
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-primary);
   cursor: pointer;
-  transition: all 0.2s;
   white-space: nowrap;
-  text-align: center;
-  vertical-align: middle;
+  transition: background 0.15s linear, color 0.15s linear;
 }
 
 .add-column-btn:hover {
-  background: var(--accent-secondary);
+  background: var(--text-primary);
+  color: var(--bg-primary);
 }
 
 /* Column resize handle */
@@ -3418,17 +3430,6 @@ button.secondary:hover {
     font-size: 1rem;
   }
 
-  /* OPTIONS label is decorative — drop it on mobile to keep the header on one row */
-  .header-options-label {
-    display: none;
-  }
-
-  /* Hide the decorative vertical hairline that the OPTIONS label
-   * anchors against — without the label the rule has nothing to
-   * separate, and on a tight bar it just adds noise. */
-  .header-options::before {
-    display: none;
-  }
   .header-options { padding-left: 0; }
 
   /* Navigation - Stack vertically on small screens */
@@ -4055,19 +4056,6 @@ code, pre, .monospace {
  * variable opt-in if anyone misses it. */
 .app::before {
   content: none;
-}
-
-/* Military stencil effect for headers */
-.header h1::before {
-  content: '▸ ';
-  color: var(--accent-primary);
-  margin-right: 0.5rem;
-}
-
-.header h1::after {
-  content: ' ◂';
-  color: var(--accent-primary);
-  margin-left: 0.5rem;
 }
 
 /* Terminal prompt style for navigation */
@@ -5764,28 +5752,14 @@ body::after {
  * (this block last) is load-bearing.
  * ========================================================================= */
 
-/* ----- Header: cluster the right-side controls. The OPTIONS label sits
- * on the inside of a vertical hairline rule, so the wordmark+nav cluster
- * reads as one group and the controls cluster reads as another. */
+/* ----- Header: cluster the right-side controls. The OPTIONS eyebrow
+ * and the hairline it anchored against were retired (UI_CLEANUP N4);
+ * the two clusters are separated by the flex gap alone. */
 .header { padding-left: 1rem; padding-right: 1rem; gap: 0.6rem; }
 .header-left { gap: 0.75rem; }
 .header-options {
   position: relative;
-  padding-left: 0.6rem;
   gap: 0.3rem;
-}
-.header-options::before {
-  content: '';
-  position: absolute;
-  left: 0; top: 18%; bottom: 18%;
-  width: 1px;
-  background: rgba(232, 226, 201, 0.25);
-}
-.header-options-label {
-  letter-spacing: 0.22em;
-  font-size: 0.6rem;
-  opacity: 0.7;
-  margin-right: 0.15rem;
 }
 
 /* Wordmark — confident lockup. Accent underline that animates on
@@ -5887,7 +5861,6 @@ body::after {
   background: rgba(0, 0, 0, 0.04);
   border-radius: 2px;
 }
-.results-count,
 .results-header .results-summary {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
@@ -6056,8 +6029,6 @@ body::after {
 @media (max-width: 720px) {
   .header { padding-left: 0.6rem; padding-right: 0.6rem; gap: 0.4rem; }
   .header-options { padding-left: 0; gap: 0.25rem; }
-  .header-options::before { display: none; }
-  .header-options-label { display: none; }
   .header nav { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .header nav::-webkit-scrollbar { display: none; }
   .nav-btn { flex: 0 0 auto; padding: 0.25rem 0.55rem; font-size: 0.7rem; letter-spacing: 0.1em; }
@@ -6494,7 +6465,13 @@ body::after {
    ======================================== */
 
 .page-products-layout {
-  min-height: calc(100vh - 200px);
+  /* Exactly the viewport minus the sticky app header. An explicit
+   * height (not min-height) is what lets .product-grid-scroll be the
+   * scrollport — with min-height the flex chain would grow to the
+   * table's content and the window would scroll instead. */
+  height: calc(100dvh - var(--header-h));
+  display: flex;
+  flex-direction: column;
   background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
 }
 
@@ -6502,6 +6479,10 @@ body::after {
   width: 100%;
   padding: 0 0.75rem;
   overflow-x: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Bauhaus phase 2a: hard 2px ink bottom rule replaces the soft 1px
@@ -7514,7 +7495,7 @@ body::after {
   body { font-size: 13px; }
 
   /* Header chrome — was eating ~52px before any content. */
-  .header { padding: 0.3rem 0.6rem; }
+  .header { padding: 0 0.6rem; }
   .header h1 { font-size: 0.9rem; letter-spacing: 0.14em; }
   .icon-link svg, .theme-toggle svg { width: 16px; height: 16px; }
 
@@ -7568,7 +7549,7 @@ body::after {
   /* Results header — pagination + count strip was 0.8rem padded with
    * default body text, eating a row on mobile. */
   .results-header { padding: 0.35rem 0.5rem; gap: 0.4rem; }
-  .results-count, .pagination-label { font-size: 0.7rem; }
+  .pagination-label { font-size: 0.7rem; }
 
   /* Page toolbar (type dropdown + clear-all) on mobile. Stays
    * column-stacked from the existing rule, but the row heights shrink. */
@@ -7611,9 +7592,16 @@ body::after {
 /* Extra-small phones — second tier of compaction. The base 768px block
  * lands at "comfortable on a 390px iPhone"; this nudges it tighter for
  * the narrow Androids and SE-class screens. */
+@media (max-width: 480px) {
+  /* Header ran 7px past a 390px viewport (SIGN IN clipped). The GitHub
+   * icon is the lowest-value item in the band; hide it on phones. */
+  .header .icon-link { display: none; }
+  .header-left { gap: 0.5rem; }
+}
+
 @media (max-width: 400px) {
   body { font-size: 12.5px; }
-  .header { padding: 0.25rem 0.5rem; }
+  .header { padding: 0 0.5rem; }
   .header h1 { font-size: 0.8rem; letter-spacing: 0.12em; }
   .product-grid-header-label { font-size: 0.65rem; }
   .spec-header-value { font-size: 0.72rem; }

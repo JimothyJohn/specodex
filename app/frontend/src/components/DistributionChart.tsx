@@ -18,6 +18,14 @@ interface DistributionChartProps {
    *  doesn't reshuffle every time they nudge a slider. Falls back to
    *  `products` when omitted (categorical path doesn't use it). */
   allProducts?: Product[];
+  /** 'full' (default) renders the histogram with min/max ticks, or the
+   *  categorical top-3 bars with legend. 'sparkline' renders only a
+   *  hairline: the histogram bars alone (numeric) or one stacked
+   *  proportion bar (categorical) — for a column header at rest, where
+   *  the full chart now lives in the filter popover (UI_CLEANUP S1). */
+  variant?: 'full' | 'sparkline';
+  /** Sparkline bar-row height in px. Ignored for 'full'. */
+  sparkHeight?: number;
 }
 
 // Numeric attributes with more than this many distinct values are too
@@ -71,7 +79,15 @@ const formatTick = (n: number): string => {
   return Math.round(n).toLocaleString();
 };
 
-export default function DistributionChart({ products, attribute, heading, attributeType, allProducts }: DistributionChartProps) {
+export default function DistributionChart({
+  products,
+  attribute,
+  heading,
+  attributeType,
+  allProducts,
+  variant = 'full',
+  sparkHeight = 10,
+}: DistributionChartProps) {
   const { unitSystem } = useApp();
 
   // Anchor values for the histogram bin edges. Defaults to `products`
@@ -285,6 +301,59 @@ export default function DistributionChart({ products, attribute, heading, attrib
     </div>
   ) : null;
 
+  if (variant === 'sparkline' && useHistogram && histogram) {
+    return (
+      <div
+        aria-hidden="true"
+        className="distribution-sparkline"
+        style={{ display: 'flex', alignItems: 'flex-end', gap: '1px', height: `${sparkHeight}px` }}
+      >
+        {histogram.bins.map((bin, i) => {
+          const pct = histogram.peak === 0 ? 0 : (bin.density / histogram.peak) * 100;
+          return (
+            <div
+              key={i}
+              style={{
+                flex: 1,
+                height: bin.count === 0 ? '0%' : `max(1px, ${pct}%)`,
+                backgroundColor: 'var(--accent-primary)',
+                opacity: bin.count === 0 ? 0 : 0.35 + 0.65 * (pct / 100),
+              }}
+            />
+          );
+        })}
+      </div>
+    );
+  }
+
+  if (variant === 'sparkline') {
+    // Categorical hairline: one stacked bar, top-3 + Other, same
+    // fill/outline/opacity vocabulary as the full chart's rows.
+    return (
+      <div
+        aria-hidden="true"
+        className="distribution-sparkline distribution-sparkline--stacked"
+        style={{ display: 'flex', height: '5px', gap: '1px', overflow: 'hidden' }}
+      >
+        {distribution.items.map((item, index) => {
+          const outlined = isOutlineRank(index, item.name);
+          const color = getColor(index, item.name);
+          return (
+            <div
+              key={item.name}
+              style={{
+                width: `${item.percentage}%`,
+                backgroundColor: outlined ? 'transparent' : color,
+                boxShadow: outlined ? `inset 0 0 0 1px ${color}` : undefined,
+                opacity: getOpacity(index, item.name),
+              }}
+            />
+          );
+        })}
+      </div>
+    );
+  }
+
   if (useHistogram && histogram) {
     const unit = summary.attrUnit ?? '';
     const dispMin = unit ? toDisplay(histogram.min, unit, unitSystem) : histogram.min;
@@ -330,7 +399,6 @@ export default function DistributionChart({ products, attribute, heading, attrib
                       height: bin.count === 0 ? '0%' : `max(2px, ${pct}%)`,
                       backgroundColor: 'var(--accent-primary)',
                       opacity: bin.count === 0 ? 0 : 0.35 + 0.65 * (pct / 100),
-                      borderRadius: '1px',
                       transition: 'height 0.2s ease, opacity 0.2s ease',
                     }}
                   />
@@ -372,7 +440,6 @@ export default function DistributionChart({ products, attribute, heading, attrib
                 flex: 1,
                 height: '5px',
                 backgroundColor: 'var(--bg-tertiary)',
-                borderRadius: '3px',
                 overflow: 'hidden'
               }}>
                 <div style={{
@@ -380,7 +447,6 @@ export default function DistributionChart({ products, attribute, heading, attrib
                   height: '100%',
                   backgroundColor: outlined ? 'transparent' : color,
                   boxShadow: outlined ? `inset 0 0 0 1px ${color}` : undefined,
-                  borderRadius: '3px',
                   opacity: getOpacity(index, item.name),
                   transition: 'width 0.3s ease'
                 }} />
@@ -428,7 +494,13 @@ export default function DistributionChart({ products, attribute, heading, attrib
                   opacity: getOpacity(index, item.name),
                   flexShrink: 0
                 }} />
-                {item.name}
+                {/* Own box so text-overflow actually applies — the
+                    ellipsis on the flex parent above never fires for
+                    its anonymous text child, which is how "BODINE EL"
+                    and "MITSUBISI" were clipping bare. */}
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>
+                  {item.name}
+                </span>
               </span>
             </Tooltip>
           );
