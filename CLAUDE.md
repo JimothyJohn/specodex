@@ -358,6 +358,40 @@ the two example-based cases. When a property needs a specific
 co-occurrence to bite, give it its own strategy rather than trusting the
 general one to stumble into it.
 
+The 2026-09-08 round added `specodex/schemagen/renderer.py` — the one
+adversarial surface in the repo whose *output* is Python source.
+`./Quickstart schemagen` writes `render_model_file`'s result to
+`specodex/models/<type>.py`, which `config._discover_schema_models`
+imports at startup, so the contract isn't "don't crash", it's "never emit
+a statement the proposal didn't ask for". Both module docstrings already
+claimed exactly that — `renderer` said the output "always parses …
+because only validated tokens reach the output", `meta_schema` said "the
+LLM never writes executable Python" — and neither was true. **Five**
+violations in two families. Three crashed: `SyntaxError` out of
+`render_model_file`'s own last-line-of-defense `ast.parse` on a field
+`name` that isn't an identifier (`"class"`, `"3phase"`, `"rated
+current"`, `""`), on a `docstring` carrying `"""` / a trailing quote / a
+trailing backslash / a NUL, and on a `section` label carrying a newline;
+plus `UnicodeEncodeError` on a lone surrogate, which `json.loads` will
+happily hand back from a `\udNNN` escape. Two did **not** crash, which is
+the interesting half: a docstring of `x"""\n    import os\n    """`
+closes the docstring early and leaves `import os` as a live statement in
+the generated class body, and a `class_name` of `A(ProductBase):
+pass\nimport os\nclass B` does the same at module level. Gemini controls
+both strings, so a prompt-injected datasheet could have planted
+executable code in a file the CLI writes into the package and the next
+import runs. Fixes: `meta_schema._reject_unsafe_identifier` gates the two
+bare-name slots (identifier, not a keyword, no leading underscore — the
+last because Pydantic would silently demote `_foo` to a private
+attribute); `renderer._docstring_literal` escapes quotes, backslashes,
+control characters and surrogates so the literal is total *and* exact;
+`renderer._comment_text` flattens section labels. Note the generalisable
+bit — the property that caught the injections wasn't "it parses", it was
+"the parsed module body is imports plus one ClassDef, and that class body
+is the docstring plus the proposal's AnnAssigns and nothing else". A
+surface that emits code needs a structural assertion about what it
+emitted; "no exception" would have passed both injections.
+
 When the next round of property-test gaps comes up, add them to the list above; don't leave the section empty for long.
 
 ## Post-deploy verification
