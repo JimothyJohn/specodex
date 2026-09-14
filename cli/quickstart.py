@@ -498,6 +498,33 @@ def cmd_test(args: argparse.Namespace) -> None:
     info("All unit tests passed")
 
 
+VERIFY_STAGES: tuple[str, ...] = ("python", "backend", "frontend", "deploy-build")
+
+# Account used for `cdk synth` when the local gate runs without AWS
+# credentials. Synth only bakes it into stack env metadata; no lookup
+# or API call is made with it. A real deploy never sees this value
+# (cmd_deploy resolves the account from STS / AWS_ACCOUNT_ID).
+_SYNTH_PLACEHOLDER_ACCOUNT = "000000000000"
+
+
+def resolve_verify_stages(only: str | None) -> list[str]:
+    """Stages `./Quickstart verify` runs: one if ``--only``, else all of them.
+
+    The default set is the complete local gate — every CI test job plus
+    the deploy build (`deploy-build`), which is the part of Deploy
+    Staging that does not need AWS. Keeping deploy-build in the default
+    set is what makes "green locally" mean "green after merge" and not
+    just "green on the PR".
+    """
+    if only is None:
+        return list(VERIFY_STAGES)
+    if only not in VERIFY_STAGES:
+        raise ValueError(
+            f"unknown verify stage {only!r}; expected one of {VERIFY_STAGES}"
+        )
+    return [only]
+
+
 def cmd_verify(args: argparse.Namespace) -> None:
     """Run exactly what CI runs — the pre-push gate.
 
@@ -506,23 +533,29 @@ def cmd_verify(args: argparse.Namespace) -> None:
     so this is the single source of truth for what "tested" means.
 
     Stages:
-      python   ruff check + ruff format --check + pytest tests/unit/
-      backend  npm run lint + npm test + npm run build
-      frontend npm run lint + npm test + npm run build
+      python        ruff check + ruff format --check + pytest tests/unit/
+      backend       npm run lint + npm test + npm run build
+      frontend      npm run lint + npm test + npm run build
+      deploy-build  the AWS-free half of `./Quickstart deploy`: workspace
+                    install, public frontend build, backend Lambda bundle
+                    (fresh lockfile resolve + npm ci), Python Lambda
+                    bundle, then `cdk synth`. No credentials, no
+                    mutation. This is the stage that was missing when
+                    Deploy Staging broke post-merge twice on 2026-09-13.
 
     Flags:
       --only <stage>   Run a single stage (CI uses this per job)
       --integration    Add tests/integration/ to the Python stage
     """
     only = getattr(args, "only", None)
-    stages = [only] if only else ["python", "backend", "frontend"]
+    stages = resolve_verify_stages(only)
     do_integration = getattr(args, "integration", False)
 
     info("Checking dependencies")
     if "python" in stages:
         check_python_version()
         require_cmd("uv")
-    if "backend" in stages or "frontend" in stages:
+    if "backend" in stages or "frontend" in stages or "deploy-build" in stages:
         check_node_version()
         require_cmd("npm")
         if not (APP / "node_modules").exists():
@@ -635,6 +668,30 @@ def cmd_verify(args: argparse.Namespace) -> None:
 
         info("Frontend: build")
         run(["npm", "run", "build"], cwd=APP / "frontend")
+
+    if "deploy-build" in stages:
+        # Same code path Deploy Staging runs, minus bootstrap/deploy.
+        # Stage env mirrors what CI's deploy job would compute for
+        # staging so the synth exercises the same config branches.
+        stage = "staging"
+        stage_env = _load_env_file(stage)
+        account_id = (
+            os.environ.get("AWS_ACCOUNT_ID")
+            or stage_env.get("AWS_ACCOUNT_ID")
+            or _SYNTH_PLACEHOLDER_ACCOUNT
+        )
+        region = os.environ.get("AWS_REGION") or stage_env.get(
+            "AWS_REGION", "us-east-1"
+        )
+        synth_env = deploy_environment(stage, stage_env, account_id, region)
+        build_deploy_artifacts(install=False)
+
+        info("Deploy build: cdk synth (no AWS calls, no mutation)")
+        run(
+            ["npx", "cdk", "synth", "--all", "--quiet"],
+            cwd=APP / "infrastructure",
+            env=synth_env,
+        )
 
     info("All verify stages passed")
 
@@ -758,49 +815,14 @@ def lambda_bundle_manifest(package_json: dict) -> dict:
     return manifest
 
 
-def cmd_deploy(args: argparse.Namespace) -> None:
-    """Deploy to AWS via CDK."""
-    stage = args.stage
-    info(f"Deploying to AWS (stage={stage})")
+def deploy_environment(
+    stage: str, stage_env: dict[str, str], account_id: str, region: str
+) -> dict[str, str]:
+    """Env passed to every CDK invocation (synth, bootstrap, deploy).
 
-    check_node_version()
-    require_cmd("npm")
-    require_cmd("aws")
-
-    # Load stage-specific env file (os.environ takes precedence)
-    stage_env = _load_env_file(stage)
-
-    # Validate AWS credentials
-    result = subprocess.run(
-        ["aws", "sts", "get-caller-identity"],
-        capture_output=True,
-        text=True,
-    )
-    if result.returncode != 0:
-        fail("AWS credentials not configured. Run: aws configure")
-
-    account_id = os.environ.get("AWS_ACCOUNT_ID") or stage_env.get("AWS_ACCOUNT_ID")
-    if not account_id:
-        account_id = run_quiet(
-            [
-                "aws",
-                "sts",
-                "get-caller-identity",
-                "--query",
-                "Account",
-                "--output",
-                "text",
-            ]
-        )
-        if not account_id:
-            fail("AWS_ACCOUNT_ID not set. Export it or configure AWS CLI.")
-        info(f"Auto-detected AWS_ACCOUNT_ID: {account_id}")
-
-    if stage == "dev":
-        warn("STAGE=dev (default). Use --stage prod for production deployments.")
-
-    region = os.environ.get("AWS_REGION") or stage_env.get("AWS_REGION", "us-east-1")
-
+    os.environ > app/.env.<stage> for the domain keys; prod refuses to
+    proceed without DOMAIN_NAME + CERTIFICATE_ARN.
+    """
     deploy_env = {
         "STAGE": stage,
         "APP_MODE": "public",
@@ -832,8 +854,27 @@ def cmd_deploy(args: argparse.Namespace) -> None:
                 f"Set them in app/.env.prod or export as environment variables."
             )
 
-    info("Installing workspace dependencies")
-    run(["npm", "install", "--silent"], cwd=APP)
+    return deploy_env
+
+
+def build_deploy_artifacts(*, install: bool = True) -> None:
+    """Everything `./Quickstart deploy` builds before it touches AWS.
+
+    Shared by cmd_deploy and `verify --only deploy-build` so the local
+    gate runs the exact steps Deploy Staging runs: workspace install,
+    public-mode frontend build, backend Lambda bundle (tsc → dist/,
+    devDependencies-free manifest, fresh lockfile resolve, npm ci),
+    Python FastAPI Lambda bundle. No credentials required.
+
+    ``install=False`` (the verify gate) skips the workspace `npm
+    install`: verify already requires app/node_modules, and an unlocked
+    install under a different npm major than CI's (local Node 24 / npm
+    11 vs CI Node 22 / npm 10) rewrites the committed
+    app/package-lock.json — a gate must never mutate tracked files.
+    """
+    if install:
+        info("Installing workspace dependencies")
+        run(["npm", "install", "--silent"], cwd=APP)
 
     info("Building frontend (public mode)")
     # VITE_API_VERSION selects which backend the SPA talks to:
@@ -909,6 +950,53 @@ def cmd_deploy(args: argparse.Namespace) -> None:
     info("Building Python FastAPI Lambda bundle (app/backend_py/dist/)")
     run(["bash", "scripts/build_backend_py.sh"], cwd=ROOT)
 
+
+def cmd_deploy(args: argparse.Namespace) -> None:
+    """Deploy to AWS via CDK."""
+    stage = args.stage
+    info(f"Deploying to AWS (stage={stage})")
+
+    check_node_version()
+    require_cmd("npm")
+    require_cmd("aws")
+
+    # Load stage-specific env file (os.environ takes precedence)
+    stage_env = _load_env_file(stage)
+
+    # Validate AWS credentials
+    result = subprocess.run(
+        ["aws", "sts", "get-caller-identity"],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        fail("AWS credentials not configured. Run: aws configure")
+
+    account_id = os.environ.get("AWS_ACCOUNT_ID") or stage_env.get("AWS_ACCOUNT_ID")
+    if not account_id:
+        account_id = run_quiet(
+            [
+                "aws",
+                "sts",
+                "get-caller-identity",
+                "--query",
+                "Account",
+                "--output",
+                "text",
+            ]
+        )
+        if not account_id:
+            fail("AWS_ACCOUNT_ID not set. Export it or configure AWS CLI.")
+        info(f"Auto-detected AWS_ACCOUNT_ID: {account_id}")
+
+    if stage == "dev":
+        warn("STAGE=dev (default). Use --stage prod for production deployments.")
+
+    region = os.environ.get("AWS_REGION") or stage_env.get("AWS_REGION", "us-east-1")
+
+    deploy_env = deploy_environment(stage, stage_env, account_id, region)
+    build_deploy_artifacts()
+
     if cdk_toolkit_is_current(region):
         info(
             f"CDK toolkit current (>= v{_CDK_BOOTSTRAP_MIN_VERSION}) — skipping bootstrap"
@@ -968,6 +1056,50 @@ def cmd_deploy(args: argparse.Namespace) -> None:
         if base:
             print(f"  Health:     {base}/health")
         print()
+
+
+HOOKS_DIR = ROOT / "scripts" / "hooks"
+
+
+def cmd_hooks(args: argparse.Namespace) -> None:
+    """Point this clone's git at scripts/hooks/ (or unset it).
+
+    Hooks are opt-in per clone (core.hooksPath is local config, never
+    committed), so cloud routines and CI runners are unaffected. The
+    setting lives in the shared .git/config, so every worktree of this
+    repo picks it up; each hook resolves its own worktree root.
+    """
+    action = getattr(args, "action", "status")
+    current = subprocess.run(
+        ["git", "config", "--get", "core.hooksPath"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+
+    if action == "status":
+        if current:
+            info(f"core.hooksPath = {current}")
+        else:
+            info(
+                "no core.hooksPath set — hooks are not installed (./Quickstart hooks install)"
+            )
+        return
+
+    if action == "uninstall":
+        subprocess.run(["git", "config", "--unset", "core.hooksPath"], cwd=ROOT)
+        info("core.hooksPath unset — hooks disabled for this clone")
+        return
+
+    for hook in HOOKS_DIR.iterdir():
+        if hook.is_file():
+            hook.chmod(hook.stat().st_mode | 0o111)
+    run(["git", "config", "core.hooksPath", str(HOOKS_DIR.relative_to(ROOT))], cwd=ROOT)
+    info(f"core.hooksPath = {HOOKS_DIR.relative_to(ROOT)}")
+    info("pre-commit: ruff + tsc (seconds). pre-push: ./Quickstart verify (minutes).")
+    info(
+        "Bypass once with `git push --no-verify`; disable with `./Quickstart hooks uninstall`."
+    )
 
 
 def cmd_wait_health(args: argparse.Namespace) -> None:
@@ -1091,13 +1223,26 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument(
         "--only",
-        choices=["python", "backend", "frontend"],
+        choices=list(VERIFY_STAGES),
         help="Run a single stage (CI uses this per job)",
     )
     p.add_argument(
         "--integration",
         action="store_true",
         help="Add tests/integration/ to the Python stage (requires AWS creds / moto)",
+    )
+
+    # hooks — local git hooks (pre-commit fast checks, pre-push full gate)
+    p = sub.add_parser(
+        "hooks",
+        help="Install/uninstall the repo git hooks (scripts/hooks/) for this clone",
+    )
+    p.add_argument(
+        "action",
+        nargs="?",
+        default="status",
+        choices=["install", "uninstall", "status"],
+        help="install sets core.hooksPath=scripts/hooks; uninstall unsets it",
     )
 
     # staging
@@ -1339,6 +1484,7 @@ def main() -> None:
         "test": cmd_test,
         "verify": cmd_verify,
         "ci": cmd_verify,  # alias for verify
+        "hooks": cmd_hooks,
         "staging": cmd_staging,
         "deploy": cmd_deploy,
         "smoke": cmd_smoke,

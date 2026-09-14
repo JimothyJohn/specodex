@@ -8,10 +8,21 @@ Everything goes through `./Quickstart <command>`. It's a bash shim that delegate
 
     ./Quickstart dev              Local dev servers (default)
     ./Quickstart test             Unit tests only (fast feedback during dev)
-    ./Quickstart verify           Pre-push gate: lint + tests + build (alias: ci).
-                                  Mirrors .github/workflows/ci.yml exactly. Run this
-                                  before pushing — green here means CI will be green.
-                                  --only python|backend|frontend  Run one stage
+    ./Quickstart verify           Pre-push gate: lint + tests + build + deploy build
+                                  (alias: ci). Mirrors .github/workflows/ci.yml, and
+                                  the deploy-build stage is the AWS-free half of
+                                  Deploy Staging (workspace install, public frontend
+                                  build, Lambda bundle with a fresh lockfile resolve,
+                                  Python bundle, cdk synth). Green here means the PR
+                                  checks AND the post-merge staging build are green.
+                                  --only python|backend|frontend|deploy-build
+    ./Quickstart hooks install    Point this clone at scripts/hooks/: pre-commit runs
+                                  ruff + tsc (seconds), pre-push runs the full verify
+                                  gate (minutes). Per-clone, never committed; CI and
+                                  cloud routines are unaffected. `--no-verify` or
+                                  SPECODEX_SKIP_HOOKS=1 bypasses once; `hooks
+                                  uninstall` removes. Iterate locally, push when a
+                                  change is worth a staging deploy.
     ./Quickstart staging [URL]    Staging contract tests
     ./Quickstart deploy [--stage] Deploy to AWS via CDK
     ./Quickstart smoke [URL]      Post-deploy smoke tests
