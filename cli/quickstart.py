@@ -740,6 +740,24 @@ def _load_env_file(stage: str) -> dict[str, str]:
     return result
 
 
+def lambda_bundle_manifest(package_json: dict) -> dict:
+    """Return the package.json the backend Lambda bundle is resolved from.
+
+    The bundle only needs runtime ``dependencies``; ``devDependencies``
+    are dropped. This is not just size hygiene: the bundle lockfile is a
+    fresh, non-workspace ``npm install --package-lock-only`` in dist/,
+    and npm refuses (ERESOLVE) a tree where a root devDependency
+    violates another devDependency's peer range — e.g. typescript 7 vs
+    @typescript-eslint's ``typescript@">=4.8.4 <6.1.0"`` peer. The
+    workspace install tolerates that only because its committed lockfile
+    already nests a satisfying copy. Deploy Staging (the only job that
+    runs this) broke post-merge on 2026-09-13 (PR #375) that way.
+    Input is not mutated.
+    """
+    manifest = {k: v for k, v in package_json.items() if k != "devDependencies"}
+    return manifest
+
+
 def cmd_deploy(args: argparse.Namespace) -> None:
     """Deploy to AWS via CDK."""
     stage = args.stage
@@ -852,7 +870,10 @@ def cmd_deploy(args: argparse.Namespace) -> None:
     if backend_dist.exists():
         shutil.rmtree(backend_dist)
     run(["npm", "run", "build"], cwd=APP / "backend")
-    shutil.copy(APP / "backend" / "package.json", backend_dist / "package.json")
+    manifest = lambda_bundle_manifest(
+        json.loads((APP / "backend" / "package.json").read_text())
+    )
+    (backend_dist / "package.json").write_text(json.dumps(manifest, indent=2) + "\n")
     run(
         [
             "npm",

@@ -271,6 +271,44 @@ class TestInfrastructureBuild:
         )
 
 
+@pytest.mark.integration
+class TestLambdaBundleResolves:
+    """The backend Lambda bundle manifest resolves with a fresh npm.
+
+    `./Quickstart deploy` generates a non-workspace lockfile in
+    app/backend/dist/ from `lambda_bundle_manifest(backend/package.json)`.
+    That resolve runs only inside Deploy Staging (push to dev), so a
+    manifest npm cannot resolve is invisible on a PR. Do the same
+    resolve here, in a temp dir, so it fails at PR time.
+    """
+
+    def test_manifest_resolves_with_fresh_npm(self, tmp_path):
+        from cli.quickstart import lambda_bundle_manifest
+
+        manifest = lambda_bundle_manifest(
+            json.loads((BACKEND / "package.json").read_text())
+        )
+        (tmp_path / "package.json").write_text(json.dumps(manifest))
+        result = subprocess.run(
+            [
+                "npm",
+                "install",
+                "--package-lock-only",
+                "--ignore-scripts",
+                "--no-audit",
+                "--no-fund",
+            ],
+            cwd=str(tmp_path),
+            capture_output=True,
+            text=True,
+            timeout=180,
+        )
+        assert result.returncode == 0, (
+            f"npm cannot resolve the Lambda bundle manifest:\n{result.stderr}"
+        )
+        assert (tmp_path / "package-lock.json").exists()
+
+
 # =================== Infrastructure Files ===================
 
 
