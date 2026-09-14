@@ -183,7 +183,13 @@ export default function ProductList() {
   // Spec column floor. Cozy keeps the slider+operator+value row legible
   // (~120px). Compact strips the slider in PR 2 so the floor drops to
   // ~90px — value+operator+unit fits comfortably.
-  const defaultColWidth = rowDensity === 'compact' ? 90 : 120;
+  // Floor for spec columns. The 120/90 floors dated from the in-header
+  // slider + operator + value pill (UI_CLEANUP Phase 1); the
+  // popover-per-column header (Phase 2) only needs the label — which
+  // wraps — the sparkline, and the "any" trigger, so short numeric
+  // columns can sit at ~96px cozy / ~72px compact. Auto-fit still widens
+  // past this when the data warrants (computeAutoColumnWidths).
+  const defaultColWidth = rowDensity === 'compact' ? 72 : 96;
   const { columnWidths, setColumnWidths, startResize } = useColumnResize({ part_number: defaultPartWidth });
 
   // Keys that should never render as their own column. `part_number` is
@@ -281,10 +287,10 @@ export default function ProductList() {
       { key: 'part_number', displayName: 'Part Number' },
       ...visibleColumnAttributes.map(a => ({ key: a.key, displayName: a.displayName })),
     ];
-    // Floor every spec column at defaultColWidth — the in-header slider +
-    // operator + value pill needs ~120-145px to render without truncating.
-    // Auto-fit widens past the floor when data warrants; the floor only
-    // kicks in for naturally narrow columns.
+    // Floor every spec column at defaultColWidth (see its comment for
+    // why it is 96/72 and not the old 120/90). Auto-fit widens past the
+    // floor when data warrants; the floor only kicks in for naturally
+    // narrow columns.
     const specMin: Record<string, number> = { part_number: defaultPartWidth };
     for (const a of visibleColumnAttributes) specMin[a.key] = defaultColWidth;
     const auto = computeAutoColumnWidths({
