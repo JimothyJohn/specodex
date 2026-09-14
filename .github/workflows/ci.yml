@@ -15,7 +15,7 @@ on:
 
 env:
   AWS_REGION: us-east-1
-  NODE_VERSION: "20"
+  NODE_VERSION: "22"
 
 # OIDC: deploy jobs assume gh-deploy-datasheetminer via federated identity.
 # id-token write is needed by aws-actions/configure-aws-credentials.
