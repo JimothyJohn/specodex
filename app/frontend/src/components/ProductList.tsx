@@ -52,6 +52,33 @@ export interface ProductListResetState {
   clickPosition: { x: number; y: number } | null;
 }
 
+export type ListBodyState = 'pick-type' | 'loading' | 'no-products' | 'no-match' | 'rows';
+
+/**
+ * Decide what the listing body renders. Pure so the contract is
+ * unit-testable without mounting the page.
+ *
+ * 'no-match' is the load-bearing case: products exist but the active
+ * filters (or compat narrowing) eliminate every row. The grid — and its
+ * column headers, which host the filter controls — MUST stay mounted so
+ * the user can loosen the filters. Before 2026-09-13 this state shared a
+ * branch with 'no-products' and unmounted the headers, stranding the
+ * user with no way to readjust.
+ */
+export function resolveListBody(args: {
+  productType: ProductType | null;
+  loading: boolean;
+  totalProducts: number;
+  displayedProducts: number;
+}): ListBodyState {
+  const { productType, loading, totalProducts, displayedProducts } = args;
+  if (productType === null) return 'pick-type';
+  if (loading && totalProducts === 0) return 'loading';
+  if (totalProducts === 0) return 'no-products';
+  if (!loading && displayedProducts === 0) return 'no-match';
+  return 'rows';
+}
+
 export function defaultStateForType(type: ProductType): ProductListResetState {
   return {
     filters: buildDefaultFiltersForType(type),
@@ -486,6 +513,12 @@ export default function ProductList() {
   // already happened upstream. Kept as an alias so call sites read the
   // same as before.
   const displayProducts = sortedProducts;
+  const listBody = resolveListBody({
+    productType,
+    loading,
+    totalProducts: products.length,
+    displayedProducts: displayProducts.length,
+  });
 
   // Infinite-scroll window: reveal the first step, grow by another
   // step each time the sentinel nears the viewport.
@@ -976,7 +1009,7 @@ export default function ProductList() {
           </div>
         )}
 
-        {productType !== null && loading && products.length === 0 ? (
+        {listBody === 'loading' ? (
           /* Initial load, nothing fetched yet — without this branch the
              grid rendered zero rows with no indicator and a slow type
              looked like a hang. */
@@ -987,33 +1020,30 @@ export default function ProductList() {
               }…`}
             />
           </div>
-        ) : productType === null || (!loading && displayProducts.length === 0) ? (
+        ) : listBody === 'pick-type' || listBody === 'no-products' ? (
+          /* Nothing to show at all. The filters-eliminated-everything
+             case is NOT here on purpose — it renders inside the grid
+             below so the column headers (the filter controls) survive. */
           <div className="empty-state-minimal">
             <p>
-              {productType === null
+              {listBody === 'pick-type'
                 ? 'Select a product type to begin'
-                : products.length === 0
-                ? 'No products in database'
-                : 'No results match your specs'}
+                : 'No products in database'}
             </p>
-            {productType !== null && (
+            {listBody === 'no-products' && (
               <div className="empty-state-feedback">
                 <p className="empty-state-feedback-hint">
-                  {products.length === 0
-                    ? "Looking for a manufacturer or part we don't carry?"
-                    : 'Specs too tight, or expecting a product to show up?'}
+                  Looking for a manufacturer or part we don't carry?
                 </p>
                 <button
                   type="button"
                   className="feedback-trigger"
                   onClick={() => {
-                    setFeedbackCategory(
-                      products.length === 0 ? 'missing_product' : 'no_match',
-                    );
+                    setFeedbackCategory('missing_product');
                     setFeedbackOpen(true);
                   }}
                 >
-                  {products.length === 0 ? 'Tell us what to add' : 'Tell us what you need'}
+                  Tell us what to add
                 </button>
               </div>
             )}
@@ -1243,6 +1273,41 @@ export default function ProductList() {
                 </div>
               ))}
             </div>
+
+            {listBody === 'no-match' && (
+              /* Filters eliminated every row. Headers above stay mounted
+                 so the sliders/chips can be loosened in place. */
+              <div className="product-grid-no-match" role="status">
+                <p>No results match your specs</p>
+                <div className="empty-state-feedback">
+                  <p className="empty-state-feedback-hint">
+                    Specs too tight, or expecting a product to show up?
+                  </p>
+                  {filters.length > 0 && (
+                    <button
+                      type="button"
+                      className="feedback-trigger"
+                      onClick={() => {
+                        setFilters([]);
+                        setSorts([]);
+                      }}
+                    >
+                      Clear filters
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="feedback-trigger"
+                    onClick={() => {
+                      setFeedbackCategory('no_match');
+                      setFeedbackOpen(true);
+                    }}
+                  >
+                    Tell us what you need
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Infinite-scroll affordance. Lives INSIDE the grid's
                 scroll container so the IntersectionObserver fires as

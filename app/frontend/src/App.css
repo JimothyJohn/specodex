@@ -2521,6 +2521,19 @@ button.secondary:hover {
   color: var(--text-tertiary);
 }
 
+/* Filters eliminated every row. Rendered under the (still mounted)
+ * column headers inside .product-grid-scroll, so the filter controls
+ * remain reachable — see resolveListBody in ProductList.tsx. */
+.product-grid-no-match {
+  padding: 2rem 1rem 2.5rem;
+  color: var(--text-secondary);
+}
+.product-grid-no-match p {
+  margin: 0 0 0.5rem;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
 /* Initial product-listing load — first page not yet on screen. */
 .loading-state {
   display: flex;
