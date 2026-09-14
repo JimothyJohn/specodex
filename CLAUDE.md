@@ -471,6 +471,21 @@ Default flow for non-routine work in an interactive session:
    not push directly to `master` — that's the deliberate prod-release
    step Nick handles by hand.
 
+**Green PR ≠ green `dev`: the deploy build is a fresh resolve.**
+Deploy Staging (push to `dev` only) builds the backend Lambda bundle by
+writing a devDependencies-free manifest into `app/backend/dist/`
+(`cli/quickstart.py:lambda_bundle_manifest`) and running a fresh,
+non-workspace `npm install --package-lock-only` there, then
+`npx cdk deploy` via ts-node. Two things the workspace lockfile hides
+have broken it post-merge: a devDependency peer-range conflict
+(typescript 7 vs @typescript-eslint, PR #375 → fixed in #429) and a
+`typescript` major that drops the JS compiler API ts-node needs
+(app/infrastructure must stay on 6.x). Both now fail at PR time via
+`tests/integration/test_deploy_readiness.py::TestLambdaBundleResolves`
+and `::TestInfrastructureBuild`; if you touch the bundle step or the
+infra toolchain, extend those tests rather than waiting for the
+`dev` run to tell you.
+
 The two gates that enforce this:
 - `environment: production` on the `deploy-prod` job lists JimothyJohn
   as the only required reviewer. Prod deploys hang on his click.
