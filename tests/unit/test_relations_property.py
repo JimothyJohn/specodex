@@ -45,6 +45,7 @@ can produce.
 
 from __future__ import annotations
 
+import math
 from typing import Any, List, Optional
 
 import pytest
@@ -60,6 +61,7 @@ from specodex.relations import (
     _encoder_protocol_intersect,
     _length_mismatch,
     _meets_floor,
+    _stroke_bucket,
     _range_within,
     _shaft_compatible,
     _value_gte,
@@ -69,6 +71,7 @@ from specodex.relations import (
     compatible_gearheads,
     compatible_motors,
     mounting_conflicts,
+    stroke_distribution_positions,
 )
 
 
@@ -1202,3 +1205,189 @@ class TestMountingConflictsContract:
         motor = Motor(product_name="M", manufacturer="TestVendor")
         gear = Gearhead(product_name="G", manufacturer="TestVendor")
         assert mounting_conflicts(motor, gear) == []
+
+
+# ---------------------------------------------------------------------------
+# stroke_distribution_positions — the BUILD.md badge ranker.
+#
+# Its own strategies rather than `_actuator_strategy`: the contract that
+# matters here is about *co-occurrence* (several actuators sharing a
+# bucket, mixed alongside unbadgeable ones), and a strategy that draws
+# each spec field independently across a wide float range almost never
+# produces two equal buckets in one example.
+# ---------------------------------------------------------------------------
+
+
+_BUCKETABLE_STROKE = st.builds(
+    lambda v: ValueUnit(value=v, unit="mm"),
+    # A small value pool so distinct actuators land in shared buckets
+    # often enough for the ranking contract to actually be exercised.
+    st.sampled_from([50.0, 100.0, 100.4, 200.0, 200.5, 201.0, 500.0, 1000.0]),
+)
+
+# A unitless or non-finite stroke can't reach the ranker through a
+# validated LinearActuator — the Length BeforeValidator rejects both —
+# so those shapes are exercised against `_stroke_bucket` directly below
+# rather than smuggled in through a model the field guard already
+# forbids.
+_UNBUCKETABLE_STROKE = st.one_of(
+    st.none(),
+    st.builds(lambda v: ValueUnit(value=v, unit="in"), st.floats(1, 100)),
+)
+
+
+@st.composite
+def _badge_actuator_strategy(draw: st.DrawFn) -> LinearActuator:
+    stroke = draw(st.one_of(_BUCKETABLE_STROKE, _UNBUCKETABLE_STROKE))
+    return _linear_actuator(mounts=["NEMA 23"], stroke=stroke)
+
+
+def _bucketable(a: LinearActuator) -> bool:
+    return (
+        a.stroke is not None
+        and a.stroke.value is not None
+        and a.stroke.unit == "mm"
+        and math.isfinite(a.stroke.value)
+    )
+
+
+class TestStrokeDistributionPositionsContract:
+    """Contract: total, positionally aligned, internally consistent,
+    deterministic. The badge is user-facing text ("3rd most common
+    stroke"), so an off-by-one or a drifting rank is a visible lie about
+    the catalogue rather than a silent filter miss."""
+
+    @given(candidates=st.lists(_badge_actuator_strategy(), max_size=12))
+    @settings(
+        max_examples=200,
+        deadline=None,
+        suppress_health_check=[HealthCheck.too_slow],
+    )
+    def test_never_raises_and_is_positionally_aligned(
+        self, candidates: List[LinearActuator]
+    ) -> None:
+        try:
+            positions = stroke_distribution_positions(candidates)
+        except Exception as exc:  # pragma: no cover
+            pytest.fail(
+                f"stroke_distribution_positions raised {type(exc).__name__}: {exc!r}"
+            )
+
+        assert len(positions) == len(candidates)
+        for actuator, position in zip(candidates, positions):
+            # A badge appears exactly when the row carries a bucketable
+            # stroke — never on a row the UI has nothing to say about.
+            assert (position is not None) == _bucketable(actuator)
+            if position is None:
+                continue
+            assert position["spec"] == "stroke"
+            assert isinstance(position["rank"], int)
+            assert isinstance(position["cluster_count"], int)
+            assert position["rank"] >= 1
+            assert 1 <= position["cluster_count"] <= len(candidates)
+
+    @given(candidates=st.lists(_badge_actuator_strategy(), max_size=12))
+    @settings(
+        max_examples=200,
+        deadline=None,
+        suppress_health_check=[HealthCheck.too_slow],
+    )
+    def test_cluster_count_matches_the_candidate_set(
+        self, candidates: List[LinearActuator]
+    ) -> None:
+        positions = stroke_distribution_positions(candidates)
+
+        badged = [(a, p) for a, p in zip(candidates, positions) if p is not None]
+        by_bucket: dict[int, list[Any]] = {}
+        for actuator, position in badged:
+            assert actuator.stroke is not None and actuator.stroke.value is not None
+            bucket = math.floor(actuator.stroke.value + 0.5)
+            by_bucket.setdefault(bucket, []).append(position)
+
+        for bucket, members in by_bucket.items():
+            # Every row in a bucket reports the same rank and the same
+            # size, and that size is the bucket's real membership.
+            assert len({m["rank"] for m in members}) == 1
+            assert len({m["cluster_count"] for m in members}) == 1
+            assert members[0]["cluster_count"] == len(members)
+
+        # Ranks are a contiguous 1..K over the distinct buckets — no
+        # gaps, no duplicates across different clusters.
+        ranks = sorted(members[0]["rank"] for members in by_bucket.values())
+        assert ranks == list(range(1, len(by_bucket) + 1))
+
+    @given(candidates=st.lists(_badge_actuator_strategy(), max_size=12))
+    @settings(
+        max_examples=200,
+        deadline=None,
+        suppress_health_check=[HealthCheck.too_slow],
+    )
+    def test_bigger_clusters_never_rank_worse(
+        self, candidates: List[LinearActuator]
+    ) -> None:
+        positions = [p for p in stroke_distribution_positions(candidates) if p]
+
+        for a in positions:
+            for b in positions:
+                if a["cluster_count"] > b["cluster_count"]:
+                    assert a["rank"] < b["rank"]
+
+    @given(candidates=st.lists(_badge_actuator_strategy(), max_size=12))
+    @settings(
+        max_examples=100,
+        deadline=None,
+        suppress_health_check=[HealthCheck.too_slow],
+    )
+    def test_deterministic_across_calls(self, candidates: List[LinearActuator]) -> None:
+        # Equal-size clusters tie-break on the stroke value, so repeated
+        # calls with the same candidate set must agree exactly.
+        assert stroke_distribution_positions(
+            candidates
+        ) == stroke_distribution_positions(candidates)
+
+    def test_empty_candidate_set(self) -> None:
+        assert stroke_distribution_positions([]) == []
+
+
+class TestStrokeBucketGuard:
+    """`_stroke_bucket` is the ranker's only input guard. The model's
+    Length validator happens to reject unitless and non-finite strokes
+    today, so these shapes can't arrive through a validated actuator —
+    but the guard is what makes the ranker total if that ever changes,
+    and an unguarded `math.floor(nan)` raises."""
+
+    @given(
+        value=st.one_of(
+            st.none(),
+            st.floats(allow_nan=True, allow_infinity=True),
+        ),
+        unit=st.one_of(st.none(), st.sampled_from(["mm", "in", "m", "", "MM"])),
+    )
+    @settings(
+        max_examples=200,
+        deadline=None,
+        suppress_health_check=[HealthCheck.too_slow],
+    )
+    def test_never_raises_returns_int_or_none(
+        self, value: Optional[float], unit: Optional[str]
+    ) -> None:
+        raw = ValueUnit.model_construct(value=value, unit=unit)
+        try:
+            result = _stroke_bucket(raw)
+        except Exception as exc:  # pragma: no cover
+            pytest.fail(f"_stroke_bucket raised {type(exc).__name__}: {exc!r}")
+
+        assert result is None or isinstance(result, int)
+        if unit != "mm" or value is None or not math.isfinite(value):
+            assert result is None
+
+    def test_none_input(self) -> None:
+        assert _stroke_bucket(None) is None
+
+    @pytest.mark.parametrize("value", [float("nan"), float("inf"), float("-inf")])
+    def test_non_finite_gets_no_bucket(self, value: float) -> None:
+        # Regression pin: `math.floor(float('nan'))` raises ValueError
+        # and `math.floor(float('inf'))` raises OverflowError — either
+        # would take down the whole actuators response.
+        raw = ValueUnit.model_construct(value=value, unit="mm")
+        assert _stroke_bucket(raw) is None

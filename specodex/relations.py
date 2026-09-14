@@ -22,7 +22,8 @@ hardware in a Build BOM.
 
 from __future__ import annotations
 
-from typing import Iterable, List, Optional, Union
+import math
+from typing import Iterable, List, Literal, Optional, Sequence, TypedDict, Union
 
 from specodex.models.common import MinMaxUnit, ValueUnit
 from specodex.models.drive import Drive
@@ -262,6 +263,73 @@ def compatible_actuators(
         ):
             continue
         out.append(a)
+    return out
+
+
+class DistributionPosition(TypedDict):
+    """Where a candidate's spec value sits in the candidate set's clusters.
+
+    Drives `todo/BUILD.md` Part 3's "8th most common stroke in
+    catalogue" badge. `rank` is 1-based, 1 = most populous cluster.
+    """
+
+    spec: Literal["stroke", "peak_force_rating", "peak_velocity_rating"]
+    rank: int
+    cluster_count: int
+
+
+def _stroke_bucket(v: Optional[ValueUnit]) -> Optional[int]:
+    """Integer-millimetre cluster key for a stroke value, or None.
+
+    Non-canonical units, missing values and non-finite floats get no
+    bucket — the same precision-over-recall rule the predicates follow.
+    Rounds half-up (not Python's banker's rounding) so the buckets match
+    the Express port's `Math.round` while that implementation is still
+    the one serving `/api/v1`.
+    """
+    if v is None or v.value is None or v.unit != "mm":
+        return None
+    if not math.isfinite(v.value):
+        return None
+    return math.floor(v.value + 0.5)
+
+
+def stroke_distribution_positions(
+    candidates: Sequence[LinearActuator],
+) -> List[Optional[DistributionPosition]]:
+    """Rank each candidate's stroke cluster within the candidate set.
+
+    Returns one entry per input, positionally aligned — `None` where the
+    actuator carries no bucketable stroke (missing, non-canonical unit,
+    non-finite), so the caller attaches no badge to that row.
+
+    Clusters are ranked by size descending, ties broken on the stroke
+    value ascending, so the rank is deterministic across calls with the
+    same candidate set. Ranking is relative to what passed the filter,
+    not to the whole catalogue — that is what makes the badge meaningful
+    to a user reading their own narrowed list.
+    """
+    buckets = [_stroke_bucket(a.stroke) for a in candidates]
+
+    counts: dict[int, int] = {}
+    for b in buckets:
+        if b is None:
+            continue
+        counts[b] = counts.get(b, 0) + 1
+
+    ranked = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
+    rank_by_bucket = {bucket: i + 1 for i, (bucket, _) in enumerate(ranked)}
+
+    out: List[Optional[DistributionPosition]] = []
+    for b in buckets:
+        if b is None:
+            out.append(None)
+            continue
+        out.append(
+            DistributionPosition(
+                spec="stroke", rank=rank_by_bucket[b], cluster_count=counts[b]
+            )
+        )
     return out
 
 

@@ -26,6 +26,7 @@ from specodex.relations import (
     compatible_gearheads,
     compatible_motors,
     mounting_conflicts,
+    stroke_distribution_positions,
 )
 
 MFG = "TestVendor"
@@ -871,3 +872,89 @@ class TestMountingConflicts:
         assert "mount pattern" in joined
         assert "bolt circle diameter" in joined
         assert "mounting standard" in joined
+
+
+class TestStrokeDistributionPositions:
+    """Cluster ranking behind BUILD.md's "Nth most common stroke" badge."""
+
+    def test_positions_are_positionally_aligned(self):
+        actuators = [
+            _linear_actuator(name="a", stroke_mm=200),
+            _linear_actuator(name="b", stroke_mm=200),
+            _linear_actuator(name="c", stroke_mm=500),
+        ]
+
+        positions = stroke_distribution_positions(actuators)
+
+        assert len(positions) == len(actuators)
+        assert positions[0] == {"spec": "stroke", "rank": 1, "cluster_count": 2}
+        assert positions[1] == {"spec": "stroke", "rank": 1, "cluster_count": 2}
+        assert positions[2] == {"spec": "stroke", "rank": 2, "cluster_count": 1}
+
+    def test_ties_break_on_stroke_value_ascending(self):
+        # Equal-size clusters must rank deterministically, smallest
+        # stroke first, so the badge doesn't flip between calls.
+        actuators = [
+            _linear_actuator(name="big", stroke_mm=900),
+            _linear_actuator(name="small", stroke_mm=100),
+        ]
+
+        positions = stroke_distribution_positions(actuators)
+
+        assert positions[0]["rank"] == 2
+        assert positions[1]["rank"] == 1
+
+    def test_rounds_to_integer_millimetres(self):
+        # 199.6 and 200.4 are the same catalogue cluster; rounding is
+        # half-up so 200.5 joins the 201 bucket (matches the Express port).
+        actuators = [
+            _linear_actuator(name="a", stroke_mm=199.6),
+            _linear_actuator(name="b", stroke_mm=200.4),
+        ]
+
+        positions = stroke_distribution_positions(actuators)
+
+        assert positions[0] == positions[1]
+        assert positions[0]["cluster_count"] == 2
+
+    def test_half_up_rounding_matches_express(self):
+        # Python's round() would bank 200.5 down to 200; Math.round does
+        # not. The two implementations must bucket identically while both
+        # serve /api/v1.
+        actuators = [
+            _linear_actuator(name="a", stroke_mm=200.5),
+            _linear_actuator(name="b", stroke_mm=201.0),
+        ]
+
+        positions = stroke_distribution_positions(actuators)
+
+        assert positions[0] == positions[1]
+
+    def test_missing_or_non_canonical_stroke_gets_no_badge(self):
+        no_stroke = _linear_actuator(name="no_stroke")
+        in_inches = LinearActuator(
+            product_name="inches",
+            product_type="linear_actuator",
+            manufacturer=MFG,
+            part_number="PN-inches",
+            compatible_motor_mounts=["NEMA 23"],
+            stroke={"value": 8, "unit": "in"},
+        )
+
+        positions = stroke_distribution_positions([no_stroke, in_inches])
+
+        assert positions == [None, None]
+
+    def test_unbadgeable_rows_do_not_shift_ranks(self):
+        actuators = [
+            _linear_actuator(name="no_stroke"),
+            _linear_actuator(name="a", stroke_mm=300),
+        ]
+
+        positions = stroke_distribution_positions(actuators)
+
+        assert positions[0] is None
+        assert positions[1] == {"spec": "stroke", "rank": 1, "cluster_count": 1}
+
+    def test_empty_candidate_set(self):
+        assert stroke_distribution_positions([]) == []
