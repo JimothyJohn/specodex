@@ -236,6 +236,42 @@ jobs:
       - name: Verify (frontend)
         run: ./Quickstart verify --only frontend
 
+  # ── Stage 1f: Deploy build (AWS-free half of Deploy Staging) ────
+  # Deploy Staging runs only on push to master/dev, so until 2026-09-13
+  # a PR could be green and still break the post-merge staging build
+  # (TypeScript 7's ts-node break in PR #375; the Lambda bundle
+  # ERESOLVE fixed in #429). This job runs the same build steps the
+  # deploy job runs — workspace install, public frontend build, backend
+  # Lambda bundle with a fresh lockfile resolve, Python Lambda bundle,
+  # cdk synth — with no credentials and no AWS calls. It is also the
+  # `deploy-build` stage of ./Quickstart verify, so local and CI agree.
+  test-deploy-build:
+    name: Test Deploy Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - name: Install uv (for Quickstart CLI)
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          version: "latest"
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Install workspace dependencies
+        working-directory: app
+        run: npm ci
+
+      - name: Verify (deploy-build)
+        run: ./Quickstart verify --only deploy-build
+
   # ── Stage 1e: Generated TS types are in sync ───────────────────
   # Phase 0 of todo/PYTHON_BACKEND.md: app/frontend/src/types/generated.ts
   # is committed to the repo and treated as part of the diff. This job
@@ -288,7 +324,7 @@ jobs:
   deploy-staging:
     name: Deploy Staging
     runs-on: ubuntu-latest
-    needs: [test-python, test-integration, test-backend, test-frontend, test-codegen]
+    needs: [test-python, test-integration, test-backend, test-frontend, test-codegen, test-deploy-build]
     if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/dev'
     concurrency:
       group: deploy-staging
