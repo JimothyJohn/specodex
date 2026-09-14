@@ -17,6 +17,7 @@ dependencies = [
     "pymupdf>=1.28.2",
     "httpx>=0.27.0",
     "selectolax>=0.4.11",
+    "mcp>=2.2.0",
 ]
 
 [project.scripts]
@@ -25,6 +26,7 @@ page-finder = "specodex.page_finder:main"
 dsm-agent = "cli.agent:main"
 dsm = "cli.query:main"
 web-scraper = "specodex.web_scraper:main"
+specodex-mcp = "specodex.mcp.server:main"
 
 [dependency-groups]
 dev = [

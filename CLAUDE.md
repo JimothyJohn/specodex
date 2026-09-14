@@ -23,6 +23,9 @@ Everything goes through `./Quickstart <command>`. It's a bash shim that delegate
                                   SPECODEX_SKIP_HOOKS=1 bypasses once; `hooks
                                   uninstall` removes. Iterate locally, push when a
                                   change is worth a staging deploy.
+    ./Quickstart mcp              Run the Specodex MCP server over stdio (read-only
+                                  catalog tools over the public API; see "MCP server"
+                                  below). Equivalent: `uv run specodex-mcp`.
     ./Quickstart staging [URL]    Staging contract tests
     ./Quickstart deploy [--stage] Deploy to AWS via CDK
     ./Quickstart smoke [URL]      Post-deploy smoke tests
@@ -84,6 +87,51 @@ Everything goes through `./Quickstart <command>`. It's a bash shim that delegate
                                   regenerated app/frontend/src/data/vendors.json.
 
 All CLI modules live in `cli/`. Quickstart is the single entry point — don't run `python -m cli.foo` in docs or scripts unless there's a reason.
+
+## MCP server
+
+`specodex/mcp/` exposes the public catalog API as MCP tools so an LLM
+client (Claude Code, Claude Desktop, anything speaking MCP) can query
+the same data the web UI shows. It is a thin, read-only HTTP client:
+no DynamoDB credentials, no Gemini key — anything that can reach
+`https://www.specodex.com` can run it.
+
+    uv run specodex-mcp                                   # stdio, against prod
+    SPECODEX_API_URL=https://d1acboh655kvrt.cloudfront.net uv run specodex-mcp   # staging
+    claude mcp add specodex -- uv run --directory /Users/nick/github/specodex specodex-mcp
+
+Tools (all `specodex_*`, all read-only): `list_product_types`,
+`summary`, `list_manufacturers`, `search_products` (text + `where`
+clauses like `rated_power>=1000` + `sort` like `rated_power:desc`,
+limit ≤ 100), `list_products` (cursor-paged, ≤ 2000/page),
+`get_product`, `find_actuators`, `motors_for_actuator`,
+`drives_for_motor`, `gearheads_for_motor`, `compatible_types`,
+`check_compatibility`, `list_datasheets`. Search/list results are
+"compact" by default (storage keys and price-estimate comparable
+lists stripped); `compact: false` returns raw records.
+
+Things the client knows that a naive wrapper would not:
+
+- **CloudFront masks API 404s as HTML 200** (SPA fallback). A missing
+  product, or an endpoint that prod (master) does not serve yet
+  because it is behind dev, arrives as `text/html`. The client turns
+  any non-JSON body into an actionable not-found error instead of
+  handing HTML to the model.
+- **Anticipated failures must be `ToolError`.** mcp 2.x forwards only
+  `ToolError` messages to the client; any other exception reaches the
+  model as a bare "Error executing tool X" and the reason goes to a
+  server-side traceback. `server.py:_anticipated` does the mapping.
+- **Every argument is validated before it becomes URL** (UUID product
+  ids, snake_case types, `field<op>value` where clauses, `field[:dir]`
+  sort keys, bounded limits, opaque cursors). Property tests in
+  `tests/unit/test_mcp_api_property.py` pin that; the protocol-level
+  contract (real MCP client + a local HTTP server serving responses
+  captured from prod) is `tests/unit/test_mcp_server.py`;
+  `tests/integration/test_mcp_live.py` (`-m live`) hits prod for real.
+- **The SDK is `mcp` 2.x** (`MCPServer` from `mcp.server.mcpserver`,
+  snake_case result attributes such as `is_error` /
+  `structured_content`). The 1.x `FastMCP` import path does not exist;
+  don't paste 1.x examples.
 
 ## Type generation (Pydantic → TypeScript)
 
