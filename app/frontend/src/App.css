@@ -6753,7 +6753,11 @@ body::after {
   gap: 0.35rem;
   flex: 1 1 auto;
   min-width: 0;
-  min-height: 22px;
+  /* Three label lines (0.72rem × 1.15 × 3). Fixed rather than
+   * content-sized so a wrapped "INPUT VOLTAGE PHASES" and a one-line
+   * "IP RATING" leave their sparkline + "any" trigger on the same row
+   * across the header strip. Short labels centre in the box. */
+  min-height: 2.5rem;
   background: none;
   border: none;
   border-radius: 0;
@@ -6895,8 +6899,10 @@ body::after {
 .compact-column-header .compact-column-sort {
   flex: 1 1 0;
   min-width: 0;
-  min-height: 20px;
-  align-items: flex-start;
+  /* Three clamped lines at 0.7rem × 1.15 — same alignment argument as
+   * .column-header-sort above. */
+  min-height: 2.42rem;
+  align-items: center;
   padding: 0 0.15rem;
   font-size: 0.7rem;
 }
@@ -6910,8 +6916,8 @@ body::after {
  * Widen the column to read those in full. */
 .compact-column-header .column-header-label-text {
   display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
   -webkit-box-orient: vertical;
   word-break: break-word;
   overflow-wrap: anywhere;
