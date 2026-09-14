@@ -353,3 +353,106 @@ def test_render_reasoning_doc_literal_preview() -> None:
     doc = render_reasoning_doc(pm)
     # Shows first 4 values + ellipsis when there are more.
     assert "literal[v0, v1, v2, v3, …]" in doc
+
+
+# ---------------------------------------------------------------------
+# Regression cases for the 2026-09-08 source-injection round.
+#
+# Each of these rendered (or crashed) before the identifier gate in
+# meta_schema.py and the safe docstring / comment rendering in
+# renderer.py. The property companion is
+# tests/unit/test_schemagen_renderer_property.py; these pin the exact
+# shapes so they can't regress if the strategy drifts.
+# ---------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "class",  # Python keyword -> SyntaxError
+        "3phase",  # leading digit -> "invalid decimal literal"
+        "rated current",  # space -> SyntaxError
+        "",  # empty -> SyntaxError
+        "_private",  # pydantic would treat it as a private attr
+        "ok: int = 1\n    import os",  # newline -> statement injection
+    ],
+)
+def test_unsafe_field_name_rejected(name: str) -> None:
+    with pytest.raises(ValidationError):
+        ProposedField(name=name, kind="int", description="A description.")
+
+
+@pytest.mark.parametrize(
+    "class_name",
+    [
+        "Test Product",  # space -> SyntaxError
+        "True",  # keyword that passes the PascalCase check
+        "A(ProductBase): pass\nimport os\nclass B",  # statement injection
+    ],
+)
+def test_unsafe_class_name_rejected(class_name: str) -> None:
+    with pytest.raises(ValidationError):
+        _model_with_fields(
+            [ProposedField(name="poles", kind="int", description="Pole count.")],
+            class_name=class_name,
+        )
+
+
+@pytest.mark.parametrize(
+    "docstring",
+    [
+        'contains """ inside',
+        'trailing quote "',
+        "trailing backslash \\",
+        'x"""\n    import os\n    """',  # closes the docstring, injects a statement
+        "carriage\r\nreturn",
+        "null \x00 byte",
+    ],
+)
+def test_adversarial_docstring_renders_and_round_trips(docstring: str) -> None:
+    pm = _model_with_fields(
+        [ProposedField(name="poles", kind="int", description="Pole count.")],
+        docstring=docstring,
+    )
+    source = render_model_file(pm)
+    module = ast.parse(source)
+    cls = next(n for n in module.body if isinstance(n, ast.ClassDef))
+    # Nothing but imports and the class reaches module level — the injected
+    # `import os` survives only as docstring *text*, never as a statement.
+    assert all(
+        isinstance(n, (ast.Import, ast.ImportFrom, ast.ClassDef)) for n in module.body
+    ), [type(n).__name__ for n in module.body]
+    assert all(isinstance(n, (ast.Expr, ast.AnnAssign)) for n in cls.body), [
+        type(n).__name__ for n in cls.body
+    ]
+    # ... and the docstring survives byte-for-byte.
+    assert ast.get_docstring(cls, clean=False) == docstring
+
+
+@pytest.mark.parametrize(
+    "section",
+    [
+        "Electrical\n    import os  #",  # newline -> escapes the comment
+        "Electrical\x00",  # NUL -> "source code cannot contain null bytes"
+        "Electrical\ud800",  # lone surrogate -> UnicodeEncodeError
+    ],
+)
+def test_section_cannot_break_out_of_the_comment(section: str) -> None:
+    pm = _model_with_fields(
+        [
+            ProposedField(
+                name="poles",
+                kind="int",
+                description="Pole count.",
+                section=section,
+            )
+        ],
+    )
+    source = render_model_file(pm)
+    module = ast.parse(source)
+    cls = next(n for n in module.body if isinstance(n, ast.ClassDef))
+    # Docstring + product_type + series + poles — no injected statement.
+    assert all(isinstance(n, (ast.Expr, ast.AnnAssign)) for n in cls.body), [
+        type(n).__name__ for n in cls.body
+    ]
+    assert "    # --- Electrical" in source

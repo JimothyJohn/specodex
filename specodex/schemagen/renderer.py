@@ -45,6 +45,71 @@ _COMMON_KINDS: frozenset[str] = frozenset({"value_unit", "min_max_unit"})
 _LIST_KINDS: frozenset[str] = frozenset({"list_str"})
 
 
+def _needs_escaping(char: str) -> bool:
+    """True when ``char`` can't be dropped verbatim into a docstring body.
+
+    ``"`` and ``\\`` can close the literal early or escape its closer. A
+    carriage return is rewritten by Python's source line-ending
+    normalisation, silently changing the docstring. Every other C0/C1 control
+    character is either illegal in source (``compile()`` rejects a NUL
+    outright) or invisible in the rendered file; ``\\n`` and ``\\t`` are the
+    two that read fine inside a triple-quoted string. A lone surrogate —
+    which ``json.loads`` will happily produce from a ``\\udNNN`` escape in the
+    LLM's response — can't be encoded as UTF-8 source at all.
+    """
+    if char in ('"', "\\"):
+        return True
+    if char in ("\n", "\t"):
+        return False
+    code = ord(char)
+    return code < 0x20 or code == 0x7F or 0xD800 <= code <= 0xDFFF
+
+
+def _docstring_literal(text: str) -> str:
+    """Render ``text`` as a triple-quoted string literal that always parses.
+
+    The LLM controls the docstring, so it can contain a ``"``, a trailing
+    backslash, a literal ``\"\"\"``, or a NUL — each of which either breaks the
+    generated file or (with an embedded ``\"\"\"``) closes the docstring early
+    and lets the rest of the text land as executable statements. Escaping every
+    such character makes the literal total *and* exact: the rendered docstring
+    always evaluates back to ``text``. The common case (no quotes, no
+    backslashes, no control characters beyond newline/tab) is emitted verbatim
+    so ordinary docstrings stay readable.
+    """
+    if not any(_needs_escaping(c) for c in text):
+        return f'"""{text}"""'
+    out: List[str] = []
+    for char in text:
+        if not _needs_escaping(char):
+            out.append(char)
+        elif char in ('"', "\\"):
+            out.append("\\" + char)
+        elif ord(char) > 0xFF:
+            out.append(f"\\u{ord(char):04x}")
+        else:
+            out.append(f"\\x{ord(char):02x}")
+    return '"""' + "".join(out) + '"""'
+
+
+def _comment_text(text: str) -> str:
+    """Flatten ``text`` for use inside a single ``#`` comment line.
+
+    A newline in a section label would end the comment and let the remainder
+    render as class-body source; a NUL or a lone surrogate would make the whole
+    file uncompilable. Those are dropped, and every whitespace run collapses to
+    a single space.
+    """
+    # Quotes and backslashes are inert inside a comment, so only the
+    # characters that break the file itself are dropped.
+    stripped = "".join(
+        c
+        for c in text
+        if c in ('"', "\\", "\n", "\t") or not _needs_escaping(c)  # noqa: E501
+    )
+    return " ".join(stripped.split())
+
+
 def _annotation_for(field: ProposedField) -> str:
     if field.kind == "literal":
         # ``literal_values`` guaranteed non-empty by ProposedField validator.
@@ -103,7 +168,7 @@ def _build_imports(pm: ProposedModel) -> List[str]:
 def _build_class_body(pm: ProposedModel) -> List[str]:
     lines: List[str] = [
         f"class {pm.class_name}(ProductBase):",
-        f'    """{pm.docstring}"""',
+        f"    {_docstring_literal(pm.docstring)}",
         "",
         f"    product_type: Literal[{pm.product_type!r}] = {pm.product_type!r}",
     ]
@@ -120,7 +185,7 @@ def _build_class_body(pm: ProposedModel) -> List[str]:
     for field in pm.fields:
         if field.section and field.section != current_section:
             lines.append("")
-            lines.append(f"    # --- {field.section} ---")
+            lines.append(f"    # --- {_comment_text(field.section)} ---")
             current_section = field.section
         lines.append(_field_line(field))
     return lines
