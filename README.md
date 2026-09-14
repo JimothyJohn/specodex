@@ -35,6 +35,7 @@ Everything goes through `./Quickstart <command>`. It's a bash shim that delegate
 |---------|-------------|
 | `./Quickstart dev` | Local dev servers (backend :3001, frontend Vite :5173) |
 | `./Quickstart verify` | Pre-push gate — mirrors CI exactly: lint + tests + build |
+| `./Quickstart hooks install` | Wire this clone's git hooks: pre-commit (ruff + tsc), pre-push (full verify gate) |
 | `./Quickstart test` | Unit tests only (fast feedback during dev) |
 | `./Quickstart deploy [--stage]` | Deploy to AWS via CDK |
 | `./Quickstart smoke [URL]` | Post-deploy smoke tests |

@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Full pre-push gate: `./Quickstart verify` — the same lint + tests +
+# builds CI runs, plus the AWS-free half of the deploy (deploy-build).
+# Green here means the PR checks AND the post-merge Deploy Staging
+# build will be green. Installed per clone via `./Quickstart hooks
+# install`; bypass once with `git push --no-verify`.
+set -euo pipefail
+
+if [ "${SPECODEX_SKIP_HOOKS:-}" = "1" ]; then
+  exit 0
+fi
+
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT"
+
+echo "==> pre-push: ./Quickstart verify (full local gate)"
+./Quickstart verify
