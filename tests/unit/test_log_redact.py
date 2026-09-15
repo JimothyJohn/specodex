@@ -68,6 +68,73 @@ class TestRedactSecrets:
         assert redact_secrets(once) == once
 
 
+class TestMultiSecretRedaction:
+    """Regression cases for the two substitution-boundary bugs.
+
+    Both found by ``tests/unit/test_log_redact_property.py``, whose
+    Hypothesis strategies seed up to three secrets at once — the single
+    -secret property below cannot express either shape.
+
+    1. **Splice-boundary leak.** Replacing one secret splices
+       ``[REDACTED]`` into the text, and the splice can complete a fresh
+       occurrence of a *different* secret across the substitution
+       boundary. The synthesised secret is the longer of the two, so the
+       longest-first loop is already past it when the splice creates it,
+       and it survived into the log line.
+    2. **Self-regrowing secret.** A value that is a substring of the
+       marker was replaced by a string containing it again, so each pass
+       lengthened the line rather than scrubbing it.
+
+    Pinned explicitly so the shapes can't regress if the Hypothesis
+    strategies drift.
+    """
+
+    def test_splice_does_not_leak_a_second_secret(self, monkeypatch, no_secrets):
+        monkeypatch.setenv("AWS_SESSION_TOKEN", "AA[REDACTED]")
+        monkeypatch.setenv("GEMINI_API_KEY", "BBBBBBBB")
+        out = redact_secrets("AABBBBBBBB")
+        assert "AA[REDACTED]" not in out
+        assert out == REDACTED
+
+    def test_splice_result_is_still_a_fixed_point(self, monkeypatch, no_secrets):
+        monkeypatch.setenv("AWS_SESSION_TOKEN", "AA[REDACTED]")
+        monkeypatch.setenv("GEMINI_API_KEY", "BBBBBBBB")
+        once = redact_secrets("AABBBBBBBB")
+        assert redact_secrets(once) == once
+
+    def test_equal_length_secrets_sort_deterministically(self, monkeypatch, no_secrets):
+        # Ties used to fall out of a set in PYTHONHASHSEED order, which
+        # made the redaction of a two-secret line non-reproducible.
+        monkeypatch.setenv("GEMINI_API_KEY", "ZZZZZZZZ")
+        monkeypatch.setenv("SERPER_API_KEY", "AAAAAAAA")
+        assert secret_values() == ["AAAAAAAA", "ZZZZZZZZ"]
+
+    def test_marker_substring_secret_is_removed_not_regrown(
+        self, monkeypatch, no_secrets
+    ):
+        # "[REDACTE" is a prefix of the marker, so substituting the
+        # marker for it re-creates it and the line grows on every pass
+        # ("[REDACTED]D]D]D]D]" before the fix). Such a value is deleted
+        # outright instead.
+        monkeypatch.setenv("GEMINI_API_KEY", "[REDACTE")
+        out = redact_secrets("prefix [REDACTE suffix")
+        assert "[REDACTE" not in out
+        assert out == "prefix  suffix"
+
+    def test_marker_substring_secret_is_idempotent(self, monkeypatch, no_secrets):
+        monkeypatch.setenv("GEMINI_API_KEY", "REDACTED]")
+        once = redact_secrets("tail REDACTED]")
+        assert redact_secrets(once) == once
+
+    def test_both_plain_secrets_still_redacted(self, monkeypatch, no_secrets):
+        monkeypatch.setenv("GEMINI_API_KEY", "GEMINI-SENTINEL-000000")
+        monkeypatch.setenv("STRIPE_SECRET_KEY", "sk_live_SENTINEL_111111")
+        out = redact_secrets(
+            "call failed: key=GEMINI-SENTINEL-000000 stripe=sk_live_SENTINEL_111111"
+        )
+        assert out == f"call failed: key={REDACTED} stripe={REDACTED}"
+
+
 # os.environ cannot hold a NUL byte or a lone surrogate, so exclude those
 # from the seeded secret; everything else (unicode, regex metacharacters,
 # whitespace inside) is fair. Trailing/leading whitespace is stripped

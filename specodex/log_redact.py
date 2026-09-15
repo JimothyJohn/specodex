@@ -59,30 +59,87 @@ def secret_values() -> list[str]:
 
     Longest-first matters when one secret is a prefix of another (an
     access key id inside a longer session token): replacing the longer
-    one first keeps the shorter replacement from splitting it.
+    one first keeps the shorter replacement from splitting it. Equal
+    lengths tie-break lexicographically so the order is a function of
+    the values alone — a bare ``key=len`` over a set leaves ties in
+    ``PYTHONHASHSEED`` order, which makes the output of a multi-secret
+    redaction differ run to run.
     """
     vals = {
         v
         for name in SECRET_ENV_VARS
         if (v := os.environ.get(name)) and len(v) >= _MIN_SECRET_LEN
     }
-    return sorted(vals, key=len, reverse=True)
+    return sorted(vals, key=lambda v: (-len(v), v))
+
+
+# One replacement pass is not enough to establish "no secret survives".
+# Substituting one secret splices REDACTED into the text, and that splice
+# can complete a *fresh* occurrence of another secret across the
+# substitution boundary — a secret whose own value carries part of the
+# marker, e.g. AWS_SESSION_TOKEN="AA[REDACTED]" against the text
+# "AA" + GEMINI_API_KEY. The synthesised secret is the longer of the two,
+# so the longest-first loop is already past it when the splice creates
+# it, and it rode out into the log line. That also broke the documented
+# idempotence: a second call *did* catch it, so
+# ``redact_secrets(redact_secrets(s)) != redact_secrets(s)``.
+#
+# Re-running the pass until the text stops moving restores both. The cap
+# bounds a loop whose inputs are attacker-adjacent (the values come from
+# the environment, the text from an SDK error); in practice the second
+# pass is already a fixed point, and the property test pins that no
+# reachable input needs more. Exhausting it is handled by failing closed
+# in `redact_secrets` rather than by returning a half-scrubbed line.
+_MAX_PASSES = 5
+
+
+def _replacement_for(value: str) -> str:
+    """The marker to substitute for ``value``.
+
+    Normally ``REDACTED``. A value that is itself a substring of the
+    marker gets the empty string instead, because substituting the
+    marker for it *re-creates* it: ``"[REDACTE"`` → ``"[REDACTED]"``,
+    which contains ``"[REDACTE"`` again, so the substitution grows the
+    line on every pass and never scrubs it. ``REDACTED`` is 10
+    characters and nothing under ``_MIN_SECRET_LEN`` counts as a secret,
+    so this is exactly the six substrings of ``"[REDACTED]"`` that are 8
+    characters or longer. A real credential is key material, never our
+    own marker text, so the branch is unreachable in practice — it
+    exists so the loop below has a terminating substitution for every
+    input rather than leaning on the pass cap.
+    """
+    return "" if value in REDACTED else REDACTED
 
 
 def redact_secrets(text: str) -> str:
     """Return ``text`` with every current secret value replaced by ``[REDACTED]``.
 
     Pure string replacement — no regex, so a secret containing ``.`` or
-    ``$`` can't be misread as a pattern. Idempotent. Never raises on a
-    ``str`` input; a non-``str`` is coerced with ``str()`` first so an
-    exception object can be passed directly.
+    ``$`` can't be misread as a pattern. Idempotent, and no current
+    secret value survives into the result. Never raises on a ``str``
+    input; a non-``str`` is coerced with ``str()`` first so an exception
+    object can be passed directly.
+
+    **Fails closed.** If the substitution loop cannot reach a state with
+    no secret left in the text (see ``_MAX_PASSES``), the whole line is
+    dropped and a bare ``[REDACTED]`` is returned. Losing a log message
+    is the cheap failure; emitting a credential is not.
     """
     if not isinstance(text, str):
         text = str(text)
-    for secret in secret_values():
-        if secret in text:
-            text = text.replace(secret, REDACTED)
-    return text
+    secrets = secret_values()
+    if not secrets:
+        return text
+    for _ in range(_MAX_PASSES):
+        before = text
+        for secret in secrets:
+            if secret in text:
+                text = text.replace(secret, _replacement_for(secret))
+        if text == before:
+            return text
+    # Cap exhausted: the text is still moving, so we cannot claim it is
+    # clean. Drop it.
+    return REDACTED if any(s in text for s in secrets) else text
 
 
 # SDK loggers whose DEBUG output includes signed requests. botocore.auth
