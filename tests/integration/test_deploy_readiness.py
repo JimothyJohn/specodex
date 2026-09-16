@@ -9,6 +9,7 @@ Run: uv run pytest tests/integration/test_deploy_readiness.py -v
 """
 
 import json
+import os
 import subprocess
 import re
 from pathlib import Path
@@ -253,10 +254,9 @@ class TestInfrastructureBuild:
         """ts-node must be able to bootstrap against the installed `typescript`.
 
         TypeScript 7's `typescript` package is the native compiler and has
-        no `ts.sys` / Program API; ts-node 10 crashes on startup with
-        `Cannot read properties of undefined (reading 'fileExists')`.
-        `npx cdk deploy` shells out to `npx ts-node bin/app.ts`, so this
-        is the exact failure Deploy Staging would hit post-merge.
+        no `ts.sys` / Program API; ts-node 10 crashes on startup unless
+        pointed at a JS-hosted compiler via TS_NODE_COMPILER, same as
+        cdk.json's `app` command does.
         """
         result = subprocess.run(
             ["npx", "ts-node", "-e", "0"],
@@ -264,6 +264,7 @@ class TestInfrastructureBuild:
             capture_output=True,
             text=True,
             timeout=120,
+            env={**os.environ, "TS_NODE_COMPILER": "@typescript/typescript6"},
         )
         assert result.returncode == 0, (
             "ts-node cannot bootstrap in app/infrastructure — is `typescript` "
