@@ -19,7 +19,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import { AppProvider } from '../context/AppContext';
 import { AuthProvider } from '../context/AuthContext';
 import { ConfirmProvider } from '../components/ui/ConfirmDialog';
@@ -64,6 +64,28 @@ function renderRoute(path: string) {
       <AppProvider>
         <ConfirmProvider>
           <MemoryRouter initialEntries={[path]}>
+            <AppShell />
+          </MemoryRouter>
+        </ConfirmProvider>
+      </AppProvider>
+    </AuthProvider>,
+  );
+}
+
+/** Surfaces the router's current URL so a redirect's *target* — not just
+ *  the page it lands on — can be asserted. */
+function LocationProbe() {
+  const location = useLocation();
+  return <span data-testid="location">{`${location.pathname}${location.search}`}</span>;
+}
+
+function renderRouteWithProbe(path: string) {
+  return render(
+    <AuthProvider>
+      <AppProvider>
+        <ConfirmProvider>
+          <MemoryRouter initialEntries={[path]}>
+            <LocationProbe />
             <AppShell />
           </MemoryRouter>
         </ConfirmProvider>
@@ -133,6 +155,22 @@ describe('AppShell smoke render', () => {
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: /^admin$/i, level: 2 })).toBeInTheDocument();
     });
+    expect(screen.queryByText(/something went wrong/i)).toBeNull();
+  });
+
+  it('redirects /actuators to Build with the linear/horizontal scope (BUILD Part 5)', async () => {
+    renderRouteWithProbe('/actuators');
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('heading', { name: /build a motion system/i, level: 1 }),
+      ).toBeInTheDocument();
+    });
+    // The scope params are the point of the redirect — landing on /build
+    // bare would lose the pre-narrowing the old ActuatorPage URL carried.
+    expect(screen.getByTestId('location')).toHaveTextContent(
+      '/build?ml=linear&or=horizontal',
+    );
     expect(screen.queryByText(/something went wrong/i)).toBeNull();
   });
 

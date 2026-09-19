@@ -182,6 +182,19 @@ export function AppShell() {
                   + derivation in follow-ups. */}
               <Route path="/build" element={<BuildPage />} />
 
+              {/* /actuators kept its semantic value as a deep link after
+                  <ActuatorPage /> was deleted — todo/BUILD.md Part 5
+                  ("Re-routing") points it at Build with the linear /
+                  horizontal scope pre-picked. Without this it fell
+                  through the catch-all onto Selection, which is the one
+                  landing Part 5 argues against: an external link into
+                  the actuator surface dumped the user in the raw
+                  catalogue with no narrowing at all. */}
+              <Route
+                path="/actuators"
+                element={<Navigate to="/build?ml=linear&or=horizontal" replace />}
+              />
+
               {/* Catch-all: Redirect to products */}
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
