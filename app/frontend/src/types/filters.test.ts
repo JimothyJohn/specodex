@@ -1248,3 +1248,32 @@ describe('computeFillRates', () => {
     expect(computeFillRates(rows, ['nope']).get('nope')).toBe(0);
   });
 });
+
+describe('inductive_sensor attributes', () => {
+  const attrs = getAttributesForType('inductive_sensor' as never);
+  const keys = attrs.map(a => a.key);
+
+  it('uses the curated list, not the motor-derived common fallback', () => {
+    // An unlisted type falls through to the cross-type intersection, which
+    // is seeded from motor attributes: the table opened on Rated Current /
+    // Rated Power / Rotor Inertia columns no sensor record carries.
+    for (const motorKey of ['rated_current', 'rated_power', 'rotor_inertia']) {
+      expect(keys).not.toContain(motorKey);
+    }
+    expect(attrs.every(a => a.applicableTypes.includes('inductive_sensor'))).toBe(true);
+  });
+
+  it('leads with the selection profile', () => {
+    const visible = attrs.filter(a => a.defaultVisible).map(a => a.key);
+    expect(visible).toEqual(expect.arrayContaining([
+      'manufacturer', 'housing_size', 'sensing_distance', 'mounting', 'output_type',
+    ]));
+    // Every authored column-order key must exist as an attribute.
+    expect(COLUMN_ORDER.inductive_sensor?.length).toBeGreaterThan(1);
+    for (const key of COLUMN_ORDER.inductive_sensor ?? []) expect(keys).toContain(key);
+  });
+
+  it('has no duplicate keys', () => {
+    expect(new Set(keys).size).toBe(keys.length);
+  });
+});
