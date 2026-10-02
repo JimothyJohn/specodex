@@ -1450,6 +1450,46 @@ horizontal linear motion application. All four slots
 backend + frontend) before merge. Each PR ships its
 `docs/requests/<n>.html` per the per-PR HTML doc convention.
 
+**Status reconciliation, 2026-09-19.** The table above describes the
+*plan*; the tree has drifted from it, so read this before picking up a
+row.
+
+- **1A — shipped end-to-end** (#247, #262, plus the v2 FastAPI mirror
+  in #440).
+- **1B — partially shipped, out of band.** The transmission-type
+  buttons and the linear-mode display transforms
+  (`rpmToLinearSpeed` / `torqueToThrust`) are already gone from
+  `ProductList.tsx` — no `transmission` reference survives anywhere in
+  `app/frontend/src`. Still open from 1B: `BuildTray.tsx` is **not**
+  deleted (`App.tsx` still renders it globally via
+  `{!isLanding && <BuildTray />}`), "Add to build" is still in
+  `<ProductDetailModal>` (line ~382) for every context, and the
+  `compat-filter-banner` / `compatNarrowed` blocks are still on
+  Selection.
+- **1C — mostly shipped as a scaffold.** `BuildPage.tsx`,
+  `buildDerivation.ts`, `buildURLState.ts` and the `/build` route all
+  exist. The requirements form and `<SystemSummary>` are still
+  placeholders, and the `BUILD_SLOTS` reorder 1C specifies never
+  happened — `utils/compat.ts` still has
+  `['drive', 'motor', 'gearhead']`, with no `actuator` slot and no
+  actuator↔motor adjacency rule. `BuildPage` therefore carries its own
+  local four-slot `picks` state rather than the `AppContext` build
+  slice `BuildTray` reads.
+- **1D — redirect half shipped** (#444). `/actuators` now resolves to
+  `<Navigate to="/build?ml=linear&or=horizontal" replace />`;
+  `ActuatorPage.tsx` had already been deleted out of band, so the route
+  had been falling through the catch-all onto Selection. The
+  `<ConfiguratorDrawer>` extraction in 1D's description is **moot as
+  written** — there is no `ActuatorPage.tsx` left to extract it from.
+  Re-derive that step against the current tree before actioning it.
+
+**The real remaining chunk** is the BuildTray → `<SystemSummary>`
+absorption, which spans 1B and 1C: it needs the `BUILD_SLOTS` reorder,
+an actuator↔motor compat rule, and a decision about whether Build's
+`picks` or the `AppContext` build slice is the source of truth. That is
+product work, not a mechanical move — left for a human call rather than
+an autonomous run.
+
 **Phase 1 exit criteria.**
 
 1. Land on `/build` with no params → form is empty, all slots

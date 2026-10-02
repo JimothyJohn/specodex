@@ -43,7 +43,7 @@
             <div class="hero-tag">▮▮▮ BUILD ▮▮▮</div>
             <h1 class="hero-title">BUILD — requirements-first system assembler</h1>
             <div class="doc-meta">
-                <span class="status-chip status-backlog">🚧 PR 1A SHIPPED END-TO-END: `COMPATIBLE_ACTUATORS` (#247), `/API/V1/RELATIONS/ACTUATORS` ON EXPRESS (#262), `_DISTRIBUTION_POSITION` BLOCK (`RELATIONS.TS:ATTACHSTROKEDISTRIBUTIONPOSITIONS`), AND THE V2 (FASTAPI) MIRROR (#440 — ROUTE + `RELATIONS.STROKE_DISTRIBUTION_POSITIONS`, WHICH IS NOW THE SOURCE OF TRUTH FOR THE BADGE RANKER). NEXT: 1B STRIP-DOWN → 1C PAGE → 1D REDIRECT</span>
+                <span class="status-chip status-backlog">🚧 PR 1A SHIPPED END-TO-END: `COMPATIBLE_ACTUATORS` (#247), `/API/V1/RELATIONS/ACTUATORS` ON EXPRESS (#262), `_DISTRIBUTION_POSITION` BLOCK (`RELATIONS.TS:ATTACHSTROKEDISTRIBUTIONPOSITIONS`), AND THE V2 (FASTAPI) MIRROR (#440). 1B/1C PARTLY SHIPPED OUT OF BAND; 1D REDIRECT HALF SHIPPED #444. REMAINING: THE BUILDTRAY → SYSTEMSUMMARY ABSORPTION, WHICH NEEDS THE `BUILD_SLOTS` REORDER + AN ACTUATOR↔MOTOR COMPAT RULE — PRODUCT WORK, HUMAN CALL. SEE BUILD.MD &quot;STATUS RECONCILIATION, 2026-09-19&quot;</span>
                 <span class="doc-source"><code>todo/BUILD.md</code></span>
             </div>
         </section>
@@ -1590,6 +1590,45 @@ horizontal linear motion application. All four slots
 <p><strong>Verification gate per PR.</strong> <code>./Quickstart verify</code> green (Python +
 backend + frontend) before merge. Each PR ships its
 <code>docs/requests/&lt;n&gt;.html</code> per the per-PR HTML doc convention.</p>
+<p><strong>Status reconciliation, 2026-09-19.</strong> The table above describes the
+<em>plan</em>; the tree has drifted from it, so read this before picking up a
+row.</p>
+<ul>
+<li><strong>1A — shipped end-to-end</strong> (#247, #262, plus the v2 FastAPI mirror
+  in #440).</li>
+<li><strong>1B — partially shipped, out of band.</strong> The transmission-type
+  buttons and the linear-mode display transforms
+  (<code>rpmToLinearSpeed</code> / <code>torqueToThrust</code>) are already gone from
+  <code>ProductList.tsx</code> — no <code>transmission</code> reference survives anywhere in
+  <code>app/frontend/src</code>. Still open from 1B: <code>BuildTray.tsx</code> is <strong>not</strong>
+  deleted (<code>App.tsx</code> still renders it globally via
+  <code>{!isLanding &amp;&amp; &lt;BuildTray /&gt;}</code>), "Add to build" is still in
+  <code>&lt;ProductDetailModal&gt;</code> (line ~382) for every context, and the
+  <code>compat-filter-banner</code> / <code>compatNarrowed</code> blocks are still on
+  Selection.</li>
+<li><strong>1C — mostly shipped as a scaffold.</strong> <code>BuildPage.tsx</code>,
+  <code>buildDerivation.ts</code>, <code>buildURLState.ts</code> and the <code>/build</code> route all
+  exist. The requirements form and <code>&lt;SystemSummary&gt;</code> are still
+  placeholders, and the <code>BUILD_SLOTS</code> reorder 1C specifies never
+  happened — <code>utils/compat.ts</code> still has
+  <code>['drive', 'motor', 'gearhead']</code>, with no <code>actuator</code> slot and no
+  actuator↔motor adjacency rule. <code>BuildPage</code> therefore carries its own
+  local four-slot <code>picks</code> state rather than the <code>AppContext</code> build
+  slice <code>BuildTray</code> reads.</li>
+<li><strong>1D — redirect half shipped</strong> (#444). <code>/actuators</code> now resolves to
+  <code>&lt;Navigate to="/build?ml=linear&amp;or=horizontal" replace /&gt;</code>;
+  <code>ActuatorPage.tsx</code> had already been deleted out of band, so the route
+  had been falling through the catch-all onto Selection. The
+  <code>&lt;ConfiguratorDrawer&gt;</code> extraction in 1D's description is <strong>moot as
+  written</strong> — there is no <code>ActuatorPage.tsx</code> left to extract it from.
+  Re-derive that step against the current tree before actioning it.</li>
+</ul>
+<p><strong>The real remaining chunk</strong> is the BuildTray → <code>&lt;SystemSummary&gt;</code>
+absorption, which spans 1B and 1C: it needs the <code>BUILD_SLOTS</code> reorder,
+an actuator↔motor compat rule, and a decision about whether Build's
+<code>picks</code> or the <code>AppContext</code> build slice is the source of truth. That is
+product work, not a mechanical move — left for a human call rather than
+an autonomous run.</p>
 <p><strong>Phase 1 exit criteria.</strong></p>
 <ol>
 <li>Land on <code>/build</code> with no params → form is empty, all slots
