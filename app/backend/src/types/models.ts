@@ -428,7 +428,6 @@ export interface InductiveSensor extends ProductBase {
   ip_rating?: number;
   protection_ratings?: string[];
   tightening_torque?: ValueUnit;
-  certifications?: string[];
 }
 
 /**

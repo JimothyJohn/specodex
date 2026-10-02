@@ -107,6 +107,44 @@ class TestInductiveSensorUnits:
 
 
 @pytest.mark.unit
+class TestIpRatingBackfill:
+    """ip_rating is derived from the printed list when the scalar is unset."""
+
+    @pytest.mark.parametrize(
+        "ratings,expected",
+        [
+            (["IP67"], 67),
+            (["IP67", "IP68", "IP69K"], 68),
+            (["ip 67"], 67),
+            (["IP69K"], None),
+            (["IP67G"], None),
+            (["NEMA 4X", ""], None),
+            ([], None),
+        ],
+    )
+    def test_backfill(self, ratings, expected):
+        s = InductiveSensor(
+            product_name="x", manufacturer=MFG, protection_ratings=ratings
+        )
+        assert s.ip_rating == expected
+
+    def test_explicit_scalar_wins(self):
+        s = InductiveSensor(
+            product_name="x",
+            manufacturer=MFG,
+            ip_rating=65,
+            protection_ratings=["IP67"],
+        )
+        assert s.ip_rating == 65
+
+    def test_no_certifications_field(self):
+        """Approval logos are images, not text: when the field existed
+        Gemini filled it from the schema description's examples (and once
+        with a 120-entry list of per-country RoHS marks)."""
+        assert "certifications" not in InductiveSensor.model_fields
+
+
+@pytest.mark.unit
 class TestInductiveSensorEnums:
     """Vendor synonyms must be mapped by the extractor, not smuggled in."""
 

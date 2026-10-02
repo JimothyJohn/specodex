@@ -10,9 +10,10 @@ reasoning.
 
 from __future__ import annotations
 
+import re
 from typing import List, Literal, Optional
 
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from specodex.models.common import (
     Current,
@@ -26,6 +27,8 @@ from specodex.models.common import (
     VoltageRange,
 )
 from specodex.models.product import ProductBase
+
+_PLAIN_IP = re.compile(r"IP(\d{2})")
 
 
 class InductiveSensor(ProductBase):
@@ -273,7 +276,23 @@ class InductiveSensor(ProductBase):
     tightening_torque: Torque = Field(
         None, description="Maximum tightening torque of the mounting nuts (Nm)."
     )
-    certifications: Optional[List[str]] = Field(
-        None,
-        description="Marks and approvals: CE, cULus, UKCA, CCC, ATEX, Ecolab.",
-    )
+
+    @model_validator(mode="after")
+    def _backfill_ip_rating(self) -> "InductiveSensor":
+        """Derive ``ip_rating`` from ``protection_ratings`` when unset.
+
+        Extraction reliably fills the printed list and skips the scalar;
+        the scalar is what the table sorts and filters on. Takes the
+        highest plain two-digit rating — lettered ratings (IP69K, IP67G)
+        stay list-only.
+        """
+        if self.ip_rating is None and self.protection_ratings:
+            numeric = [
+                int(m.group(1))
+                for r in self.protection_ratings
+                if isinstance(r, str)
+                and (m := _PLAIN_IP.fullmatch(r.strip().upper().replace(" ", "")))
+            ]
+            if numeric:
+                self.ip_rating = max(numeric)
+        return self

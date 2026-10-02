@@ -1113,7 +1113,7 @@ export interface InductiveSensor {
    */
   mounting?: ("flush" | "non_flush" | "quasi_flush") | null;
   /**
-   * Maximum switching frequency (Hz). Also printed as 'Response frequency'. For AC/DC parts with two values, the DC value.
+   * Maximum switching frequency, always in Hz (1.5 kHz → 1500 Hz). Also printed as 'Response frequency'. For AC/DC parts with two values, the DC value.
    */
   switching_frequency?: ValueUnit | null;
   /**
@@ -1200,10 +1200,6 @@ export interface InductiveSensor {
    * Maximum tightening torque of the mounting nuts (Nm).
    */
   tightening_torque?: ValueUnit | null;
-  /**
-   * Marks and approvals: CE, cULus, UKCA, CCC, ATEX, Ecolab.
-   */
-  certifications?: string[] | null;
 }
 /**
  * Defines the specifications for a single robot joint.
