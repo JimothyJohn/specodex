@@ -22,6 +22,7 @@ from app.backend_py.src.services.search import (
     text_score,
 )
 from specodex.models.common import MinMaxUnit, ValueUnit
+from specodex.models.inductive_sensor import InductiveSensor
 from specodex.models.motor import Motor
 
 
@@ -180,6 +181,25 @@ class TestProductSummary:
         assert summary["manufacturer"] == "MfgA"
         # Per-type specs land in summary.
         assert summary["rated_power"] == {"value": 100.0, "unit": "W"}
+
+    def test_inductive_sensor_summary_carries_selection_specs(self) -> None:
+        """Without a SUMMARY_SPECS entry a search hit is identity-only."""
+        s = InductiveSensor(
+            product_name="IMB18",
+            manufacturer="SICK",
+            part_number="IMB18-08BPOVC0K",
+            housing_size="M18",
+            sensing_distance="8;mm",
+            mounting="flush",
+            output_type="pnp",
+            protection_ratings=["IP68", "IP69K"],
+        )
+        summary = product_summary(s)
+        assert summary["housing_size"] == "M18"
+        assert summary["sensing_distance"] == {"value": 8.0, "unit": "mm"}
+        assert summary["mounting"] == "flush"
+        assert summary["output_type"] == "pnp"
+        assert summary["ip_rating"] == 68
 
     def test_relevance_only_included_when_positive(self) -> None:
         m = _motor()

@@ -60,6 +60,7 @@ _MODEL_MODULES = (
     "specodex.models.contactor",
     "specodex.models.electric_cylinder",
     "specodex.models.linear_actuator",
+    "specodex.models.inductive_sensor",
 )
 
 

@@ -648,6 +648,46 @@ export const getElectricCylinderAttributes = (): AttributeMetadata[] => [
   { key: 'weight', displayName: 'Weight', type: 'object', applicableTypes: ['electric_cylinder'], nested: true, unit: 'kg', defaultVisible: false },
 ];
 
+// Inductive sensor default-visible set: size + sensing distance + mounting +
+// output + supply + frequency is the selection profile every vendor's
+// selection table leads with. Electrical fine print (leakage, voltage drop,
+// hysteresis) is hidden by default. See specodex/models/inductive_sensor.md.
+export const getInductiveSensorAttributes = (): AttributeMetadata[] => [
+  { key: 'manufacturer', displayName: 'Manufacturer', type: 'string', applicableTypes: ['inductive_sensor'], defaultVisible: true },
+  { key: 'part_number', displayName: 'Part Number', type: 'string', applicableTypes: ['inductive_sensor'] },
+  { key: 'type', displayName: 'Housing Form', type: 'string', applicableTypes: ['inductive_sensor'] },
+  { key: 'series', displayName: 'Series', type: 'string', applicableTypes: ['inductive_sensor'] },
+  { key: 'housing_size', displayName: 'Housing Size', type: 'string', applicableTypes: ['inductive_sensor'], defaultVisible: true },
+  { key: 'sensing_distance', displayName: 'Sensing Distance (Sn)', type: 'object', applicableTypes: ['inductive_sensor'], nested: true, unit: 'mm', defaultVisible: true },
+  { key: 'mounting', displayName: 'Mounting', type: 'string', applicableTypes: ['inductive_sensor'], defaultVisible: true },
+  { key: 'output_type', displayName: 'Output', type: 'string', applicableTypes: ['inductive_sensor'], defaultVisible: true },
+  { key: 'output_function', displayName: 'Function', type: 'string', applicableTypes: ['inductive_sensor'], defaultVisible: true },
+  { key: 'supply_voltage', displayName: 'Supply Voltage', type: 'range', applicableTypes: ['inductive_sensor'], nested: true, unit: 'V', defaultVisible: true },
+  { key: 'switching_frequency', displayName: 'Switching Frequency', type: 'object', applicableTypes: ['inductive_sensor'], nested: true, unit: 'Hz', defaultVisible: true },
+  { key: 'ip_rating', displayName: 'IP Rating', type: 'number', applicableTypes: ['inductive_sensor'], defaultVisible: true },
+  { key: 'connection', displayName: 'Connection', type: 'string', applicableTypes: ['inductive_sensor'], defaultVisible: true },
+  { key: 'assured_sensing_distance', displayName: 'Assured Distance (Sa)', type: 'object', applicableTypes: ['inductive_sensor'], nested: true, unit: 'mm', defaultVisible: false },
+  { key: 'wiring', displayName: 'Wiring', type: 'string', applicableTypes: ['inductive_sensor'] },
+  { key: 'io_link', displayName: 'IO-Link', type: 'boolean', applicableTypes: ['inductive_sensor'] },
+  { key: 'max_load_current', displayName: 'Max Load Current', type: 'object', applicableTypes: ['inductive_sensor'], nested: true, unit: 'A', defaultVisible: false },
+  { key: 'min_load_current', displayName: 'Min Load Current', type: 'object', applicableTypes: ['inductive_sensor'], nested: true, unit: 'A', defaultVisible: false },
+  { key: 'no_load_current', displayName: 'No-Load Current', type: 'object', applicableTypes: ['inductive_sensor'], nested: true, unit: 'A', defaultVisible: false },
+  { key: 'leakage_current', displayName: 'Leakage Current', type: 'object', applicableTypes: ['inductive_sensor'], nested: true, unit: 'A', defaultVisible: false },
+  { key: 'voltage_drop', displayName: 'Voltage Drop', type: 'object', applicableTypes: ['inductive_sensor'], nested: true, unit: 'V', defaultVisible: false },
+  { key: 'hysteresis', displayName: 'Hysteresis', type: 'object', applicableTypes: ['inductive_sensor'], nested: true, unit: '%', defaultVisible: false },
+  { key: 'repeatability', displayName: 'Repeatability', type: 'object', applicableTypes: ['inductive_sensor'], nested: true, unit: '%', defaultVisible: false },
+  { key: 'housing_length', displayName: 'Housing Length', type: 'object', applicableTypes: ['inductive_sensor'], nested: true, unit: 'mm', defaultVisible: false },
+  { key: 'housing_material', displayName: 'Housing Material', type: 'string', applicableTypes: ['inductive_sensor'] },
+  { key: 'sensing_face_material', displayName: 'Sensing Face Material', type: 'string', applicableTypes: ['inductive_sensor'] },
+  { key: 'connector_pins', displayName: 'Connector Pins', type: 'number', applicableTypes: ['inductive_sensor'] },
+  { key: 'cable_length', displayName: 'Cable Length', type: 'object', applicableTypes: ['inductive_sensor'], nested: true, unit: 'm', defaultVisible: false },
+  { key: 'operating_temp', displayName: 'Operating Temperature', type: 'range', applicableTypes: ['inductive_sensor'], nested: true, unit: '°C', defaultVisible: false },
+  { key: 'tightening_torque', displayName: 'Tightening Torque', type: 'object', applicableTypes: ['inductive_sensor'], nested: true, unit: 'Nm', defaultVisible: false },
+  { key: 'short_circuit_protection', displayName: 'Short-Circuit Protection', type: 'boolean', applicableTypes: ['inductive_sensor'] },
+  { key: 'reverse_polarity_protection', displayName: 'Reverse-Polarity Protection', type: 'boolean', applicableTypes: ['inductive_sensor'] },
+  { key: 'weight', displayName: 'Weight', type: 'object', applicableTypes: ['inductive_sensor'], nested: true, unit: 'kg', defaultVisible: false },
+];
+
 /**
  * Get all attributes for a specific product type
  *
@@ -681,6 +721,7 @@ export const getAttributesForType = (productType: ProductType): AttributeMetadat
   if (productType === 'gearhead') return getGearheadAttributes();
   if (productType === 'contactor') return getContactorAttributes();
   if ((productType as string) === 'electric_cylinder') return getElectricCylinderAttributes();
+  if ((productType as string) === 'inductive_sensor') return getInductiveSensorAttributes();
   if (productType === 'datasheet') return getDatasheetAttributes();
 
   // ===== COMPUTE COMMON ATTRIBUTES =====

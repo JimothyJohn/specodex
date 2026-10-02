@@ -75,6 +75,16 @@ export const COLUMN_ORDER: Partial<
     // columns auto-populate from records. `manufacturer` still pins here
     // so it stays far-left, not alphabetized adrift.
   ],
+  inductive_sensor: [
+    'manufacturer',
+    'housing_size',
+    'sensing_distance',
+    'mounting',
+    'output_type',
+    'output_function',
+    'supply_voltage',
+    'switching_frequency',
+  ],
   datasheet: [
     'manufacturer',
     // e.g. 'product_name', 'product_family', 'component_type',

@@ -35,6 +35,7 @@ ProductType = Literal[
     "contactor",
     "electric_cylinder",
     "linear_actuator",
+    "inductive_sensor",
 ]
 
 
