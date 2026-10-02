@@ -797,7 +797,7 @@ describe('commercial fields hidden (2026-07-24 removal)', () => {
   ];
   const PRODUCT_TYPES = [
     'motor', 'drive', 'robot_arm', 'gearhead', 'contactor',
-    'electric_cylinder', 'linear_actuator',
+    'electric_cylinder', 'linear_actuator', 'inductive_sensor',
   ] as const;
 
   const pricedRecord = (type: string) => ({

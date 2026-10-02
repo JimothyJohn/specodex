@@ -391,10 +391,51 @@ export interface LinearActuator extends ProductBase {
 }
 
 /**
+ * InductiveSensor model matching specodex/models/inductive_sensor.py
+ *
+ * Inductive proximity sensors (IEC 60947-5-2) — switching and analog.
+ */
+export interface InductiveSensor extends ProductBase {
+  product_type: 'inductive_sensor';
+  type?: 'cylindrical_threaded' | 'cylindrical_smooth' | 'rectangular' | 'ring' | 'slot';
+  series?: string;
+  housing_size?: string;
+  housing_length?: ValueUnit;
+  housing_material?: string;
+  sensing_face_material?: string;
+  sensing_distance?: ValueUnit;
+  assured_sensing_distance?: ValueUnit;
+  mounting?: 'flush' | 'non_flush' | 'quasi_flush';
+  switching_frequency?: ValueUnit;
+  hysteresis?: ValueUnit;
+  repeatability?: ValueUnit;
+  output_type?: 'pnp' | 'npn' | 'pnp_npn' | 'push_pull' | 'two_wire' | 'namur' | 'analog_voltage' | 'analog_current';
+  output_function?: 'no' | 'nc' | 'complementary' | 'programmable';
+  wiring?: 'dc_2_wire' | 'dc_3_wire' | 'dc_4_wire' | 'ac_2_wire' | 'ac_dc_2_wire';
+  io_link?: boolean;
+  supply_voltage?: MinMaxUnit;
+  max_load_current?: ValueUnit;
+  min_load_current?: ValueUnit;
+  no_load_current?: ValueUnit;
+  leakage_current?: ValueUnit;
+  voltage_drop?: ValueUnit;
+  short_circuit_protection?: boolean;
+  reverse_polarity_protection?: boolean;
+  connection?: 'cable' | 'connector_m8' | 'connector_m12' | 'pigtail' | 'terminals';
+  connector_pins?: number;
+  cable_length?: ValueUnit;
+  operating_temp?: MinMaxUnit;
+  ip_rating?: number;
+  protection_ratings?: string[];
+  tightening_torque?: ValueUnit;
+  certifications?: string[];
+}
+
+/**
  * Union type for all products
  */
-export type Product = Motor | Drive | Gearhead | RobotArm | Contactor | ElectricCylinder | LinearActuator | Datasheet;
-export type ProductType = 'motor' | 'drive' | 'gearhead' | 'robot_arm' | 'contactor' | 'electric_cylinder' | 'linear_actuator' | 'datasheet' | 'all';
+export type Product = Motor | Drive | Gearhead | RobotArm | Contactor | ElectricCylinder | LinearActuator | InductiveSensor | Datasheet;
+export type ProductType = 'motor' | 'drive' | 'gearhead' | 'robot_arm' | 'contactor' | 'electric_cylinder' | 'linear_actuator' | 'inductive_sensor' | 'datasheet' | 'all';
 
 /**
  * Manufacturer record — first-class entity in the single-table design.

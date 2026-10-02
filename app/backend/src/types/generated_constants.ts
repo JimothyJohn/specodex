@@ -17,6 +17,7 @@ export const PRODUCT_TYPES = [
   "drive",
   "electric_cylinder",
   "gearhead",
+  "inductive_sensor",
   "linear_actuator",
   "motor",
   "robot_arm",

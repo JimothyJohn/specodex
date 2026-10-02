@@ -178,6 +178,30 @@ SPEC_KEYWORDS: list[list[str]] = [
         "hysteresis",
         "detection range",
         "sampling rate",
+        "detecting distance",
+        "operating distance",
+        "switching distance",
+    ],
+    # --- Proximity / binary sensor output ---
+    [
+        "pnp",
+        "npn",
+        "normally open",
+        "normally closed",
+        "switching frequency",
+        "response frequency",
+        "residual voltage",
+        "voltage drop",
+        "leakage current",
+        "control output",
+    ],
+    # --- Proximity sensor installation ---
+    [
+        "flush",
+        "shielded",
+        "embeddable",
+        "housing size",
+        "sensing face",
     ],
     # --- Environmental ---
     [
