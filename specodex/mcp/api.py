@@ -18,6 +18,7 @@ Two production quirks this client must know about:
 
 from __future__ import annotations
 
+import math
 import os
 import re
 from typing import Any
@@ -313,7 +314,7 @@ class SpecodexApi:
             if (
                 isinstance(value, bool)
                 or not isinstance(value, (int, float))
-                or value != value
+                or math.isnan(value)
                 or value < 0
                 or value == float("inf")
             ):
