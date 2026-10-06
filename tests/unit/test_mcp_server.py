@@ -390,3 +390,33 @@ def test_unreachable_api_is_an_actionable_error():
             await api.aclose()
 
     anyio.run(_go)
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "min_stroke_mm",
+        "min_peak_force_n",
+        "min_peak_velocity_mm_s",
+        "min_duty_cycle",
+    ],
+)
+def test_actuators_rejects_nan_before_any_request(field):
+    """CodeQL #85: the NaN guard used ``value != value`` (a self-comparison
+    CodeQL flags as a likely-unintentional identical-expression bug). Pin
+    the actual contract — NaN must still be rejected as not-finite — so a
+    future refactor of that guard (e.g. to ``math.isnan``) cannot silently
+    drop the check. The target is an unreachable port, so any exception
+    other than the validation error below would mean a network call was
+    attempted instead of validation failing first.
+    """
+
+    async def _go():
+        api = SpecodexApi("http://127.0.0.1:9")  # discard port: no request allowed
+        try:
+            with pytest.raises(SpecodexApiError, match="must be a finite number"):
+                await api.actuators(**{field: float("nan")})
+        finally:
+            await api.aclose()
+
+    anyio.run(_go)
