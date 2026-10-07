@@ -73,7 +73,7 @@
                     <a class="kanban-card" href="roadmap/build.html">
                         <div class="card-head">
                             <span class="card-source">todo/BUILD.md</span>
-                            <span class="status-chip status-backlog">🚧 PR 1A SHIPPED END-TO-END: `COMPATIBLE_ACTUATORS` (#247), `/API/V1/RELATIONS/ACTUATORS` ON EXPRESS (#262), `_DISTRIBUTION_POSITION` BLOCK (`RELATIONS.TS:ATTACHSTROKEDISTRIBUTIONPOSITIONS`), AND THE V2 (FASTAPI) MIRROR (#440 — ROUTE + `RELATIONS.STROKE_DISTRIBUTION_POSITIONS`, WHICH IS NOW THE SOURCE OF TRUTH FOR THE BADGE RANKER). NEXT: 1B STRIP-DOWN → 1C PAGE → 1D REDIRECT</span>
+                            <span class="status-chip status-backlog">🚧 PR 1A SHIPPED END-TO-END: `COMPATIBLE_ACTUATORS` (#247), `/API/V1/RELATIONS/ACTUATORS` ON EXPRESS (#262), `_DISTRIBUTION_POSITION` BLOCK (`RELATIONS.TS:ATTACHSTROKEDISTRIBUTIONPOSITIONS`), AND THE V2 (FASTAPI) MIRROR (#440). 1B/1C PARTLY SHIPPED OUT OF BAND; 1D REDIRECT HALF SHIPPED #444. REMAINING: THE BUILDTRAY → SYSTEMSUMMARY ABSORPTION, WHICH NEEDS THE `BUILD_SLOTS` REORDER + AN ACTUATOR↔MOTOR COMPAT RULE — PRODUCT WORK, HUMAN CALL. SEE BUILD.MD &quot;STATUS RECONCILIATION, 2026-09-19&quot;</span>
                         </div>
                         <h3 class="card-title">BUILD — requirements-first system assembler</h3>
                         <p class="card-summary">The third page in Specodex's user-facing hierarchy, and the one the rest of the application is meant to point at. Today the catalog has two surfaces: Selection (/, the filterable component browser) and Actuators (/actuators, a Linear-Motion supercategory…</p>
@@ -106,10 +106,10 @@
                     <a class="kanban-card" href="roadmap/hardening.html">
                         <div class="card-head">
                             <span class="card-source">todo/HARDENING.md</span>
-                            <span class="status-chip status-backlog">⏳ SEARCH HALF #246; ROUTES + CONTRACT ROUND-TRIP 2026-06-10; `ADMINOPERATIONS` #441. REMAINING: MOCKED-TEST SWEEP (`SUBSCRIPTION` IS THE LAST CANDIDATE THAT WOULD GAIN A REAL TABLE) + CI `--INTEGRATION` WIRING — **THE WIRING NOW GATES THE VALUE OF ALL 14 REAL-DAL SUITES, NONE OF WHICH CI RUNS TODAY**</span>
+                            <span class="status-chip status-backlog">⏳ 14 REAL-DAL SUITES SHIPPED (#246 → #441). MIGRATION WORK IS DONE — THE MOCKED-TEST SWEEP IS EMPTY AS OF 2026-09-19. ONLY THE CI `--INTEGRATION` WIRING REMAINS, AND IT GATES THE VALUE OF ALL 14 (CI RUNS NONE TODAY); TOUCHES `.GITHUB/WORKFLOWS/` → HUMAN PR. SEE §2.2</span>
                         </div>
                         <h3 class="card-title">HARDENING — adversarial-by-default testing posture</h3>
-                        <p class="card-summary">Audit date: 2026-05-09 Status (reconciled 2026-09-14): 11 of 14 findings shipped; 3 remain (2.2 partial, 3.2, 4.2). Both 4.2 and 2.2's remaining half are .github/workflows/ changes, so they need a human PR.</p>
+                        <p class="card-summary">Audit date: 2026-05-09 Status (reconciled 2026-09-19): 11 of 14 findings shipped; 3 remain (2.2 partial, 3.2, 4.2). 2.2's migration work is now complete — the mocked-test sweep turned out to be empty — so all that is left of it, like 4.2, is a…</p>
                     </a>
                 </li>
 
