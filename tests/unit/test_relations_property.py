@@ -1029,19 +1029,8 @@ class TestCompatibleGearheadsContract:
 
 
 # ---------------------------------------------------------------------------
-# Adversarial "never raises" — arbitrary garbage to the internal predicates.
+# Internal predicates — None-path contract tests.
 # ---------------------------------------------------------------------------
-
-
-_ARBITRARY_OTHER: Any = st.one_of(
-    st.none(),
-    st.booleans(),
-    st.integers(),
-    st.floats(allow_nan=True, allow_infinity=True),
-    st.text(max_size=10),
-    st.lists(st.integers(), max_size=3),
-    st.dictionaries(st.text(max_size=5), st.integers(), max_size=2),
-)
 
 
 class TestInternalPredicatesNeverRaiseOnNoneInputs:
