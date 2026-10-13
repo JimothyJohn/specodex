@@ -150,6 +150,30 @@ def test_parse_json_loose_never_raises(text: str) -> None:
     _parse_json_loose(text)
 
 
+# `_decimal_like_text` (module docstring: "numbers shaped like prices but
+# not quite") was defined but never passed to `@given` anywhere in this
+# file — CodeQL py/unused-global-variable #72. `_arbitrary_text` is
+# generic unicode and essentially never happens to land on a
+# comma/dollar/dot-heavy numeric string, so this adversarial category was
+# documented but not actually exercised. Wiring it in here closes that
+# gap for the two decimal parsers.
+@given(text=_decimal_like_text)
+@settings(max_examples=300, suppress_health_check=[HealthCheck.too_slow])
+def test_parse_bare_decimal_never_raises_on_decimal_like_text(text: str) -> None:
+    result = _parse_bare_decimal(text)
+    assert result is None or isinstance(result, Decimal)
+
+
+@given(text=_decimal_like_text, first_only=st.booleans())
+@settings(max_examples=300, suppress_health_check=[HealthCheck.too_slow])
+def test_parse_money_never_raises_on_decimal_like_text(
+    text: str, first_only: bool
+) -> None:
+    result = _parse_money(text, first_only=first_only)
+    if result is not None:
+        assert PRICE_MIN <= result <= PRICE_MAX
+
+
 # ``_parse_bare_decimal`` documents ``(text or "")`` — None is part of the
 # accepted input domain even though the type hint says ``str``.
 def test_parse_bare_decimal_accepts_none() -> None:
