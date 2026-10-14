@@ -25,7 +25,7 @@ from decimal import Decimal, InvalidOperation
 from typing import Any, List, Literal, Optional, Tuple
 from urllib.parse import urlparse
 
-from selectolax.parser import HTMLParser
+from selectolax.lexbor import LexborHTMLParser as HTMLParser
 
 from specodex.ids import normalize_string
 from specodex.pricing.resolver import source_type_for_domain
