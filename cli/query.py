@@ -30,6 +30,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import math
 import os
 import re
 import sys
@@ -170,33 +171,55 @@ def product_summary(product: Any, *, omit_type: bool = False) -> dict:
     return summary
 
 
+def _finite_float(value: Any) -> float | None:
+    """Coerce to a *finite* float, or None when the value isn't one.
+
+    Total by construction. Every conversion `float()` can refuse is
+    caught — a malformed numeric-looking string (`"1.2.3"`, `".."`), a
+    signalling `Decimal("sNaN")`, an int too large for a float — and a
+    non-finite result (NaN, ±inf) collapses to None rather than
+    propagating into the ordering and filter paths that consume it.
+    """
+    try:
+        out = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    return out if math.isfinite(out) else None
+
+
 def extract_numeric(value: Any) -> float | None:
-    """Pull a numeric value from ValueUnit, MinMaxUnit, int, float, or Decimal."""
+    """Pull a numeric value from ValueUnit, MinMaxUnit, int, float, Decimal,
+    or a ``"<number>;<unit>"`` spec string.
+
+    Returns None for anything that isn't a finite number. **Never
+    raises:** both callers (`sort_products`'s comparator and
+    `apply_where`) run this over arbitrary field values straight out of
+    DynamoDB, so an exception here takes down the whole query command
+    rather than skipping one unusable value.
+    """
     from specodex.models.common import MinMaxUnit, ValueUnit
 
     if value is None:
         return None
     if isinstance(value, ValueUnit):
-        return float(value.value)
+        return _finite_float(value.value)
     if isinstance(value, MinMaxUnit):
         scalar = value.min if value.min is not None else value.max
-        return float(scalar) if scalar is not None else None
+        return _finite_float(scalar) if scalar is not None else None
     if isinstance(value, bool):
         return None
-    if isinstance(value, (int, float)):
-        return float(value)
-    if isinstance(value, Decimal):
-        return float(value)
+    if isinstance(value, (int, float, Decimal)):
+        return _finite_float(value)
     if isinstance(value, str) and ";" in value:
         range_part = value.split(";")[0]
         match = re.match(r"^(-?[\d.]+)", range_part)
         if match:
-            return float(match.group(1))
+            # `[\d.]+` happily matches "1.2.3" and ".." — neither is a
+            # float. Coerce rather than convert: a bad match means "no
+            # number here", not "crash the query".
+            return _finite_float(match.group(1))
     if isinstance(value, str):
-        try:
-            return float(value)
-        except ValueError:
-            return None
+        return _finite_float(value)
     return None
 
 
