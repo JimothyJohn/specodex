@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Audit date: 2026-05-09 Status (reconciled 2026-09-14): 11 of 14 findings shipped; 3 remain (2.2 partial, 3.2, 4.2). Both 4.2 and 2.2's remaining half are .githu">
+    <meta name="description" content="Audit date: 2026-05-09 Status (reconciled 2026-09-19): 11 of 14 findings shipped; 3 remain (2.2 partial, 3.2, 4.2). 2.2's migration work is now complete — the m">
     <meta name="theme-color" content="#3A2C1C">
     <title>Specodex — HARDENING — adversarial-by-default testing posture</title>
     <link rel="icon" type="image/svg+xml" href="../logo.svg">
@@ -43,7 +43,7 @@
             <div class="hero-tag">▮▮▮ HARDENING ▮▮▮</div>
             <h1 class="hero-title">HARDENING — adversarial-by-default testing posture</h1>
             <div class="doc-meta">
-                <span class="status-chip status-backlog">⏳ SEARCH HALF #246; ROUTES + CONTRACT ROUND-TRIP 2026-06-10; `ADMINOPERATIONS` #441. REMAINING: MOCKED-TEST SWEEP (`SUBSCRIPTION` IS THE LAST CANDIDATE THAT WOULD GAIN A REAL TABLE) + CI `--INTEGRATION` WIRING — **THE WIRING NOW GATES THE VALUE OF ALL 14 REAL-DAL SUITES, NONE OF WHICH CI RUNS TODAY**</span>
+                <span class="status-chip status-backlog">⏳ 14 REAL-DAL SUITES SHIPPED (#246 → #441). MIGRATION WORK IS DONE — THE MOCKED-TEST SWEEP IS EMPTY AS OF 2026-09-19. ONLY THE CI `--INTEGRATION` WIRING REMAINS, AND IT GATES THE VALUE OF ALL 14 (CI RUNS NONE TODAY); TOUCHES `.GITHUB/WORKFLOWS/` → HUMAN PR. SEE §2.2</span>
                 <span class="doc-source"><code>todo/HARDENING.md</code></span>
             </div>
         </section>
@@ -51,9 +51,11 @@
         <article class="doc-body">
 <h1 id="hardening-adversarial-by-default-testing-posture">HARDENING — adversarial-by-default testing posture</h1>
 <p><strong>Audit date:</strong> 2026-05-09
-<strong>Status (reconciled 2026-09-14):</strong> 11 of 14 findings shipped; 3 remain
-(2.2 partial, 3.2, 4.2). Both 4.2 and 2.2's remaining half are
-<code>.github/workflows/</code> changes, so they need a human PR.</p>
+<strong>Status (reconciled 2026-09-19):</strong> 11 of 14 findings shipped; 3 remain
+(2.2 partial, 3.2, 4.2). 2.2's migration work is now <strong>complete</strong> — the
+mocked-test sweep turned out to be empty — so all that is left of it,
+like 4.2, is a <code>.github/workflows/</code> change needing a human PR. 3.2
+(atheris) is the only remaining code-only card.</p>
 <table>
 <thead>
 <tr>
@@ -86,7 +88,7 @@
 <tr>
 <td>2.2 Backend integration tests against real DAL (L)</td>
 <td>⏳ partial</td>
-<td>14 <code>*.real-dal.test.ts</code> suites shipped (#246, 2026-06-10, 2026-07-27/28, 2026-08-31, 2026-09-01, <code>adminOperations</code> #441). <strong>Blocked on the CI <code>--integration</code> wiring</strong> — see §2.2; none of the 14 run in CI today</td>
+<td>14 <code>*.real-dal.test.ts</code> suites shipped (#246, 2026-06-10, 2026-07-27/28, 2026-08-31, 2026-09-01, <code>adminOperations</code> #441). Migration work is <strong>done</strong> — the step-5 sweep is empty (<code>blacklist</code> and <code>subscription</code> both turned out to have no DAL at all; see §2.2). <strong>All that remains is the CI <code>--integration</code> wiring</strong> — none of the 14 run in CI today, which gates their whole value</td>
 </tr>
 <tr>
 <td>2.3 IDOR + cross-tenant auth tests</td>
@@ -228,7 +230,8 @@ next-sprint queue: <code>cli/processor.py</code>, <code>specodex/integration/com
 - ✅ <strong>Follow-up shipped 2026-09-13:</strong> <code>POST /api/upload</code> now type-guards <code>product_name</code> / <code>manufacturer</code> / <code>product_type</code> / <code>filename</code> (400 <code>Fields must be strings: …</code>) in both the Express route and the FastAPI mirror; the mocked sibling and the real-DAL test both pin 400 + no row written. Until then a non-string <code>product_type</code> was a caller-controlled 500 via <code>serializeItem</code>'s <code>.toUpperCase()</code>.
 - Migrations not recorded above but on disk (reconciled 2026-09-13): <code>compat</code>, <code>product-types</code>, <code>projects</code>, <code>relations</code>, <code>search</code>, <code>db</code> — 14 <code>*.real-dal.test.ts</code> files in total with <code>adminOperations</code>.
 - ✅ <code>adminOperations.test.ts</code> migration to real-DAL — shipped 2026-09-14 (<code>tests/integration/adminOperations.real-dal.test.ts</code>). The mocked sibling's fake <code>DynamoDBService</code> pushes onto an array and returns <code>items.length</code>, so it can only assert that an operation <em>asked</em> the DAL to do something. Asserting on the tables instead catches four things it structurally cannot: a dry run leaving the target <strong>empty</strong> rather than a mock call unmade; <code>batchCreate</code> past DynamoDB's 25-item <code>BatchWriteItem</code> cap actually landing every row (a bad chunk bound is invisible to a single array push); <code>purge</code> hand-building <code>PRODUCT#${type.toUpperCase()}</code> / <code>PRODUCT#${id}</code> rather than reading the keys off the row it listed — <code>DeleteItem</code> no-ops on an absent key, so a drift from what <code>create()</code> writes reads as a clean delete against the fake; and a blacklisted vendor leaving <strong>no row</strong> in the target partition. Three mutation checks confirm it bites (dropping <code>.toUpperCase()</code> fails 5; <code>if (apply)</code> → <code>if (true)</code> fails the dry-run test; widening the chunk size fails exactly the bulk test). Needed a second local table — <code>jest-dynamodb-config.js</code> now declares <code>specodex-test-target</code>, since promote/demote/diff move rows <em>between</em> stage tables and one table can't tell "wrote to target" from "read from source". Error-injection cases stay in the mocked sibling.
-- Still mocked-only (step 5), 2026-09-14: <code>adminOnly</code>, <code>adminOnly.edge</code>, <code>apiKeyPaygate</code>, <code>auth-audit</code>, <code>auth.middleware</code>, <code>auth.routes</code>, <code>blacklist</code>, <code>log</code>, <code>log-leak</code>, <code>readonly</code>, <code>readonly.edge</code>, <code>resilience</code>, <code>subscription</code>. Most are auth / middleware / error-injection suites where a mocked DAL is the right tool. Of the three originally flagged as gaining from a real table, <code>adminOperations</code> is done and <strong><code>subscription</code> is the only one left</strong> — <code>blacklist</code> turned out not to be a real-DAL candidate at all: <code>Blacklist</code> is a JSON-file service with no DAL, so its mocked suite is already testing the real thing. Each remaining one needs its own seed/cleanup — split across PRs.
+- Still mocked-only (step 5), 2026-09-19: <code>adminOnly</code>, <code>adminOnly.edge</code>, <code>apiKeyPaygate</code>, <code>auth-audit</code>, <code>auth.middleware</code>, <code>auth.routes</code>, <code>blacklist</code>, <code>log</code>, <code>log-leak</code>, <code>readonly</code>, <code>readonly.edge</code>, <code>resilience</code>, <code>subscription</code>. Most are auth / middleware / error-injection suites where a mocked DAL is the right tool. <strong>The step-5 sweep is now empty: none of the three originally flagged as gaining from a real table actually is one.</strong> <code>adminOperations</code> shipped (#441). <code>blacklist</code> was never a candidate — <code>Blacklist</code> is a JSON-file service with no DAL, so its mocked suite already tests the real thing. And <code>subscription</code> is the same story, verified 2026-09-19: the whole stack imports zero DAL (<code>routes/subscription.ts</code> → <code>middleware/subscription.ts</code> → <code>services/stripe.ts</code>, which imports only <code>config</code>). The <code>jest.mock('../src/db/dynamodb')</code> in <code>subscription.test.ts</code> is incidental — it is there because <code>src/index</code> drags in other routes that do use the DAL, not because anything under test touches a table. A real-DAL twin would seed a table no code path reads.
+- <strong>What that leaves for 2.2:</strong> only the CI <code>--integration</code> wiring. There is no remaining migration work, so this row is code-complete pending that wiring (which touches <code>.github/workflows/</code> and is therefore a human PR — see the skip list in CLAUDE.md).
 - ⚠️ <strong>Wire <code>verify --integration</code> into the <code>Test Backend</code> CI job</strong> (currently runs unit only via plain <code>verify --only backend</code>; the <code>Test Integration</code> job is the <em>Python</em> one). One-line workflow change; needs a human PR since <code>.github/workflows/</code> is on the autonomous skip list. <strong>This is now the highest-leverage item in 2.2:</strong> nothing in CI invokes <code>npm run test:integration</code>, so all <strong>14</strong> <code>*.real-dal.test.ts</code> suites — every migration listed above — run only when a developer runs them locally. Until this lands, each new migration adds review-time evidence but no regression gate, and a real-DAL regression reaches <code>dev</code> green.</p>
 <h3 id="23-idor-cross-tenant-auth-tests-m-p1">2.3 IDOR + cross-tenant auth tests (M, P1)</h3>
 <p>Existing tests cover happy-path 200s and 401-on-no-token. None covers "user A's token requesting user B's data."</p>
@@ -317,6 +320,45 @@ Wire <code>mutmut run --paths-to-mutate specodex/quality.py</code> as a weekly j
 <li>botocore logs the signed canonical request — <code>x-amz-security-token:&lt;session token&gt;</code> in clear — at DEBUG, and every pipeline module sets the ROOT level from <code>LOG_LEVEL</code>. <code>LOG_LEVEL=DEBUG</code> turned the DAL into a credential dump. <code>quiet_sdk_debug_logging()</code> (called when <code>specodex.db.dynamo</code> imports) clamps botocore / boto3 / urllib3 / httpx to INFO.</li>
 </ul>
 <p><code>redact_secrets</code> is env-driven (values of <code>SECRET_ENV_VARS</code> at call time, ≥ 8 chars, longest-first) so it needs no configuration; <code>tests/unit/test_log_redact.py</code> pins the contract with examples + a Hypothesis property. <code>test_log_leaks.py</code> asserts <code>SECRET_ENV_VARS</code> and its sentinel table stay in lockstep, so a new credential can't join one without the other.</p>
+<p><strong>Property companion + two contract fixes (#443, 2026-09-19).</strong> The
+Hypothesis property that shipped with the Python half seeds exactly
+<strong>one</strong> secret, and both bugs below live in the interaction <em>between</em>
+configured secrets — a single-secret strategy structurally cannot reach
+them. <code>tests/unit/test_log_redact_property.py</code> seeds up to three and
+found:</p>
+<ol>
+<li><strong>Splice-boundary leak.</strong> Substituting one secret splices
+   <code>[REDACTED]</code> into the text, and the splice can complete a <em>fresh</em>
+   occurrence of a different secret across the substitution boundary.
+   The synthesised secret is the longer of the two, so the
+   longest-first loop is already past it when the splice creates it —
+   and it rode out into the log line verbatim. With
+   <code>AWS_SESSION_TOKEN="AA[REDACTED]"</code> and <code>GEMINI_API_KEY="BBBBBBBB"</code>,
+   <code>redact_secrets("AABBBBBBBB")</code> returned <code>"AA[REDACTED]"</code>. Documented
+   idempotence broke with it: a <em>second</em> call did catch it, so the
+   result was not a fixed point.</li>
+<li><strong>Self-regrowing secret.</strong> A value that is a substring of the marker
+   (<code>"[REDACTE"</code>) was replaced by a string containing it again, so each
+   pass lengthened the line instead of scrubbing it
+   (<code>"[REDACTED]D]D]D]D]"</code>).</li>
+</ol>
+<p>Neither is reachable with a real credential — both need a secret
+carrying the redactor's own marker text — so these are contract bugs,
+not a live exposure. Fixes: the substitution pass re-runs to a fixpoint
+(bounded by <code>_MAX_PASSES</code>); a marker-substring value is substituted
+with the empty string so the substitution terminates; the function
+<strong>fails closed</strong>, returning a bare <code>[REDACTED]</code> if the cap is exhausted
+with a secret still present (losing a log line is cheap, emitting a
+credential is not); and <code>secret_values()</code> tie-breaks equal-length
+values lexicographically, because a bare <code>key=len</code> over a <code>set</code> left
+ties in <code>PYTHONHASHSEED</code> order and made multi-secret redaction
+non-reproducible run to run. Both shapes are pinned as explicit cases
+in <code>TestMultiSecretRedaction</code>.</p>
+<p>Strategy-design note worth reusing: Hypothesis will not stumble onto
+<code>"AA[REDACTED]"</code> from free text in any reasonable number of examples,
+so the marker-straddling shape gets its <strong>own</strong> strategy
+(<code>_boundary_secret</code>) rather than trusting the general one to find it —
+the same lesson as the drawing-page-finder negative-cap miss.</p>
 <h2 id="dependencies">Dependencies</h2>
 <p><strong>No hard blockers.</strong> Most cards are independent of each other and of the rest of the backlog (CATAGORIES, SCHEMA, STRIPE, SEO, PYTHON_BACKEND, STYLE, API, CONFIGURATION).</p>
 <p><strong>Soft sequencing:</strong>

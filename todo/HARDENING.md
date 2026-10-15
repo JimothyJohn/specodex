@@ -1,9 +1,11 @@
 # HARDENING — adversarial-by-default testing posture
 
 **Audit date:** 2026-05-09
-**Status (reconciled 2026-09-14):** 11 of 14 findings shipped; 3 remain
-(2.2 partial, 3.2, 4.2). Both 4.2 and 2.2's remaining half are
-`.github/workflows/` changes, so they need a human PR.
+**Status (reconciled 2026-09-19):** 11 of 14 findings shipped; 3 remain
+(2.2 partial, 3.2, 4.2). 2.2's migration work is now **complete** — the
+mocked-test sweep turned out to be empty — so all that is left of it,
+like 4.2, is a `.github/workflows/` change needing a human PR. 3.2
+(atheris) is the only remaining code-only card.
 
 | Phase | Status | Shipping PRs |
 |---|---|---|
@@ -11,7 +13,7 @@
 | 1.2 `uv sync --locked` CI sweep | ✅ shipped | #261 (9 sites × 5 workflows) |
 | 1.3 Regression tests for log-injection #82/#83/#84 | ✅ shipped | #97 |
 | 2.1 SSRF defense for URL-fetching paths | ✅ shipped | #98 |
-| 2.2 Backend integration tests against real DAL (L) | ⏳ partial | 14 `*.real-dal.test.ts` suites shipped (#246, 2026-06-10, 2026-07-27/28, 2026-08-31, 2026-09-01, `adminOperations` #441). **Blocked on the CI `--integration` wiring** — see §2.2; none of the 14 run in CI today |
+| 2.2 Backend integration tests against real DAL (L) | ⏳ partial | 14 `*.real-dal.test.ts` suites shipped (#246, 2026-06-10, 2026-07-27/28, 2026-08-31, 2026-09-01, `adminOperations` #441). Migration work is **done** — the step-5 sweep is empty (`blacklist` and `subscription` both turned out to have no DAL at all; see §2.2). **All that remains is the CI `--integration` wiring** — none of the 14 run in CI today, which gates their whole value |
 | 2.3 IDOR + cross-tenant auth tests | ✅ shipped | #100 |
 | 2.4 Stripe webhook signature + replay tests | ✅ shipped | #101 |
 | 3.1 Hypothesis property tests for parsers (3 targets) | ✅ shipped | #111, #112, #113 — plus #116, #118, #120, #122, #123 extensions |
@@ -147,7 +149,8 @@ All 16 `app/backend/tests/*.test.ts` files do `jest.mock('../src/db/dynamodb')`.
 - ✅ **Follow-up shipped 2026-09-13:** `POST /api/upload` now type-guards `product_name` / `manufacturer` / `product_type` / `filename` (400 `Fields must be strings: …`) in both the Express route and the FastAPI mirror; the mocked sibling and the real-DAL test both pin 400 + no row written. Until then a non-string `product_type` was a caller-controlled 500 via `serializeItem`'s `.toUpperCase()`.
 - Migrations not recorded above but on disk (reconciled 2026-09-13): `compat`, `product-types`, `projects`, `relations`, `search`, `db` — 14 `*.real-dal.test.ts` files in total with `adminOperations`.
 - ✅ `adminOperations.test.ts` migration to real-DAL — shipped 2026-09-14 (`tests/integration/adminOperations.real-dal.test.ts`). The mocked sibling's fake `DynamoDBService` pushes onto an array and returns `items.length`, so it can only assert that an operation *asked* the DAL to do something. Asserting on the tables instead catches four things it structurally cannot: a dry run leaving the target **empty** rather than a mock call unmade; `batchCreate` past DynamoDB's 25-item `BatchWriteItem` cap actually landing every row (a bad chunk bound is invisible to a single array push); `purge` hand-building `PRODUCT#${type.toUpperCase()}` / `PRODUCT#${id}` rather than reading the keys off the row it listed — `DeleteItem` no-ops on an absent key, so a drift from what `create()` writes reads as a clean delete against the fake; and a blacklisted vendor leaving **no row** in the target partition. Three mutation checks confirm it bites (dropping `.toUpperCase()` fails 5; `if (apply)` → `if (true)` fails the dry-run test; widening the chunk size fails exactly the bulk test). Needed a second local table — `jest-dynamodb-config.js` now declares `specodex-test-target`, since promote/demote/diff move rows *between* stage tables and one table can't tell "wrote to target" from "read from source". Error-injection cases stay in the mocked sibling.
-- Still mocked-only (step 5), 2026-09-14: `adminOnly`, `adminOnly.edge`, `apiKeyPaygate`, `auth-audit`, `auth.middleware`, `auth.routes`, `blacklist`, `log`, `log-leak`, `readonly`, `readonly.edge`, `resilience`, `subscription`. Most are auth / middleware / error-injection suites where a mocked DAL is the right tool. Of the three originally flagged as gaining from a real table, `adminOperations` is done and **`subscription` is the only one left** — `blacklist` turned out not to be a real-DAL candidate at all: `Blacklist` is a JSON-file service with no DAL, so its mocked suite is already testing the real thing. Each remaining one needs its own seed/cleanup — split across PRs.
+- Still mocked-only (step 5), 2026-09-19: `adminOnly`, `adminOnly.edge`, `apiKeyPaygate`, `auth-audit`, `auth.middleware`, `auth.routes`, `blacklist`, `log`, `log-leak`, `readonly`, `readonly.edge`, `resilience`, `subscription`. Most are auth / middleware / error-injection suites where a mocked DAL is the right tool. **The step-5 sweep is now empty: none of the three originally flagged as gaining from a real table actually is one.** `adminOperations` shipped (#441). `blacklist` was never a candidate — `Blacklist` is a JSON-file service with no DAL, so its mocked suite already tests the real thing. And `subscription` is the same story, verified 2026-09-19: the whole stack imports zero DAL (`routes/subscription.ts` → `middleware/subscription.ts` → `services/stripe.ts`, which imports only `config`). The `jest.mock('../src/db/dynamodb')` in `subscription.test.ts` is incidental — it is there because `src/index` drags in other routes that do use the DAL, not because anything under test touches a table. A real-DAL twin would seed a table no code path reads.
+- **What that leaves for 2.2:** only the CI `--integration` wiring. There is no remaining migration work, so this row is code-complete pending that wiring (which touches `.github/workflows/` and is therefore a human PR — see the skip list in CLAUDE.md).
 - ⚠️ **Wire `verify --integration` into the `Test Backend` CI job** (currently runs unit only via plain `verify --only backend`; the `Test Integration` job is the *Python* one). One-line workflow change; needs a human PR since `.github/workflows/` is on the autonomous skip list. **This is now the highest-leverage item in 2.2:** nothing in CI invokes `npm run test:integration`, so all **14** `*.real-dal.test.ts` suites — every migration listed above — run only when a developer runs them locally. Until this lands, each new migration adds review-time evidence but no regression gate, and a real-DAL regression reaches `dev` green.
 
 ### 2.3 IDOR + cross-tenant auth tests (M, P1)
@@ -276,6 +279,47 @@ No tests assert that secrets, tokens, JWTs, or full Stripe IDs never appear in l
 - botocore logs the signed canonical request — `x-amz-security-token:<session token>` in clear — at DEBUG, and every pipeline module sets the ROOT level from `LOG_LEVEL`. `LOG_LEVEL=DEBUG` turned the DAL into a credential dump. `quiet_sdk_debug_logging()` (called when `specodex.db.dynamo` imports) clamps botocore / boto3 / urllib3 / httpx to INFO.
 
 `redact_secrets` is env-driven (values of `SECRET_ENV_VARS` at call time, ≥ 8 chars, longest-first) so it needs no configuration; `tests/unit/test_log_redact.py` pins the contract with examples + a Hypothesis property. `test_log_leaks.py` asserts `SECRET_ENV_VARS` and its sentinel table stay in lockstep, so a new credential can't join one without the other.
+
+**Property companion + two contract fixes (#443, 2026-09-19).** The
+Hypothesis property that shipped with the Python half seeds exactly
+**one** secret, and both bugs below live in the interaction *between*
+configured secrets — a single-secret strategy structurally cannot reach
+them. `tests/unit/test_log_redact_property.py` seeds up to three and
+found:
+
+1. **Splice-boundary leak.** Substituting one secret splices
+   `[REDACTED]` into the text, and the splice can complete a *fresh*
+   occurrence of a different secret across the substitution boundary.
+   The synthesised secret is the longer of the two, so the
+   longest-first loop is already past it when the splice creates it —
+   and it rode out into the log line verbatim. With
+   `AWS_SESSION_TOKEN="AA[REDACTED]"` and `GEMINI_API_KEY="BBBBBBBB"`,
+   `redact_secrets("AABBBBBBBB")` returned `"AA[REDACTED]"`. Documented
+   idempotence broke with it: a *second* call did catch it, so the
+   result was not a fixed point.
+2. **Self-regrowing secret.** A value that is a substring of the marker
+   (`"[REDACTE"`) was replaced by a string containing it again, so each
+   pass lengthened the line instead of scrubbing it
+   (`"[REDACTED]D]D]D]D]"`).
+
+Neither is reachable with a real credential — both need a secret
+carrying the redactor's own marker text — so these are contract bugs,
+not a live exposure. Fixes: the substitution pass re-runs to a fixpoint
+(bounded by `_MAX_PASSES`); a marker-substring value is substituted
+with the empty string so the substitution terminates; the function
+**fails closed**, returning a bare `[REDACTED]` if the cap is exhausted
+with a secret still present (losing a log line is cheap, emitting a
+credential is not); and `secret_values()` tie-breaks equal-length
+values lexicographically, because a bare `key=len` over a `set` left
+ties in `PYTHONHASHSEED` order and made multi-secret redaction
+non-reproducible run to run. Both shapes are pinned as explicit cases
+in `TestMultiSecretRedaction`.
+
+Strategy-design note worth reusing: Hypothesis will not stumble onto
+`"AA[REDACTED]"` from free text in any reasonable number of examples,
+so the marker-straddling shape gets its **own** strategy
+(`_boundary_secret`) rather than trusting the general one to find it —
+the same lesson as the drawing-page-finder negative-cap miss.
 
 ## Dependencies
 
