@@ -16,6 +16,7 @@ from urllib.parse import urlparse
 
 import pytest
 
+import specodex.pricing.fetch as fetch_mod
 from specodex.pricing.extract import classify_url, extract_price
 from specodex.pricing.fetch import FetchResult, PriceFetcher
 from specodex.pricing.resolver import (
@@ -353,8 +354,6 @@ def test_fetch_429_retries_until_success(tmp_path: Path, monkeypatch):
     a fake miss. The fetcher now retries up to 3 times per Retry-After."""
     import httpx
 
-    import specodex.pricing.fetch as fetch_mod
-
     monkeypatch.setattr(fetch_mod.time, "sleep", lambda s: None)
     calls = {"n": 0}
 
@@ -380,8 +379,6 @@ def test_fetch_circuit_breaks_on_sustained_429(tmp_path: Path, monkeypatch):
     consecutive 429s the fetcher must abandon the domain and stop
     hitting the network for it."""
     import httpx
-
-    import specodex.pricing.fetch as fetch_mod
 
     monkeypatch.setattr(fetch_mod.time, "sleep", lambda s: None)
     calls = {"n": 0}
@@ -412,8 +409,6 @@ def test_fetch_429_streak_resets_on_success(tmp_path: Path, monkeypatch):
     """A success between 429s must reset the streak — only *consecutive*
     429s indicate a block, not intermittent throttling."""
     import httpx
-
-    import specodex.pricing.fetch as fetch_mod
 
     monkeypatch.setattr(fetch_mod.time, "sleep", lambda s: None)
     state = {"throttle": True}
