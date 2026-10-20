@@ -411,6 +411,8 @@ class TestFlangeMountingDimensionsProperty:
                 mounting_standard=mounting_standard,
             )
         except ValidationError:
+            # Expected outcome for invalid combinations under this property
+            # test; any other exception type below is the actual failure.
             pass
         except Exception as exc:  # pragma: no cover
             pytest.fail(
