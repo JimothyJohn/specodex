@@ -217,6 +217,69 @@ class TestExtractNumeric:
         assert extract_numeric("100") == 100.0
 
 
+@pytest.mark.unit
+class TestExtractNumericEdgeCases:
+    """Regression cases for the 2026-09-22 Hypothesis round.
+
+    ``extract_numeric`` is annotated ``-> float | None`` and both callers
+    (`sort_products`'s comparator, `apply_where`) treat None as "not a
+    number" — but it used to *raise* on several inputs a DynamoDB row can
+    carry. The property companion
+    (``test_query_property.py``) pins the general contract; these pin the
+    exact shapes so they can't regress if the strategy drifts.
+    """
+
+    def test_multi_dot_spec_string_does_not_raise(self):
+        """``[\\d.]+`` matches "1.2.3"; ``float()`` refuses it. Used to
+        raise ValueError out of `dsm list --sort` / `dsm filter --where`."""
+        assert extract_numeric("1.2.3;x") is None
+
+    def test_bare_dots_spec_string_does_not_raise(self):
+        assert extract_numeric("..;x") is None
+        assert extract_numeric(".;x") is None
+
+    def test_trailing_dot_spec_string_still_parses(self):
+        """The fix must not swallow values `float()` does accept."""
+        assert extract_numeric("1.;x") == 1.0
+
+    def test_signalling_decimal_does_not_raise(self):
+        from decimal import Decimal
+
+        assert extract_numeric(Decimal("sNaN")) is None
+
+    def test_oversized_int_does_not_raise(self):
+        """``float(10**400)`` raises OverflowError."""
+        assert extract_numeric(10**400) is None
+
+    def test_non_finite_collapses_to_none(self):
+        """NaN makes `cmp_to_key` non-transitive and compares False for
+        every `apply_where` operator except `!=`. None routes into the
+        well-defined "sorts last" / string-compare branches instead."""
+        assert extract_numeric(float("nan")) is None
+        assert extract_numeric(float("inf")) is None
+        assert extract_numeric(float("-inf")) is None
+
+    def test_bool_is_not_numeric(self):
+        """``bool`` is an ``int`` subclass — ``float(True) == 1.0``."""
+        assert extract_numeric(True) is None
+        assert extract_numeric(False) is None
+
+    def test_sort_survives_a_malformed_row(self):
+        """End-to-end: one unusable spec string used to take down the
+        whole `dsm list --sort <field>` command."""
+        from cli.query import sort_products
+
+        rows = [
+            SimpleNamespace(rated_power="1.2.3;x"),
+            SimpleNamespace(rated_power="5;W"),
+        ]
+        assert len(sort_products(rows, ["rated_power:desc"])) == 2
+
+    def test_filter_survives_a_malformed_row(self):
+        product = SimpleNamespace(rated_power="1.2.3;x")
+        assert apply_where(product, "rated_power", ">=", "10") is False
+
+
 # ---------------------------------------------------------------------------
 # text_score
 # ---------------------------------------------------------------------------
