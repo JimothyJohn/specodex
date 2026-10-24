@@ -328,7 +328,7 @@ user-visible breakage jump the queue.
 Each row is one reviewable PR. We churn through these
 top-to-bottom, **one at a time, with Nick's permission per PR**.
 Every PR ships with a per-PR HTML doc in `docs/requests/<n>.html`
-(see CLAUDE.md "Per-PR documentation pages").
+(see `.claude/rules/backlog.md` "Per-PR HTML documentation").
 
 | # | PR scope | Doc | Status |
 |---|---|---|---|
@@ -450,7 +450,7 @@ Curated tasks safe to run autonomously overnight on dev. Each one meets four cri
 
 1. **Logs.** `tail -100 .logs/*.log` — no unhandled exceptions, no rate-limit spirals.
 2. **Bench delta.** `diff outputs/benchmarks/latest.json outputs/benchmarks/<ts>.json`. Drop > 5pp on any fixture is a stop signal.
-3. **Endpoint shape.** Hit dev `/health`, `/api/products/categories`, `/api/v1/search?type=motor&limit=5`. All should 200 with expected shape per CLAUDE.md "canonical endpoints".
+3. **Endpoint shape.** Hit dev `/health`, `/api/products/categories`, `/api/v1/search?type=motor&limit=5`. All should 200 with expected shape per `.claude/rules/deploy.md` "Canonical endpoints".
 4. **DB sample.** UI walkthrough on http://localhost:5173: pick a product type, confirm filter chips + table columns render.
 5. **If green:** `./Quickstart admin promote --stage staging --since <ts>`, smoke staging, then `--stage prod`.
 6. **If red or surprising:** damage is dev-only. `./Quickstart admin purge --stage dev --since <ts>` rolls back, then triage.
@@ -469,7 +469,7 @@ If your current task matches any "trigger" entry, the linked doc is queued and w
 
 | Trigger (files / topics in your current task) | Surface |
 |---|---|
-| New parser, deserializer, coercer, or `BeforeValidator`; CodeQL log-injection or input-handling finding; user asks "fuzz", "property test", "input validation" | [HARDENING.md](HARDENING.md) + CLAUDE.md "Property testing — adversarial by default" |
+| New parser, deserializer, coercer, or `BeforeValidator`; CodeQL log-injection or input-handling finding; user asks "fuzz", "property test", "input validation" | [HARDENING.md](HARDENING.md) + `.claude/rules/property-testing.md` |
 | `cli/processor.py`, `specodex/integration/compat.py`, `specodex/spec_rules.py`, `specodex/quality.py` | Property tests shipped (PRs #149/#185/#202/#203). Treat the existing `test_<name>_property.py` files as the contract; new edits to these modules should keep those properties green |
 | `app/frontend/src/components/{ProductList,ColumnHeader,DistributionChart}.tsx`, `.page-products-layout` / `.product-grid-scroll` sizing, `--header-h`, header-band button colours; user says "crowded", "janky", "cluttered", "too many controls", "mobile layout" | [UI_CLEANUP.md](UI_CLEANUP.md) — Phase 0 shipped; Phase 2 direction needs sign-off |
 | `app/frontend/src/App.css`, design tokens (`--paper`, `--ink`, `--brass`, `--rule-*`, `--z-*`), Oswald/Plex Mono cascade, `.filter-chip-*`, `.column-header-*`, modal patterns, `!important` clusters; user asks "Bauhaus", "design refresh", "stencil headline", "manila", "field manual" | [BAUHAUS.md](BAUHAUS.md) — 10-phase port, [BAUHAUS_FOLLOWUP.md](BAUHAUS_FOLLOWUP.md) for what's still soft |
@@ -489,6 +489,6 @@ If your current task matches any "trigger" entry, the linked doc is queued and w
 | New HTTP endpoint, middleware, or auth refactor in `app/backend/src/routes/`; user asks "IDOR", "auth bypass", "cross-tenant" | [HARDENING.md](HARDENING.md) Phase 2.3 (shipped — pattern to follow) |
 | Any URL-fetching path in `specodex/` (scraper, pricing, browser); user asks "SSRF", "metadata", "internal hostname" | [HARDENING.md](HARDENING.md) Phase 2.1 (shipped) + `validate_url` |
 | Stripe webhook handler change; new external-integration retry logic; user asks "replay attack", "idempotency", "webhook signature" | [HARDENING.md](HARDENING.md) Phase 2.4 (shipped — pattern to follow) |
-| Adding a new `ProductType` literal or model field to `specodex/models/` | CLAUDE.md "Adding a new product type" — includes step 5 for snapshot refresh |
+| Adding a new `ProductType` literal or model field to `specodex/models/` | `.claude/rules/product-types.md` "Adding a new product type" — includes step 5 for snapshot refresh |
 | Founder-driven items (manufacturer outreach, paid-tier price, customer-conversation log) | [longterm/BOARD.md](longterm/BOARD.md) — board-strategy register; the BOARD_FEEDBACK action subset was retired 2026-05-10 |
 | `specodex/configurators/**`, `cli/configurator.py`; user asks "configurator harvest", "scrape a configurator", "reverse a part number from a vendor tool", "cross-reference catalog vs configurator" | [CONFIGURATOR_HARVEST.md](CONFIGURATOR_HARVEST.md) — P0 shipped 2026-07-25 (`./Quickstart configurator`); P1–P4 planned |
