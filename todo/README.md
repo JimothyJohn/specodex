@@ -205,9 +205,9 @@ never been listed here even though their docs were live):
   `quality.py`) via PRs #149/#185/#202/#203. 1.2 (`uv sync --locked`
   sweep) shipped #261. 4.3's Python half (log-leak tests +
   `specodex/log_redact.py`) landed 2026-09-13. **Open:** 2.2 (real-DAL
-  backend tests — 13 of the mocked suites now have a real-DAL twin;
-  what's left is the auth / admin / paygate / resilience group plus
-  the CI `--integration` wiring), 3.2 (atheris fuzz), 4.2
+  backend tests — 15 `*.real-dal.test.ts` suites now exist and the
+  migration sweep is empty as of #451; all that's left is the CI
+  `--integration` wiring), 3.2 (atheris fuzz), 4.2
   (lockfile-drift CI gate). 4.2 and the 2.2 CI wiring touch
   `.github/workflows/` so they're skip-list for autonomous sprints.
 - **SCHEMA_BREAKING_HARMONIZE.md** — what's left of the SCHEMA plan.
@@ -336,7 +336,7 @@ Every PR ships with a per-PR HTML doc in `docs/requests/<n>.html`
 | 2 | **Property tests — `specodex/integration/compat.py` (`_scalar` / `_range` / `_check_*`)** | HARDENING | ✅ shipped #185 |
 | 3 | **Property tests — `specodex/spec_rules.py:validate_product` magnitude rules** | HARDENING | ✅ shipped #202 |
 | 4 | **Property tests — `specodex/quality.py:score_product`** | HARDENING | ✅ shipped #203 |
-| 5 | **HARDENING Phase 2.2** — real-DAL backend integration tests (L) | HARDENING | ⏳ 14 real-DAL suites shipped (#246 → #441). Migration work is done — the mocked-test sweep is empty as of 2026-09-19. Only the CI `--integration` wiring remains, and it gates the value of all 14 (CI runs none today); touches `.github/workflows/` → human PR. See §2.2 |
+| 5 | **HARDENING Phase 2.2** — real-DAL backend integration tests (L) | HARDENING | ⏳ 15 real-DAL suites shipped (#246 → #441, `subscription` #451). Migration work is done — the mocked-test sweep is empty. Only the CI `--integration` wiring remains, and it gates the value of all 15 (CI runs none today); touches `.github/workflows/` → human PR. See §2.2 |
 | 6 | **BUILD Phase 1** — requirements-first Build page (motion/stroke/speed/payload/orientation form → motion-system kit) | BUILD | 🚧 PR 1A shipped end-to-end: `compatible_actuators` (#247), `/api/v1/relations/actuators` on Express (#262), `_distribution_position` block (`relations.ts:attachStrokeDistributionPositions`), and the v2 (FastAPI) mirror (#440). 1B/1C partly shipped out of band; 1D redirect half shipped #444. Remaining: the BuildTray → SystemSummary absorption, which needs the `BUILD_SLOTS` reorder + an actuator↔motor compat rule — product work, human call. See BUILD.md "Status reconciliation, 2026-09-19" |
 | 7 | **DB_CLEANUP Phase 2 decision** — populate vs drop `lead_time` / `warranty` / `msrp` | DB_CLEANUP | ✅ resolved 2026-06-12: populate, via PRICING.md (accepted by Nick) |
 | 7a | **PRICING Phase 1** — price-book ingestion CLI (`./Quickstart price-book`, XLSX + PDF, enrich-only join) | PRICING | ✅ shipped #268 |
