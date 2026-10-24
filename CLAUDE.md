@@ -386,6 +386,7 @@ Each one was a bug where the docstring said one thing and the code did another. 
 | `specodex/pricing/lead_time.py:parse_lead_statement` + `parse_lead_statement_range` (published vendor lead-time statements) | `test_lead_time_property.py` | `test_lead_time_inference.py` |
 | `specodex/configurators/stober.py:parse_requirements` + `parse_group_selection` (vendor-configurator JSON deserializer) | `test_configurators_property.py` | `test_configurators.py` |
 | `specodex/schemagen/renderer.py:render_model_file` + `render_product_type_patch` + `render_reasoning_doc`, and the `meta_schema.py` identifier gate (LLM proposal → generated Python source) | `test_schemagen_renderer_property.py` | `test_schemagen_renderer.py` |
+| `specodex/log_redact.py:redact_secrets` + `secret_values` (credential scrubber on the `except`-site log path) | `test_log_redact_property.py` | `test_log_redact.py` |
 
 The 2026-05-14 sprint closed out the four "untested adversarial surfaces" from the 2026-05-10 callout (`cli/processor.py`, `compat.py`, `spec_rules.py`, `quality.py`) via PRs #149, #185, #202, #203. None of the four runs surfaced new bugs — every Hypothesis search confirmed the contract the example tests had already pinned. The boring-good outcome.
 
@@ -450,6 +451,40 @@ bit — the property that caught the injections wasn't "it parses", it was
 is the docstring plus the proposal's AnnAssigns and nothing else". A
 surface that emits code needs a structural assertion about what it
 emitted; "no exception" would have passed both injections.
+
+The 2026-09-19 round added `specodex/log_redact.py` — the credential
+scrubber on the `except`-site log path, and the last `specodex/`
+string-coercer surface without a property companion. The interesting
+part is *why* it had a gap despite already carrying a Hypothesis
+property: that property seeds exactly **one** secret, and both bugs
+live in the interaction *between* configured secrets. **Two**
+violations, both of contracts the module's own docstrings state.
+(1) Substituting one secret splices `[REDACTED]` into the text, and the
+splice can complete a *fresh* occurrence of a different secret across
+the substitution boundary; the synthesised secret is the longer of the
+two, so the longest-first loop is already past it when the splice
+creates it, and it rode out into the log line verbatim
+(`AWS_SESSION_TOKEN="AA[REDACTED]"` + `GEMINI_API_KEY="BBBBBBBB"` over
+`"AABBBBBBBB"` → `"AA[REDACTED]"`). Documented idempotence broke with
+it — a second call *did* catch it, so the result was not a fixed point.
+(2) A value that is a substring of the marker (`"[REDACTE"`) was
+replaced by a string containing it again, so each pass lengthened the
+line instead of scrubbing it (`"[REDACTED]D]D]D]D]"`). Neither is
+reachable with a real credential — both need a secret carrying the
+redactor's own marker text — so these are contract bugs, not a live
+exposure. Fixes: re-run the pass to a fixpoint (bounded by
+`_MAX_PASSES`); substitute the empty string for a marker-substring
+value so the substitution terminates; **fail closed**, returning a bare
+`[REDACTED]` if the cap is exhausted with a secret still present; and
+tie-break equal-length values in `secret_values()` lexicographically,
+since a bare `key=len` over a `set` left ties in `PYTHONHASHSEED` order
+and made a multi-secret redaction non-reproducible run to run. Two
+transferable lessons: a property that fixes the *arity* of its input
+(one secret, one page, one row) will not find the bugs that live
+between instances — vary the count; and Hypothesis will not stumble
+onto `"AA[REDACTED]"` from free text, so give a shape that needs a
+specific co-occurrence its own strategy rather than trusting the
+general one, exactly as the drawing-page-finder negative cap required.
 
 When the next round of property-test gaps comes up, add them to the list above; don't leave the section empty for long.
 
