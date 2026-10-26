@@ -55,7 +55,8 @@
 (2.2 partial, 3.2, 4.2). 2.2's migration work is now <strong>complete</strong> — the
 mocked-test sweep turned out to be empty — so all that is left of it,
 like 4.2, is a <code>.github/workflows/</code> change needing a human PR. 3.2
-(atheris) is the only remaining code-only card.</p>
+(atheris) shipped its code half 2026-10-26; only its nightly-job wiring
+is left, also a <code>.github/workflows/</code> change.</p>
 <table>
 <thead>
 <tr>
@@ -107,8 +108,8 @@ like 4.2, is a <code>.github/workflows/</code> change needing a human PR. 3.2
 </tr>
 <tr>
 <td>3.2 Atheris fuzz target for PDF intake</td>
-<td>⚪ open</td>
-<td>heavier dep (LLVM/clang); st.binary in #113 covers the basic shape</td>
+<td>⏳ partial</td>
+<td>Code half shipped 2026-10-26: <code>tests/fuzz/fuzz_page_finder.py</code> (opt-in <code>fuzz</code> dep group, Linux-only wheels) + corpus replay in the unit suite. First runs found <strong>3</strong> crashes in all four page finders, fixed same PR. Remaining: the nightly <code>bench.yml</code> job — touches <code>.github/workflows/</code>, human PR</td>
 </tr>
 <tr>
 <td>3.3 Schema forward/backward compat tests</td>
@@ -272,6 +273,31 @@ next-sprint queue: <code>cli/processor.py</code>, <code>specodex/integration/com
 3. Gate behind <code>pytest -m fuzz</code>. Don't block CI; run as a nightly job in <code>.github/workflows/bench.yml</code>.
 4. On crash, save corpus minimum to <code>tests/fuzz/corpus/</code>; commit.</p>
 <p><strong>Definition of done:</strong> fuzz target runs locally for ≥10min without crashing; nightly bench.yml job invokes it.</p>
+<p><strong>Status 2026-10-26 — steps 1, 2, 4 shipped; step 3 open.</strong> <code>atheris</code>
+went into its own opt-in <code>fuzz</code> dependency group rather than <code>dev</code>:
+3.1.0 publishes Linux x86_64 wheels only (no macOS wheel, no sdist), so
+putting it in <code>dev</code> would break <code>uv sync</code> on a Mac. The harness checks
+all four finders (<code>find_spec_pages_by_text</code>, <code>find_spec_pages_scored</code>,
+<code>find_drawing_pages_by_text</code>, <code>find_drawing_pages_scored</code>) against the
+property-test contract, mutating seed PDFs built by <code>make_seed_corpus()</code>.
+<code>check_one_input</code> is atheris-free, so <code>tests/unit/test_fuzz_corpus_replay.py</code>
+replays the committed corpus in the normal unit suite; <code>pytest -m fuzz</code>
+runs a bounded 300-exec session when the group is installed.</p>
+<p>The first three sessions each crashed within a minute, all in the same
+"<code>fitz.open</code> succeeded, then MuPDF failed lazily" family, none raising
+the documented <code>FileDataError</code>: (1) <code>doc[i]</code> → <code>FzErrorFormat:
+malformed page tree</code>; (2) <code>len(doc)</code> → bare <code>RuntimeError: Invalid number
+of pages</code>; (3) <code>page.get_text()</code> → <code>RuntimeError: not a dict</code>.
+Reachable: <code>cli/mounting_extract.py</code> calls <code>find_drawing_pages_scored</code>
+outside any <code>try</code>, so one corrupt PDF ended the whole batch. Fix:
+<code>_open_pdf</code> maps a bad page count to <code>FileDataError</code>; <code>_read_page</code>
+skips an unreadable page (marked <code>"unreadable": True</code> in the scored
+details) instead of failing the document. The fourth session ran 600 s /
+15,620 execs clean. Step 3 (nightly job:
+<code>uv sync --locked --group fuzz</code> then
+<code>uv run python tests/fuzz/fuzz_page_finder.py tests/fuzz/corpus -max_total_time=600</code>)
+needs a human PR. Not yet fuzzed: <code>pdf_pages_to_images</code>, which
+<code>mounting-extract</code> calls on the same bytes right after the finder.</p>
 <h3 id="33-schema-forwardbackward-compat-tests-s-p2">3.3 Schema forward/backward compat tests (S, P2)</h3>
 <p><code>tests/unit/test_models_roundtrip.py</code> covers same-version roundtrip only. Nothing tests forward/backward compat across <code>ProductType</code> literal additions or model field changes.</p>
 <p><strong>Steps:</strong>
