@@ -15,6 +15,7 @@ the table-signal branches by passing fake "table" objects directly to
 
 from __future__ import annotations
 
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -24,8 +25,11 @@ from specodex.page_finder import (
     SPEC_KEYWORDS,
     _MAX_PAGES_LARGE_DOC,
     _MAX_PAGES_SMALL_DOC,
+    _read_page,
     _score_page,
     classify_pages,
+    find_drawing_pages_by_text,
+    find_drawing_pages_scored,
     find_spec_pages,
     find_spec_pages_by_text,
     find_spec_pages_scored,
@@ -772,3 +776,74 @@ class TestMain:
         import json as _json
 
         assert _json.loads(out.read_text()) == result
+
+
+# ---------------------------------------------------------------------------
+# Malformed-PDF regressions (found by tests/fuzz/fuzz_page_finder.py)
+# ---------------------------------------------------------------------------
+
+_FUZZ_CORPUS = Path(__file__).resolve().parents[1] / "fuzz" / "corpus"
+
+_ALL_FINDERS = (
+    find_spec_pages_by_text,
+    find_spec_pages_scored,
+    find_drawing_pages_by_text,
+    find_drawing_pages_scored,
+)
+
+
+class _UnreadablePage:
+    def get_text(self) -> str:
+        raise RuntimeError("code=4: not a dict (null)")
+
+
+@pytest.mark.unit
+class TestMalformedPdfRegressions:
+    """One bad page must cost that page, not the document — and a
+    whole-document failure must surface as ``FileDataError``."""
+
+    def test_corrupt_page_count_raises_file_data_error(self) -> None:
+        import fitz
+
+        data = (_FUZZ_CORPUS / "crash_invalid_page_count.pdf").read_bytes()
+        for finder in _ALL_FINDERS:
+            with pytest.raises(fitz.FileDataError):
+                finder(data)
+
+    @pytest.mark.parametrize(
+        "name", ["crash_malformed_page_tree.pdf", "crash_page_not_a_dict.pdf"]
+    )
+    def test_unreadable_page_is_skipped(self, name: str) -> None:
+        data = (_FUZZ_CORPUS / name).read_bytes()
+        assert find_spec_pages_by_text(data) == []
+        assert find_drawing_pages_by_text(data) == []
+        for finder in (find_spec_pages_scored, find_drawing_pages_scored):
+            pages, details = finder(data)
+            assert pages == []
+            assert details[0] == {"page": 0, "score": 0.0, "unreadable": True}
+
+    def test_good_pages_survive_a_bad_neighbour(self) -> None:
+        import fitz
+
+        data = _make_pdf(["", _spec_text(), ""])
+        real_getitem = fitz.Document.__getitem__
+
+        def flaky_getitem(doc, i):
+            if i == 0:
+                raise RuntimeError("code=7: malformed page tree")
+            if i == 2:
+                return _UnreadablePage()
+            return real_getitem(doc, i)
+
+        with patch.object(fitz.Document, "__getitem__", flaky_getitem):
+            assert find_spec_pages_by_text(data) == [1]
+            pages, details = find_spec_pages_scored(data)
+        assert pages == [1]
+        assert details[0]["unreadable"] and details[2]["unreadable"]
+
+    def test_read_page_returns_none_on_error(self) -> None:
+        class _Doc:
+            def __getitem__(self, i):
+                return _UnreadablePage()
+
+        assert _read_page(_Doc(), 0) is None
