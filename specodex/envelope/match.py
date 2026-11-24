@@ -128,9 +128,10 @@ def select_envelope_pages(
     cap = max(int(max_pages), 0)
     if cap == 0 or total_pages <= 0:
         return []
-    in_range = lambda p: (
-        isinstance(p, int) and not isinstance(p, bool) and 0 <= p < total_pages
-    )  # noqa: E731
+
+    def in_range(p: Any) -> bool:
+        return isinstance(p, int) and not isinstance(p, bool) and 0 <= p < total_pages
+
     spec = sorted({p for p in spec_pages if in_range(p)})
     drawings = []
     for info in page_scores:
