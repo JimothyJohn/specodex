@@ -1,0 +1,59 @@
+name: Staging catch-up
+
+# Why this exists: automerge.yml enables auto-merge with GITHUB_TOKEN, so the
+# merge into dev is performed by github-actions[bot]. GitHub does not start
+# workflows for events caused by GITHUB_TOKEN, so a bot merge never fires
+# ci.yml's `push: [dev]` trigger and staging is not deployed. That left
+# staging 87 commits stale from 2026-10-02 to 2026-11-24 and hid a
+# staging-down bug (PR #499) for five weeks.
+#
+# workflow_dispatch is the documented exception: GITHUB_TOKEN may start one.
+# So this job compares dev's head with the pipeline's run history and, when
+# the head has had no push or dispatch run, dispatches ci.yml on dev. That
+# run goes through the same tests -> deploy-staging -> smoke-staging chain
+# (deploy-staging is gated on the ref, not on the event).
+#
+# A head that already has a run is left alone whatever its conclusion: a red
+# pipeline needs a person, not a retry loop. Several bot merges inside one
+# interval collapse into a single deploy of the latest head.
+#
+# Scheduled workflows run only from the default branch, so this is inert
+# until it is promoted to master.
+
+on:
+  schedule:
+    - cron: "17,47 * * * *"
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: staging-catchup
+  cancel-in-progress: false
+
+jobs:
+  catch-up:
+    name: Dispatch pipeline if dev head is undeployed
+    runs-on: ubuntu-latest
+    if: github.repository == 'JimothyJohn/specodex'
+    timeout-minutes: 5
+    steps:
+      - name: Compare dev head with pipeline runs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          head_sha=$(gh api "repos/$REPO/commits/dev" --jq .sha)
+          runs=$(gh api \
+            "repos/$REPO/actions/workflows/ci.yml/runs?branch=dev&head_sha=$head_sha&per_page=100" \
+            --jq '[.workflow_runs[] | select(.event == "push" or .event == "workflow_dispatch")] | length')
+          echo "dev head: $head_sha, pipeline runs (push or dispatch): $runs"
+          if [ "$runs" -eq 0 ]; then
+            gh workflow run ci.yml --repo "$REPO" --ref dev
+            echo "Dispatched CI/CD Pipeline on dev at $head_sha" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "dev head already has a pipeline run; nothing to do" >> "$GITHUB_STEP_SUMMARY"
+          fi
