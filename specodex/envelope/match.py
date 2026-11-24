@@ -36,6 +36,7 @@ leaves the row unmatched — a wrong envelope is worse than none.
 
 from __future__ import annotations
 
+import math
 import re
 from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple
 
@@ -163,6 +164,50 @@ def match_rows(
                 out[ri] = max(best_idx, key=lambda i: size_key(extractions[i][1]))
             except (TypeError, ValueError):
                 pass
+    return out
+
+
+DIMS_AGREEMENT_TOL = 0.10
+
+
+def _axis_value(axis: Any) -> Optional[float]:
+    if not isinstance(axis, dict) or axis.get("unit") != "mm":
+        return None
+    v = axis.get("value")
+    if isinstance(v, bool) or not isinstance(v, (int, float)):
+        return None
+    if not math.isfinite(v) or v <= 0:
+        return None
+    return float(v)
+
+
+def agreed_dims(
+    a: Any, b: Any, tol: float = DIMS_AGREEMENT_TOL
+) -> Optional[Dict[str, Dict[str, Any]]]:
+    """Combine two independent readings of one variant's envelope, or None.
+
+    ``a`` and ``b`` are canonical dimension payloads (``{axis: {"value",
+    "unit": "mm"}}``). They agree when both are non-empty, carry the same
+    axis set, every value is a positive finite number in mm, and on every
+    axis ``|x - y| <= tol * max(x, y)``. One disagreeing or missing axis
+    withholds the whole envelope: a reading that got one axis wrong (the
+    pilot Ø read as the length) is not trusted on the others. On agreement
+    each axis keeps the larger reading — over-stating size is the safer
+    error for space planning. Never raises; anything malformed is None.
+    """
+    if not isinstance(a, dict) or not isinstance(b, dict) or not a:
+        return None
+    if a.keys() != b.keys():
+        return None
+    out: Dict[str, Dict[str, Any]] = {}
+    for axis in a:
+        x, y = _axis_value(a[axis]), _axis_value(b[axis])
+        if x is None or y is None:
+            return None
+        hi = max(x, y)
+        if abs(x - y) > tol * hi:
+            return None
+        out[axis] = {"value": hi, "unit": "mm"}
     return out
 
 

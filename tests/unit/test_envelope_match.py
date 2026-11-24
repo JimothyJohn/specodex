@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 
 from specodex.envelope.match import (
+    agreed_dims,
     match_rows,
     normalize_designator,
     select_envelope_pages,
@@ -168,3 +169,51 @@ class TestRealCatalogShapes:
     def test_frame_only_designators_do_not_match_type_codes(self):
         rows = [row("ACS880-01-105A-3+D150", "ACS880")]
         assert match_rows([("R1 IP20", "x"), ("R2 IP21", "y")], rows) == {}
+
+
+def _d(**axes):
+    return {k: {"value": v, "unit": "mm"} for k, v in axes.items()}
+
+
+@pytest.mark.unit
+class TestAgreedDims:
+    def test_identical_readings_agree(self):
+        a = _d(length=179.0, width=90.0, height=90.0)
+        assert agreed_dims(a, a) == a
+
+    def test_within_ten_percent_keeps_larger_per_axis(self):
+        a = _d(length=126.5, width=90.0)
+        b = _d(length=120.0, width=92.0)
+        assert agreed_dims(a, b) == _d(length=126.5, width=92.0)
+
+    def test_exactly_ten_percent_agrees(self):
+        assert agreed_dims(_d(length=100.0), _d(length=90.0)) == _d(length=100.0)
+
+    def test_eleven_percent_on_one_axis_withholds_all(self):
+        # Apex AB090 shape: one pass reads the Ø80 pilot as the length.
+        a = _d(length=126.5, width=90.0, height=90.0)
+        b = _d(length=80.0, width=90.0, height=90.0)
+        assert agreed_dims(a, b) is None
+        assert agreed_dims(_d(length=100.0), _d(length=89.0)) is None
+
+    def test_axis_missing_in_one_pass_withholds(self):
+        a = _d(length=179.0, width=90.0, height=90.0)
+        b = _d(length=179.0, width=90.0)
+        assert agreed_dims(a, b) is None
+
+    def test_none_or_empty_never_agrees(self):
+        a = _d(length=179.0)
+        for other in (None, {}, "179", [a]):
+            assert agreed_dims(a, other) is None
+            assert agreed_dims(other, a) is None
+        assert agreed_dims(None, None) is None
+        assert agreed_dims({}, {}) is None
+
+    def test_mismatched_units_or_bad_values_never_agree(self):
+        assert (
+            agreed_dims(_d(length=10.0), {"length": {"value": 10.0, "unit": "in"}})
+            is None
+        )
+        for bad in (0, -5.0, float("nan"), float("inf"), True, "10", None):
+            junk = {"length": {"value": bad, "unit": "mm"}}
+            assert agreed_dims(junk, junk) is None

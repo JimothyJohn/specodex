@@ -13,7 +13,7 @@ reported ``page_number`` maps back to a real page unambiguously.
 from __future__ import annotations
 
 import logging
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 from google import genai
 from pydantic import BaseModel, Field
@@ -28,6 +28,7 @@ from specodex.utils import parse_gemini_response
 logger: logging.Logger = logging.getLogger(__name__)
 
 PAGES_PER_CALL = 4
+PASSES = ("a", "b")
 
 
 class EnvelopeExtraction(BaseModel):
@@ -106,6 +107,24 @@ Rules:
 """
 
 
+# The second reading is worded differently on purpose: the same prompt
+# twice tends to repeat the same misreading, which an agreement check
+# cannot catch. Pass "b" makes the model locate the extreme faces on the
+# drawing before it picks a callout.
+_PROMPT_B_ADDENDUM = """
+Second reader: work each axis out from the drawing before reading any \
+table. For every variant, find the two outermost faces of the product along \
+each axis (for length: the rear end cover / housing back to the tip of the \
+output shaft, or to the output flange face when the output is a hollow \
+bore; for a right-angle unit the height runs from the bottom of the housing \
+to the top of the input adapter). Then report the callout, or the sum of \
+callouts, that spans exactly between those faces. If you cannot tell which \
+callouts span an axis, leave that axis null rather than guess.
+"""
+
+PROMPTS = {"a": _PROMPT, "b": _PROMPT + _PROMPT_B_ADDENDUM}
+
+
 def _should_retry(exc: BaseException) -> bool:
     from google.genai import errors as genai_errors
 
@@ -117,12 +136,14 @@ def _should_retry(exc: BaseException) -> bool:
     wait=wait_exponential(multiplier=1, min=4, max=30),
     retry=retry_if_exception(_should_retry),
 )
-def _call_gemini(pdf_bytes: bytes, api_key: str, response_schema: dict) -> Any:
+def _call_gemini(
+    pdf_bytes: bytes, api_key: str, response_schema: dict, prompt: str = _PROMPT
+) -> Any:
     client = genai.Client(api_key=api_key, http_options=GEMINI_HTTP_OPTIONS)
     return client.models.generate_content(
         model=MODEL,
         contents=[
-            _PROMPT,
+            prompt,
             genai.types.Part.from_bytes(data=pdf_bytes, mime_type="application/pdf"),
         ],
         config={
@@ -182,25 +203,46 @@ def remap_pages(
     return kept
 
 
+def _usage(response: Any) -> Dict[str, int]:
+    """Billable token counts from a response (thinking is billed as output)."""
+    meta = getattr(response, "usage_metadata", None)
+
+    def n(attr: str) -> int:
+        v = getattr(meta, attr, None)
+        return v if isinstance(v, int) and not isinstance(v, bool) else 0
+
+    return {
+        "input": n("prompt_token_count"),
+        "output": n("candidates_token_count") + n("thoughts_token_count"),
+    }
+
+
 def extract_envelopes(
     pdf_bytes: bytes,
     pages: List[int],
     api_key: str,
+    variant: str = "a",
+    usage: Optional[Dict[str, int]] = None,
 ) -> List[EnvelopeExtraction]:
     """Extract envelopes from ``pages`` (0-indexed) of ``pdf_bytes``.
 
-    One Gemini call per ``PAGES_PER_CALL`` chunk. A chunk that yields
-    nothing usable is a normal outcome, not an error. Every result's
-    designator is checked against the text layer of the page it claims
-    (``designator_on_page``); unverifiable labels are dropped.
+    One Gemini call per ``PAGES_PER_CALL`` chunk, with ``PROMPTS[variant]``.
+    A chunk that yields nothing usable is a normal outcome, not an error.
+    Every result's designator is checked against the text layer of the page
+    it claims (``designator_on_page``); unverifiable labels are dropped.
+    Token counts are added into ``usage`` (``{"input", "output"}``) when given.
     """
+    prompt = PROMPTS[variant]
     schema = to_gemini_schema(EnvelopeExtraction, as_array=True, include_excluded=True)
     page_texts = page_text_layers(pdf_bytes, pages)
     results: List[EnvelopeExtraction] = []
     for start in range(0, len(pages), PAGES_PER_CALL):
         chunk = pages[start : start + PAGES_PER_CALL]
         subset = build_page_subset(pdf_bytes, chunk)
-        response = _call_gemini(subset, api_key, schema)
+        response = _call_gemini(subset, api_key, schema, prompt)
+        if usage is not None:
+            for k, v in _usage(response).items():
+                usage[k] = usage.get(k, 0) + v
         try:
             parsed = parse_gemini_response(
                 response, EnvelopeExtraction, product_type="envelope"

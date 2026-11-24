@@ -6,15 +6,26 @@ pages to Gemini (``specodex.envelope.extract``), and match each extracted
 variant back to rows by designator (``specodex.envelope.match``: exact,
 then token-boundary prefix; ties between different envelopes are skipped).
 
+Two independent readings. Every datasheet is read twice (``PASSES``: the
+same pages, two differently-worded prompts). Weight is filled from the
+first reading that has one (weights read correctly in the 2026-11-24 audit),
+unless both readings carry a weight and they differ by more than 10%.
+Dimensions are filled only when both readings matched the row and agree
+within 10% on every axis, with the same axes (``match.agreed_dims``);
+anything else leaves them empty (Nick's policy, TODO.md
+``envelope-dims-accuracy-policy``, option A).
+
 Enrich-only: a field the row already carries is never overwritten. Each
 write is a conditional ``UpdateItem`` (``attribute_not_exists`` on the
 field being filled), so a concurrent writer always wins. Values go through
 the same canonicalisation as ``ProductBase`` (axes → mm, weight → kg,
 ``max_dimension`` derived).
 
-Resumable: each datasheet's extraction is cached under
-``outputs/envelope_extract/<sha1(url)>.json``; reruns read the cache
-instead of calling Gemini (``--refresh`` ignores it).
+Resumable: each datasheet's two readings are cached under
+``outputs/envelope_extract/<sha1(url)>.json`` (``CACHE_VERSION``; an
+older single-reading record is re-extracted); reruns read the cache
+instead of calling Gemini (``--refresh`` ignores it). Token usage is
+recorded per datasheet and summed into the run's cost estimate.
 
 Usage:
 
@@ -54,8 +65,8 @@ from specodex.admin.envelope_migration import (
     to_dynamo,
 )
 from specodex.admin.operations import make_client
-from specodex.envelope.extract import EnvelopeExtraction, extract_envelopes
-from specodex.envelope.match import match_rows, select_envelope_pages
+from specodex.envelope.extract import PASSES, EnvelopeExtraction, extract_envelopes
+from specodex.envelope.match import agreed_dims, match_rows, select_envelope_pages
 from specodex.page_finder import find_drawing_pages_scored
 from specodex.utils import get_document
 
@@ -63,6 +74,12 @@ logger = logging.getLogger(__name__)
 
 STAGES = ("dev", "staging", "prod")
 CACHE_DIR = Path("outputs/envelope_extract")
+CACHE_VERSION = 2
+WEIGHT_CONFLICT_TOL = 0.10
+# Gemini 2.5 Flash list price, USD per 1M tokens (thinking billed as output).
+# Used only for the printed estimate.
+USD_PER_M_INPUT = 0.30
+USD_PER_M_OUTPUT = 2.50
 _PROJECTION = (
     "PK, SK, product_type, manufacturer, part_number, product_name, "
     "frame_size, datasheet_url, #pages, dimensions, weight"
@@ -118,14 +135,38 @@ def _cache_path(url: str) -> Path:
     return CACHE_DIR / f"{hashlib.sha1(url.encode()).hexdigest()}.json"
 
 
+def _read_cache(url: str) -> Optional[Dict[str, Any]]:
+    """The current-version cache record for ``url``, else None."""
+    try:
+        rec = json.loads(_cache_path(url).read_text())
+    except (OSError, ValueError):
+        return None
+    if isinstance(rec, dict) and rec.get("version") == CACHE_VERSION:
+        return rec
+    return None
+
+
+def _is_cached(url: str) -> bool:
+    return _read_cache(url) is not None
+
+
 def extract_for_datasheet(
     url: str, rows: List[Dict[str, Any]], api_key: str, max_pages: int, refresh: bool
 ) -> Dict[str, Any]:
-    """Return ``{"url", "pages", "extractions": [...], "error"}`` (cached)."""
+    """Return ``{"version", "url", "pages", "passes": {name: [...]}, "usage",
+    "error", "cached"}``; read from / written to the cache."""
     path = _cache_path(url)
-    if not refresh and path.exists():
-        return json.loads(path.read_text())
-    record: Dict[str, Any] = {"url": url, "pages": [], "extractions": [], "error": None}
+    cached = None if refresh else _read_cache(url)
+    if cached is not None:
+        return {**cached, "cached": True}
+    record: Dict[str, Any] = {
+        "version": CACHE_VERSION,
+        "url": url,
+        "pages": [],
+        "passes": {name: [] for name in PASSES},
+        "usage": {"input": 0, "output": 0},
+        "error": None,
+    }
     try:
         pdf = get_document(url)
         if not pdf:
@@ -135,9 +176,11 @@ def extract_for_datasheet(
             scores, _spec_pages(rows), max_pages, total_pages=len(scores)
         )
         record["pages"] = pages
-        if pages:
-            found = extract_envelopes(pdf, pages, api_key)
-            record["extractions"] = [e.model_dump(mode="json") for e in found]
+        for name in PASSES if pages else ():
+            found = extract_envelopes(
+                pdf, pages, api_key, variant=name, usage=record["usage"]
+            )
+            record["passes"][name] = [e.model_dump(mode="json") for e in found]
     except Exception as e:  # noqa: BLE001 — network / PDF / Gemini failures vary
         record["error"] = f"{type(e).__name__}: {e}"[:500]
     # Cache only clean outcomes (an empty extraction is clean). Download,
@@ -145,15 +188,16 @@ def extract_for_datasheet(
     if record["error"] is None:
         CACHE_DIR.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(record))
-    return record
+    return {**record, "cached": False}
 
 
-def plan_updates(
-    rows: List[Dict[str, Any]], extractions: List[Dict[str, Any]]
-) -> List[Tuple[Dict[str, Any], Dict[str, Any]]]:
-    """Return ``(row, set_attrs)`` for every row an extraction can enrich."""
-    parsed: List[Tuple[Optional[str], Tuple[Any, Any]]] = []
-    for raw in extractions:
+Payload = Tuple[str, str]
+
+
+def _parse_pass(extractions: Any) -> List[Tuple[Optional[str], Payload]]:
+    """Validated ``(designator, (dims_json, weight_json))`` for one reading."""
+    parsed: List[Tuple[Optional[str], Payload]] = []
+    for raw in extractions if isinstance(extractions, list) else []:
         try:
             e = EnvelopeExtraction.model_validate(raw)
         except Exception:  # noqa: BLE001 — cached JSON from an older schema
@@ -167,27 +211,62 @@ def plan_updates(
         parsed.append(
             (e.designator, (json.dumps(dims, sort_keys=True), json.dumps(weight)))
         )
+    return parsed
 
+
+def _envelope_size(payload: Payload) -> float:
+    dims = json.loads(payload[0]) or {}
+    return max((a["value"] for a in dims.values()), default=0.0)
+
+
+def _match_pass(
+    extractions: Any, rows: List[Dict[str, Any]]
+) -> Dict[int, Tuple[Optional[dict], Optional[dict]]]:
+    """Row index → (dims, weight) this reading assigns to it."""
+    parsed = _parse_pass(extractions)
+    return {
+        ri: (json.loads(parsed[ei][1][0]), json.loads(parsed[ei][1][1]))
+        for ri, ei in match_rows(parsed, rows, size_key=_envelope_size).items()
+    }
+
+
+def _pick_weight(weights: List[dict]) -> Optional[dict]:
+    """First reading's weight, unless two readings conflict by > 10%."""
+    if not weights:
+        return None
+    vals = [w["value"] for w in weights]
+    if max(vals) - min(vals) > WEIGHT_CONFLICT_TOL * max(vals):
+        return None
+    return weights[0]
+
+
+def plan_updates(
+    rows: List[Dict[str, Any]], passes: List[Any]
+) -> List[Tuple[Dict[str, Any], Dict[str, Any]]]:
+    """Return ``(row, set_attrs)`` for every row the readings can enrich.
+
+    ``passes`` is the independent readings in order (each a list of
+    extraction dicts). Weight needs one reading; dimensions need two that
+    agree (module docstring).
+    """
+    matched = [_match_pass(p, rows) for p in passes]
     updates: List[Tuple[Dict[str, Any], Dict[str, Any]]] = []
-
-    def envelope_size(payload: Tuple[str, str]) -> float:
-        dims = json.loads(payload[0]) or {}
-        return max((a["value"] for a in dims.values()), default=0.0)
-
-    for ri, ei in match_rows(parsed, rows, size_key=envelope_size).items():
-        row = rows[ri]
-        dims = json.loads(parsed[ei][1][0])
-        weight = json.loads(parsed[ei][1][1])
+    for ri, row in enumerate(rows):
         need_dims, need_weight = _needs(row)
+        hits = [m[ri] for m in matched if ri in m]
         to_set: Dict[str, Any] = {}
-        if need_dims and dims:
-            to_set["dimensions"] = dims
-            to_set["max_dimension"] = {
-                "value": max(a["value"] for a in dims.values()),
-                "unit": "mm",
-            }
-        if need_weight and weight:
-            to_set["weight"] = weight
+        if need_dims and len(matched) >= 2 and ri in matched[0] and ri in matched[1]:
+            dims = agreed_dims(matched[0][ri][0], matched[1][ri][0])
+            if dims:
+                to_set["dimensions"] = dims
+                to_set["max_dimension"] = {
+                    "value": max(a["value"] for a in dims.values()),
+                    "unit": "mm",
+                }
+        if need_weight:
+            weight = _pick_weight([w for _, w in hits if w])
+            if weight:
+                to_set["weight"] = weight
         if to_set:
             updates.append((row, to_set))
     return updates
@@ -248,11 +327,11 @@ def run(args: argparse.Namespace) -> int:
     urls = sorted(groups, key=lambda u: -len(groups[u]))
     if args.limit is not None:
         urls = urls[: max(args.limit, 0)]
-    cached = sum(1 for u in urls if _cache_path(u).exists())
+    cached = sum(1 for u in urls if _is_cached(u))
     print(
         f"this run: {len(urls)} datasheets, {cached} cached, up to "
-        f"{(len(urls) - cached) * -(-args.max_pages // 4)} Gemini calls "
-        f"(max {args.max_pages} pages each, 4 per call)"
+        f"{(len(urls) - cached) * -(-args.max_pages // 4) * len(PASSES)} Gemini calls "
+        f"(max {args.max_pages} pages each, 4 per call, {len(PASSES)} readings)"
     )
     if args.plan:
         return 0
@@ -271,7 +350,8 @@ def run(args: argparse.Namespace) -> int:
         rec = extract_for_datasheet(
             url, groups[url], api_key, args.max_pages, args.refresh
         )
-        updates = plan_updates(groups[url], rec["extractions"])
+        passes = [rec.get("passes", {}).get(name, []) for name in PASSES]
+        updates = plan_updates(groups[url], passes)
         results = []
         for row, to_set in updates:
             outcome = apply_update(table, row, to_set) if args.apply else "planned"
@@ -279,7 +359,10 @@ def run(args: argparse.Namespace) -> int:
         with lock:
             stats["datasheets"] += 1
             stats["errors"] += rec["error"] is not None
-            stats["extractions"] += len(rec["extractions"])
+            stats["extractions"] += sum(len(p) for p in passes)
+            if not rec.get("cached"):
+                stats["tokens_in"] += rec["usage"]["input"]
+                stats["tokens_out"] += rec["usage"]["output"]
             stats["rows_matched"] += len(updates)
             stats["dims_filled"] += sum("dimensions" in u[1] for u in updates)
             stats["weight_filled"] += sum("weight" in u[1] for u in updates)
@@ -290,7 +373,7 @@ def run(args: argparse.Namespace) -> int:
                     "url": url,
                     "rows": len(groups[url]),
                     "pages": rec["pages"],
-                    "extractions": len(rec["extractions"]),
+                    "extractions": [len(p) for p in passes],
                     "matched": len(updates),
                     "error": rec["error"],
                 }
@@ -319,6 +402,13 @@ def run(args: argparse.Namespace) -> int:
         f"\ndatasheets={stats['datasheets']} errors={stats['errors']} "
         f"extractions={stats['extractions']} rows_matched={stats['rows_matched']} "
         f"dims_filled={stats['dims_filled']} weight_filled={stats['weight_filled']}"
+    )
+    cost = (
+        stats["tokens_in"] * USD_PER_M_INPUT + stats["tokens_out"] * USD_PER_M_OUTPUT
+    ) / 1e6
+    print(
+        f"gemini this run: {stats['tokens_in']:,} in + {stats['tokens_out']:,} out "
+        f"tokens ≈ ${cost:.2f}"
     )
     if args.apply:
         print(f"written={stats['written']} skipped_concurrent_edit={stats['conflict']}")
