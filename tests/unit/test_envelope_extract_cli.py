@@ -32,6 +32,7 @@ EX_SMALL = {
     "height": None,
     "weight": {"value": 2, "unit": "lb"},
     "page_number": 3,
+    "unverified": [],
 }
 
 
@@ -131,6 +132,28 @@ class TestPlanUpdates:
         updates = dict((r["SK"], s) for r, s in plan_updates(rows, [[EX_SMALL], [b]]))
         assert set(updates["PRODUCT#a"]) == {"weight"}
         assert set(updates["PRODUCT#b"]) == {"weight"}
+
+    def test_unverified_axis_discredits_reading_dims(self):
+        rows = [_row("a", part_number="AB042-005")]
+        b = {**EX_SMALL_B, "unverified": ["width"]}
+        ((_, to_set),) = plan_updates(rows, [[EX_SMALL], [b]])
+        assert "dimensions" not in to_set
+        assert to_set["weight"] == {"value": 0.9072, "unit": "kg"}
+
+    def test_unverified_weight_never_written(self):
+        rows = [_row("a", part_number="AB042-005")]
+        a = {**EX_SMALL, "unverified": ["weight"]}
+        b = {**EX_SMALL_B, "weight": None}
+        ((_, to_set),) = plan_updates(rows, [[a], [b]])
+        assert "weight" not in to_set and "dimensions" in to_set
+
+    def test_record_without_check_fails_closed(self):
+        rows = [_row("a", part_number="AB042-005")]
+        a = {k: v for k, v in EX_SMALL.items() if k != "unverified"}
+        b = {k: v for k, v in EX_SMALL_B.items() if k != "unverified"}
+        assert plan_updates(rows, [[a], [b]]) == []
+        junk = {**EX_SMALL, "unverified": "nope"}
+        assert plan_updates(rows, [[junk], [junk]]) == []
 
 
 @pytest.mark.unit

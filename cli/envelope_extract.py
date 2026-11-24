@@ -10,8 +10,11 @@ Two independent readings. Every datasheet is read twice (``PASSES``: the
 same pages, two differently-worded prompts). Weight is filled from the
 first reading that has one (weights read correctly in the 2026-11-24 audit),
 unless both readings carry a weight and they differ by more than 10%.
-Dimensions are filled only when both readings matched the row and agree
-within 10% on every axis, with the same axes (``match.agreed_dims``);
+Every value must also be printed on its page in line with the designator
+(same table row or column, ``match.value_in_line``) — two readings can
+share a misread, the PDF text layer cannot. Dimensions are filled only when
+both readings matched the row and agree within 10% on every axis, with the
+same axes (``match.agreed_dims``);
 anything else leaves them empty (Nick's policy, TODO.md
 ``envelope-dims-accuracy-policy``, option A).
 
@@ -65,7 +68,12 @@ from specodex.admin.envelope_migration import (
     to_dynamo,
 )
 from specodex.admin.operations import make_client
-from specodex.envelope.extract import PASSES, EnvelopeExtraction, extract_envelopes
+from specodex.envelope.extract import (
+    PASSES,
+    VERIFIED_FIELDS,
+    EnvelopeExtraction,
+    extract_envelopes,
+)
 from specodex.envelope.match import agreed_dims, match_rows, select_envelope_pages
 from specodex.page_finder import find_drawing_pages_scored
 from specodex.utils import get_document
@@ -74,7 +82,7 @@ logger = logging.getLogger(__name__)
 
 STAGES = ("dev", "staging", "prod")
 CACHE_DIR = Path("outputs/envelope_extract")
-CACHE_VERSION = 2
+CACHE_VERSION = 3
 WEIGHT_CONFLICT_TOL = 0.10
 # Gemini 2.5 Flash list price, USD per 1M tokens (thinking billed as output).
 # Used only for the printed estimate.
@@ -180,7 +188,7 @@ def extract_for_datasheet(
             found = extract_envelopes(
                 pdf, pages, api_key, variant=name, usage=record["usage"]
             )
-            record["passes"][name] = [e.model_dump(mode="json") for e in found]
+            record["passes"][name] = found
     except Exception as e:  # noqa: BLE001 — network / PDF / Gemini failures vary
         record["error"] = f"{type(e).__name__}: {e}"[:500]
     # Cache only clean outcomes (an empty extraction is clean). Download,
@@ -202,10 +210,16 @@ def _parse_pass(extractions: Any) -> List[Tuple[Optional[str], Payload]]:
             e = EnvelopeExtraction.model_validate(raw)
         except Exception:  # noqa: BLE001 — cached JSON from an older schema
             continue
-        dims = canonical_dimensions(
-            {"length": e.length, "width": e.width, "height": e.height}
-        )
-        weight = canonical_weight(e.weight)
+        # Fail closed: a record without the check counts as all-unverified.
+        unverified = raw.get("unverified")
+        if not isinstance(unverified, list):
+            unverified = list(VERIFIED_FIELDS)
+        axes = {"length": e.length, "width": e.width, "height": e.height}
+        # One axis not printed in line with the designator discredits the
+        # reading's whole envelope (it read some other column or computed).
+        dims_ok = not any(v is not None and k in unverified for k, v in axes.items())
+        dims = canonical_dimensions(axes) if dims_ok else None
+        weight = canonical_weight(e.weight) if "weight" not in unverified else None
         if dims is None and weight is None:
             continue
         parsed.append(

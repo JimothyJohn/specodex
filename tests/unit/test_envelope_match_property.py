@@ -18,6 +18,8 @@ from hypothesis import strategies as st
 from specodex.envelope.match import (
     agreed_dims,
     match_rows,
+    numbers_in,
+    value_in_line,
     normalize_designator,
     select_envelope_pages,
 )
@@ -189,3 +191,61 @@ def test_agreed_dims_scaled_axis(a, factor, axis):
     if abs(gap - 0.10) < 1e-9:
         return  # float boundary; pinned by the example test
     assert (agreed_dims(a, b) is not None) == (gap <= 0.10)
+
+
+_coord = st.floats(min_value=-50, max_value=900, allow_nan=False)
+_word = st.one_of(
+    st.tuples(
+        _coord,
+        _coord,
+        _coord,
+        _coord,
+        st.one_of(
+            st.text(max_size=10),
+            st.sampled_from(["ABR090", "AB", "090", "206.5", "□90", "5,5", "1e999"]),
+        ),
+        st.integers(0, 3),
+        st.integers(0, 3),
+        st.integers(0, 5),
+    ),
+    st.tuples(st.integers(), st.none()),  # malformed entries
+    st.none(),
+    st.text(max_size=3),
+)
+_value = st.one_of(
+    st.floats(),
+    st.integers(-10, 1000),
+    st.booleans(),
+    st.none(),
+    st.text(max_size=4),
+)
+
+
+@pytest.mark.unit
+@settings(max_examples=300)
+@given(
+    designator=_text,
+    value=_value,
+    words=st.one_of(st.none(), st.lists(_word, max_size=12)),
+)
+def test_value_in_line_contract(designator, value, words):
+    """Never raises; True only when the value is printed on some word."""
+    out = value_in_line(designator, value, words)
+    assert isinstance(out, bool)
+    if out:
+        assert isinstance(value, (int, float)) and not isinstance(value, bool)
+        assert math.isfinite(value)
+        printed = set()
+        for w in words:
+            if isinstance(w, tuple) and len(w) >= 5:
+                printed |= numbers_in(w[4])
+        assert any(abs(n - value) <= 1e-6 * max(1.0, abs(value)) for n in printed)
+
+
+@pytest.mark.unit
+@settings(max_examples=200)
+@given(st.one_of(st.text(max_size=20), st.none(), st.integers()))
+def test_numbers_in_contract(text):
+    out = numbers_in(text)
+    assert isinstance(out, set)
+    assert all(isinstance(n, float) and math.isfinite(n) and n >= 0 for n in out)

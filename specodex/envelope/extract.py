@@ -21,7 +21,7 @@ from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponen
 
 from specodex.config import GEMINI_HTTP_OPTIONS, MODEL
 from specodex.models.common import Length, Mass
-from specodex.envelope.match import designator_on_page
+from specodex.envelope.match import designator_on_page, value_in_line
 from specodex.models.llm_schema import to_gemini_schema
 from specodex.utils import parse_gemini_response
 
@@ -183,6 +183,31 @@ def page_text_layers(pdf_bytes: bytes, pages: List[int]) -> dict:
         doc.close()
 
 
+def page_words(pdf_bytes: bytes, pages: List[int]) -> dict:
+    """0-indexed page → its text-layer word boxes (``get_text("words")``)."""
+    import fitz
+
+    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+    try:
+        return {p: doc[p].get_text("words") for p in pages if 0 <= p < len(doc)}
+    finally:
+        doc.close()
+
+
+VERIFIED_FIELDS = ("length", "width", "height", "weight")
+
+
+def unverified_fields(e: EnvelopeExtraction, words: Any) -> List[str]:
+    """Fields with a value that is not printed in line with the designator
+    on its page (``match.value_in_line``); those are never written."""
+    out = []
+    for name in VERIFIED_FIELDS:
+        v = getattr(e, name)
+        if v is not None and not value_in_line(e.designator, v.value, words):
+            out.append(name)
+    return out
+
+
 def remap_pages(
     extractions: List[EnvelopeExtraction], page_numbers: List[int]
 ) -> List[EnvelopeExtraction]:
@@ -223,19 +248,23 @@ def extract_envelopes(
     api_key: str,
     variant: str = "a",
     usage: Optional[Dict[str, int]] = None,
-) -> List[EnvelopeExtraction]:
+) -> List[Dict[str, Any]]:
     """Extract envelopes from ``pages`` (0-indexed) of ``pdf_bytes``.
 
     One Gemini call per ``PAGES_PER_CALL`` chunk, with ``PROMPTS[variant]``.
     A chunk that yields nothing usable is a normal outcome, not an error.
     Every result's designator is checked against the text layer of the page
     it claims (``designator_on_page``); unverifiable labels are dropped.
-    Token counts are added into ``usage`` (``{"input", "output"}``) when given.
+    Returns JSON-ready dicts: the extraction plus ``"unverified"``, the
+    fields whose value is not printed in line with the designator
+    (``unverified_fields``). Token counts are added into ``usage``
+    (``{"input", "output"}``) when given.
     """
     prompt = PROMPTS[variant]
     schema = to_gemini_schema(EnvelopeExtraction, as_array=True, include_excluded=True)
     page_texts = page_text_layers(pdf_bytes, pages)
-    results: List[EnvelopeExtraction] = []
+    words = page_words(pdf_bytes, pages)
+    results: List[Dict[str, Any]] = []
     for start in range(0, len(pages), PAGES_PER_CALL):
         chunk = pages[start : start + PAGES_PER_CALL]
         subset = build_page_subset(pdf_bytes, chunk)
@@ -251,12 +280,17 @@ def extract_envelopes(
             logger.info("no envelope extractions on pages %s: %s", chunk, e)
             continue
         for e in remap_pages(parsed, chunk):
-            if designator_on_page(e.designator, page_texts.get(e.page_number)):
-                results.append(e)
-            else:
+            if not designator_on_page(e.designator, page_texts.get(e.page_number)):
                 logger.info(
                     "dropping unverifiable designator %r on page %d",
                     e.designator,
                     e.page_number,
                 )
+                continue
+            results.append(
+                {
+                    **e.model_dump(mode="json"),
+                    "unverified": unverified_fields(e, words.get(e.page_number)),
+                }
+            )
     return results

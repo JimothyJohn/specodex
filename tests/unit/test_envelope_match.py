@@ -7,6 +7,8 @@ import pytest
 from specodex.envelope.match import (
     agreed_dims,
     match_rows,
+    numbers_in,
+    value_in_line,
     normalize_designator,
     select_envelope_pages,
     token_prefixes,
@@ -217,3 +219,91 @@ class TestAgreedDims:
         for bad in (0, -5.0, float("nan"), float("inf"), True, "10", None):
             junk = {"length": {"value": bad, "unit": "mm"}}
             assert agreed_dims(junk, junk) is None
+
+
+# Word boxes copied from the text layer of the Apex AB/ABR catalog, page 11
+# (2-stage ABR dimension table): (x0, y0, x1, y1, text, block, line, word).
+ABR_WORDS = [
+    (57.9, 382.4, 97.7, 390.4, "Dimension", 0, 0, 0),
+    (223.0, 382.0, 253.0, 390.0, "ABR090", 86, 2, 0),
+    (268.0, 382.0, 302.0, 390.0, "ABR090A", 86, 8, 0),
+    (309.0, 382.0, 339.0, 390.0, "ABR115", 86, 3, 0),
+    (69.0, 457.0, 80.0, 465.0, "D7", 78, 1, 0),
+    (251.0, 457.0, 264.0, 464.0, "116", 37, 6, 0),  # merged ABR090|ABR090A cell
+    (337.0, 457.0, 350.0, 464.0, "152", 37, 7, 0),  # ABR115's D7
+    (69.0, 551.0, 78.0, 559.0, "L8", 66, 7, 0),
+    (229.0, 551.0, 248.0, 559.0, "206.5", 13, 7, 0),
+    (416.0, 253.0, 453.0, 261.0, "ABR090A", 125, 0, 2),  # drawing label
+]
+
+# A row-oriented spec table: model in the first column, values across.
+ROW_WORDS = [
+    (40.0, 100.0, 90.0, 108.0, "SGMGV-05D", 1, 0, 0),
+    (200.0, 100.0, 215.0, 108.0, "179", 1, 0, 1),
+    (260.0, 100.0, 272.0, 108.0, "□90", 1, 0, 2),
+    (300.0, 100.0, 312.0, 108.0, "5,5", 1, 0, 3),
+    (40.0, 120.0, 90.0, 128.0, "SGMGV-09D", 1, 1, 0),
+    (200.0, 120.0, 215.0, 128.0, "201", 1, 1, 1),
+    (40.0, 140.0, 60.0, 148.0, "AB", 2, 0, 0),
+    (62.0, 140.0, 80.0, 148.0, "090", 2, 0, 1),
+    (200.0, 140.0, 215.0, 148.0, "126.5", 2, 0, 2),
+]
+
+
+@pytest.mark.unit
+class TestNumbersIn:
+    def test_plain_decorated_and_comma_decimals(self):
+        assert numbers_in("206.5") == {206.5}
+        assert numbers_in("□90") == {90.0}
+        assert numbers_in("Ø80h7") == {80.0, 7.0}
+        assert 5.5 in numbers_in("5,5")
+        assert numbers_in("M8x1.25P") >= {8.0, 1.25}
+
+    def test_non_strings_and_empty(self):
+        for junk in (None, 5, "", "—", "N/A"):
+            assert numbers_in(junk) == set()
+
+
+@pytest.mark.unit
+class TestValueInLine:
+    def test_value_under_designator_column(self):
+        assert value_in_line("ABR090", 206.5, ABR_WORDS)
+
+    def test_neighbouring_column_rejected(self):
+        # Both Gemini readings put ABR115's 152 on ABR090.
+        assert not value_in_line("ABR090", 152, ABR_WORDS)
+        assert value_in_line("ABR115", 152, ABR_WORDS)
+
+    def test_merged_cell_spanning_designator_accepted(self):
+        assert value_in_line("ABR090", 116, ABR_WORDS)
+
+    def test_number_inside_model_code_never_counts(self):
+        # Gemini reading the frame size (090) as a length must not verify.
+        assert not value_in_line("ABR090", 90, ABR_WORDS)
+        assert not value_in_line("AB090 1-stage", 90, ROW_WORDS)
+
+    def test_value_not_printed_rejected(self):
+        # Pass b's invented 7.8 kg; and a computed sum L2+L8.
+        assert not value_in_line("ABR090", 7.8, ABR_WORDS)
+        assert not value_in_line("ABR090", 254.5, ABR_WORDS)
+
+    def test_value_in_designator_row(self):
+        assert value_in_line("SGMGV-05D", 179, ROW_WORDS)
+        assert value_in_line("SGMGV-05D", 90.0, ROW_WORDS)
+        assert value_in_line("SGMGV-05D", 5.5, ROW_WORDS)
+        assert not value_in_line("SGMGV-05D", 201, ROW_WORDS)
+        # 179 sits in SGMGV-05D's row; it is not in the 09D row or column.
+        assert not value_in_line("SGMGV-09D", 179, ROW_WORDS)
+
+    def test_qualifier_words_ignored_and_split_label_joined(self):
+        assert value_in_line("SGMGV-05D Without brake", 179, ROW_WORDS)
+        assert value_in_line("AB090 1-stage", 126.5, ROW_WORDS)
+
+    def test_designator_absent_or_junk(self):
+        assert not value_in_line("ZZ999", 179, ROW_WORDS)
+        for d in (None, "", "  ", 42):
+            assert not value_in_line(d, 179, ROW_WORDS)
+        for v in (None, float("nan"), float("inf"), True, "179"):
+            assert not value_in_line("SGMGV-05D", v, ROW_WORDS)
+        assert not value_in_line("SGMGV-05D", 179, [])
+        assert not value_in_line("SGMGV-05D", 179, None)

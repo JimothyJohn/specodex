@@ -38,7 +38,17 @@ from __future__ import annotations
 
 import math
 import re
-from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    Sequence,
+    Set,
+    Tuple,
+)
 
 _SEPARATORS = re.compile(r"[\s\-_./,()\[\]:;+#*]+")
 _TOKEN = re.compile(r"[A-Z]+|[0-9]+")
@@ -221,18 +231,150 @@ def designator_on_page(designator: Any, page_text: Any) -> bool:
     word under 3 characters or without a digit is too generic to verify,
     and a page with no text layer can't verify anything — both are False.
     """
-    if not isinstance(designator, str) or not isinstance(page_text, str):
+    if not isinstance(page_text, str):
         return False
+    head = _designator_head(designator)
+    return head is not None and head in normalize_designator(page_text)
+
+
+def _designator_head(designator: Any) -> Optional[str]:
+    """Normalised first word of a designator, or the first two when the
+    first is under 3 characters or has no digit; None if still too generic."""
+    if not isinstance(designator, str):
+        return None
     words = designator.split()
     if not words:
-        return False
+        return None
     head = normalize_designator(words[0])
     if len(head) < 3 or not any(c.isdigit() for c in head):
         # "R1 IP20" → first word too short; fall back to the first two.
         head = normalize_designator(" ".join(words[:2]))
         if len(head) < 3 or not any(c.isdigit() for c in head):
-            return False
-    return head in normalize_designator(page_text)
+            return None
+    return head
+
+
+_NUMBER = re.compile(r"\d+(?:[.,]\d+)?")
+# A table cell holding one number, optionally decorated (□90, Ø80, 4.3 kg).
+_CELL_NUMBER = re.compile(
+    r"[^0-9A-Za-z]*(\d+(?:[.,]\d+)?)\s*(?:mm|kg|g|lbs?|in|\")?[^0-9A-Za-z]*",
+    re.IGNORECASE,
+)
+_ALIGN_SLACK = 1.0  # PDF points
+
+
+def _as_numbers(token: str) -> Set[float]:
+    """``"5,5"`` is 5.5 in a European table and 55 in a US one: keep both."""
+    out: Set[float] = set()
+    for cand in {token.replace(",", "."), token.replace(",", "")}:
+        try:
+            v = float(cand)
+        except ValueError:
+            continue
+        if math.isfinite(v):
+            out.add(v)
+    return out
+
+
+def numbers_in(text: Any) -> Set[float]:
+    """Every unsigned decimal number printed in ``text`` (finite floats)."""
+    if not isinstance(text, str):
+        return set()
+    out: Set[float] = set()
+    for m in _NUMBER.findall(text):
+        out |= _as_numbers(m)
+    return out
+
+
+def _word_boxes(words: Any) -> List[Tuple[float, float, float, float, str, Any]]:
+    """Well-formed ``(x0, y0, x1, y1, text, line_key)``; junk entries skipped."""
+    out = []
+    if not isinstance(words, (list, tuple)):
+        return out
+    for i, w in enumerate(words):
+        if not isinstance(w, (list, tuple)) or len(w) < 5:
+            continue
+        box = w[:4]
+        if not all(
+            isinstance(c, (int, float)) and not isinstance(c, bool) and math.isfinite(c)
+            for c in box
+        ):
+            continue
+        if not isinstance(w[4], str):
+            continue
+        line_key = (w[5], w[6]) if len(w) >= 7 else ("word", i)
+        out.append(
+            (float(box[0]), float(box[1]), float(box[2]), float(box[3]), w[4], line_key)
+        )
+    return out
+
+
+def _overlaps(a0: float, a1: float, b0: float, b1: float) -> bool:
+    return a0 <= b1 + _ALIGN_SLACK and b0 <= a1 + _ALIGN_SLACK
+
+
+def value_in_line(designator: Any, value: Any, words: Any) -> bool:
+    """True when ``value`` is printed in the designator's table row or column.
+
+    ``words`` is a page's text layer as PyMuPDF ``get_text("words")`` tuples
+    ``(x0, y0, x1, y1, text, block, line, word)``. The designator is located
+    as one word, or up to three consecutive words on one line, whose
+    normalised text equals its head (``_designator_head``). The value must
+    be a word that is a single, optionally decorated number (``□90``,
+    ``Ø80``, ``206.5``, ``5,5``) equal to it, and that word's box must
+    overlap the designator's box horizontally (same column) or vertically
+    (same row). A number inside a model code (the ``090`` of ``AB090``)
+    never counts, nor does a word that is part of the located designator
+    (``AB`` ``090`` split across two words).
+
+    This is the independent check behind the agreement policy: two LLM
+    readings of a table can both shift one column (seen live: ABR115's 152
+    on ABR090), but a number from the wrong column is not in line with the
+    designator. Computed sums (L2 + L8) and unit conversions are never
+    printed, so they are withheld too. Never raises.
+    """
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return False
+    if not math.isfinite(value):
+        return False
+    head = _designator_head(designator)
+    if head is None:
+        return False
+    boxes = _word_boxes(words)
+    anchors = []
+    anchor_words: Set[int] = set()
+    for i in range(len(boxes)):
+        acc = ""
+        for j in range(i, min(i + 3, len(boxes))):
+            if boxes[j][5] != boxes[i][5]:
+                break
+            acc += normalize_designator(boxes[j][4])
+            if acc == head:
+                anchors.append(
+                    (
+                        min(b[0] for b in boxes[i : j + 1]),
+                        min(b[1] for b in boxes[i : j + 1]),
+                        max(b[2] for b in boxes[i : j + 1]),
+                        max(b[3] for b in boxes[i : j + 1]),
+                    )
+                )
+                anchor_words.update(range(i, j + 1))
+                break
+            if not head.startswith(acc):
+                break
+    if not anchors:
+        return False
+    tol = 1e-6 * max(1.0, abs(value))
+    for k, (x0, y0, x1, y1, text, _) in enumerate(boxes):
+        if k in anchor_words:
+            continue
+        m = _CELL_NUMBER.fullmatch(text.strip())
+        if not m or not any(abs(n - value) <= tol for n in _as_numbers(m.group(1))):
+            continue
+        for ax0, ay0, ax1, ay1 in anchors:
+            if _overlaps(x0, x1, ax0, ax1) or _overlaps(y0, y1, ay0, ay1):
+                return True
+    return False
 
 
 def select_envelope_pages(
