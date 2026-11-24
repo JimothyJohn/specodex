@@ -438,6 +438,20 @@ class TestProductSummary:
         # Specs are flat (not nested)
         assert "rated_power" in summary
 
+    def test_summary_carries_envelope(self):
+        motor = _make_motor()
+        assert "max_dimension" not in product_summary(motor)
+        motor = type(motor).model_validate(
+            {
+                **motor.model_dump(),
+                "dimensions": {"length": "179;mm", "width": "90;mm"},
+                "weight": "5.5;kg",
+            }
+        )
+        summary = product_summary(motor)
+        assert summary["max_dimension"].value == 179.0
+        assert summary["weight"].value == 5.5
+
     def test_drive_summary(self):
         drive = _make_drive()
         summary = product_summary(drive)

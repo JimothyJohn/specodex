@@ -105,6 +105,10 @@ SUMMARY_SPECS: dict[str, list[str]] = {
     ],
 }
 
+# Physical envelope, carried by every product type (mirrors the API's
+# ENVELOPE_SUMMARY_SPECS).
+ENVELOPE_SUMMARY_SPECS: list[str] = ["max_dimension", "weight"]
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -164,7 +168,7 @@ def product_summary(product: Any, *, omit_type: bool = False) -> dict:
     }
     if not omit_type:
         summary["product_type"] = ptype
-    for key in SUMMARY_SPECS.get(ptype, []):
+    for key in [*SUMMARY_SPECS.get(ptype, []), *ENVELOPE_SUMMARY_SPECS]:
         val = getattr(product, key, None)
         if val is not None:
             summary[key] = val

@@ -28,6 +28,7 @@ The global `~/.claude/rules/testing.md` checklist and the one-line rules in `CLA
 - **Guard every nested walk of vendor JSON.** The Stober parsers crashed on unhashable ids, truthy scalars where lists were documented, non-string keys, and bool/NaN floats (`float(True) == 1.0`); `_as_list`, `_text`, `_as_float` are the pattern.
 - **Non-finite floats reach the validators.** `math.floor(math.log10(x))` raises on ±inf/NaN and a finite overflow (`1e306 × 1e3`) hits the same path; short-circuit non-finite inputs before arithmetic.
 - **A coercer annotated `-> float | None` must be total.** `cli/query.py:extract_numeric` matched `[\d.]+` and handed `"1.2.3"` to `float()`; `Decimal("sNaN")` and `10**400` raised on the same path. Sorting touches every row's sort key, so one malformed value in a field nobody filtered on crashed the whole command. Collapse non-finite results to `None` too — NaN makes a `cmp_to_key` comparator non-transitive without raising.
+- **Two LLM readings are not independent.** `envelope-extract` read each table twice and both readings shifted the same column (ABR115's 152 on ABR090); agreement alone passed it. The independent check is the PDF text layer (`value_in_line`: printed in the designator's row or column). Its first example test also caught the label's own digits (`AB` `090`) counting as an in-line 90.
 - **Fail closed in redaction.** Re-run to a fixpoint (bounded), return a bare `[REDACTED]` if the cap is exhausted with a secret still present, and tie-break equal-length secrets lexicographically so the result is reproducible run to run.
 
 ## Coverage map
@@ -64,6 +65,6 @@ The global `~/.claude/rules/testing.md` checklist and the one-line rules in `CLA
 | `cli/query.py:extract_numeric` + `parse_where` + `parse_sort` + `apply_where` + `sort_products` + `text_score` (CLI query surface — the local twin of the MCP `where`/`sort` validation) | `test_query_property.py` | `test_query_cli.py` |
 | `specodex/mcp/api.py` argument validators (ids, types, where/sort clauses, limits, cursors) | `test_mcp_api_property.py` | `test_mcp_server.py` |
 | `ProductBase.dimensions` / `weight` / `max_dimension` envelope coercers (`specodex/models/product.py`) | `test_envelope_property.py` | `test_envelope.py`, `test_envelope_migration.py` |
-| `specodex/envelope/match.py` (`match_rows`, `select_envelope_pages`, `designator_on_page`) — LLM designators vs DB rows | `test_envelope_match_property.py`, `test_envelope_extract.py` (on branch `feat/envelope-extract-20261124` until Phase 2 ships) | `test_envelope_match.py` |
+| `specodex/envelope/match.py` (`match_rows`, `select_envelope_pages`, `designator_on_page`, `agreed_dims`, `value_in_line`, `numbers_in`) — LLM designators and values vs DB rows and the PDF text layer | `test_envelope_match_property.py` | `test_envelope_match.py`, `test_envelope_extract.py`, `test_envelope_extract_cli.py` |
 
 When a new untrusted-bytes surface lands, add its row here; don't leave the map stale for long.

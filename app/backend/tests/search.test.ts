@@ -289,6 +289,31 @@ describe('Search Service', () => {
       expect(summary.ip_rating).toBe(68);
     });
 
+    it('includes the physical envelope for every product type', () => {
+      const cylinder = {
+        product_id: 'cyl-1',
+        product_type: 'electric_cylinder',
+        manufacturer: 'Festo',
+        max_dimension: { value: 412, unit: 'mm' },
+        weight: { value: 2.3, unit: 'kg' },
+        dimensions: { length: { value: 412, unit: 'mm' } },
+      } as unknown as Product;
+      const summary = productSummary(cylinder);
+      expect(summary.max_dimension).toEqual({ value: 412, unit: 'mm' });
+      expect(summary.weight).toEqual({ value: 2.3, unit: 'kg' });
+      // The per-axis breakdown stays on the full record.
+      expect(summary.dimensions).toBeUndefined();
+      const motor = productSummary({ ...mockMotor, weight: { value: 1.1, unit: 'kg' } } as unknown as Product);
+      expect(motor.weight).toEqual({ value: 1.1, unit: 'kg' });
+      expect(motor.rated_power).toEqual({ value: 100, unit: 'W' });
+    });
+
+    it('omits envelope fields the product does not carry', () => {
+      const summary = productSummary(mockMotor);
+      expect('max_dimension' in summary).toBe(false);
+      expect('weight' in summary).toBe(false);
+    });
+
     it('includes relevance when provided', () => {
       const summary = productSummary(mockMotor, 90);
       expect(summary.relevance).toBe(90);
