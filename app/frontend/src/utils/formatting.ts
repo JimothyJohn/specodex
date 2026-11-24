@@ -255,9 +255,11 @@ export const formatValue = (
  *
  * Width is driven by the P90 of formatted-value lengths per column, so a
  * column adapts to whatever's in front of it without one freak outlier
- * (a 60-char free-text spec) blowing out every row. Header label length
- * is the floor — column titles never get truncated. Per-column min/max
- * clamps stop pathologically narrow or wide columns.
+ * (a 60-char free-text spec) blowing out every row. The header label
+ * WRAPS (see .column-header-label-text) and only its longest single
+ * word floors the width — a multi-word title never widens a column of
+ * short values. Per-column min/max clamps stop pathologically narrow or
+ * wide columns.
  *
  * Returns a map of `key → px width`. Manual user resizes (tracked in
  * the parent state) win over these defaults; the caller decides how to
@@ -299,15 +301,24 @@ export const computeAutoColumnWidths = (
   const minPx = density === 'compact' ? 40 : 60;
 
   // Header labels render in the fixed 0.72rem Oswald + 0.16em tracking
-  // of .column-header-label-text (density-independent), which is wider
-  // per glyph than the body cells charPx measures. Floor each column at
-  // its longest header WORD in those metrics — multi-word labels wrap
-  // cleanly at spaces, but a single long word ("MANUFACTURER") must fit
-  // on one line or the browser breaks it mid-word ("MANUFACT/URER"),
-  // which reads like a layout bug. 8px ≈ glyph + tracking; 44px ≈ sort
-  // arrow + remove-X + header padding sharing the label's row.
-  const headerCharPx = 9;
-  const headerChromePx = 44;
+  // of .column-header-label-text (density-independent). Floor each
+  // column at its longest header WORD in those metrics — multi-word
+  // labels wrap at spaces (the header grows a line or two, which is
+  // cheap), but a single long word ("MANUFACTURER") should fit on one
+  // line so hyphens:auto is the exception, not the norm. Until
+  // 2026-09-13 the FULL label length was also folded into `chars`, so
+  // "Input Voltage Phases" forced a 172px column over one-character
+  // data and every column read wide.
+  //
+  // Metrics measured in-browser on 2026-09-13 (canvas measureText on
+  // the computed 600 11.52px Oswald, letter-spacing 1.84px): glyphs
+  // average 6.2px, so ~8px per character with tracking; the label box
+  // is the column width minus 51px of cell padding, sort indicator and
+  // hide-X. 8.2 / 54 leave a couple of px of slack for wide glyphs
+  // ("CURRENT" is 6.1/char, "MANUFACTURER" 6.2). The previous 9 / 44
+  // guess broke "MANUFACTURER" as "MANUFACTURE / R" at 152px.
+  const headerCharPx = 8.2;
+  const headerChromePx = 54;
 
   const widths: Record<string, number> = {};
   for (const col of columns) {
@@ -320,9 +331,7 @@ export const computeAutoColumnWidths = (
 
     const pIdx = Math.max(0, Math.min(lengths.length - 1,
       Math.floor(lengths.length * percentile)));
-    const dataChars = lengths.length > 0 ? lengths[pIdx] : 0;
-    const headerChars = col.displayName.length;
-    const chars = Math.max(dataChars, headerChars);
+    const chars = lengths.length > 0 ? lengths[pIdx] : 0;
 
     const longestHeaderWord = col.displayName
       .split(/\s+/)

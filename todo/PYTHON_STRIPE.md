@@ -195,6 +195,7 @@ SDK does ship one:
 
 ```python
 import stripe
+
 event = stripe.Webhook.construct_event(
     payload=raw_body,
     sig_header=request_headers["stripe-signature"],

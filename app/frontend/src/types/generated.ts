@@ -1004,6 +1004,204 @@ export interface Gearhead {
   lubrication_type?: string | null;
 }
 /**
+ * Inductive proximity sensor — a non-contact switch that detects
+ * metallic targets by the damping of an oscillating field at its
+ * sensing face (IEC 60947-5-2).
+ *
+ * Covers switching sensors (DC 2/3/4-wire, AC and AC/DC 2-wire, NAMUR)
+ * and distance-proportional analog variants, in threaded-barrel, smooth
+ * barrel, rectangular, ring and slot housings.
+ */
+export interface InductiveSensor {
+  /**
+   * Unique identifier (auto-generated)
+   */
+  product_id?: string;
+  product_type?: "inductive_sensor";
+  /**
+   * Product name
+   */
+  product_name: string;
+  /**
+   * Product family or sub-series
+   */
+  product_family?: string | null;
+  /**
+   * Part number
+   */
+  part_number?: string | null;
+  /**
+   * Manufacturer name
+   */
+  manufacturer: string;
+  release_year?: number | null;
+  dimensions?: Dimensions | null;
+  weight?: ValueUnit | null;
+  msrp?: ValueUnit | null;
+  /**
+   * URL the MSRP was scraped from. Populated by price-enrich.
+   */
+  msrp_source_url?: string | null;
+  /**
+   * ISO 8601 timestamp when MSRP was last fetched.
+   */
+  msrp_fetched_at?: string | null;
+  /**
+   * Stock availability observed at a distributor, mapped from schema.org ItemAvailability. This is a per-seller, point-in-time snapshot — NOT an intrinsic product lead time (no honest public numeric lead time exists per part). Read it with availability_source_url + availability_fetched_at for provenance; it goes stale. Populated by availability-enrich.
+   */
+  availability?: ("in_stock" | "back_order" | "out_of_stock" | "pre_order" | "limited" | "discontinued") | null;
+  /**
+   * URL the availability status was scraped from.
+   */
+  availability_source_url?: string | null;
+  /**
+   * ISO 8601 timestamp when availability was last fetched.
+   */
+  availability_fetched_at?: string | null;
+  /**
+   * Inferred price when no listed msrp exists. Computed by specodex.pricing.inference from DB comparables — never LLM-extracted (see llm_schema.EXCLUDED_FIELDS). Kept distinct from msrp so an estimate can never masquerade as a listed price; carries its confidence tier and comparable citations.
+   */
+  price_estimate?: SourcedFigure | null;
+  /**
+   * Inferred lead time (e.g. {'value': 6, 'unit': 'weeks'}) with confidence + citations. Computed, never LLM-extracted. The stocked signal itself lives in `availability`; this field covers published vendor/family lead-time statements and their provenance.
+   */
+  lead_time_estimate?: SourcedFigure | null;
+  warranty?: ValueUnit | null;
+  /**
+   * Expected delivery / lead time for the product. Typically a ValueUnit with unit='days' (e.g. {'value': 30, 'unit': 'days'}). Sourced from manufacturer or distributor data, not the datasheet.
+   */
+  lead_time?: ValueUnit | null;
+  /**
+   * URL of the source datasheet
+   */
+  datasheet_url?: string | null;
+  /**
+   * 1-indexed PDF pages where this product's specs were found. Used for #page=N deep-linking.
+   */
+  pages?: number[] | null;
+  /**
+   * Housing form factor. Threaded metric barrels (M5…M30) are 'cylindrical_threaded'; plain Ø3 / Ø4 / Ø6.5 barrels are 'cylindrical_smooth'; block / cubic / flat-pack bodies are 'rectangular'.
+   */
+  type?: ("cylindrical_threaded" | "cylindrical_smooth" | "rectangular" | "ring" | "slot") | null;
+  series?: string | null;
+  /**
+   * Housing size designation, normalised: thread as 'M12' / 'M18' (drop the pitch — 'M18 x 1' → 'M18'), smooth barrels as 'Ø6.5', rectangular bodies as the face in mm, e.g. '40x40'.
+   */
+  housing_size?: string | null;
+  /**
+   * Overall housing length along the sensing axis (mm).
+   */
+  housing_length?: ValueUnit | null;
+  /**
+   * Housing (body) material as printed, e.g. 'Nickel-plated brass', 'Stainless steel V4A (1.4404)', 'PBT'.
+   */
+  housing_material?: string | null;
+  /**
+   * Material of the active sensing face, e.g. 'PBT', 'LCP', 'Stainless steel'. Distinct from the housing material.
+   */
+  sensing_face_material?: string | null;
+  /**
+   * Nominal (rated) sensing distance Sn (mm). Printed as 'Sensing range Sn', 'Rated operating distance', 'Nominal switching distance', 'Detecting distance' or 'Operating distance'. The headline figure — never the assured / setting distance.
+   */
+  sensing_distance?: ValueUnit | null;
+  /**
+   * Upper bound of the assured / safe / setting distance Sa (mm) — the gap at which switching is guaranteed across tolerance and temperature. Printed as 'Safe sensing range Sa', 'Assured operating distance' or 'Setting distance'; for a range like '0 … 6.48 mm' store 6.48. Only when printed — do not compute it from Sn.
+   */
+  assured_sensing_distance?: ValueUnit | null;
+  /**
+   * Installation in metal. 'flush' = flush / shielded / embeddable; 'non_flush' = non-flush / not flush / unshielded / non-shielded / non-embeddable; 'quasi_flush' = quasi-flush / quasi-shielded / semi-flush.
+   */
+  mounting?: ("flush" | "non_flush" | "quasi_flush") | null;
+  /**
+   * Maximum switching frequency, always in Hz (1.5 kHz → 1500 Hz). Also printed as 'Response frequency'. For AC/DC parts with two values, the DC value.
+   */
+  switching_frequency?: ValueUnit | null;
+  /**
+   * Maximum switching hysteresis / differential travel as a percentage of the sensing distance (unit '%'). For a range like '3 … 20 %' store the upper bound.
+   */
+  hysteresis?: ValueUnit | null;
+  /**
+   * Repeat accuracy / reproducibility, as printed — usually a percentage of the real sensing distance (unit '%').
+   */
+  repeatability?: ValueUnit | null;
+  /**
+   * Output stage. 'pnp_npn' = selectable / auto-detecting PNP or NPN; 'two_wire' = polarity-free or polarised 2-wire load-in-series switch (DC, AC or AC/DC); 'namur' = EN 60947-5-6 2-wire current output; analog_* = distance-proportional 0–10 V / 4–20 mA output.
+   */
+  output_type?: ("pnp" | "npn" | "pnp_npn" | "push_pull" | "two_wire" | "namur" | "analog_voltage" | "analog_current") | null;
+  /**
+   * Switching function. 'no' = normally open / make; 'nc' = normally closed / break; 'complementary' = NO + NC antivalent (4-wire); 'programmable' = NO/NC selectable by wiring or IO-Link.
+   */
+  output_function?: ("no" | "nc" | "complementary" | "programmable") | null;
+  /**
+   * Electrical wiring system.
+   */
+  wiring?: ("dc_2_wire" | "dc_3_wire" | "dc_4_wire" | "ac_2_wire" | "ac_dc_2_wire") | null;
+  /**
+   * True when the part has an IO-Link interface.
+   */
+  io_link?: boolean | null;
+  /**
+   * Supply / operating voltage range (V). Printed as 'Supply voltage', 'Operating voltage UB', 'Power supply voltage'. Use the full operating range when both a rated and an operating range are printed.
+   */
+  supply_voltage?: MinMaxUnit | null;
+  /**
+   * Maximum continuous output (load) current. Printed as 'Continuous current Ia', 'Rated operating current Ie', 'Max. output current', 'Control output … mA max.'.
+   */
+  max_load_current?: ValueUnit | null;
+  /**
+   * Minimum load current needed for reliable switching — 2-wire sensors only (the '3' in 'Control output 3 to 100 mA').
+   */
+  min_load_current?: ValueUnit | null;
+  /**
+   * Supply current drawn with the output unloaded. Printed as 'No-load current' or 'Current consumption'. 3- and 4-wire sensors; for 2-wire sensors use leakage_current instead.
+   */
+  no_load_current?: ValueUnit | null;
+  /**
+   * Off-state current through the load. Printed as 'Leakage current', 'Residual current' or 'Off-state current Ir'.
+   */
+  leakage_current?: ValueUnit | null;
+  /**
+   * Maximum on-state voltage drop across the output. Printed as 'Voltage drop Ud' or 'Residual voltage'.
+   */
+  voltage_drop?: ValueUnit | null;
+  /**
+   * True when the output is short-circuit protected.
+   */
+  short_circuit_protection?: boolean | null;
+  /**
+   * True when the supply is reverse-polarity protected.
+   */
+  reverse_polarity_protection?: boolean | null;
+  /**
+   * Electrical connection. 'pigtail' = short cable ending in a connector; 'terminals' = terminal compartment.
+   */
+  connection?: ("cable" | "connector_m8" | "connector_m12" | "pigtail" | "terminals") | null;
+  /**
+   * Pin count of the connector (3 or 4), when it has one.
+   */
+  connector_pins?: number | null;
+  /**
+   * Length of the attached cable or pigtail (m).
+   */
+  cable_length?: ValueUnit | null;
+  /**
+   * Ambient operating temperature range (°C).
+   */
+  operating_temp?: MinMaxUnit | null;
+  /**
+   * Highest plain-numeric IP rating claimed (e.g. 67, 68). Stated as 'Enclosure rating', 'Degree of protection', 'Protection degree'. Not the electrical protection class (II / III).
+   */
+  ip_rating?: number | null;
+  /**
+   * Every ingress rating listed, as printed — e.g. ['IP67', 'IP68', 'IP69K']. Carries the lettered ratings ip_rating cannot.
+   */
+  protection_ratings?: string[] | null;
+  /**
+   * Maximum tightening torque of the mounting nuts (Nm).
+   */
+  tightening_torque?: ValueUnit | null;
+}
+/**
  * Defines the specifications for a single robot joint.
  */
 export interface JointSpecs {
@@ -1234,7 +1432,7 @@ export interface Manufacturer {
   /**
    * List of product types offered (e.g., 'motor', 'drive')
    */
-  offered_product_types?: ("motor" | "drive" | "gearhead" | "robot_arm" | "contactor" | "electric_cylinder" | "linear_actuator")[] | null;
+  offered_product_types?: ("motor" | "drive" | "gearhead" | "robot_arm" | "contactor" | "electric_cylinder" | "linear_actuator" | "inductive_sensor")[] | null;
 }
 /**
  * A Pydantic model representing the specifications of a motor.
@@ -1352,7 +1550,7 @@ export interface ProductBase {
   /**
    * Type of product (e.g., 'motor', 'drive')
    */
-  product_type: "motor" | "drive" | "gearhead" | "robot_arm" | "contactor" | "electric_cylinder" | "linear_actuator";
+  product_type: "motor" | "drive" | "gearhead" | "robot_arm" | "contactor" | "electric_cylinder" | "linear_actuator" | "inductive_sensor";
   /**
    * Product name
    */
@@ -1625,6 +1823,7 @@ export const PRODUCT_TYPES = [
   "drive",
   "electric_cylinder",
   "gearhead",
+  "inductive_sensor",
   "linear_actuator",
   "motor",
   "robot_arm",
@@ -1637,4 +1836,4 @@ export type ProductTypeLiteral = (typeof PRODUCT_TYPES)[number];
 // subclass under specodex/models/). Discriminator is the
 // ``product_type`` literal on each interface.
 // ─────────────────────────────────────────────────────────────
-export type Product = Contactor | Drive | ElectricCylinder | Gearhead | LinearActuator | Motor | RobotArm;
+export type Product = Contactor | Drive | ElectricCylinder | Gearhead | InductiveSensor | LinearActuator | Motor | RobotArm;

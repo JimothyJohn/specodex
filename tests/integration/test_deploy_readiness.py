@@ -9,6 +9,7 @@ Run: uv run pytest tests/integration/test_deploy_readiness.py -v
 """
 
 import json
+import os
 import subprocess
 import re
 from pathlib import Path
@@ -133,6 +134,7 @@ class TestConfigConsistency:
             "contactor",
             "electric_cylinder",
             "linear_actuator",
+            "inductive_sensor",
         ]:
             assert f'"{t}"' in generated_content, (
                 f"generated_constants.ts missing product type '{t}' — "
@@ -222,6 +224,91 @@ class TestConfigConsistency:
         # Both should use `products-{stage}` pattern
         assert "products-" in backend_config
         assert "products-" in cdk_config
+
+
+@pytest.mark.integration
+class TestInfrastructureBuild:
+    """CDK infrastructure compiles the way `cdk deploy` will compile it.
+
+    Deploy Staging runs only on push to dev, never on a PR, so a break in
+    app/infrastructure/ is invisible until after merge. Two Dependabot
+    bumps have landed that way: a source-map-support type regression
+    (fixed in PR #414) and TypeScript 7 in the infrastructure workspace,
+    whose `typescript` package no longer exposes the JavaScript compiler
+    API that ts-node (cdk.json's `app` command) requires. Both surface
+    here, at PR time.
+    """
+
+    def test_typescript_compiles(self):
+        result = subprocess.run(
+            ["npx", "tsc", "--noEmit", "-p", "."],
+            cwd=str(INFRA),
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        assert result.returncode == 0, (
+            f"Infrastructure tsc failed:\n{result.stdout}\n{result.stderr}"
+        )
+
+    def test_ts_node_can_load_compiler(self):
+        """ts-node must be able to bootstrap against the installed `typescript`.
+
+        TypeScript 7's `typescript` package is the native compiler and has
+        no `ts.sys` / Program API; ts-node 10 crashes on startup unless
+        pointed at a JS-hosted compiler via TS_NODE_COMPILER, same as
+        cdk.json's `app` command does.
+        """
+        result = subprocess.run(
+            ["npx", "ts-node", "-e", "0"],
+            cwd=str(INFRA),
+            capture_output=True,
+            text=True,
+            timeout=120,
+            env={**os.environ, "TS_NODE_COMPILER": "@typescript/typescript6"},
+        )
+        assert result.returncode == 0, (
+            "ts-node cannot bootstrap in app/infrastructure — is `typescript` "
+            f"there still a JS-API compiler (6.x)?\n{result.stdout}\n{result.stderr}"
+        )
+
+
+@pytest.mark.integration
+class TestLambdaBundleResolves:
+    """The backend Lambda bundle manifest resolves with a fresh npm.
+
+    `./Quickstart deploy` generates a non-workspace lockfile in
+    app/backend/dist/ from `lambda_bundle_manifest(backend/package.json)`.
+    That resolve runs only inside Deploy Staging (push to dev), so a
+    manifest npm cannot resolve is invisible on a PR. Do the same
+    resolve here, in a temp dir, so it fails at PR time.
+    """
+
+    def test_manifest_resolves_with_fresh_npm(self, tmp_path):
+        from cli.quickstart import lambda_bundle_manifest
+
+        manifest = lambda_bundle_manifest(
+            json.loads((BACKEND / "package.json").read_text())
+        )
+        (tmp_path / "package.json").write_text(json.dumps(manifest))
+        result = subprocess.run(
+            [
+                "npm",
+                "install",
+                "--package-lock-only",
+                "--ignore-scripts",
+                "--no-audit",
+                "--no-fund",
+            ],
+            cwd=str(tmp_path),
+            capture_output=True,
+            text=True,
+            timeout=180,
+        )
+        assert result.returncode == 0, (
+            f"npm cannot resolve the Lambda bundle manifest:\n{result.stderr}"
+        )
+        assert (tmp_path / "package-lock.json").exists()
 
 
 # =================== Infrastructure Files ===================

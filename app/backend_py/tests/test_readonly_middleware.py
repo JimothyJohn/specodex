@@ -77,6 +77,23 @@ class TestPublicModeAllows:
         resp = public_client.post("/api/upload", json={})
         assert resp.status_code != 403
 
+    def test_post_to_compat_check_passes(self, public_client: TestClient) -> None:
+        # Read-only computation that uses POST for its body. Must reach
+        # the route (422 for the empty body), not the guard's 403.
+        # Parity with readonly.test.ts "POST /v1/compat/check passes".
+        for path in ("/api/v1/compat/check", "/api/v2/v1/compat/check"):
+            resp = public_client.post(path, json={})
+            assert resp.status_code != 403, path
+
+    def test_compat_exemption_is_exact_match(self, public_client: TestClient) -> None:
+        for path in (
+            "/api/v1/compat",
+            "/api/v1/compat/adjacent",
+            "/api/v1/compat/checkother",
+            "/api/v1/compat/check/extra",
+        ):
+            assert public_client.post(path, json={}).status_code == 403, path
+
     def test_post_to_auth_prefix_passes(self, public_client: TestClient) -> None:
         resp = public_client.post("/api/auth/login", json={})
         assert resp.status_code != 403

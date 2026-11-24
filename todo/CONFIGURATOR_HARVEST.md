@@ -132,6 +132,13 @@ wrong, configurator says X").
   follow-up:* an endpoint-map drift test that re-derives routes from the
   SPA bundle (fails when Stober redeploys) — the fixture tests pin the
   response contract but not the route strings.
+  **Parser hardening 2026-09-02:** `tests/unit/test_configurators_property.py`
+  (Hypothesis companion, per CLAUDE.md "Property testing — adversarial by
+  default") caught four crashes/contract violations in the pure parsers on
+  malformed vendor payloads — unhashable `filterId`, a non-list
+  `parameters`/`filters`, non-string ids/names/option keys, and bool /
+  non-finite numeric bounds. Fixed in the same PR; the parsers are now
+  total over JSON-shaped input.
 - **P1 — Stober forward path.** Requirements → `bestMatchProduct` +
   order code. The best-match handshake is two-step (set a filter, then
   set `findBestMatchBy` before `bestMatchProduct` populates) — capture it

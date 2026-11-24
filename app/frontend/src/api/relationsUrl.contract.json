@@ -1,0 +1,20 @@
+{
+  "_comment": "Exact URLs the /build page fetches. relationsUrl.test.ts pins these to buildRelationsUrl(); app/backend_py/tests/test_relations_frontend_contract.py replays them against FastAPI (Express imports buildRelationsUrl directly). Change the builder and this file together.",
+  "cases": [
+    {
+      "relation": "motors-for-actuator",
+      "source": { "product_id": "0a69acc3-1275-53ff-9ac4-52d1fb2fecbe", "product_type": "linear_actuator" },
+      "url": "/api/v1/relations/motors-for-actuator?id=0a69acc3-1275-53ff-9ac4-52d1fb2fecbe&type=linear_actuator"
+    },
+    {
+      "relation": "drives-for-motor",
+      "source": { "product_id": "5b9f4c2e-8d1a-4e6b-9c3f-2a7d1e0b4c88", "product_type": "motor" },
+      "url": "/api/v1/relations/drives-for-motor?id=5b9f4c2e-8d1a-4e6b-9c3f-2a7d1e0b4c88"
+    },
+    {
+      "relation": "gearheads-for-motor",
+      "source": { "product_id": "5b9f4c2e-8d1a-4e6b-9c3f-2a7d1e0b4c88", "product_type": "motor" },
+      "url": "/api/v1/relations/gearheads-for-motor?id=5b9f4c2e-8d1a-4e6b-9c3f-2a7d1e0b4c88"
+    }
+  ]
+}

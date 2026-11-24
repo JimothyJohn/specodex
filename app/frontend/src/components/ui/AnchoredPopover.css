@@ -1,0 +1,15 @@
+/* AnchoredPopover — square-bordered card on the popover z-layer. Same
+ * surface vocabulary as SourcePopover / the multi-select popover so
+ * every floating panel reads as one family. */
+
+.anchored-popover {
+  display: flex;
+  flex-direction: column;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.32);
+  z-index: var(--z-popover);
+  font-family: var(--font-mono);
+  overflow-y: auto;
+  box-sizing: border-box;
+}

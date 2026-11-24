@@ -25,9 +25,20 @@ logger = logging.getLogger(__name__)
 
 _ALLOWED_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
 
-# Paths exempt from readonly — these only queue work, they don't
-# mutate existing data.
-_WRITE_ALLOWED_PATHS = frozenset({"/api/upload", "/api/upload/"})
+# Paths exempt from readonly — these only queue work or compute, they
+# don't mutate existing data. The compat check is a read-only pairwise
+# computation that uses POST solely to carry a body ({a, b} product
+# refs); Express exempts it too (readonly.ts), and without it the
+# product card's "Check compatibility" is a 403 on a public deploy.
+# Exact match, same as Express: sibling compat paths stay blocked.
+_WRITE_ALLOWED_PATHS = frozenset(
+    {
+        "/api/upload",
+        "/api/upload/",
+        "/api/v1/compat/check",
+        "/api/v1/compat/check/",
+    }
+)
 
 # Path prefixes exempt from readonly. Auth endpoints (register,
 # login, password reset) need POST in public mode but don't mutate

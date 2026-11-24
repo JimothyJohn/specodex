@@ -66,14 +66,14 @@
                 <span class="column-code">BACKLOG</span>
                 <h2 class="column-title">Backlog</h2>
                 <p class="column-blurb">Queued behind the row above.</p>
-                <span class="column-count">10</span>
+                <span class="column-count">11</span>
             </header>
             <ol class="kanban-stack">
                 <li>
                     <a class="kanban-card" href="roadmap/build.html">
                         <div class="card-head">
                             <span class="card-source">todo/BUILD.md</span>
-                            <span class="status-chip status-backlog">🚧 PR 1A NEARLY DONE: `COMPATIBLE_ACTUATORS` (#247) + EXPRESS `/API/V1/RELATIONS/ACTUATORS` (#262). 1A REMAINDER: `_DISTRIBUTION_POSITION` HISTOGRAM BLOCK. THEN 1B STRIP-DOWN → 1C PAGE → 1D REDIRECT</span>
+                            <span class="status-chip status-backlog">🚧 PR 1A SHIPPED END-TO-END: `COMPATIBLE_ACTUATORS` (#247), `/API/V1/RELATIONS/ACTUATORS` ON EXPRESS (#262), `_DISTRIBUTION_POSITION` BLOCK (`RELATIONS.TS:ATTACHSTROKEDISTRIBUTIONPOSITIONS`), AND THE V2 (FASTAPI) MIRROR (#440). 1B/1C PARTLY SHIPPED OUT OF BAND; 1D REDIRECT HALF SHIPPED #444. REMAINING: THE BUILDTRAY → SYSTEMSUMMARY ABSORPTION, WHICH NEEDS THE `BUILD_SLOTS` REORDER + AN ACTUATOR↔MOTOR COMPAT RULE — PRODUCT WORK, HUMAN CALL. SEE BUILD.MD &quot;STATUS RECONCILIATION, 2026-09-19&quot;</span>
                         </div>
                         <h3 class="card-title">BUILD — requirements-first system assembler</h3>
                         <p class="card-summary">The third page in Specodex's user-facing hierarchy, and the one the rest of the application is meant to point at. Today the catalog has two surfaces: Selection (/, the filterable component browser) and Actuators (/actuators, a Linear-Motion supercategory…</p>
@@ -106,10 +106,10 @@
                     <a class="kanban-card" href="roadmap/hardening.html">
                         <div class="card-head">
                             <span class="card-source">todo/HARDENING.md</span>
-                            <span class="status-chip status-backlog">⏳ SEARCH HALF #246; ROUTES + CONTRACT ROUND-TRIP 2026-06-10. REMAINING: 13 MOCKED-TEST SWEEP + CI `--INTEGRATION` WIRING</span>
+                            <span class="status-chip status-backlog">⏳ 15 REAL-DAL SUITES SHIPPED (#246 → #441, `SUBSCRIPTION` #451). MIGRATION WORK IS DONE — THE MOCKED-TEST SWEEP IS EMPTY. ONLY THE CI `--INTEGRATION` WIRING REMAINS, AND IT GATES THE VALUE OF ALL 15 (CI RUNS NONE TODAY); TOUCHES `.GITHUB/WORKFLOWS/` → HUMAN PR. SEE §2.2</span>
                         </div>
                         <h3 class="card-title">HARDENING — adversarial-by-default testing posture</h3>
-                        <p class="card-summary">Audit date: 2026-05-09 Status (post-2026-05-10 sprint): 10 of 14 findings shipped; 4 remain.</p>
+                        <p class="card-summary">Audit date: 2026-05-09 Status (reconciled 2026-10-24): 11 of 14 findings shipped; 3 remain (2.2 partial, 3.2, 4.2). 2.2's migration work is now complete — the mocked-test sweep turned out to be empty — so all that is left of it, like 4.2, is a…</p>
                     </a>
                 </li>
 
@@ -175,7 +175,18 @@
                             <span class="status-chip status-backlog">⚪ QUEUED (MULTI-DAY, NEEDS HUMAN PR FOR BUILD CONFIG)</span>
                         </div>
                         <h3 class="card-title">SEO plan: make Specodex the answer when an engineer searches a part number</h3>
-                        <p class="card-summary">Status: 🚧 in progress. Phase 0 metadata foundation shipped 2026-04-28 (robots.txt, static sitemap, OG/Twitter cards, JSON-LD WebSite + Organization, canonical URL). The structural lifts — SPA crawlability, per-product titles/meta, dynamic sitemap,…</p>
+                        <p class="card-summary">Status: 🚧 in progress. Phase 0 metadata foundation shipped 2026-09-13 (robots.txt, static sitemap, OG/Twitter cards, JSON-LD WebSite + Organization, canonical URL) — the 2026-04-28 entry below recorded the index.html half as shipped, but it never reached…</p>
+                    </a>
+                </li>
+
+                <li>
+                    <a class="kanban-card" href="roadmap/ui-cleanup.html">
+                        <div class="card-head">
+                            <span class="card-source">todo/UI_CLEANUP.md</span>
+                            <span class="status-chip status-backlog">BACKLOG</span>
+                        </div>
+                        <h3 class="card-title">UI_CLEANUP — de-crowd and de-jank the catalog UI</h3>
+                        <p class="card-summary">The Bauhaus port (todo/BAUHAUS.md, May 2026) got the vocabulary right — the detail modal is clean and is the reference surface. What's crowded is the catalog table header: every column permanently carries six controls (histogram, two-thumb slider, any…</p>
                     </a>
                 </li>
             </ol>

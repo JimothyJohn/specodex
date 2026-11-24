@@ -15,6 +15,7 @@ from pathlib import Path
 
 import pytest
 
+import specodex.pricing.shopping as shopping_mod
 from specodex.pricing.shopping import (
     ShoppingOffer,
     _parse_offers,
@@ -152,8 +153,6 @@ class TestShoppingPrice:
         # first "Not enough credits" 400 must disable the tier for the
         # rest of the process.
         import httpx
-
-        import specodex.pricing.shopping as shopping_mod
 
         shopping_mod.reset_circuit_breaker()
         monkeypatch.setenv("SERPER_API_KEY", "test-key-not-real")

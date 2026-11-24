@@ -190,6 +190,112 @@ def test_duplicate_filter_ids_deduped() -> None:
 
 
 # ---------------------------------------------------------------------------
+# Regression cases for the four bugs Hypothesis surfaced (2026-09-02).
+# The property companion (``test_configurators_property.py``) pins the
+# contract; these pin the exact payload shapes so they can't regress even
+# if the strategies drift.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("bad_id", [{}, {"a": 1}, [], [1], frozenset({1})])
+def test_unhashable_filter_id_is_skipped_not_raised(bad_id) -> None:
+    """``FILTER_TO_GEARHEAD_FIELD.get(filter_id)`` raised TypeError."""
+    payload = [{"parameters": [{"filterId": bad_id, "$type": "ParameterDoubleValue"}]}]
+    assert parse_requirements(payload) == []
+    sel = parse_group_selection(
+        {"productGroupFilters": [{"filters": payload[0]["parameters"]}]}
+    )
+    assert sel.requirements == []
+
+
+@pytest.mark.parametrize("scalar", [True, False, 0, 1, 1.5, "x"])
+def test_non_list_parameters_is_skipped_not_raised(scalar) -> None:
+    """``group.get("parameters") or []`` raised TypeError on truthy scalars."""
+    assert parse_requirements([{"parameters": scalar}]) == []
+    assert (
+        parse_group_selection(
+            {"productGroupFilters": [{"filters": scalar}]}
+        ).requirements
+        == []
+    )
+
+
+@pytest.mark.parametrize("bad_id", [7, True, 1.5, ""])
+def test_non_string_filter_id_is_skipped(bad_id) -> None:
+    """``filter_id`` is a dict key and set member — must be a real string."""
+    payload = [{"parameters": [{"filterId": bad_id, "$type": "ParameterDoubleValue"}]}]
+    assert parse_requirements(payload) == []
+
+
+def test_non_string_name_falls_back_to_a_string() -> None:
+    reqs = parse_requirements(
+        [
+            {
+                "parameters": [
+                    {
+                        "filterId": "ig",
+                        "$type": "ParameterDoubleValue",
+                        "filterName": 123,
+                        "infoFlyoutContents": {"titleText": ["nope"]},
+                        "units": 7,
+                    }
+                ]
+            }
+        ]
+    )
+    assert len(reqs) == 1
+    assert reqs[0].name == "ig"
+    assert reqs[0].unit is None
+
+
+@pytest.mark.parametrize(
+    "raw", [True, False, "nan", "inf", "-inf", float("nan"), float("inf")]
+)
+def test_bool_and_non_finite_bounds_drop_to_none(raw) -> None:
+    """``float(True) == 1.0``, and NaN/inf bounds break every comparison."""
+    reqs = parse_requirements(
+        [
+            {
+                "parameters": [
+                    {
+                        "filterId": "Macc",
+                        "$type": "ParameterDoubleValue",
+                        "minimumValue": raw,
+                        "maximumValue": raw,
+                    }
+                ]
+            }
+        ]
+    )
+    assert len(reqs) == 1
+    assert reqs[0].minimum is None and reqs[0].maximum is None
+
+
+def test_non_string_option_keys_are_dropped() -> None:
+    reqs = parse_requirements(
+        [
+            {
+                "parameters": [
+                    {
+                        "filterId": "shaft",
+                        "$type": "ParameterSingleSelection",
+                        "values": [
+                            {"key": 7},
+                            {"key": ["a"]},
+                            {"key": ""},
+                            {"key": "NoSelection"},
+                            {"key": "SK"},
+                        ],
+                    }
+                ]
+            }
+        ]
+    )
+    assert len(reqs) == 1
+    assert reqs[0].options == ("SK",)
+
+
+# ---------------------------------------------------------------------------
 # Adapter walk against the fake client
 # ---------------------------------------------------------------------------
 

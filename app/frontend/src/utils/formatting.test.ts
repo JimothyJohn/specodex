@@ -3,7 +3,13 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { formatPropertyLabel, formatValue, formatNumber, formatRange } from './formatting';
+import {
+  formatPropertyLabel,
+  formatValue,
+  formatNumber,
+  formatRange,
+  computeAutoColumnWidths,
+} from './formatting';
 
 describe('formatNumber', () => {
   it('passes non-numbers and non-finite values through', () => {
@@ -224,5 +230,80 @@ describe('formatValue', () => {
 
   it('groups large magnitudes in ValueUnit cells', () => {
     expect(formatValue({ value: 90000, unit: 'W' })).toBe('90,000 W');
+  });
+});
+
+describe('computeAutoColumnWidths', () => {
+  // Header labels wrap (.column-header-label-text), so a long multi-word
+  // title must NOT widen a column of short values. Regression for the
+  // 2026-09-13 report: "column headers are way too wide" — the full
+  // label length used to be folded into the width.
+  const shortRows = Array.from({ length: 50 }, () => ({ phases: 3, ip: 'IP20' }));
+
+  it('does not floor a column at its full multi-word header label', () => {
+    const w = computeAutoColumnWidths({
+      rows: shortRows,
+      columns: [{ key: 'phases', displayName: 'Input Voltage Phases' }],
+      density: 'cozy',
+      unitSystem: 'metric',
+    });
+    // "Input Voltage Phases" is 20 chars → 172px under the old rule.
+    // Longest word "Voltage" (7) × 8.2 + 54 chrome = 111.4 → 111.
+    expect(w.phases).toBeLessThan(120);
+    expect(w.phases).toBe(111);
+  });
+
+  it('floors at the longest single header word so it never breaks mid-word', () => {
+    const w = computeAutoColumnWidths({
+      rows: shortRows,
+      columns: [{ key: 'ip', displayName: 'Manufacturer' }],
+      density: 'cozy',
+      unitSystem: 'metric',
+    });
+    // 12 × 8.2 + 54 = 152.4 → 152 — above the 60px cozy minimum and
+    // above the 4-char data (4 × 7.5 + 22 = 52).
+    expect(w.ip).toBe(152);
+  });
+
+  it('is driven by the data P90 when values are wider than the header', () => {
+    const rows = Array.from({ length: 100 }, (_, i) => ({
+      m: i < 90 ? 'Mitsubishi Electric' : 'A',
+    }));
+    const w = computeAutoColumnWidths({
+      rows,
+      columns: [{ key: 'm', displayName: 'Mfr' }],
+      density: 'cozy',
+      unitSystem: 'metric',
+    });
+    // Sorted lengths: 10× 1-char then 90× 19-char; P90 index 90 → 19 chars.
+    expect(w.m).toBe(Math.round(19 * 7.5 + 22));
+  });
+
+  it('respects perKeyMin as a floor and maxPx as a ceiling', () => {
+    const rows = Array.from({ length: 10 }, () => ({ a: 1, b: 'x'.repeat(200) }));
+    const w = computeAutoColumnWidths({
+      rows,
+      columns: [
+        { key: 'a', displayName: 'A' },
+        { key: 'b', displayName: 'B' },
+      ],
+      density: 'compact',
+      unitSystem: 'metric',
+      perKeyMin: { a: 72 },
+      maxPx: 400,
+    });
+    expect(w.a).toBe(72);
+    expect(w.b).toBe(400);
+  });
+
+  it('falls back to the density minimum for empty columns', () => {
+    const w = computeAutoColumnWidths({
+      rows: [{}, {}],
+      columns: [{ key: 'z', displayName: 'Z' }],
+      density: 'compact',
+      unitSystem: 'metric',
+    });
+    // longest word "Z" → 1 × 8.2 + 54 = 62.2 → 62; compact minimum is 40.
+    expect(w.z).toBe(62);
   });
 });

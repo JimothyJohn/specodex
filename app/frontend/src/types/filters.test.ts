@@ -18,6 +18,8 @@ import {
   DEFAULT_LEADING_ORDER,
   orderColumnAttributes,
   computeVisibleColumnAttributes,
+  computeFillRates,
+  DEFAULT_MIN_FILL_RATE,
 } from './columnOrder';
 import { Product } from './models';
 
@@ -728,6 +730,58 @@ describe('computeVisibleColumnAttributes', () => {
     );
     expect(out).toHaveLength(0);
   });
+
+  // --- Fill-rate gate (UI_CLEANUP S2, 2026-09-13) ---------------------
+  // A nested column that is mostly empty over the loaded rows no longer
+  // takes a default slot. Curated defaultVisible:true and user restores
+  // are exempt; an unmeasured key counts as full.
+
+  const rates = (m: Record<string, number>) => new Map(Object.entries(m));
+
+  it('hides a nested column whose fill rate is below the floor', () => {
+    const attrs = [nested('rated_power'), nested('axial_load_force_rating')];
+    const out = computeVisibleColumnAttributes(
+      attrs, [], [], 10, rates({ rated_power: 0.9, axial_load_force_rating: 0.1 }),
+    );
+    expect(out.map(a => a.key)).toEqual(['rated_power']);
+  });
+
+  it('keeps a nested column exactly at the floor (>=, not >)', () => {
+    const attrs = [nested('rated_power')];
+    const out = computeVisibleColumnAttributes(
+      attrs, [], [], 10, rates({ rated_power: DEFAULT_MIN_FILL_RATE }),
+    );
+    expect(out.map(a => a.key)).toEqual(['rated_power']);
+  });
+
+  it('a key missing from fillRates counts as fully populated', () => {
+    const attrs = [nested('rated_power'), nested('unmeasured')];
+    const out = computeVisibleColumnAttributes(attrs, [], [], 10, rates({ rated_power: 0.5 }));
+    expect(out.map(a => a.key)).toEqual(['rated_power', 'unmeasured']);
+  });
+
+  it('defaultVisible=true and user restores outrank a sparse fill rate', () => {
+    const curated: AttributeMetadata = { ...nested('rotor_inertia'), defaultVisible: true };
+    const attrs = [curated, nested('axial_load_force_rating')];
+    const out = computeVisibleColumnAttributes(
+      attrs, [], ['axial_load_force_rating'], 10,
+      rates({ rotor_inertia: 0.05, axial_load_force_rating: 0.05 }),
+    );
+    expect(out.map(a => a.key)).toEqual(['rotor_inertia', 'axial_load_force_rating']);
+  });
+
+  it('a sparse column freed from the default set lets the next one in under the cap', () => {
+    const attrs = [nested('a'), nested('sparse'), nested('c')];
+    const out = computeVisibleColumnAttributes(attrs, [], [], 2, rates({ a: 1, sparse: 0.1, c: 1 }));
+    expect(out.map(a => a.key)).toEqual(['a', 'c']);
+  });
+
+  it('without fillRates the pre-S2 behaviour is unchanged', () => {
+    const attrs = [nested('rated_power'), nested('axial_load_force_rating')];
+    const out = computeVisibleColumnAttributes(attrs, [], [], 10);
+    expect(out.map(a => a.key)).toEqual(['rated_power', 'axial_load_force_rating']);
+  });
+
 });
 
 describe('commercial fields hidden (2026-07-24 removal)', () => {
@@ -743,7 +797,7 @@ describe('commercial fields hidden (2026-07-24 removal)', () => {
   ];
   const PRODUCT_TYPES = [
     'motor', 'drive', 'robot_arm', 'gearhead', 'contactor',
-    'electric_cylinder', 'linear_actuator',
+    'electric_cylinder', 'linear_actuator', 'inductive_sensor',
   ] as const;
 
   const pricedRecord = (type: string) => ({
@@ -1161,5 +1215,65 @@ describe('buildDefaultFiltersForType honors defaultOperator', () => {
     for (const f of buildDefaultFiltersForType('motor')) {
       expect(f.operator).toBe('>=');
     }
+  });
+});
+
+describe('computeFillRates', () => {
+  const rows = [
+    { rated_torque: { value: 1, unit: 'Nm' }, axial: null, tags: ['a'], name: 'x' },
+    { rated_torque: { value: null, unit: 'Nm' }, axial: undefined, tags: [], name: '' },
+    { rated_torque: { min: 1, max: 2, unit: 'Nm' }, axial: { value: 3, unit: 'N' }, tags: ['b'], name: 'y' },
+    { rated_torque: null, tags: null, name: 'z' },
+  ] as unknown as Record<string, unknown>[];
+
+  it('counts ValueUnit / MinMaxUnit as filled only when a number is present', () => {
+    const r = computeFillRates(rows, ['rated_torque', 'axial']);
+    expect(r.get('rated_torque')).toBeCloseTo(2 / 4);
+    expect(r.get('axial')).toBeCloseTo(1 / 4);
+  });
+
+  it('treats empty string / empty array / null / undefined as empty', () => {
+    const r = computeFillRates(rows, ['tags', 'name']);
+    expect(r.get('tags')).toBeCloseTo(2 / 4);
+    expect(r.get('name')).toBeCloseTo(3 / 4);
+  });
+
+  it('reports 1 for every key when there are no rows (nothing measured, nothing hidden)', () => {
+    const r = computeFillRates([], ['a', 'b']);
+    expect(r.get('a')).toBe(1);
+    expect(r.get('b')).toBe(1);
+  });
+
+  it('reports 0 for a key no row carries', () => {
+    expect(computeFillRates(rows, ['nope']).get('nope')).toBe(0);
+  });
+});
+
+describe('inductive_sensor attributes', () => {
+  const attrs = getAttributesForType('inductive_sensor' as never);
+  const keys = attrs.map(a => a.key);
+
+  it('uses the curated list, not the motor-derived common fallback', () => {
+    // An unlisted type falls through to the cross-type intersection, which
+    // is seeded from motor attributes: the table opened on Rated Current /
+    // Rated Power / Rotor Inertia columns no sensor record carries.
+    for (const motorKey of ['rated_current', 'rated_power', 'rotor_inertia']) {
+      expect(keys).not.toContain(motorKey);
+    }
+    expect(attrs.every(a => a.applicableTypes.includes('inductive_sensor'))).toBe(true);
+  });
+
+  it('leads with the selection profile', () => {
+    const visible = attrs.filter(a => a.defaultVisible).map(a => a.key);
+    expect(visible).toEqual(expect.arrayContaining([
+      'manufacturer', 'housing_size', 'sensing_distance', 'mounting', 'output_type',
+    ]));
+    // Every authored column-order key must exist as an attribute.
+    expect(COLUMN_ORDER.inductive_sensor?.length).toBeGreaterThan(1);
+    for (const key of COLUMN_ORDER.inductive_sensor ?? []) expect(keys).toContain(key);
+  });
+
+  it('has no duplicate keys', () => {
+    expect(new Set(keys).size).toBe(keys.length);
   });
 });

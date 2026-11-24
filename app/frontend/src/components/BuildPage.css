@@ -120,6 +120,15 @@
   line-height: 1.45;
 }
 
+.build-page__how {
+  padding-left: 1.2rem;
+  margin-bottom: 0.6rem;
+}
+
+.build-page__how li + li {
+  margin-top: 0.3rem;
+}
+
 /* Each slot card inside requirements pane: hairline ink frame
  * (matches the row treatment of the catalog table). */
 .build-page__slot {

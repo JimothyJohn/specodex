@@ -12,23 +12,31 @@
  * `DYNAMODB_ENDPOINT=http://localhost:8000` (see
  * `tests/integration/setup-dynamodb.ts`).
  */
+const productsTable = (name) => ({
+  TableName: name,
+  KeySchema: [
+    { AttributeName: 'PK', KeyType: 'HASH' },
+    { AttributeName: 'SK', KeyType: 'RANGE' },
+  ],
+  AttributeDefinitions: [
+    { AttributeName: 'PK', AttributeType: 'S' },
+    { AttributeName: 'SK', AttributeType: 'S' },
+  ],
+  ProvisionedThroughput: {
+    ReadCapacityUnits: 5,
+    WriteCapacityUnits: 5,
+  },
+});
+
 module.exports = {
   tables: [
-    {
-      TableName: 'specodex-test',
-      KeySchema: [
-        { AttributeName: 'PK', KeyType: 'HASH' },
-        { AttributeName: 'SK', KeyType: 'RANGE' },
-      ],
-      AttributeDefinitions: [
-        { AttributeName: 'PK', AttributeType: 'S' },
-        { AttributeName: 'SK', AttributeType: 'S' },
-      ],
-      ProvisionedThroughput: {
-        ReadCapacityUnits: 5,
-        WriteCapacityUnits: 5,
-      },
-    },
+    productsTable('specodex-test'),
+    // Second table with the identical schema, standing in for the
+    // target stage in `adminOperations` promote / demote / diff. Those
+    // operations move rows between two stage tables, so a real-DAL test
+    // of them needs two — a single table can't tell "wrote to target"
+    // apart from "read from source".
+    productsTable('specodex-test-target'),
   ],
   port: 8000,
   // Don't install jar at config-eval time; @shelf/jest-dynamodb handles

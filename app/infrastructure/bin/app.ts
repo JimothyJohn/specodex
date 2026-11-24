@@ -4,7 +4,6 @@
  * Deploys: DynamoDB -> API Gateway + Lambda -> S3 + CloudFront
  */
 
-import 'source-map-support/register';
 import * as cdk from 'aws-cdk-lib';
 import { DatabaseStack } from '../lib/database-stack';
 import { ApiStack } from '../lib/api-stack';

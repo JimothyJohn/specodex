@@ -198,6 +198,13 @@ def _extract_products(
     if rejected:
         log.warning("Dropped %d low-quality products", len(rejected))
 
+    # Hold back physically implausible rows (unit slips) — see spec_rules.
+    from specodex.spec_rules import partition_plausible
+
+    passed, held = partition_plausible(passed)
+    if held:
+        log.warning("Held %d product(s) for review: implausible specs", len(held))
+
     return passed
 
 

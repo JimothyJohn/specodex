@@ -30,7 +30,7 @@ write a single query that covers all three product types.
 
 ```python
 MotorTechnology = Literal[
-    "brushless_dc",      # BLDC servo, most common modern type
+    "brushless_dc",  # BLDC servo, most common modern type
     "brushed_dc",
     "ac_servo",
     "ac_induction",
@@ -39,7 +39,7 @@ MotorTechnology = Literal[
     "stepper",
     "hybrid_stepper",
     "linear_motor",
-    "motorless",         # actuator ships without a motor (customer-supplied)
+    "motorless",  # actuator ships without a motor (customer-supplied)
 ]
 ```
 

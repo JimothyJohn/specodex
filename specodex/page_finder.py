@@ -20,6 +20,7 @@ from typing import Any, Dict, List, Optional
 
 from google import genai
 
+from specodex.log_redact import redact_secrets
 from specodex.utils import get_document
 
 logging.basicConfig(
@@ -177,6 +178,30 @@ SPEC_KEYWORDS: list[list[str]] = [
         "hysteresis",
         "detection range",
         "sampling rate",
+        "detecting distance",
+        "operating distance",
+        "switching distance",
+    ],
+    # --- Proximity / binary sensor output ---
+    [
+        "pnp",
+        "npn",
+        "normally open",
+        "normally closed",
+        "switching frequency",
+        "response frequency",
+        "residual voltage",
+        "voltage drop",
+        "leakage current",
+        "control output",
+    ],
+    # --- Proximity sensor installation ---
+    [
+        "flush",
+        "shielded",
+        "embeddable",
+        "housing size",
+        "sensing face",
     ],
     # --- Environmental ---
     [
@@ -217,6 +242,46 @@ _MAX_PAGES_LARGE_DOC = 20  # Docs > 20 pages: hard cap
 _MIN_SCORE = 0.15  # Minimum composite score to be considered
 
 
+def _open_pdf(fitz: Any, pdf_bytes: bytes) -> tuple[Any, int]:
+    """Open ``pdf_bytes`` and return ``(doc, page_count)``.
+
+    A corrupt page count makes ``len(doc)`` raise a bare
+    ``RuntimeError`` ("Invalid number of pages") after ``fitz.open``
+    already succeeded. Re-raise it as ``fitz.FileDataError`` — the one
+    exception type the finders document for malformed bytes — so
+    callers' existing handlers catch it. Found by
+    ``tests/fuzz/fuzz_page_finder.py``.
+    """
+    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+    try:
+        return doc, len(doc)
+    except fitz.FileDataError:
+        doc.close()
+        raise
+    except RuntimeError as e:
+        doc.close()
+        raise fitz.FileDataError(f"Unreadable page count: {e}") from e
+
+
+def _read_page(doc: Any, i: int) -> tuple[Any, str] | None:
+    """Return ``(page, text)`` for page ``i``, or None when MuPDF can't.
+
+    ``fitz.open`` repairs a broken xref lazily, so a PDF can open fine
+    and still fail on an individual page — loading it (``FzErrorFormat:
+    malformed page tree``) or reading its text (``RuntimeError: not a
+    dict``). Those types are outside the finders' documented
+    ``FileDataError`` contract and would abort a whole batch run over
+    one bad page; skip the page instead, like a page with no text.
+    Found by ``tests/fuzz/fuzz_page_finder.py``.
+    """
+    try:
+        page = doc[i]
+        return page, page.get_text()
+    except Exception as e:  # noqa: BLE001 — MuPDF raises a family of Fz* types
+        logger.warning(f"Skipping unreadable PDF page {i}: {type(e).__name__}: {e}")
+        return None
+
+
 def find_spec_pages_by_text(pdf_bytes: bytes) -> list[int]:
     """Find spec-table pages using text search — free, no API calls.
 
@@ -229,12 +294,14 @@ def find_spec_pages_by_text(pdf_bytes: bytes) -> list[int]:
         logger.warning("PyMuPDF not installed, skipping text-based page detection")
         return []
 
-    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-    total_pages = len(doc)
+    doc, total_pages = _open_pdf(fitz, pdf_bytes)
     spec_pages: list[int] = []
 
     for i in range(total_pages):
-        text = doc[i].get_text().lower()
+        read = _read_page(doc, i)
+        if read is None:
+            continue
+        text = read[1].lower()
         if not text.strip():
             continue
         matches = sum(1 for group in SPEC_KEYWORDS if any(kw in text for kw in group))
@@ -319,20 +386,23 @@ def find_spec_pages_scored(
         pages = find_spec_pages_by_text(pdf_bytes)
         return pages, []
 
-    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-    total_pages = len(doc)
+    doc, total_pages = _open_pdf(fitz, pdf_bytes)
 
     if max_pages is None:
         max_pages = _MAX_PAGES_SMALL_DOC if total_pages <= 20 else _MAX_PAGES_LARGE_DOC
 
     page_scores: list[dict] = []
     for i in range(total_pages):
-        text = doc[i].get_text()
+        read = _read_page(doc, i)
+        if read is None:
+            page_scores.append({"page": i, "score": 0.0, "unreadable": True})
+            continue
+        page, text = read
         if not text.strip():
             page_scores.append({"page": i, "score": 0.0, "empty": True})
             continue
         try:
-            tables = doc[i].find_tables().tables
+            tables = page.find_tables().tables
         except Exception:
             tables = []
         info = _score_page(text, tables)
@@ -344,7 +414,11 @@ def find_spec_pages_scored(
     # Select pages above threshold, ranked by score, capped
     candidates = [p for p in page_scores if p.get("score", 0) >= min_score]
     candidates.sort(key=lambda p: -p["score"])
-    selected = candidates[:max_pages]
+    # A cap is never negative. Without the clamp, a negative `max_pages`
+    # is a Python negative slice: it drops the N lowest-scoring
+    # candidates and keeps the rest, so the "cap" silently *expands* the
+    # selection instead of shrinking it.
+    selected = candidates[: max(max_pages, 0)]
     # Return in document order
     selected_pages = sorted(p["page"] for p in selected)
 
@@ -423,12 +497,14 @@ def find_drawing_pages_by_text(pdf_bytes: bytes) -> list[int]:
         logger.warning("PyMuPDF not installed, skipping text-based drawing detection")
         return []
 
-    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-    total_pages = len(doc)
+    doc, total_pages = _open_pdf(fitz, pdf_bytes)
     drawing_pages: list[int] = []
 
     for i in range(total_pages):
-        text = doc[i].get_text().lower()
+        read = _read_page(doc, i)
+        if read is None:
+            continue
+        text = read[1].lower()
         if not text.strip():
             continue
         matches = sum(
@@ -519,17 +595,20 @@ def find_drawing_pages_scored(
         pages = find_drawing_pages_by_text(pdf_bytes)
         return pages, []
 
-    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-    total_pages = len(doc)
+    doc, total_pages = _open_pdf(fitz, pdf_bytes)
 
     if max_pages is None:
         max_pages = _MAX_PAGES_SMALL_DOC if total_pages <= 20 else _MAX_PAGES_LARGE_DOC
 
     page_scores: list[dict] = []
     for i in range(total_pages):
-        text = doc[i].get_text()
+        read = _read_page(doc, i)
+        if read is None:
+            page_scores.append({"page": i, "score": 0.0, "unreadable": True})
+            continue
+        page, text = read
         try:
-            drawings_count = len(doc[i].get_drawings())
+            drawings_count = len(page.get_drawings())
         except Exception:
             drawings_count = 0
         info = _score_drawing_page(text, drawings_count)
@@ -542,7 +621,11 @@ def find_drawing_pages_scored(
 
     candidates = [p for p in page_scores if p.get("score", 0) >= min_score]
     candidates.sort(key=lambda p: -p["score"])
-    selected = candidates[:max_pages]
+    # Same clamp as `find_spec_pages_scored` — a negative cap must select
+    # nothing, not all-but-N (see the comment there). Reachable from
+    # `./Quickstart mounting-extract --max-pages -1`, where every extra
+    # selected page is another billed Gemini image call.
+    selected = candidates[: max(max_pages, 0)]
     selected_pages = sorted(p["page"] for p in selected)
 
     logger.info(
@@ -665,7 +748,11 @@ Respond as a JSON array with one object per page:
                             }
                         )
         except Exception as e:
-            logger.error(f"Error classifying pages {page_labels}: {e}")
+            # SDK / transport errors can echo request details; never let a
+            # credential ride along into the log (HARDENING 4.3).
+            logger.error(
+                "Error classifying pages %s: %s", page_labels, redact_secrets(str(e))
+            )
             # Mark failed pages as unknown
             for p in page_numbers:
                 results.append(
@@ -673,7 +760,7 @@ Respond as a JSON array with one object per page:
                         "page_number": p,
                         "page_display": p + 1,
                         "has_specs": False,
-                        "description": f"classification failed: {e}",
+                        "description": f"classification failed: {redact_secrets(str(e))}",
                     }
                 )
 

@@ -268,6 +268,27 @@ describe('Search Service', () => {
       expect(summary.rated_speed).toEqual({ value: 3000, unit: 'rpm' });
     });
 
+    it('includes key inductive sensor specs', () => {
+      const sensor = {
+        product_id: 'sns-1',
+        product_type: 'inductive_sensor',
+        manufacturer: 'SICK',
+        product_name: 'IMB18',
+        part_number: 'IMB18-08BPOVC0K',
+        housing_size: 'M18',
+        sensing_distance: { value: 8, unit: 'mm' },
+        mounting: 'flush',
+        output_type: 'pnp',
+        ip_rating: 68,
+      } as unknown as Product;
+      const summary = productSummary(sensor);
+      expect(summary.housing_size).toBe('M18');
+      expect(summary.sensing_distance).toEqual({ value: 8, unit: 'mm' });
+      expect(summary.mounting).toBe('flush');
+      expect(summary.output_type).toBe('pnp');
+      expect(summary.ip_rating).toBe(68);
+    });
+
     it('includes relevance when provided', () => {
       const summary = productSummary(mockMotor, 90);
       expect(summary.relevance).toBe(90);

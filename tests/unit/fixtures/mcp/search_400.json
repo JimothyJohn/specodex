@@ -1,0 +1,1 @@
+{"success":false,"error":"Invalid query parameters","details":["type: Invalid option: expected one of \"contactor\"|\"drive\"|\"electric_cylinder\"|\"gearhead\"|\"linear_actuator\"|\"motor\"|\"robot_arm\""]}

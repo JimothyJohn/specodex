@@ -9,12 +9,13 @@ import { ProductType, Product } from '../types/models';
 import { FilterCriterion, SortConfig, applyFilters, sortProducts, getAttributesForType, deriveAttributesFromRecords, mergeAttributesByKey, AttributeMetadata, getAvailableOperators, buildDefaultFiltersForType } from '../types/filters';
 // Column order is authored in types/columnOrder.ts — edit that file to
 // change what columns appear and in what order.
-import { orderColumnAttributes, computeVisibleColumnAttributes } from '../types/columnOrder';
+import { orderColumnAttributes, computeVisibleColumnAttributes, computeFillRates } from '../types/columnOrder';
 import VendorDrawer from './VendorDrawer';
 import { formatValue, formatNumber, formatRange, computeAutoColumnWidths } from '../utils/formatting';
 import Tooltip from './ui/Tooltip';
 import { displayUnit, convertValueUnit, convertMinMaxUnit } from '../utils/unitConversion';
 import { numericFromValue } from '../utils/filterValues';
+import { applyGearCascade, GEARED_KEYS } from '../utils/gearCascade';
 import { useColumnResize } from '../utils/hooks';
 import {
   safeLoad,
@@ -22,6 +23,7 @@ import {
   isStringArray,
 } from '../utils/localStorage';
 import ColumnHeader from './ColumnHeader';
+import ActiveFilterChips from './ActiveFilterChips';
 import ProductDetailModal from './ProductDetailModal';
 import AttributeSelector from './AttributeSelector';
 import Dropdown from './Dropdown';
@@ -49,6 +51,33 @@ export interface ProductListResetState {
   sorts: SortConfig[];
   selectedProduct: Product | null;
   clickPosition: { x: number; y: number } | null;
+}
+
+export type ListBodyState = 'pick-type' | 'loading' | 'no-products' | 'no-match' | 'rows';
+
+/**
+ * Decide what the listing body renders. Pure so the contract is
+ * unit-testable without mounting the page.
+ *
+ * 'no-match' is the load-bearing case: products exist but the active
+ * filters (or compat narrowing) eliminate every row. The grid — and its
+ * column headers, which host the filter controls — MUST stay mounted so
+ * the user can loosen the filters. Before 2026-09-13 this state shared a
+ * branch with 'no-products' and unmounted the headers, stranding the
+ * user with no way to readjust.
+ */
+export function resolveListBody(args: {
+  productType: ProductType | null;
+  loading: boolean;
+  totalProducts: number;
+  displayedProducts: number;
+}): ListBodyState {
+  const { productType, loading, totalProducts, displayedProducts } = args;
+  if (productType === null) return 'pick-type';
+  if (loading && totalProducts === 0) return 'loading';
+  if (totalProducts === 0) return 'no-products';
+  if (!loading && displayedProducts === 0) return 'no-match';
+  return 'rows';
 }
 
 export function defaultStateForType(type: ProductType): ProductListResetState {
@@ -155,7 +184,13 @@ export default function ProductList() {
   // Spec column floor. Cozy keeps the slider+operator+value row legible
   // (~120px). Compact strips the slider in PR 2 so the floor drops to
   // ~90px — value+operator+unit fits comfortably.
-  const defaultColWidth = rowDensity === 'compact' ? 90 : 120;
+  // Floor for spec columns. The 120/90 floors dated from the in-header
+  // slider + operator + value pill (UI_CLEANUP Phase 1); the
+  // popover-per-column header (Phase 2) only needs the label — which
+  // wraps — the sparkline, and the "any" trigger, so short numeric
+  // columns can sit at ~96px cozy / ~72px compact. Auto-fit still widens
+  // past this when the data warrants (computeAutoColumnWidths).
+  const defaultColWidth = rowDensity === 'compact' ? 72 : 96;
   const { columnWidths, setColumnWidths, startResize } = useColumnResize({ part_number: defaultPartWidth });
 
   // Keys that should never render as their own column. `part_number` is
@@ -208,6 +243,19 @@ export default function ProductList() {
   // testable. User-restored columns always render (even past the cap)
   // — without that carve-out, "Add spec" silently dropped the user's
   // column whenever the default set already filled the cap.
+  // Fill rate per column over the loaded rows — the default-visible rule
+  // drops unit-bearing columns that are mostly empty (UI_CLEANUP S2), so
+  // a 90 %-empty column doesn't hold the widest default slot. Curated
+  // `defaultVisible: true` columns and user restores are exempt.
+  const columnFillRates = useMemo(
+    () =>
+      computeFillRates(
+        products as unknown as readonly Record<string, unknown>[],
+        columnAttributes.map(a => a.key),
+      ),
+    [products, columnAttributes],
+  );
+
   const visibleColumnAttributes = useMemo<AttributeMetadata[]>(
     () =>
       computeVisibleColumnAttributes(
@@ -215,8 +263,9 @@ export default function ProductList() {
         userHiddenKeys,
         userRestoredKeys,
         MAX_VISIBLE_COLUMNS,
+        columnFillRates,
       ),
-    [columnAttributes, userHiddenKeys, userRestoredKeys, MAX_VISIBLE_COLUMNS],
+    [columnAttributes, userHiddenKeys, userRestoredKeys, MAX_VISIBLE_COLUMNS, columnFillRates],
   );
 
   // Restore-dropdown candidates: everything the user could bring back —
@@ -239,10 +288,10 @@ export default function ProductList() {
       { key: 'part_number', displayName: 'Part Number' },
       ...visibleColumnAttributes.map(a => ({ key: a.key, displayName: a.displayName })),
     ];
-    // Floor every spec column at defaultColWidth — the in-header slider +
-    // operator + value pill needs ~120-145px to render without truncating.
-    // Auto-fit widens past the floor when data warrants; the floor only
-    // kicks in for naturally narrow columns.
+    // Floor every spec column at defaultColWidth (see its comment for
+    // why it is 96/72 and not the old 120/90). Auto-fit widens past the
+    // floor when data warrants; the floor only kicks in for naturally
+    // narrow columns.
     const specMin: Record<string, number> = { part_number: defaultPartWidth };
     for (const a of visibleColumnAttributes) specMin[a.key] = defaultColWidth;
     const auto = computeAutoColumnWidths({
@@ -338,38 +387,6 @@ export default function ProductList() {
     setClickPosition(reset.clickPosition);
   };
 
-  // Torque/speed keys — driven by the per-row gear-ratio cascade below.
-  const TORQUE_KEYS = ['rated_torque', 'peak_torque'];
-  const SPEED_KEYS = ['rated_speed'];
-
-  // Discrete gear ratios. Direct drive plus multiples of 4 — real
-  // gearhead catalogs cluster around these and a finer grid would give
-  // false precision. Snap *up* (next ratio that's enough to meet the
-  // torque target) rather than rounding, so the displayed value never
-  // overstates what the motor would actually deliver.
-  const GEAR_OPTIONS = [1, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 48, 64, 80, 100];
-  const snapGearUp = (raw: number): number => {
-    for (const g of GEAR_OPTIONS) {
-      if (g >= raw) return g;
-    }
-    return GEAR_OPTIONS[GEAR_OPTIONS.length - 1];
-  };
-
-  const scaleSpec = (value: any, factor: number): any => {
-    if (!value || typeof value !== 'object') return value;
-    if ('value' in value && typeof value.value === 'number') {
-      return { ...value, value: parseFloat((value.value * factor).toPrecision(4)) };
-    }
-    if ('min' in value || 'max' in value) {
-      return {
-        ...value,
-        min: typeof value.min === 'number' ? parseFloat((value.min * factor).toPrecision(4)) : value.min,
-        max: typeof value.max === 'number' ? parseFloat((value.max * factor).toPrecision(4)) : value.max,
-      };
-    }
-    return value;
-  };
-
   // Build-aware compat narrowing. When the user has anchored part of their
   // motion-system build and the active type is adjacent to one of those
   // anchors, drop products that strict-fail compat. Soft-partials (missing
@@ -399,62 +416,24 @@ export default function ProductList() {
 
   const compatHiddenCount = compatFilterActive ? products.length - compatNarrowed.length : 0;
 
-  // Per-row gear ratio. Picks the smallest discrete ratio that lifts
-  // each motor's rated/peak torque to clear the active torque filter,
-  // then scales speed down by the same factor — every motor gets a
-  // chance at the spec, and the user sees what speed they'd actually
-  // get with that gear in place. With no torque filter, gearMap is
-  // empty and gearedSource passes through unchanged.
-  const torqueTargets = useMemo(() => {
-    const out: { key: string; target: number }[] = [];
-    for (const f of filters) {
-      if (!TORQUE_KEYS.includes(f.attribute)) continue;
-      if (f.operator !== '>=' && f.operator !== '>') continue;
-      const v = numericFromValue(f.value);
-      if (v == null || !Number.isFinite(v) || v <= 0) continue;
-      out.push({ key: f.attribute, target: v });
-    }
-    return out;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters]);
+  // Gearbox cascade (motor view). Rated Torque / Peak Torque / Rated
+  // Speed always show the motor's own shaft values; a `>=` filter on the
+  // computed "Output Torque (with gearbox)" column picks a per-row ratio
+  // and fills output_torque / output_speed. Cells, header histograms,
+  // sliders, filters and sorts all read the same fields — see
+  // utils/gearCascade.ts for why the old in-place rewrite of
+  // rated_torque was split out.
+  const { products: gearedSource, gearMap, active: gearActive } = useMemo(
+    () => applyGearCascade(compatNarrowed, filters, productType),
+    [compatNarrowed, filters, productType],
+  );
 
-  const { gearedSource, gearMap } = useMemo(() => {
-    if (productType !== 'motor' || torqueTargets.length === 0) {
-      return { gearedSource: compatNarrowed, gearMap: new Map<string, number>() };
-    }
-    const map = new Map<string, number>();
-    const next = compatNarrowed.map(p => {
-      let ratio = 1;
-      for (const { key, target } of torqueTargets) {
-        const motorVal = numericFromValue((p as any)[key]);
-        if (motorVal == null || motorVal <= 0) continue;
-        if (motorVal >= target) continue;
-        const needed = snapGearUp(target / motorVal);
-        if (needed > ratio) ratio = needed;
-      }
-      map.set(p.product_id, ratio);
-      if (ratio === 1) return p;
-      const copy: any = { ...p };
-      for (const k of TORQUE_KEYS) {
-        if (copy[k]) copy[k] = scaleSpec(copy[k], ratio);
-      }
-      for (const k of SPEED_KEYS) {
-        if (copy[k]) copy[k] = scaleSpec(copy[k], 1 / ratio);
-      }
-      return copy as Product;
-    });
-    return { gearedSource: next, gearMap: map };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [compatNarrowed, torqueTargets, productType]);
-
-  /* Gear ratio is always visible on the motor view, not gated on
-   * `torqueTargets.length > 0`. Per-row value comes from gearMap
-   * (which is empty when there's no torque filter), so rows fall
-   * back to ratio 1 → "—" until a torque filter promotes them
-   * into a real gear pick. Keeps the column in the table's
-   * mental model rather than appearing/disappearing as filters
-   * are toggled. */
-  const showGearColumn = productType === 'motor';
+  /* Gear ratio column appears on the motor view while an output-torque
+   * filter is active — the only time gearMap can hold a ratio other
+   * than 1 (UI_CLEANUP N2: no always-empty default column). The output
+   * torque/speed headers carry a "geared" marker while it is active. */
+  const showGearColumn = productType === 'motor' && gearActive;
+  const cascadeKeys: readonly string[] = showGearColumn ? GEARED_KEYS : [];
 
   const filteredProducts = useMemo(() => {
     return applyFilters(gearedSource, filters);
@@ -470,6 +449,12 @@ export default function ProductList() {
   // already happened upstream. Kept as an alias so call sites read the
   // same as before.
   const displayProducts = sortedProducts;
+  const listBody = resolveListBody({
+    productType,
+    loading,
+    totalProducts: products.length,
+    displayedProducts: displayProducts.length,
+  });
 
   // Infinite-scroll window: reveal the first step, grow by another
   // step each time the sentinel nears the viewport.
@@ -604,6 +589,12 @@ export default function ProductList() {
   const getProximityColor = (attribute: string, productValue: any): string => {
     const filter = filters.find(f => f.attribute === attribute || f.attribute.startsWith(attribute + '.'));
     if (!filter || filter.operator === '!=') return '';
+    // Default chips are seeded valueless ("any"); until the user dials
+    // in a threshold there is nothing to be near, so no gradient. Without
+    // this guard the seeded rated_torque / rated_speed chips painted a
+    // full-height percentile band down both columns on every motor load
+    // (UI_CLEANUP N7).
+    if (filter.value === undefined || filter.value === null) return '';
 
     let numericProductValue: number | null = null;
     if (filter.attribute === attribute) {
@@ -853,10 +844,12 @@ export default function ProductList() {
   return (
     <div className="page-products-layout">
       <main className="results-main">
-        {/* Single top toolbar — type selector, page-size, and result count
-         * sit on the left; match summary and Clear sit on the right. This
-         * is the only fixed chrome above the results grid; the previous
-         * `.results-header` row is gone so the table gets the height back. */}
+        {/* Single top toolbar — type selector on the left; the match
+         * summary (the one and only result count), Add Spec and Clear on
+         * the right. This is the only fixed chrome above the results
+         * grid; the previous `.results-header` row is gone so the table
+         * gets the height back. UI_CLEANUP N1 retired the second, mono
+         * "1-25 of N" count that used to sit next to the type selector. */}
         <div className="page-toolbar">
           <div className="page-toolbar-left">
             <Dropdown<string>
@@ -871,13 +864,19 @@ export default function ProductList() {
               }))}
               className="page-toolbar-type-select"
             />
-            <span className="results-count">
-              {displayProducts.length === 0
-                ? '0'
-                : `1-${paginatedProducts.length}`
-              } of {displayProducts.length}
-            </span>
           </div>
+          {/* Applied constraints, one chip each — the at-a-glance record
+              now that the per-column controls live in popovers
+              (UI_CLEANUP Phase 2). Valueless seeded chips don't show. */}
+          {productType && (
+            <ActiveFilterChips
+              filters={filters}
+              attributes={columnAttributes}
+              products={gearedSource}
+              unitSystemFor={unitSystemFor}
+              onRemove={(f) => setFilters(prev => prev.filter(x => x !== f))}
+            />
+          )}
           <div className="page-toolbar-right">
             {productType && compatNarrowed.length > 0 && (
               <div className="page-toolbar-match">
@@ -901,6 +900,24 @@ export default function ProductList() {
                   />
                 </div>
               </div>
+            )}
+            {/* Restore-hidden-column button — only rendered when
+                there's something to restore. Lives here, not at the end
+                of the header row, so it doesn't hang past the table. */}
+            {productType && hiddenColumnAttributes.length > 0 && (
+              <Tooltip content={`Add spec column (${hiddenColumnAttributes.length} available)`}>
+                <button
+                  type="button"
+                  ref={(el) => setAddColumnBtnRef(el)}
+                  className="add-column-btn"
+                  onClick={(e) => {
+                    setColumnSelectorCursor({ x: e.clientX, y: e.clientY });
+                    setShowSortSelector(true);
+                  }}
+                >
+                  + Add Spec
+                </button>
+              </Tooltip>
             )}
             {filters.length > 0 && (
               <Tooltip content="Clear all filters and sorts">
@@ -928,7 +945,7 @@ export default function ProductList() {
           </div>
         )}
 
-        {productType !== null && loading && products.length === 0 ? (
+        {listBody === 'loading' ? (
           /* Initial load, nothing fetched yet — without this branch the
              grid rendered zero rows with no indicator and a slow type
              looked like a hang. */
@@ -939,33 +956,30 @@ export default function ProductList() {
               }…`}
             />
           </div>
-        ) : productType === null || (!loading && displayProducts.length === 0) ? (
+        ) : listBody === 'pick-type' || listBody === 'no-products' ? (
+          /* Nothing to show at all. The filters-eliminated-everything
+             case is NOT here on purpose — it renders inside the grid
+             below so the column headers (the filter controls) survive. */
           <div className="empty-state-minimal">
             <p>
-              {productType === null
+              {listBody === 'pick-type'
                 ? 'Select a product type to begin'
-                : products.length === 0
-                ? 'No products in database'
-                : 'No results match your specs'}
+                : 'No products in database'}
             </p>
-            {productType !== null && (
+            {listBody === 'no-products' && (
               <div className="empty-state-feedback">
                 <p className="empty-state-feedback-hint">
-                  {products.length === 0
-                    ? "Looking for a manufacturer or part we don't carry?"
-                    : 'Specs too tight, or expecting a product to show up?'}
+                  Looking for a manufacturer or part we don't carry?
                 </p>
                 <button
                   type="button"
                   className="feedback-trigger"
                   onClick={() => {
-                    setFeedbackCategory(
-                      products.length === 0 ? 'missing_product' : 'no_match',
-                    );
+                    setFeedbackCategory('missing_product');
                     setFeedbackOpen(true);
                   }}
                 >
-                  {products.length === 0 ? 'Tell us what to add' : 'Tell us what you need'}
+                  Tell us what to add
                 </button>
               </div>
             )}
@@ -1023,13 +1037,14 @@ export default function ProductList() {
             <div className={`product-grid density-${rowDensity}`}>
             {/* Column headers */}
             <div className="product-grid-headers">
-              <Tooltip content="Click anywhere to sort • click again to reverse, again to clear">
               <div
                 className="product-grid-header-part clickable"
                 style={{ width: columnWidths['part_number'] ?? defaultPartWidth }}
                 onClick={() => handleColumnSort('part_number')}
               >
-                Part Number
+                <Tooltip content="Click anywhere to sort • click again to reverse, again to clear">
+                  <span className="product-grid-header-part-label">Part Number</span>
+                </Tooltip>
                 <span className="sort-indicator">
                   {sorts.find(s => s.attribute === 'part_number')?.direction === 'asc' && '↑'}
                   {sorts.find(s => s.attribute === 'part_number')?.direction === 'desc' && '↓'}
@@ -1039,13 +1054,11 @@ export default function ProductList() {
                 </span>
                 <div className="col-resize-handle" onMouseDown={(e) => startResize('part_number', e)} />
               </div>
-              </Tooltip>
-              {/* Gear ratio (computed). Always visible on the motor view;
-                  displays '—' for direct drive (gearMap unset or ratio 1).
-                  Per-row value comes from gearMap; rated_torque and
-                  rated_speed cells display the post-gear values so the
-                  table is an accurate depiction of what each motor would
-                  deliver at the chosen ratio. */}
+              {/* Gear ratio (computed). Shown on the motor view while an
+                  output-torque filter is active; '—' marks direct drive
+                  (ratio 1). Per-row value comes from gearMap; only the
+                  Output Torque / Output Speed columns are post-gear —
+                  Rated Torque and Rated Speed stay the motor's own. */}
               {showGearColumn && (
                 <div className="product-grid-header-item computed-col" style={{ width: 70 }}>
                   <div className="product-grid-header-label">Gear</div>
@@ -1074,12 +1087,13 @@ export default function ProductList() {
                       attribute={attribute}
                       label={header.label}
                       products={displayProducts}
-                      allProducts={compatNarrowed}
+                      allProducts={gearedSource}
                       filter={filter}
                       allFilters={filters}
                       sortConfig={sortConfig}
                       sortIndex={sortIndex}
                       totalSorts={sorts.length}
+                      cascadeKey={cascadeKeys.includes(header.key)}
                       width={columnWidths[header.key] ?? defaultColWidth}
                       unitSystem={unitSystemFor(header.key)}
                       onUnitToggle={() => toggleColumnUnit(header.key)}
@@ -1112,22 +1126,6 @@ export default function ProductList() {
                   );
                 });
               })()}
-              {/* Restore-hidden-column button — only rendered when
-                  there's something to restore. */}
-              {hiddenColumnAttributes.length > 0 && (
-                <Tooltip content={`Add spec column (${hiddenColumnAttributes.length} available)`}>
-                  <button
-                    ref={(el) => setAddColumnBtnRef(el)}
-                    className="add-column-btn"
-                    onClick={(e) => {
-                      setColumnSelectorCursor({ x: e.clientX, y: e.clientY });
-                      setShowSortSelector(true);
-                    }}
-                  >
-                    + Add Spec
-                  </button>
-                </Tooltip>
-              )}
             </div>
 
               {paginatedProducts.map((product) => (
@@ -1210,6 +1208,41 @@ export default function ProductList() {
                 </div>
               ))}
             </div>
+
+            {listBody === 'no-match' && (
+              /* Filters eliminated every row. Headers above stay mounted
+                 so the sliders/chips can be loosened in place. */
+              <div className="product-grid-no-match" role="status">
+                <p>No results match your specs</p>
+                <div className="empty-state-feedback">
+                  <p className="empty-state-feedback-hint">
+                    Specs too tight, or expecting a product to show up?
+                  </p>
+                  {filters.length > 0 && (
+                    <button
+                      type="button"
+                      className="feedback-trigger"
+                      onClick={() => {
+                        setFilters([]);
+                        setSorts([]);
+                      }}
+                    >
+                      Clear filters
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="feedback-trigger"
+                    onClick={() => {
+                      setFeedbackCategory('no_match');
+                      setFeedbackOpen(true);
+                    }}
+                  >
+                    Tell us what you need
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Infinite-scroll affordance. Lives INSIDE the grid's
                 scroll container so the IntersectionObserver fires as

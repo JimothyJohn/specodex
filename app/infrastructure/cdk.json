@@ -1,5 +1,5 @@
 {
-  "app": "npx ts-node bin/app.ts",
+  "app": "TS_NODE_COMPILER=@typescript/typescript6 npx ts-node bin/app.ts",
   "watch": {
     "include": ["**"],
     "exclude": [

@@ -19,7 +19,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import { AppProvider } from '../context/AppContext';
 import { AuthProvider } from '../context/AuthContext';
 import { ConfirmProvider } from '../components/ui/ConfirmDialog';
@@ -72,6 +72,28 @@ function renderRoute(path: string) {
   );
 }
 
+/** Surfaces the router's current URL so a redirect's *target* — not just
+ *  the page it lands on — can be asserted. */
+function LocationProbe() {
+  const location = useLocation();
+  return <span data-testid="location">{`${location.pathname}${location.search}`}</span>;
+}
+
+function renderRouteWithProbe(path: string) {
+  return render(
+    <AuthProvider>
+      <AppProvider>
+        <ConfirmProvider>
+          <MemoryRouter initialEntries={[path]}>
+            <LocationProbe />
+            <AppShell />
+          </MemoryRouter>
+        </ConfirmProvider>
+      </AppProvider>
+    </AuthProvider>,
+  );
+}
+
 beforeEach(() => {
   window.localStorage.clear();
 });
@@ -87,12 +109,29 @@ describe('AppShell smoke render', () => {
     expect(screen.queryByText(/something went wrong/i)).toBeNull();
   });
 
+  it('header carries no OPTIONS eyebrow and hosts the GitHub link in the options cluster (UI_CLEANUP N4)', async () => {
+    renderRoute('/');
+    await waitFor(() => {
+      expect(screen.getByText('Loading...')).toBeInTheDocument();
+    });
+    // The decorative eyebrow was retired 2026-09-13; a reintroduction
+    // should be deliberate, not a merge-conflict resurrection.
+    expect(screen.queryByText('OPTIONS')).toBeNull();
+    const github = screen.getByRole('link', { name: 'Source on GitHub' });
+    expect(github.closest('.header-options')).not.toBeNull();
+    expect(github.closest('.header-left')).toBeNull();
+  });
+
   it('renders /welcome (lazy-loaded landing) with the hero copy', async () => {
     renderRoute('/welcome');
     await waitFor(() => {
       expect(screen.getByText(/A product selection frontend/i)).toBeInTheDocument();
     });
     expect(screen.queryByText(/something went wrong/i)).toBeNull();
+    // The "T1 — Ratio Studies" logo explorations were design scratch on
+    // the public landing; removed in UI_CLEANUP N6 (recoverable from git).
+    expect(screen.queryByText(/Ratio Studies/i)).toBeNull();
+    expect(screen.queryByText(/Favicon/i)).toBeNull();
   });
 
   it('renders /datasheets (lazy, admin-only)', async () => {
@@ -116,6 +155,22 @@ describe('AppShell smoke render', () => {
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: /^admin$/i, level: 2 })).toBeInTheDocument();
     });
+    expect(screen.queryByText(/something went wrong/i)).toBeNull();
+  });
+
+  it('redirects /actuators to Build with the linear/horizontal scope (BUILD Part 5)', async () => {
+    renderRouteWithProbe('/actuators');
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('heading', { name: /build a motion system/i, level: 1 }),
+      ).toBeInTheDocument();
+    });
+    // The scope params are the point of the redirect — landing on /build
+    // bare would lose the pre-narrowing the old ActuatorPage URL carried.
+    expect(screen.getByTestId('location')).toHaveTextContent(
+      '/build?ml=linear&or=horizontal',
+    );
     expect(screen.queryByText(/something went wrong/i)).toBeNull();
   });
 

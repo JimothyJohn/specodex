@@ -17,6 +17,7 @@ import { AppConfig } from './config';
 import { SiteWebAcl } from './waf/site-web-acl';
 import { SiteResponseHeadersPolicy } from './headers/site-response-headers-policy';
 import { WafAlarms } from './waf/waf-alarms';
+import { SPA_REWRITE_FUNCTION_CODE } from './edge/spa-rewrite';
 import * as path from 'path';
 
 export interface FrontendStackProps extends cdk.StackProps {
@@ -55,10 +56,15 @@ export class FrontendStack extends cdk.Stack {
       : undefined;
 
     // Edge WAF (Phase 5b). Rate limits + AWS managed common rules.
-    // Opt-out via WAF_ENABLED=false on the deploy environment if a
-    // rule unexpectedly blocks legitimate traffic — the absence of
-    // a WAF is the previous behavior.
-    const wafEnabled = (process.env.WAF_ENABLED ?? 'true').toLowerCase() !== 'false';
+    // Prod-only by default: WAF standing fees are ~$8/mo per stage
+    // ($5 ACL + $1/rule) regardless of traffic, and dev/staging see a
+    // few hundred requests a day (2026-08 cost audit). WAF_ENABLED
+    // overrides in both directions — false is the break-glass switch
+    // if a rule blocks legitimate prod traffic, true restores the old
+    // WAF-on-every-stage behavior.
+    const wafEnabled = process.env.WAF_ENABLED
+      ? process.env.WAF_ENABLED.toLowerCase() !== 'false'
+      : config.stage === 'prod';
     const siteWebAcl = wafEnabled
       ? new SiteWebAcl(this, 'EdgeAcl', {
           stage: config.stage,
@@ -93,6 +99,14 @@ export class FrontendStack extends cdk.Stack {
       });
     }
 
+    // SPA routing for the S3 behavior only. See edge/spa-rewrite.ts for
+    // why this is not a distribution-level errorResponses rule.
+    const spaRewrite = new cloudfront.Function(this, 'SpaRewrite', {
+      code: cloudfront.FunctionCode.fromInline(SPA_REWRITE_FUNCTION_CODE),
+      runtime: cloudfront.FunctionRuntime.JS_2_0,
+      comment: 'Rewrite client-side routes to /index.html (S3 behavior only)',
+    });
+
     // CloudFront distribution
     this.distribution = new cloudfront.Distribution(this, 'Distribution', {
       ...(siteWebAcl ? { webAclId: siteWebAcl.arn } : {}),
@@ -100,6 +114,9 @@ export class FrontendStack extends cdk.Stack {
         origin: s3Origin,
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
+        functionAssociations: [
+          { function: spaRewrite, eventType: cloudfront.FunctionEventType.VIEWER_REQUEST },
+        ],
         ...(responseHeadersPolicy ? { responseHeadersPolicy } : {}),
       },
       additionalBehaviors: {
@@ -126,21 +143,9 @@ export class FrontendStack extends cdk.Stack {
         domainNames: [config.domain.domainName],
         certificate,
       } : {}),
-      // SPA: return index.html for client-side routes
-      errorResponses: [
-        {
-          httpStatus: 403,
-          responseHttpStatus: 200,
-          responsePagePath: '/index.html',
-          ttl: cdk.Duration.minutes(5),
-        },
-        {
-          httpStatus: 404,
-          responseHttpStatus: 200,
-          responsePagePath: '/index.html',
-          ttl: cdk.Duration.minutes(5),
-        },
-      ],
+      // No errorResponses: they apply to every behavior and would turn
+      // API 403/404 JSON into a 200 index.html. SPA routing is the
+      // spaRewrite function on the default behavior instead.
     });
 
     // Route53 A record: www.specodex.com → CloudFront

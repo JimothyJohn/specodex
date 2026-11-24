@@ -29,6 +29,7 @@ export type {
   ContactorIcwRating,
   ElectricCylinder,
   LinearActuator,
+  InductiveSensor,
   Manufacturer,
   Datasheet,
   ProductBase,

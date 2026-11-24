@@ -115,7 +115,6 @@ export function AppShell() {
                   SPECODEX
                 </NavLink>
               </h1>
-              <GitHubLink />
               {(showSignedInNav || showAdminNav) && (
                 <nav className="nav-inline">
                   <NavLink to="/" end className={({ isActive }) => `nav-btn ${isActive ? 'active' : ''}`}>Selection</NavLink>
@@ -132,8 +131,12 @@ export function AppShell() {
                 </nav>
               )}
             </div>
+            {/* Right-side cluster: feedback, density, theme, source, account.
+                The OPTIONS eyebrow that used to head this cluster and the
+                ▸ ◂ glyphs around the wordmark were decoration with no
+                function — retired in UI_CLEANUP N4. The GitHub link moved
+                here from the primary-nav slot next to the wordmark. */}
             <div className="header-options">
-              <span className="header-options-label" aria-hidden="true">OPTIONS</span>
               <button
                 type="button"
                 className="feedback-trigger"
@@ -144,6 +147,7 @@ export function AppShell() {
               </button>
               <DensityToggle />
               <ThemeToggle />
+              <GitHubLink />
               <AccountMenu />
             </div>
           </header>
@@ -177,6 +181,19 @@ export function AppShell() {
                   per todo/BUILD.md Phase 1 PR-1; full requirements form
                   + derivation in follow-ups. */}
               <Route path="/build" element={<BuildPage />} />
+
+              {/* /actuators kept its semantic value as a deep link after
+                  <ActuatorPage /> was deleted — todo/BUILD.md Part 5
+                  ("Re-routing") points it at Build with the linear /
+                  horizontal scope pre-picked. Without this it fell
+                  through the catch-all onto Selection, which is the one
+                  landing Part 5 argues against: an external link into
+                  the actuator surface dumped the user in the raw
+                  catalogue with no narrowing at all. */}
+              <Route
+                path="/actuators"
+                element={<Navigate to="/build?ml=linear&or=horizontal" replace />}
+              />
 
               {/* Catch-all: Redirect to products */}
               <Route path="*" element={<Navigate to="/" replace />} />

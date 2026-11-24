@@ -142,12 +142,27 @@
   color: inherit;
   background: transparent;
   border: none;
-  border-bottom: 1px dashed var(--border-color-light);
+  /* Affordance shows on hover/focus only — 25 dashed rules per page
+   * read as clutter, not as a hint (UI_CLEANUP N3). Transparent at rest
+   * so the row height doesn't shift when it appears. */
+  border-bottom: 1px dashed transparent;
   border-radius: 0;
+  /* The global :where(button) stamp shadow drew a faint box behind
+   * every name once the underline went; this is a text link, not a
+   * button surface. */
+  box-shadow: none;
   cursor: pointer;
+  /* One line + ellipsis; the Tooltip carries the full name (N5). */
+  display: inline-block;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: bottom;
 }
 
-.vendor-link:hover {
+.vendor-link:hover,
+.vendor-link:focus-visible {
   color: var(--accent-primary);
   border-bottom-color: var(--accent-primary);
 }

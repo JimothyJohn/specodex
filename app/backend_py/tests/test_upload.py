@@ -107,3 +107,32 @@ class TestUpload:
             },
         )
         assert resp.status_code == 201
+
+
+class TestUploadTypeGuard:
+    """Non-string required fields are the caller's error — 400, never a
+    coercion or a 500 (HARDENING 2.2 follow-up, 2026-09-13; mirrors the
+    Express route)."""
+
+    _base = {
+        "product_name": "X",
+        "manufacturer": "Y",
+        "product_type": "motor",
+        "filename": "x.pdf",
+    }
+
+    @pytest.mark.parametrize(
+        "field,value",
+        [
+            ("product_type", 42),
+            ("product_name", ["a", "b"]),
+            ("manufacturer", {"k": "v"}),
+            ("filename", 7),
+        ],
+    )
+    def test_non_string_required_field_is_400(
+        self, upload_client: TestClient, field: str, value: object
+    ) -> None:
+        resp = upload_client.post("/api/upload", json={**self._base, field: value})
+        assert resp.status_code == 400
+        assert field in resp.json()["detail"]
