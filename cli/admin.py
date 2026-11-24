@@ -333,6 +333,24 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument("--json", action="store_true", help="Emit JSON instead of a summary")
 
+    # normalize-envelope (typed dimensions/weight migration, 2026-11-24)
+    p = sub.add_parser(
+        "normalize-envelope",
+        help="Rewrite stored dimensions/weight to per-axis mm + kg and derive max_dimension",
+    )
+    p.add_argument(
+        "--stage",
+        required=True,
+        # Never prod: prod gets canonical rows via `admin promote`.
+        choices=[s for s in STAGES if s != "prod"],
+    )
+    p.add_argument(
+        "--apply",
+        action="store_true",
+        help="Actually update DynamoDB (default: dry run)",
+    )
+    p.add_argument("--json", action="store_true", help="Emit JSON instead of a summary")
+
     return parser
 
 
@@ -382,6 +400,32 @@ def cmd_backfill_motor_mounts(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_normalize_envelope(args: argparse.Namespace) -> int:
+    from specodex.admin.envelope_migration import migrate_envelopes
+
+    client = make_client(args.stage)
+    result = migrate_envelopes(client.table, apply=args.apply)
+    if args.json:
+        print(json.dumps(result.to_dict(), indent=2, default=str))
+        return 0
+    print(f"envelope normalisation — stage={args.stage} apply={args.apply}")
+    print(f"  scanned:            {result.scanned}")
+    print(f"  already canonical:  {result.already_canonical}")
+    print(f"  planned updates:    {result.planned}")
+    print(f"    dimensions dropped (no usable axis): {result.dims_dropped}")
+    print(f"    weight dropped (unparseable/implausible): {result.weight_dropped}")
+    if args.apply:
+        print(f"  written:            {result.written}")
+        print(f"  skipped (concurrent edit): {result.conflicts}")
+    for s in result.samples[:5]:
+        print(
+            f"\n  {s['SK']}\n    before: {s['before']}\n    set:    {s['set']}\n    remove: {s['remove']}"
+        )
+    if not args.apply and result.planned:
+        print("\n(dry run — re-run with --apply to write)")
+    return 0
+
+
 def main(argv: Optional[list[str]] = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -395,6 +439,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         "audit-units": cmd_audit_units,
         "audit-specs": cmd_audit_specs,
         "backfill-motor-mounts": cmd_backfill_motor_mounts,
+        "normalize-envelope": cmd_normalize_envelope,
     }
     return dispatch[args.command](args)
 

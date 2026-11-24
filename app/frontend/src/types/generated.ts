@@ -47,8 +47,18 @@ export interface Contactor {
    */
   manufacturer: string;
   release_year?: number | null;
+  /**
+   * Overall envelope from the outline/dimension drawing: length along the main axis (shaft axis for motors and gearheads), width and height across it. Approximate is fine.
+   */
   dimensions?: Dimensions | null;
+  /**
+   * Product mass (e.g., in kg). Normalised to kg.
+   */
   weight?: ValueUnit | null;
+  /**
+   * Largest known axis of `dimensions`, in mm. Derived on validation, never LLM-extracted (llm_schema.EXCLUDED_FIELDS).
+   */
+  max_dimension?: ValueUnit | null;
   msrp?: ValueUnit | null;
   /**
    * URL the MSRP was scraped from. Populated by price-enrich.
@@ -255,13 +265,24 @@ export interface Contactor {
   mounting_types?: string[] | null;
 }
 /**
- * Represents physical dimensions of an object.
+ * Overall physical envelope (bounding box), each axis in mm.
+ *
+ * Axis convention: ``length`` along the product's main axis (motor and
+ * gearhead: along the shaft, flange face to rear; actuator: overall
+ * length at the stroke the row describes); ``width`` / ``height`` across
+ * it (for a square flange both equal the flange edge). Drives and
+ * cabinet parts: width × height × depth-as-length, as mounted.
+ *
+ * Legacy rows stored ``{"width": 60.0, "length": 120.0, "unit": "in"}``
+ * — bare floats plus one shared, unnormalised unit. The before-validator
+ * lifts that shape into per-axis ValueUnits so old DynamoDB rows,
+ * Gemini's habit of emitting the flat shape, and the new shape all load
+ * the same way.
  */
 export interface Dimensions {
-  width?: number | null;
-  length?: number | null;
-  height?: number | null;
-  unit?: string | null;
+  length?: ValueUnit | null;
+  width?: ValueUnit | null;
+  height?: ValueUnit | null;
 }
 /**
  * A numeric value paired with a unit — the canonical scalar spec shape.
@@ -486,8 +507,18 @@ export interface Drive {
    */
   manufacturer: string;
   release_year?: number | null;
+  /**
+   * Overall envelope from the outline/dimension drawing: length along the main axis (shaft axis for motors and gearheads), width and height across it. Approximate is fine.
+   */
   dimensions?: Dimensions | null;
+  /**
+   * Product mass (e.g., in kg). Normalised to kg.
+   */
   weight?: ValueUnit | null;
+  /**
+   * Largest known axis of `dimensions`, in mm. Derived on validation, never LLM-extracted (llm_schema.EXCLUDED_FIELDS).
+   */
+  max_dimension?: ValueUnit | null;
   msrp?: ValueUnit | null;
   /**
    * URL the MSRP was scraped from. Populated by price-enrich.
@@ -583,8 +614,18 @@ export interface ElectricCylinder {
    */
   manufacturer: string;
   release_year?: number | null;
+  /**
+   * Overall envelope from the outline/dimension drawing: length along the main axis (shaft axis for motors and gearheads), width and height across it. Approximate is fine.
+   */
   dimensions?: Dimensions | null;
+  /**
+   * Product mass (e.g., in kg). Normalised to kg.
+   */
   weight?: ValueUnit | null;
+  /**
+   * Largest known axis of `dimensions`, in mm. Derived on validation, never LLM-extracted (llm_schema.EXCLUDED_FIELDS).
+   */
+  max_dimension?: ValueUnit | null;
   msrp?: ValueUnit | null;
   /**
    * URL the MSRP was scraped from. Populated by price-enrich.
@@ -862,8 +903,18 @@ export interface Gearhead {
    */
   manufacturer: string;
   release_year?: number | null;
+  /**
+   * Overall envelope from the outline/dimension drawing: length along the main axis (shaft axis for motors and gearheads), width and height across it. Approximate is fine.
+   */
   dimensions?: Dimensions | null;
+  /**
+   * Product mass (e.g., in kg). Normalised to kg.
+   */
   weight?: ValueUnit | null;
+  /**
+   * Largest known axis of `dimensions`, in mm. Derived on validation, never LLM-extracted (llm_schema.EXCLUDED_FIELDS).
+   */
+  max_dimension?: ValueUnit | null;
   msrp?: ValueUnit | null;
   /**
    * URL the MSRP was scraped from. Populated by price-enrich.
@@ -1035,8 +1086,18 @@ export interface InductiveSensor {
    */
   manufacturer: string;
   release_year?: number | null;
+  /**
+   * Overall envelope from the outline/dimension drawing: length along the main axis (shaft axis for motors and gearheads), width and height across it. Approximate is fine.
+   */
   dimensions?: Dimensions | null;
+  /**
+   * Product mass (e.g., in kg). Normalised to kg.
+   */
   weight?: ValueUnit | null;
+  /**
+   * Largest known axis of `dimensions`, in mm. Derived on validation, never LLM-extracted (llm_schema.EXCLUDED_FIELDS).
+   */
+  max_dimension?: ValueUnit | null;
   msrp?: ValueUnit | null;
   /**
    * URL the MSRP was scraped from. Populated by price-enrich.
@@ -1250,8 +1311,18 @@ export interface LinearActuator {
    */
   manufacturer: string;
   release_year?: number | null;
+  /**
+   * Overall envelope from the outline/dimension drawing: length along the main axis (shaft axis for motors and gearheads), width and height across it. Approximate is fine.
+   */
   dimensions?: Dimensions | null;
+  /**
+   * Product mass (e.g., in kg). Normalised to kg.
+   */
   weight?: ValueUnit | null;
+  /**
+   * Largest known axis of `dimensions`, in mm. Derived on validation, never LLM-extracted (llm_schema.EXCLUDED_FIELDS).
+   */
+  max_dimension?: ValueUnit | null;
   msrp?: ValueUnit | null;
   /**
    * URL the MSRP was scraped from. Populated by price-enrich.
@@ -1460,8 +1531,18 @@ export interface Motor {
    */
   manufacturer: string;
   release_year?: number | null;
+  /**
+   * Overall envelope from the outline/dimension drawing: length along the main axis (shaft axis for motors and gearheads), width and height across it. Approximate is fine.
+   */
   dimensions?: Dimensions | null;
+  /**
+   * Product mass (e.g., in kg). Normalised to kg.
+   */
   weight?: ValueUnit | null;
+  /**
+   * Largest known axis of `dimensions`, in mm. Derived on validation, never LLM-extracted (llm_schema.EXCLUDED_FIELDS).
+   */
+  max_dimension?: ValueUnit | null;
   msrp?: ValueUnit | null;
   /**
    * URL the MSRP was scraped from. Populated by price-enrich.
@@ -1568,8 +1649,18 @@ export interface ProductBase {
    */
   manufacturer: string;
   release_year?: number | null;
+  /**
+   * Overall envelope from the outline/dimension drawing: length along the main axis (shaft axis for motors and gearheads), width and height across it. Approximate is fine.
+   */
   dimensions?: Dimensions | null;
+  /**
+   * Product mass (e.g., in kg). Normalised to kg.
+   */
   weight?: ValueUnit | null;
+  /**
+   * Largest known axis of `dimensions`, in mm. Derived on validation, never LLM-extracted (llm_schema.EXCLUDED_FIELDS).
+   */
+  max_dimension?: ValueUnit | null;
   msrp?: ValueUnit | null;
   /**
    * URL the MSRP was scraped from. Populated by price-enrich.
@@ -1643,8 +1734,18 @@ export interface RobotArm {
    */
   manufacturer?: string;
   release_year?: number | null;
+  /**
+   * Overall envelope from the outline/dimension drawing: length along the main axis (shaft axis for motors and gearheads), width and height across it. Approximate is fine.
+   */
   dimensions?: Dimensions | null;
+  /**
+   * Product mass (e.g., in kg). Normalised to kg.
+   */
   weight?: ValueUnit | null;
+  /**
+   * Largest known axis of `dimensions`, in mm. Derived on validation, never LLM-extracted (llm_schema.EXCLUDED_FIELDS).
+   */
+  max_dimension?: ValueUnit | null;
   msrp?: ValueUnit | null;
   /**
    * URL the MSRP was scraped from. Populated by price-enrich.

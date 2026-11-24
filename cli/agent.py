@@ -222,8 +222,9 @@ def _spec_suffix(model: Any) -> str:
         if val:
             parts.append(_normalize(str(val)))
     dims = getattr(model, "dimensions", None)
-    if dims and getattr(dims, "length", None) is not None:
-        parts.append(f"l{dims.length}")
+    length = getattr(dims, "length", None) if dims else None
+    if length is not None:
+        parts.append(f"l{length.value:g}")
     return "_".join(parts)
 
 

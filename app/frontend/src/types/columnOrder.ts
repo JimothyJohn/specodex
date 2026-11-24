@@ -47,6 +47,9 @@ export const COLUMN_ORDER: Partial<
     'output_speed',
     'rated_voltage',
     'rated_current',
+    // Physical envelope (filters.ts:envelopeAttributes) — shown when populated.
+    'max_dimension',
+    'weight',
   ],
   drive: [
     'manufacturer',
@@ -55,28 +58,46 @@ export const COLUMN_ORDER: Partial<
     'input_voltage_phases',
     'rated_current',
     'peak_current',
+    // Physical envelope (filters.ts:envelopeAttributes) — shown when populated.
+    'max_dimension',
+    'weight',
   ],
   robot_arm: [
     'manufacturer',
     // e.g. 'payload', 'reach', 'degrees_of_freedom', 'pose_repeatability', 'max_tcp_speed',
+    // Physical envelope (filters.ts:envelopeAttributes) — shown when populated.
+    'max_dimension',
+    'weight',
   ],
   gearhead: [
     'manufacturer',
     // e.g. 'gear_ratio', 'gear_type', 'rated_torque', 'peak_torque', 'backlash', 'efficiency',
+    // Physical envelope (filters.ts:envelopeAttributes) — shown when populated.
+    'max_dimension',
+    'weight',
   ],
   contactor: [
     'manufacturer',
     // e.g. 'ie_ac3_400v', 'motor_power_ac3_400v_kw', 'motor_power_ac3_480v_hp',
+    // Physical envelope (filters.ts:envelopeAttributes) — shown when populated.
+    'max_dimension',
+    'weight',
   ],
   electric_cylinder: [
     'manufacturer',
     // e.g. 'stroke', 'max_push_force', 'continuous_force', 'max_linear_speed', 'rated_voltage',
+    // Physical envelope (filters.ts:envelopeAttributes) — shown when populated.
+    'max_dimension',
+    'weight',
   ],
   linear_actuator: [
     'manufacturer',
     // Derivation-only type (no static getXxxAttributes list) — its spec
     // columns auto-populate from records. `manufacturer` still pins here
     // so it stays far-left, not alphabetized adrift.
+    // Physical envelope (filters.ts:envelopeAttributes) — shown when populated.
+    'max_dimension',
+    'weight',
   ],
   inductive_sensor: [
     'manufacturer',
@@ -87,6 +108,9 @@ export const COLUMN_ORDER: Partial<
     'output_function',
     'supply_voltage',
     'switching_frequency',
+    // Physical envelope (filters.ts:envelopeAttributes) — shown when populated.
+    'max_dimension',
+    'weight',
   ],
   datasheet: [
     'manufacturer',
