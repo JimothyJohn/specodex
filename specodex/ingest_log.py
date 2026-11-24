@@ -71,6 +71,7 @@ def build_record(
     gemini_input_tokens: Optional[int] = None,
     gemini_output_tokens: Optional[int] = None,
     error_message: Optional[str] = None,
+    spec_flags: Optional[Iterable[str]] = None,
     sk: Optional[str] = None,
 ) -> dict[str, Any]:
     """Assemble the DynamoDB item for a single ingest attempt.
@@ -111,6 +112,12 @@ def build_record(
         record["gemini_output_tokens"] = int(gemini_output_tokens)
     if error_message is not None:
         record["error_message"] = error_message
+    # Products held back by spec_rules.plausibility_flags (e.g. a kW↔W
+    # slip). Only written when non-empty so existing records keep their
+    # shape; `ingest-report` surfaces them for review.
+    flags = list(spec_flags or [])
+    if flags:
+        record["spec_flags"] = flags
     return record
 
 

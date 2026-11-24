@@ -222,6 +222,8 @@ const CATEGORY_BY_KEY: Record<string, AttributeCategory> = {
   rated_torque: 'mechanical',
   peak_torque: 'mechanical',
   rated_speed: 'mechanical',
+  output_torque: 'mechanical',
+  output_speed: 'mechanical',
   nominal_input_speed: 'mechanical',
   max_input_speed: 'mechanical',
   rotor_inertia: 'mechanical',
@@ -367,6 +369,12 @@ export const getMotorAttributes = (): AttributeMetadata[] => [
   { key: 'rated_torque', displayName: 'Rated Torque', type: 'object', applicableTypes: ['motor'], nested: true, unit: 'Nm', defaultVisible: true, defaultFilter: true },
   { key: 'peak_torque', displayName: 'Peak Torque', type: 'object', applicableTypes: ['motor'], nested: true, unit: 'Nm', defaultVisible: true },
   { key: 'rated_speed', displayName: 'Rated Speed', type: 'object', applicableTypes: ['motor'], nested: true, unit: 'rpm', defaultVisible: true, defaultFilter: true },
+  // Computed, not stored: rated torque × / rated speed ÷ the per-row gear
+  // ratio a `>=` filter on output_torque picks (utils/gearCascade.ts).
+  // Kept separate from rated_torque so a torque column never mixes motor
+  // shaft torque with gearbox output torque.
+  { key: 'output_torque', displayName: 'Output Torque (with gearbox)', type: 'object', applicableTypes: ['motor'], nested: true, unit: 'Nm', defaultVisible: false },
+  { key: 'output_speed', displayName: 'Output Speed (with gearbox)', type: 'object', applicableTypes: ['motor'], nested: true, unit: 'rpm', defaultVisible: false },
   { key: 'rated_voltage', displayName: 'Rated Voltage', type: 'range', applicableTypes: ['motor'], nested: true, unit: 'V', defaultVisible: true },
   { key: 'rated_current', displayName: 'Rated Current', type: 'object', applicableTypes: ['motor'], nested: true, unit: 'A', defaultVisible: true },
   { key: 'rotor_inertia', displayName: 'Rotor Inertia', type: 'object', applicableTypes: ['motor'], nested: true, unit: 'kg·cm²', defaultVisible: true },

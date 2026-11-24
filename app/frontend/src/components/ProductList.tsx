@@ -15,6 +15,7 @@ import { formatValue, formatNumber, formatRange, computeAutoColumnWidths } from 
 import Tooltip from './ui/Tooltip';
 import { displayUnit, convertValueUnit, convertMinMaxUnit } from '../utils/unitConversion';
 import { numericFromValue } from '../utils/filterValues';
+import { applyGearCascade, GEARED_KEYS } from '../utils/gearCascade';
 import { useColumnResize } from '../utils/hooks';
 import {
   safeLoad,
@@ -386,38 +387,6 @@ export default function ProductList() {
     setClickPosition(reset.clickPosition);
   };
 
-  // Torque/speed keys — driven by the per-row gear-ratio cascade below.
-  const TORQUE_KEYS = ['rated_torque', 'peak_torque'];
-  const SPEED_KEYS = ['rated_speed'];
-
-  // Discrete gear ratios. Direct drive plus multiples of 4 — real
-  // gearhead catalogs cluster around these and a finer grid would give
-  // false precision. Snap *up* (next ratio that's enough to meet the
-  // torque target) rather than rounding, so the displayed value never
-  // overstates what the motor would actually deliver.
-  const GEAR_OPTIONS = [1, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 48, 64, 80, 100];
-  const snapGearUp = (raw: number): number => {
-    for (const g of GEAR_OPTIONS) {
-      if (g >= raw) return g;
-    }
-    return GEAR_OPTIONS[GEAR_OPTIONS.length - 1];
-  };
-
-  const scaleSpec = (value: any, factor: number): any => {
-    if (!value || typeof value !== 'object') return value;
-    if ('value' in value && typeof value.value === 'number') {
-      return { ...value, value: parseFloat((value.value * factor).toPrecision(4)) };
-    }
-    if ('min' in value || 'max' in value) {
-      return {
-        ...value,
-        min: typeof value.min === 'number' ? parseFloat((value.min * factor).toPrecision(4)) : value.min,
-        max: typeof value.max === 'number' ? parseFloat((value.max * factor).toPrecision(4)) : value.max,
-      };
-    }
-    return value;
-  };
-
   // Build-aware compat narrowing. When the user has anchored part of their
   // motion-system build and the active type is adjacent to one of those
   // anchors, drop products that strict-fail compat. Soft-partials (missing
@@ -447,63 +416,24 @@ export default function ProductList() {
 
   const compatHiddenCount = compatFilterActive ? products.length - compatNarrowed.length : 0;
 
-  // Per-row gear ratio. Picks the smallest discrete ratio that lifts
-  // each motor's rated/peak torque to clear the active torque filter,
-  // then scales speed down by the same factor — every motor gets a
-  // chance at the spec, and the user sees what speed they'd actually
-  // get with that gear in place. With no torque filter, gearMap is
-  // empty and gearedSource passes through unchanged.
-  const torqueTargets = useMemo(() => {
-    const out: { key: string; target: number }[] = [];
-    for (const f of filters) {
-      if (!TORQUE_KEYS.includes(f.attribute)) continue;
-      if (f.operator !== '>=' && f.operator !== '>') continue;
-      const v = numericFromValue(f.value);
-      if (v == null || !Number.isFinite(v) || v <= 0) continue;
-      out.push({ key: f.attribute, target: v });
-    }
-    return out;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters]);
+  // Gearbox cascade (motor view). Rated Torque / Peak Torque / Rated
+  // Speed always show the motor's own shaft values; a `>=` filter on the
+  // computed "Output Torque (with gearbox)" column picks a per-row ratio
+  // and fills output_torque / output_speed. Cells, header histograms,
+  // sliders, filters and sorts all read the same fields — see
+  // utils/gearCascade.ts for why the old in-place rewrite of
+  // rated_torque was split out.
+  const { products: gearedSource, gearMap, active: gearActive } = useMemo(
+    () => applyGearCascade(compatNarrowed, filters, productType),
+    [compatNarrowed, filters, productType],
+  );
 
-  const { gearedSource, gearMap } = useMemo(() => {
-    if (productType !== 'motor' || torqueTargets.length === 0) {
-      return { gearedSource: compatNarrowed, gearMap: new Map<string, number>() };
-    }
-    const map = new Map<string, number>();
-    const next = compatNarrowed.map(p => {
-      let ratio = 1;
-      for (const { key, target } of torqueTargets) {
-        const motorVal = numericFromValue((p as any)[key]);
-        if (motorVal == null || motorVal <= 0) continue;
-        if (motorVal >= target) continue;
-        const needed = snapGearUp(target / motorVal);
-        if (needed > ratio) ratio = needed;
-      }
-      map.set(p.product_id, ratio);
-      if (ratio === 1) return p;
-      const copy: any = { ...p };
-      for (const k of TORQUE_KEYS) {
-        if (copy[k]) copy[k] = scaleSpec(copy[k], ratio);
-      }
-      for (const k of SPEED_KEYS) {
-        if (copy[k]) copy[k] = scaleSpec(copy[k], 1 / ratio);
-      }
-      return copy as Product;
-    });
-    return { gearedSource: next, gearMap: map };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [compatNarrowed, torqueTargets, productType]);
-
-  /* Gear ratio column appears on the motor view once a torque filter
-   * exists (`torqueTargets` non-empty) — that is the only time gearMap
-   * can hold a ratio other than 1. PR #201 kept it always-on so the
-   * column stayed in the table's mental model, but with no torque
-   * filter every row read "—", an always-empty default column
-   * (UI_CLEANUP N2). The torque/speed headers carry a "geared" marker
-   * while the cascade is active so the scaled values are labelled. */
-  const showGearColumn = productType === 'motor' && torqueTargets.length > 0;
-  const cascadeKeys = showGearColumn ? [...TORQUE_KEYS, ...SPEED_KEYS] : [];
+  /* Gear ratio column appears on the motor view while an output-torque
+   * filter is active — the only time gearMap can hold a ratio other
+   * than 1 (UI_CLEANUP N2: no always-empty default column). The output
+   * torque/speed headers carry a "geared" marker while it is active. */
+  const showGearColumn = productType === 'motor' && gearActive;
+  const cascadeKeys: readonly string[] = showGearColumn ? GEARED_KEYS : [];
 
   const filteredProducts = useMemo(() => {
     return applyFilters(gearedSource, filters);
@@ -942,7 +872,7 @@ export default function ProductList() {
             <ActiveFilterChips
               filters={filters}
               attributes={columnAttributes}
-              products={compatNarrowed}
+              products={gearedSource}
               unitSystemFor={unitSystemFor}
               onRemove={(f) => setFilters(prev => prev.filter(x => x !== f))}
             />
@@ -1124,12 +1054,11 @@ export default function ProductList() {
                 </span>
                 <div className="col-resize-handle" onMouseDown={(e) => startResize('part_number', e)} />
               </div>
-              {/* Gear ratio (computed). Shown on the motor view while a
-                  torque filter is active; '—' marks direct drive (ratio 1).
-                  Per-row value comes from gearMap; rated_torque and
-                  rated_speed cells display the post-gear values so the
-                  table is an accurate depiction of what each motor would
-                  deliver at the chosen ratio. */}
+              {/* Gear ratio (computed). Shown on the motor view while an
+                  output-torque filter is active; '—' marks direct drive
+                  (ratio 1). Per-row value comes from gearMap; only the
+                  Output Torque / Output Speed columns are post-gear —
+                  Rated Torque and Rated Speed stay the motor's own. */}
               {showGearColumn && (
                 <div className="product-grid-header-item computed-col" style={{ width: 70 }}>
                   <div className="product-grid-header-label">Gear</div>
@@ -1158,7 +1087,7 @@ export default function ProductList() {
                       attribute={attribute}
                       label={header.label}
                       products={displayProducts}
-                      allProducts={compatNarrowed}
+                      allProducts={gearedSource}
                       filter={filter}
                       allFilters={filters}
                       sortConfig={sortConfig}
