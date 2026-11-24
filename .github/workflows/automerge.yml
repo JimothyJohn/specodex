@@ -4,6 +4,10 @@ name: Auto-merge
 # owner or Dependabot. Branch protection's required checks remain the gate:
 # the PR merges only when every required check is green and there are no
 # conflicts. Drafts are the deliberate opt-out. dev -> master stays manual.
+#
+# The merge is made by github-actions[bot] (GITHUB_TOKEN), which does not
+# fire ci.yml's push trigger. staging-catchup.yml dispatches the pipeline
+# for a dev head that has had no run, so the staging deploy still happens.
 
 on:
   pull_request:
