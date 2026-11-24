@@ -91,7 +91,9 @@ app.use('/api', docsRouter);
 if (process.env.NODE_ENV === 'production') {
   const publicDir = path.join(__dirname, '..', '..', 'public');
   app.use(express.static(publicDir));
-  app.get('*', (_req: Request, res: Response, next: NextFunction) => {
+  // Express 5 (path-to-regexp 8) rejects a bare '*': wildcards must be
+  // named, and the braces make the segment optional so '/' matches too.
+  app.get('/{*splat}', (_req: Request, res: Response, next: NextFunction) => {
     if (_req.path.startsWith('/api/') || _req.path === '/health') return next();
     res.sendFile(path.join(publicDir, 'index.html'));
   });
