@@ -112,11 +112,14 @@ lists stripped); `compact: false` returns raw records.
 
 Things the client knows that a naive wrapper would not:
 
-- **CloudFront masks API 404s as HTML 200** (SPA fallback). A missing
-  product, or an endpoint that prod (master) does not serve yet
-  because it is behind dev, arrives as `text/html`. The client turns
+- **CloudFront used to mask API 404s as HTML 200** (distribution-wide
+  SPA fallback). The fallback is now a viewer-request function on the
+  S3 behavior only (`app/infrastructure/lib/edge/spa-rewrite.ts`), so
+  `/api/*` errors reach clients as JSON once that's deployed. Until
+  every stage has it, a missing product or an endpoint prod (master)
+  doesn't serve yet can still arrive as `text/html`; the client turns
   any non-JSON body into an actionable not-found error instead of
-  handing HTML to the model.
+  handing HTML to the model. Keep that defence.
 - **Anticipated failures must be `ToolError`.** mcp 2.x forwards only
   `ToolError` messages to the client; any other exception reaches the
   model as a bare "Error executing tool X" and the reason goes to a
