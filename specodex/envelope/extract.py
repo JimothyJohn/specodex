@@ -195,6 +195,9 @@ def page_words(pdf_bytes: bytes, pages: List[int]) -> dict:
 
 
 VERIFIED_FIELDS = ("length", "width", "height", "weight")
+# Bump when ``match.value_in_line`` / ``designator_on_page`` change: cached
+# readings are then re-checked against the PDF without calling Gemini.
+VERIFIER_VERSION = 2
 
 
 def unverified_fields(e: EnvelopeExtraction, words: Any) -> List[str]:
@@ -205,6 +208,34 @@ def unverified_fields(e: EnvelopeExtraction, words: Any) -> List[str]:
         v = getattr(e, name)
         if v is not None and not value_in_line(e.designator, v.value, words):
             out.append(name)
+    return out
+
+
+def reverify(pdf_bytes: bytes, extractions: List[Any]) -> List[Dict[str, Any]]:
+    """Recompute ``"unverified"`` for cached extraction dicts against the
+    PDF's text layer. Entries that no longer validate are dropped."""
+    pages = sorted(
+        {
+            e["page_number"]
+            for e in extractions
+            if isinstance(e, dict)
+            and isinstance(e.get("page_number"), int)
+            and not isinstance(e.get("page_number"), bool)
+        }
+    )
+    words = page_words(pdf_bytes, pages)
+    out: List[Dict[str, Any]] = []
+    for raw in extractions:
+        try:
+            e = EnvelopeExtraction.model_validate(raw)
+        except Exception:  # noqa: BLE001 — malformed cache entry
+            continue
+        out.append(
+            {
+                **e.model_dump(mode="json"),
+                "unverified": unverified_fields(e, words.get(e.page_number)),
+            }
+        )
     return out
 
 

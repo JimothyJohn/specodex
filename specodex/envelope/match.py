@@ -309,6 +309,25 @@ def _word_boxes(words: Any) -> List[Tuple[float, float, float, float, str, Any]]
     return out
 
 
+_ASCII_ALNUM = re.compile(r"[A-Za-z0-9]")
+
+
+def _boundary_prefixes(raw: str) -> Set[str]:
+    """Normalised prefixes of ``raw`` that end at a separator or the end.
+
+    ``"SGMJV-A5A@A6@"`` → {"SGMJV", "SGMJVA5A", "SGMJVA5AA6"}: a label may
+    be followed by option placeholders, but ``"ABR090A"`` never yields
+    ``"ABR090"`` — the trailing letter makes it a different model.
+    """
+    out: Set[str] = set()
+    for k in range(1, len(raw) + 1):
+        if k == len(raw) or not _ASCII_ALNUM.match(raw[k]):
+            norm = normalize_designator(raw[:k])
+            if norm:
+                out.add(norm)
+    return out
+
+
 def _overlaps(a0: float, a1: float, b0: float, b1: float) -> bool:
     return a0 <= b1 + _ALIGN_SLACK and b0 <= a1 + _ALIGN_SLACK
 
@@ -319,7 +338,8 @@ def value_in_line(designator: Any, value: Any, words: Any) -> bool:
     ``words`` is a page's text layer as PyMuPDF ``get_text("words")`` tuples
     ``(x0, y0, x1, y1, text, block, line, word)``. The designator is located
     as one word, or up to three consecutive words on one line, whose
-    normalised text equals its head (``_designator_head``). The value must
+    normalised text up to a separator equals its head
+    (``_designator_head``; ``_boundary_prefixes``). The value must
     be a word that is a single, optionally decorated number (``□90``,
     ``Ø80``, ``206.5``, ``5,5``) equal to it, and that word's box must
     overlap the designator's box horizontally (same column) or vertically
@@ -344,12 +364,13 @@ def value_in_line(designator: Any, value: Any, words: Any) -> bool:
     anchors = []
     anchor_words: Set[int] = set()
     for i in range(len(boxes)):
-        acc = ""
+        raw = ""
         for j in range(i, min(i + 3, len(boxes))):
             if boxes[j][5] != boxes[i][5]:
                 break
-            acc += normalize_designator(boxes[j][4])
-            if acc == head:
+            raw = f"{raw} {boxes[j][4]}" if raw else boxes[j][4]
+            acc = normalize_designator(raw)
+            if head in _boundary_prefixes(raw):
                 anchors.append(
                     (
                         min(b[0] for b in boxes[i : j + 1]),

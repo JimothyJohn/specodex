@@ -169,11 +169,55 @@ class TestCache:
         assert not envelope_extract._is_cached(url)
         envelope_extract._cache_path(url).write_text("{not json")
         assert not envelope_extract._is_cached(url)
-        rec = {"version": envelope_extract.CACHE_VERSION, "url": url, "passes": {}}
+        rec = {
+            "version": envelope_extract.CACHE_VERSION,
+            "verifier": envelope_extract.VERIFIER_VERSION,
+            "url": url,
+            "passes": {},
+        }
         envelope_extract._cache_path(url).write_text(json.dumps(rec))
         assert envelope_extract._is_cached(url)
         got = envelope_extract.extract_for_datasheet(url, [], "k", 12, refresh=False)
         assert got["cached"] is True and got["url"] == url
+
+    def test_stale_verifier_rechecks_without_gemini(self, tmp_path, monkeypatch):
+        import pymupdf
+
+        monkeypatch.setattr(envelope_extract, "CACHE_DIR", tmp_path)
+        doc = pymupdf.open()
+        page = doc.new_page()
+        page.insert_text((40, 100), "SGMJV-A5A@A6@")
+        page.insert_text((200, 100), "94")
+        page.insert_text((260, 100), "3.1")
+        pdf = doc.tobytes()
+        url = "https://example.com/omron.pdf"
+        reading = {
+            "designator": "SGMJV-A5A A6",
+            "length": {"value": 94, "unit": "mm"},
+            "weight": {"value": 0.5, "unit": "kg"},  # not printed
+            "page_number": 0,
+            "unverified": ["length", "weight"],  # verdict of an older checker
+        }
+        rec = {
+            "version": envelope_extract.CACHE_VERSION,
+            "verifier": envelope_extract.VERIFIER_VERSION - 1,
+            "url": url,
+            "pages": [0],
+            "passes": {"a": [reading], "b": [reading]},
+            "error": None,
+        }
+        envelope_extract._cache_path(url).write_text(json.dumps(rec))
+        monkeypatch.setattr(envelope_extract, "get_document", lambda u: pdf)
+
+        def no_gemini(*a, **k):
+            raise AssertionError("Gemini must not be called")
+
+        monkeypatch.setattr(envelope_extract, "extract_envelopes", no_gemini)
+        got = envelope_extract.extract_for_datasheet(url, [], "k", 12, refresh=False)
+        assert got["verifier"] == envelope_extract.VERIFIER_VERSION
+        assert got["passes"]["a"][0]["unverified"] == ["weight"]
+        saved = json.loads(envelope_extract._cache_path(url).read_text())
+        assert saved["passes"]["b"][0]["unverified"] == ["weight"]
 
 
 @pytest.mark.unit

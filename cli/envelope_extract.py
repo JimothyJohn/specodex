@@ -71,8 +71,10 @@ from specodex.admin.operations import make_client
 from specodex.envelope.extract import (
     PASSES,
     VERIFIED_FIELDS,
+    VERIFIER_VERSION,
     EnvelopeExtraction,
     extract_envelopes,
+    reverify,
 )
 from specodex.envelope.match import agreed_dims, match_rows, select_envelope_pages
 from specodex.page_finder import find_drawing_pages_scored
@@ -165,14 +167,36 @@ def extract_for_datasheet(
     "error", "cached"}``; read from / written to the cache."""
     path = _cache_path(url)
     cached = None if refresh else _read_cache(url)
-    if cached is not None:
+    if cached is not None and cached.get("verifier") == VERIFIER_VERSION:
         return {**cached, "cached": True}
+    if cached is not None:
+        # Readings are still good; the text-layer check changed. Re-run it
+        # against the PDF (no Gemini call).
+        try:
+            pdf = get_document(url)
+            if not pdf:
+                raise RuntimeError("empty or failed download")
+            cached["passes"] = {
+                name: reverify(pdf, cached.get("passes", {}).get(name, []))
+                for name in PASSES
+            }
+            cached["verifier"] = VERIFIER_VERSION
+            path.write_text(json.dumps(cached))
+            return {**cached, "cached": True}
+        except Exception as e:  # noqa: BLE001
+            return {
+                **cached,
+                "passes": {},
+                "error": f"reverify: {type(e).__name__}: {e}"[:500],
+                "cached": True,
+            }
     record: Dict[str, Any] = {
         "version": CACHE_VERSION,
         "url": url,
         "pages": [],
         "passes": {name: [] for name in PASSES},
         "usage": {"input": 0, "output": 0},
+        "verifier": VERIFIER_VERSION,
         "error": None,
     }
     try:

@@ -299,6 +299,28 @@ class TestValueInLine:
         assert value_in_line("SGMGV-05D Without brake", 179, ROW_WORDS)
         assert value_in_line("AB090 1-stage", 126.5, ROW_WORDS)
 
+    def test_label_with_option_placeholders(self):
+        # Omron I74E p.10 prints "SGMJV-A5A@A6@"; Gemini copies "SGMJV-A5A A6".
+        words = [
+            (35.0, 142.0, 94.0, 149.0, "SGMJV-A5A@A6@", 6, 0, 0),
+            (183.0, 142.0, 191.0, 149.0, "94", 6, 1, 0),
+            (35.0, 151.0, 94.0, 158.0, "SGMJV-01A@A6@", 6, 13, 0),
+            (179.0, 151.0, 196.0, 158.0, "107.5", 6, 14, 0),
+        ]
+        assert value_in_line("SGMJV-A5A A6 Without brake", 94, words)
+        assert value_in_line("SGMJV-01A", 107.5, words)
+        assert not value_in_line("SGMJV-01A", 94, words)
+
+    def test_longer_model_code_is_not_the_designator(self):
+        # ABR090A is its own column; its values never verify for ABR090.
+        words = [
+            (223.0, 382.0, 253.0, 390.0, "ABR090", 86, 2, 0),
+            (268.0, 382.0, 302.0, 390.0, "ABR090A", 86, 8, 0),
+            (275.0, 551.0, 290.0, 559.0, "251", 13, 8, 0),
+        ]
+        assert not value_in_line("ABR090", 251, words)
+        assert value_in_line("ABR090A", 251, words)
+
     def test_designator_absent_or_junk(self):
         assert not value_in_line("ZZ999", 179, ROW_WORDS)
         for d in (None, "", "  ", 42):
