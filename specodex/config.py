@@ -34,6 +34,12 @@ IMPORTANT EXTRACTION RULES:
 
 MODEL: str = "gemini-2.5-flash"  # Explicitly define model for clarity
 
+# Pass to every genai.Client(...). google-genai >= 3.6 defaults to API v1,
+# which rejects JSON mode (response_mime_type="application/json") with
+# 400 INVALID_ARGUMENT; every extraction here uses JSON mode.
+# tests/unit/test_gemini_api_version.py fails on any unpinned client.
+GEMINI_HTTP_OPTIONS: dict = {"api_version": "v1beta"}
+
 
 def _discover_schema_models() -> Dict[str, Type[ProductBase]]:
     """

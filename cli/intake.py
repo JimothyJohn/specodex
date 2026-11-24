@@ -15,6 +15,8 @@ Usage (via dsm-agent):
 from __future__ import annotations
 
 import hashlib
+
+from specodex.config import GEMINI_HTTP_OPTIONS
 import logging
 import os
 import re
@@ -190,7 +192,7 @@ def scan_pdf(pdf_bytes: bytes, api_key: str) -> IntakeScanResult:
     """
     from google import genai
 
-    client = genai.Client(api_key=api_key)
+    client = genai.Client(api_key=api_key, http_options=GEMINI_HTTP_OPTIONS)
 
     contents = [
         genai.types.Part.from_bytes(data=pdf_bytes, mime_type="application/pdf"),

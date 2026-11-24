@@ -18,7 +18,7 @@ from tenacity import (
     wait_exponential,
 )
 
-from specodex.config import GUARDRAILS, MODEL, SCHEMA_CHOICES
+from specodex.config import GUARDRAILS, MODEL, SCHEMA_CHOICES, GEMINI_HTTP_OPTIONS
 from specodex.models.llm_schema import to_gemini_schema
 
 
@@ -30,7 +30,7 @@ def _client_for(api_key: str) -> genai.Client:
     """Cache the genai.Client per api_key so we don't rebuild the underlying
     httpx connection pool on every call. Cached by the api_key string so
     test fixtures with different keys still get isolated clients."""
-    return genai.Client(api_key=api_key)
+    return genai.Client(api_key=api_key, http_options=GEMINI_HTTP_OPTIONS)
 
 
 # Gemini 429 responses carry a structured retry hint:
