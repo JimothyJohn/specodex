@@ -33,6 +33,7 @@ function fetchMockSequence(handlers: Array<(url: string) => unknown>) {
     return {
       ok: true,
       status: 200,
+      headers: new Headers({ 'content-type': 'application/json' }),
       json: async () => body,
     };
   });
@@ -56,6 +57,9 @@ describe('BuildPage scaffold', () => {
     render(<BuildPage />);
 
     expect(screen.getByText('Build a motion system')).toBeInTheDocument();
+    // Public page: no developer scaffold notes.
+    expect(screen.queryByText(/Scaffold|follow-up PR|todo\/BUILD\.md/)).toBeNull();
+    expect(screen.getByText('How matching works')).toBeInTheDocument();
     expect(await screen.findByText(/No linear actuators in the catalog yet/)).toBeInTheDocument();
 
     // Motor / Drive / Gearhead are locked when no actuator picked.

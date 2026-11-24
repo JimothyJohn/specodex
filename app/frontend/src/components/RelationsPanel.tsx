@@ -2,7 +2,7 @@
  * RelationsPanel — surfaces compatibility candidates from /api/v1/relations.
  *
  * Skeleton component for SCHEMA Phase 3c. Consumes the device-relations
- * API (PR #90) to answer one of three questions:
+ * API (URL shape: ../api/relationsUrl.ts) to answer one of three questions:
  *
  *   - "Which motors fit this actuator?"
  *   - "Which drives can run this motor?"
@@ -17,12 +17,10 @@
  */
 
 import { useEffect, useState } from 'react';
+import { buildRelationsUrl, type RelationKind } from '../api/relationsUrl';
 import './RelationsPanel.css';
 
-export type RelationKind =
-  | 'motors-for-actuator'
-  | 'drives-for-motor'
-  | 'gearheads-for-motor';
+export type { RelationKind };
 
 export interface SourceProduct {
   product_id: string;
@@ -54,38 +52,28 @@ interface RelationsResponse {
   success: boolean;
   data?: CandidateProduct[];
   count?: number;
+  /** Express error envelope. */
   error?: string;
+  /** FastAPI HTTPException envelope. */
+  detail?: string;
 }
 
-function buildUrl(
-  apiBase: string,
-  relation: RelationKind,
-  sourceProduct: SourceProduct,
-): string {
-  // Backend URL shape is product-first / role-typed (PR #90):
-  //   /relations/<answer-type>?<input|output>=<id>[&<role>_type=<type>]
-  // The `RelationKind` prop names stay descriptive for callers; this
-  // function translates them to the role-typed URL the API expects.
-  const params = new URLSearchParams();
-  let path: string;
-  switch (relation) {
-    case 'motors-for-actuator':
-      // Two valid downstream mates (linear_actuator, electric_cylinder)
-      // so output_type is required — forward the source product's type.
-      path = 'motors';
-      params.set('output', sourceProduct.product_id);
-      params.set('output_type', sourceProduct.product_type);
-      break;
-    case 'drives-for-motor':
-      path = 'drives';
-      params.set('output', sourceProduct.product_id);
-      break;
-    case 'gearheads-for-motor':
-      path = 'gearheads';
-      params.set('input', sourceProduct.product_id);
-      break;
+/**
+ * Parse a relations response, refusing non-JSON bodies with a readable
+ * message instead of surfacing `Unexpected token '<'` to the user.
+ */
+async function readRelations(r: Response): Promise<CandidateProduct[]> {
+  const contentType = r.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) {
+    throw new Error(
+      `Compatibility lookup failed (HTTP ${r.status}, non-JSON response).`,
+    );
   }
-  return `${apiBase}/api/v1/relations/${path}?${params.toString()}`;
+  const body = (await r.json()) as RelationsResponse;
+  if (!r.ok || !body.success) {
+    throw new Error(body.error || body.detail || `HTTP ${r.status}`);
+  }
+  return body.data || [];
 }
 
 function relationHeading(relation: RelationKind): string {
@@ -114,15 +102,9 @@ export default function RelationsPanel({
     setLoading(true);
     setError(null);
 
-    const url = buildUrl(apiBase, relation, sourceProduct);
+    const url = buildRelationsUrl(apiBase, relation, sourceProduct);
     fetch(url)
-      .then(async r => {
-        const body = (await r.json()) as RelationsResponse;
-        if (!r.ok || !body.success) {
-          throw new Error(body.error || `HTTP ${r.status}`);
-        }
-        return body.data || [];
-      })
+      .then(readRelations)
       .then(data => {
         if (!cancelled) {
           setCandidates(data);
