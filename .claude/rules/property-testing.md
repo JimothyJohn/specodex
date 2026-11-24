@@ -63,5 +63,7 @@ The global `~/.claude/rules/testing.md` checklist and the one-line rules in `CLA
 | `specodex/log_redact.py:redact_secrets` + `secret_values` (credential scrubber on the `except`-site log path) | `test_log_redact_property.py` | `test_log_redact.py` |
 | `cli/query.py:extract_numeric` + `parse_where` + `parse_sort` + `apply_where` + `sort_products` + `text_score` (CLI query surface — the local twin of the MCP `where`/`sort` validation) | `test_query_property.py` | `test_query_cli.py` |
 | `specodex/mcp/api.py` argument validators (ids, types, where/sort clauses, limits, cursors) | `test_mcp_api_property.py` | `test_mcp_server.py` |
+| `ProductBase.dimensions` / `weight` / `max_dimension` envelope coercers (`specodex/models/product.py`) | `test_envelope_property.py` | `test_envelope.py`, `test_envelope_migration.py` |
+| `specodex/envelope/match.py` (`match_rows`, `select_envelope_pages`, `designator_on_page`) — LLM designators vs DB rows | `test_envelope_match_property.py`, `test_envelope_extract.py` (on branch `feat/envelope-extract-20261124` until Phase 2 ships) | `test_envelope_match.py` |
 
 When a new untrusted-bytes surface lands, add its row here; don't leave the map stale for long.
