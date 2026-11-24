@@ -17,7 +17,6 @@ from specodex.envelope.match import (
     match_rows,
     normalize_designator,
     select_envelope_pages,
-    token_prefixes,
 )
 
 _text = st.one_of(
