@@ -21,6 +21,10 @@ Subcommands:
 
     audit-units [--table ...] [-o out.jsonl]
             Scan for value;unit strings with >1 semicolon (greedy-regex flaw).
+
+    audit-specs [--table ...] [-o out.jsonl]
+            Read-only: motor rows whose rated power disagrees with torque x
+            speed (unit slips) or whose stored unit is not canonical.
 """
 
 from __future__ import annotations
@@ -30,7 +34,7 @@ import json
 import sys
 from typing import Optional
 
-from cli import audit_units
+from cli import audit_specs, audit_units
 from specodex.admin.blacklist import Blacklist
 from specodex.admin.operations import (
     PRODUCT_MODELS,
@@ -298,6 +302,19 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument("-o", "--output", default=None, help="Write findings to JSONL file")
 
+    # audit-specs
+    p = sub.add_parser(
+        "audit-specs",
+        help="Read-only: flag motor rows with implausible power/torque/speed or non-canonical units",
+    )
+    p.add_argument(
+        "--table", default=None, help="Table name (default: from env/config)"
+    )
+    p.add_argument(
+        "--region", default=None, help="AWS region (default: from env/config)"
+    )
+    p.add_argument("-o", "--output", default=None, help="Write findings to JSONL file")
+
     # backfill-motor-mounts (SCHEMA Phase 2)
     p = sub.add_parser(
         "backfill-motor-mounts",
@@ -327,6 +344,16 @@ def cmd_audit_units(args: argparse.Namespace) -> int:
     table = args.table or os.environ.get("DYNAMODB_TABLE_NAME") or TABLE_NAME
     region = args.region or os.environ.get("AWS_REGION") or REGION
     return audit_units.audit(table, region, args.output)
+
+
+def cmd_audit_specs(args: argparse.Namespace) -> int:
+    from specodex.config import REGION, TABLE_NAME
+
+    import os
+
+    table = args.table or os.environ.get("DYNAMODB_TABLE_NAME") or TABLE_NAME
+    region = args.region or os.environ.get("AWS_REGION") or REGION
+    return audit_specs.audit(table, region, args.output)
 
 
 def cmd_backfill_motor_mounts(args: argparse.Namespace) -> int:
@@ -366,6 +393,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         "demote": cmd_demote,
         "purge": cmd_purge,
         "audit-units": cmd_audit_units,
+        "audit-specs": cmd_audit_specs,
         "backfill-motor-mounts": cmd_backfill_motor_mounts,
     }
     return dispatch[args.command](args)

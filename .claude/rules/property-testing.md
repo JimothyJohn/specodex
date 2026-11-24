@@ -7,7 +7,7 @@ paths:
 
 The global `~/.claude/rules/testing.md` checklist and the one-line rules in `CLAUDE.md` always apply. This loads when you touch tests; it holds what is specific to this repo.
 
-`hypothesis` is in `[dependency-groups].dev` (`pyproject.toml`). Every parser, coercer, and validator that eats LLM-emitted or user-controlled bytes has a `tests/unit/test_<surface>_property.py` companion to its example-based test file. Property rounds here have repeatedly found bugs the example tests missed — every one a case where the docstring said one thing and the code did another (`_coerce_ip_rating`, `_coerce_protocol_list`, `Gearhead.coerce_string_fields`, `units._round_converted` on non-finite floats, the Stober configurator parsers, the drawing-page-finder negative cap, the schemagen renderer's source-injection hole, `log_redact` multi-secret splicing). The property test pins the documented contract, and the code reveals itself.
+`hypothesis` is in `[dependency-groups].dev` (`pyproject.toml`). Every parser, coercer, and validator that eats LLM-emitted or user-controlled bytes has a `tests/unit/test_<surface>_property.py` companion to its example-based test file. Property rounds here have repeatedly found bugs the example tests missed — every one a case where the docstring said one thing and the code did another (`_coerce_ip_rating`, `_coerce_protocol_list`, `Gearhead.coerce_string_fields`, `units._round_converted` on non-finite floats, the Stober configurator parsers, the drawing-page-finder negative cap, the schemagen renderer's source-injection hole, `log_redact` multi-secret splicing, `cli/query.py:extract_numeric` on malformed spec strings). The property test pins the documented contract, and the code reveals itself.
 
 ## Convention
 
@@ -27,6 +27,7 @@ The global `~/.claude/rules/testing.md` checklist and the one-line rules in `CLA
 - **A surface that emits code needs a structural assertion.** For `schemagen/renderer.py` the property that caught two live injections (a docstring closing early, a `class_name` smuggling statements) was "the parsed module body is imports plus one `ClassDef`, and that class body is the docstring plus the proposal's `AnnAssign`s and nothing else" — "it parses" passed both. Gemini controls those strings, so `meta_schema._reject_unsafe_identifier` gates bare-name slots (identifier, not a keyword, no leading underscore — Pydantic would silently demote `_foo` to private) and `renderer._docstring_literal` escapes quotes, backslashes, control characters and surrogates.
 - **Guard every nested walk of vendor JSON.** The Stober parsers crashed on unhashable ids, truthy scalars where lists were documented, non-string keys, and bool/NaN floats (`float(True) == 1.0`); `_as_list`, `_text`, `_as_float` are the pattern.
 - **Non-finite floats reach the validators.** `math.floor(math.log10(x))` raises on ±inf/NaN and a finite overflow (`1e306 × 1e3`) hits the same path; short-circuit non-finite inputs before arithmetic.
+- **A coercer annotated `-> float | None` must be total.** `cli/query.py:extract_numeric` matched `[\d.]+` and handed `"1.2.3"` to `float()`; `Decimal("sNaN")` and `10**400` raised on the same path. Sorting touches every row's sort key, so one malformed value in a field nobody filtered on crashed the whole command. Collapse non-finite results to `None` too — NaN makes a `cmp_to_key` comparator non-transitive without raising.
 - **Fail closed in redaction.** Re-run to a fixpoint (bounded), return a bare `[REDACTED]` if the cap is exhausted with a secret still present, and tie-break equal-length secrets lexicographically so the result is reproducible run to run.
 
 ## Coverage map
@@ -60,6 +61,7 @@ The global `~/.claude/rules/testing.md` checklist and the one-line rules in `CLA
 | `specodex/configurators/stober.py:parse_requirements` + `parse_group_selection` (vendor-configurator JSON deserializer) | `test_configurators_property.py` | `test_configurators.py` |
 | `specodex/schemagen/renderer.py:render_model_file` + `render_product_type_patch` + `render_reasoning_doc`, and the `meta_schema.py` identifier gate (LLM proposal → generated Python source) | `test_schemagen_renderer_property.py` | `test_schemagen_renderer.py` |
 | `specodex/log_redact.py:redact_secrets` + `secret_values` (credential scrubber on the `except`-site log path) | `test_log_redact_property.py` | `test_log_redact.py` |
+| `cli/query.py:extract_numeric` + `parse_where` + `parse_sort` + `apply_where` + `sort_products` + `text_score` (CLI query surface — the local twin of the MCP `where`/`sort` validation) | `test_query_property.py` | `test_query_cli.py` |
 | `specodex/mcp/api.py` argument validators (ids, types, where/sort clauses, limits, cursors) | `test_mcp_api_property.py` | `test_mcp_server.py` |
 
 When a new untrusted-bytes surface lands, add its row here; don't leave the map stale for long.
