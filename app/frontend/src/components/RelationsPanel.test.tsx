@@ -22,10 +22,11 @@ const sampleMotor = {
   part_number: 'NX620AC-PS25',
 };
 
-function mockFetchResponse(body: unknown, ok = true) {
+function mockFetchResponse(body: unknown, ok = true, contentType = 'application/json') {
   return vi.fn().mockResolvedValue({
     ok,
     status: ok ? 200 : 500,
+    headers: new Headers({ 'content-type': contentType }),
     json: async () => body,
   });
 }
@@ -104,53 +105,64 @@ describe('RelationsPanel', () => {
     });
   });
 
-  it('builds the right URL for motors-for-actuator (output + output_type)', async () => {
-    const fetchMock = mockFetchResponse({ success: true, data: [], count: 0 });
-    vi.stubGlobal('fetch', fetchMock);
+  it('shows a readable error when the API answers with HTML (SPA fallback)', async () => {
+    // Regression: CloudFront used to serve index.html (200, text/html)
+    // for unknown /api paths and the panel showed
+    // "Unexpected token '<', "<!DOCTYPE "... is not valid JSON".
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        headers: new Headers({ 'content-type': 'text/html' }),
+        json: async () => {
+          throw new SyntaxError("Unexpected token '<'");
+        },
+      }),
+    );
 
     render(
       <RelationsPanel sourceProduct={sampleActuator} relation="motors-for-actuator" />,
     );
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(screen.getByRole('alert')).toHaveTextContent('non-JSON response');
     });
-    const url = String(fetchMock.mock.calls[0][0]);
-    expect(url).toContain('/api/v1/relations/motors');
-    expect(url).toContain('output=la-23');
-    expect(url).toContain('output_type=linear_actuator');
+    expect(screen.getByRole('alert')).not.toHaveTextContent('Unexpected token');
   });
 
-  it('builds the right URL for drives-for-motor (output, no type)', async () => {
+  it('surfaces FastAPI-style {detail} errors', async () => {
+    vi.stubGlobal(
+      'fetch',
+      mockFetchResponse({ detail: 'Motor not found' }, false),
+    );
+
+    render(<RelationsPanel sourceProduct={sampleMotor} relation="drives-for-motor" />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('Motor not found');
+    });
+  });
+
+  it.each([
+    [
+      'motors-for-actuator' as const,
+      sampleActuator,
+      '/api/v1/relations/motors-for-actuator?id=la-23&type=linear_actuator',
+    ],
+    ['drives-for-motor' as const, sampleMotor, '/api/v1/relations/drives-for-motor?id=m-23'],
+    ['gearheads-for-motor' as const, sampleMotor, '/api/v1/relations/gearheads-for-motor?id=m-23'],
+  ])('fetches the backend route for %s', async (relation, source, expected) => {
     const fetchMock = mockFetchResponse({ success: true, data: [], count: 0 });
     vi.stubGlobal('fetch', fetchMock);
 
-    render(
-      <RelationsPanel sourceProduct={sampleMotor} relation="drives-for-motor" />,
-    );
+    render(<RelationsPanel sourceProduct={source} relation={relation} />);
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledTimes(1);
     });
-    const url = String(fetchMock.mock.calls[0][0]);
-    expect(url).toContain('/api/v1/relations/drives');
-    expect(url).toContain('output=m-23');
-    expect(url).not.toContain('output_type=');
-  });
-
-  it('builds the right URL for gearheads-for-motor (input role)', async () => {
-    const fetchMock = mockFetchResponse({ success: true, data: [], count: 0 });
-    vi.stubGlobal('fetch', fetchMock);
-
-    render(
-      <RelationsPanel sourceProduct={sampleMotor} relation="gearheads-for-motor" />,
-    );
-
-    await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledTimes(1);
-    });
-    const url = String(fetchMock.mock.calls[0][0]);
-    expect(url).toContain('/api/v1/relations/gearheads');
-    expect(url).toContain('input=m-23');
+    // Exact match, not toContain: a prefix match is what let the
+    // /relations/motors vs /relations/motors-for-actuator drift pass.
+    expect(String(fetchMock.mock.calls[0][0])).toBe(expected);
   });
 });

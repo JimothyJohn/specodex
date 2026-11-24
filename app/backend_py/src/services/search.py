@@ -55,6 +55,17 @@ SUMMARY_SPECS: dict[str, list[str]] = {
         "max_tcp_speed",
         "pose_repeatability",
     ],
+    "inductive_sensor": [
+        "type",
+        "housing_size",
+        "sensing_distance",
+        "mounting",
+        "output_type",
+        "output_function",
+        "supply_voltage",
+        "switching_frequency",
+        "ip_rating",
+    ],
 }
 
 

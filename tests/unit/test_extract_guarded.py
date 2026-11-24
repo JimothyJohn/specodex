@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import pytest
 
-import specodex.extract as extract
+from specodex import extract
 from specodex.extract import guarded_extract
 from specodex.models.common import ValueUnit
 from specodex.models.gearhead import Gearhead

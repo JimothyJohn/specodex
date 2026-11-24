@@ -61,6 +61,7 @@ from specodex.models.contactor import Contactor
 from specodex.models.drive import Drive
 from specodex.models.electric_cylinder import ElectricCylinder
 from specodex.models.gearhead import Gearhead
+from specodex.models.inductive_sensor import InductiveSensor
 from specodex.models.linear_actuator import LinearActuator
 from specodex.models.motor import Motor
 from specodex.models.product import ProductBase
@@ -103,6 +104,7 @@ PRODUCT_CLASSES: list[Type[ProductBase]] = [
     Contactor,
     ElectricCylinder,
     LinearActuator,
+    InductiveSensor,
     RobotArm,
 ]
 

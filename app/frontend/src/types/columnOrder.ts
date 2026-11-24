@@ -42,6 +42,9 @@ export const COLUMN_ORDER: Partial<
     'rated_power',
     'rated_torque',
     'rated_speed',
+    // Computed gearbox columns sit beside the shaft values they derive from.
+    'output_torque',
+    'output_speed',
     'rated_voltage',
     'rated_current',
   ],
@@ -74,6 +77,16 @@ export const COLUMN_ORDER: Partial<
     // Derivation-only type (no static getXxxAttributes list) — its spec
     // columns auto-populate from records. `manufacturer` still pins here
     // so it stays far-left, not alphabetized adrift.
+  ],
+  inductive_sensor: [
+    'manufacturer',
+    'housing_size',
+    'sensing_distance',
+    'mounting',
+    'output_type',
+    'output_function',
+    'supply_voltage',
+    'switching_frequency',
   ],
   datasheet: [
     'manufacturer',

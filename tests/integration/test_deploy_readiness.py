@@ -134,6 +134,7 @@ class TestConfigConsistency:
             "contactor",
             "electric_cylinder",
             "linear_actuator",
+            "inductive_sensor",
         ]:
             assert f'"{t}"' in generated_content, (
                 f"generated_constants.ts missing product type '{t}' — "

@@ -223,6 +223,13 @@ def process_pdf(
         if rejected:
             log.warning(f"Dropped {len(rejected)} low-quality products")
 
+        # Hold back physically implausible rows (unit slips) — see spec_rules.
+        from specodex.spec_rules import partition_plausible
+
+        valid_models, held = partition_plausible(valid_models)
+        if held:
+            log.warning(f"Held {len(held)} product(s) for review: implausible specs")
+
         if not valid_models:
             log.warning("No new products to insert after filtering")
             return "skipped"

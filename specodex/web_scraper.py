@@ -32,6 +32,7 @@ from specodex.db.dynamo import DynamoDBClient
 from specodex.extract import call_llm_and_parse
 from specodex.models.product import ProductBase
 from specodex.quality import filter_products
+from specodex.spec_rules import partition_plausible
 from specodex.utils import validate_api_key, UUIDEncoder
 
 
@@ -209,6 +210,11 @@ def process_page(
     valid_models, rejected = filter_products(valid_models)
     if rejected:
         logger.warning("Dropped %d low-quality products", len(rejected))
+
+    # Hold back physically implausible rows (unit slips) — see spec_rules.
+    valid_models, held = partition_plausible(valid_models)
+    if held:
+        logger.warning("Held %d product(s) for review: implausible specs", len(held))
 
     if not valid_models:
         logger.error("No products passed quality filter")

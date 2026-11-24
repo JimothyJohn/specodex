@@ -112,11 +112,14 @@ lists stripped); `compact: false` returns raw records.
 
 Things the client knows that a naive wrapper would not:
 
-- **CloudFront masks API 404s as HTML 200** (SPA fallback). A missing
-  product, or an endpoint that prod (master) does not serve yet
-  because it is behind dev, arrives as `text/html`. The client turns
+- **CloudFront used to mask API 404s as HTML 200** (distribution-wide
+  SPA fallback). The fallback is now a viewer-request function on the
+  S3 behavior only (`app/infrastructure/lib/edge/spa-rewrite.ts`), so
+  `/api/*` errors reach clients as JSON once that's deployed. Until
+  every stage has it, a missing product or an endpoint prod (master)
+  doesn't serve yet can still arrive as `text/html`; the client turns
   any non-JSON body into an actionable not-found error instead of
-  handing HTML to the model.
+  handing HTML to the model. Keep that defence.
 - **Anticipated failures must be `ToolError`.** mcp 2.x forwards only
   `ToolError` messages to the client; any other exception reaches the
   model as a bare "Error executing tool X" and the reason goes to a
@@ -192,7 +195,7 @@ PDF → **page finder** (text heuristic, free) → **LLM extraction** (Gemini 2.
 - `specodex/schemagen/` — proposes new Pydantic models from a PDF (also Gemini, via `response_schema=ProposedModel`).
 - `specodex/pricing/extract.py` — price extraction cascade; LLM last-resort uses Gemini 2.5 Flash.
 - `specodex/quality.py` — scores completeness, rejects below threshold.
-- `specodex/models/` — Pydantic models per product type: `drive.py`, `motor.py`, `gearhead.py`, `robot_arm.py`, `electric_cylinder.py`, `contactor.py`. New types get auto-discovered via `specodex/config.py:_discover_schema_models` — drop a file here and `SCHEMA_CHOICES[product_type]` is populated at import time.
+- `specodex/models/` — Pydantic models per product type: `drive.py`, `motor.py`, `gearhead.py`, `robot_arm.py`, `electric_cylinder.py`, `linear_actuator.py`, `contactor.py`, `inductive_sensor.py`. New types get auto-discovered via `specodex/config.py:_discover_schema_models` — drop a file here and `SCHEMA_CHOICES[product_type]` is populated at import time.
 
 Single provider: everything uses `GEMINI_API_KEY`. Model id is pinned in `specodex/config.py` (`MODEL = "gemini-2.5-flash"`).
 
@@ -208,7 +211,7 @@ now a thin re-export shim from `generated.ts`.
 
 1. `specodex/models/<type>.py` — Pydantic model inheriting `ProductBase`, with `product_type: Literal["<type>"] = "<type>"`.
 2. `specodex/models/common.py` — add `"<type>"` to the `ProductType` literal.
-3. `./Quickstart gen-types` — regenerates `app/frontend/src/types/generated.ts` and the backend `generated_constants.ts` twin. The new type auto-flows into `VALID_PRODUCT_TYPES` (backend), the search Zod enum, the frontend `Product` union, and the frontend `ProductType` literal — no hand-edits needed.
+3. `scripts/gen_types.py:_MODEL_MODULES` — add `specodex.models.<type>` (codegen does not auto-discover; without it the type lands in `PRODUCT_TYPES` but gets no TS interface), then `./Quickstart gen-types` — regenerates `app/frontend/src/types/generated.ts` and the backend `generated_constants.ts` twin. The new type auto-flows into `VALID_PRODUCT_TYPES` (backend), the search Zod enum, the frontend `Product` union, and the frontend `ProductType` literal — no hand-edits needed.
 4. `app/backend/src/types/models.ts` — still hand-typed, **for now**. Add a `<Type>` interface + include it in the `Product` and `ProductType` unions. Goes away with the Express deletion in `todo/PYTHON_BACKEND.md` Phase 3 (see `todo/MODELGEN.md` "Don't migrate `app/backend/src/types/models.ts`" — wasted work to migrate before deletion).
 5. **Refresh the schema-compat snapshot.** `tests/unit/test_schema_compat.py` keeps a frozen JSON fixture per `ProductType` under `tests/unit/fixtures/schema_snapshots/`. After steps 1–2 land, regenerate with `uv run python -c 'from tests.unit.test_schema_compat import refresh_snapshots; refresh_snapshots()'` and commit the new file — without this the `TestSnapshotsExist` drift gate fails on the first run. Refresh is also required when intentionally renaming/dropping a model field (the test exists to surface that exact decision).
 
@@ -386,6 +389,7 @@ Each one was a bug where the docstring said one thing and the code did another. 
 | `specodex/pricing/lead_time.py:parse_lead_statement` + `parse_lead_statement_range` (published vendor lead-time statements) | `test_lead_time_property.py` | `test_lead_time_inference.py` |
 | `specodex/configurators/stober.py:parse_requirements` + `parse_group_selection` (vendor-configurator JSON deserializer) | `test_configurators_property.py` | `test_configurators.py` |
 | `specodex/schemagen/renderer.py:render_model_file` + `render_product_type_patch` + `render_reasoning_doc`, and the `meta_schema.py` identifier gate (LLM proposal → generated Python source) | `test_schemagen_renderer_property.py` | `test_schemagen_renderer.py` |
+| `specodex/log_redact.py:redact_secrets` + `secret_values` (credential scrubber on the `except`-site log path) | `test_log_redact_property.py` | `test_log_redact.py` |
 | `cli/query.py:extract_numeric` + `parse_where` + `parse_sort` + `apply_where` + `sort_products` + `text_score` (CLI query surface — the local twin of the MCP `where`/`sort` validation) | `test_query_property.py` | `test_query_cli.py` |
 
 The 2026-05-14 sprint closed out the four "untested adversarial surfaces" from the 2026-05-10 callout (`cli/processor.py`, `compat.py`, `spec_rules.py`, `quality.py`) via PRs #149, #185, #202, #203. None of the four runs surfaced new bugs — every Hypothesis search confirmed the contract the example tests had already pinned. The boring-good outcome.
@@ -451,6 +455,40 @@ bit — the property that caught the injections wasn't "it parses", it was
 is the docstring plus the proposal's AnnAssigns and nothing else". A
 surface that emits code needs a structural assertion about what it
 emitted; "no exception" would have passed both injections.
+
+The 2026-09-19 round added `specodex/log_redact.py` — the credential
+scrubber on the `except`-site log path, and the last `specodex/`
+string-coercer surface without a property companion. The interesting
+part is *why* it had a gap despite already carrying a Hypothesis
+property: that property seeds exactly **one** secret, and both bugs
+live in the interaction *between* configured secrets. **Two**
+violations, both of contracts the module's own docstrings state.
+(1) Substituting one secret splices `[REDACTED]` into the text, and the
+splice can complete a *fresh* occurrence of a different secret across
+the substitution boundary; the synthesised secret is the longer of the
+two, so the longest-first loop is already past it when the splice
+creates it, and it rode out into the log line verbatim
+(`AWS_SESSION_TOKEN="AA[REDACTED]"` + `GEMINI_API_KEY="BBBBBBBB"` over
+`"AABBBBBBBB"` → `"AA[REDACTED]"`). Documented idempotence broke with
+it — a second call *did* catch it, so the result was not a fixed point.
+(2) A value that is a substring of the marker (`"[REDACTE"`) was
+replaced by a string containing it again, so each pass lengthened the
+line instead of scrubbing it (`"[REDACTED]D]D]D]D]"`). Neither is
+reachable with a real credential — both need a secret carrying the
+redactor's own marker text — so these are contract bugs, not a live
+exposure. Fixes: re-run the pass to a fixpoint (bounded by
+`_MAX_PASSES`); substitute the empty string for a marker-substring
+value so the substitution terminates; **fail closed**, returning a bare
+`[REDACTED]` if the cap is exhausted with a secret still present; and
+tie-break equal-length values in `secret_values()` lexicographically,
+since a bare `key=len` over a `set` left ties in `PYTHONHASHSEED` order
+and made a multi-secret redaction non-reproducible run to run. Two
+transferable lessons: a property that fixes the *arity* of its input
+(one secret, one page, one row) will not find the bugs that live
+between instances — vary the count; and Hypothesis will not stumble
+onto `"AA[REDACTED]"` from free text, so give a shape that needs a
+specific co-occurrence its own strategy rather than trusting the
+general one, exactly as the drawing-page-finder negative cap required.
 
 The 2026-09-22 round added `cli/query.py` — the CLI's own `where` /
 `sort` surface, and the local twin of the MCP argument validation that

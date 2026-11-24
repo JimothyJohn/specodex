@@ -987,6 +987,20 @@ def process_datasheet(
                 len(rejected_models),
             )
 
+        # Physics cross-check (spec_rules.plausibility_flags): hold back
+        # rows whose rated power disagrees with rated torque × speed by an
+        # order of magnitude — the kW↔W / mNm↔Nm slip signature — instead
+        # of publishing them. Held rows go on the ingest log for review.
+        from specodex.spec_rules import partition_plausible
+
+        passed_models, held_models = partition_plausible(passed_models)
+        spec_flags = [f for _m, flags in held_models for f in flags]
+        if held_models:
+            logger.warning(
+                "Held %d product(s) for review: implausible spec values",
+                len(held_models),
+            )
+
         # Quality metrics over all extracted products (post-merge), regardless
         # of whether they passed the gate — the outreach use case wants the
         # full picture of what the vendor is missing.
@@ -1051,6 +1065,7 @@ def process_datasheet(
             "extracted_part_numbers": extracted_part_numbers,
             "gemini_input_tokens": tokens["input"],
             "gemini_output_tokens": tokens["output"],
+            "spec_flags": spec_flags,
         }
         if double_tap_result is not None:
             ingest_kwargs.update(extract_with_recovery_telemetry(double_tap_result))

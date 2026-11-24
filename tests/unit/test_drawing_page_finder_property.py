@@ -36,6 +36,8 @@ regression cases live in the example-based siblings.
 
 from __future__ import annotations
 
+import math
+
 import pytest
 from hypothesis import HealthCheck, given, settings, strategies as st
 
@@ -216,7 +218,7 @@ class TestScoreDrawingPageProperties:
         """
         score = _score_drawing_page(text, drawings_count)["score"]
         assert isinstance(score, float)
-        assert score == score, f"NaN score for {text!r} / {drawings_count}"  # noqa: PLR0124
+        assert not math.isnan(score), f"NaN score for {text!r} / {drawings_count}"
         assert 0.0 <= score <= 1.0, (
             f"score {score} out of [0, 1] for text={text!r} "
             f"drawings_count={drawings_count}"

@@ -13,7 +13,7 @@
  *      /api/v1/search and lets the user pick one.
  *   3. Once an actuator is picked, the Motor slot unlocks and
  *      RelationsPanel surfaces compatible motors via the relations API
- *      (PR #90). Picking a motor unlocks Drive and Gearhead, which
+ *      (/api/v1/relations/*, URL shape in api/relationsUrl.ts). Picking a motor unlocks Drive and Gearhead, which
  *      consume the same panel with different `relation` kinds.
  *   4. A flat list of picks at the bottom — placeholder for the
  *      future <SystemSummary> with Copy BOM.
@@ -82,7 +82,12 @@ export default function BuildPage() {
     let cancelled = false;
     setActuatorLoading(true);
     fetch('/api/v1/search?type=linear_actuator&limit=50')
-      .then(r => r.json() as Promise<SearchResponse>)
+      .then(r => {
+        if (!(r.headers?.get('content-type') || '').includes('application/json')) {
+          throw new Error(`Actuator search failed (HTTP ${r.status}, non-JSON response).`);
+        }
+        return r.json() as Promise<SearchResponse>;
+      })
       .then(body => {
         if (cancelled) return;
         if (!body.success) throw new Error(body.error || 'Search failed');
@@ -130,10 +135,9 @@ export default function BuildPage() {
       <header className="build-page__header">
         <h1 className="build-page__title">Build a motion system</h1>
         <p className="build-page__subtitle">
-          Scaffold of the requirements-first assembler — see{' '}
-          <code>todo/BUILD.md</code> for the full design. Today: pick an
-          actuator, then surface compatible motors / drives / gearheads via
-          the relations API.
+          Pick a linear actuator, then a motor, drive and gearhead that fit
+          it. Each step only lists parts whose published specs line up with
+          what you've already picked.
         </p>
         <button type="button" className="build-page__reset" onClick={reset}>
           Reset picks
@@ -141,15 +145,23 @@ export default function BuildPage() {
       </header>
 
       <div className="build-page__panes">
-        {/* Left pane — RequirementsForm placeholder. Full schema in
-         * BUILD.md Part 2; deferred to a follow-up PR. */}
+        {/* Left pane — how matching works. The requirements form
+         * (todo/BUILD.md Part 2) replaces this when it ships; until then
+         * the public page explains the rules instead of showing dev notes. */}
         <aside className="build-page__requirements" aria-labelledby="requirements-heading">
           <h2 id="requirements-heading" className="build-page__pane-title">
-            Requirements
+            How matching works
           </h2>
+          <ol className="build-page__placeholder build-page__how">
+            <li><strong>Actuator</strong> — any linear actuator in the catalog.</li>
+            <li><strong>Motor</strong> — mounts the actuator accepts.</li>
+            <li><strong>Drive</strong> — covers the motor's voltage and current and speaks its encoder protocol.</li>
+            <li><strong>Gearhead</strong> (optional) — fits the motor's mount and shaft, and handles its speed and torque.</li>
+          </ol>
           <p className="build-page__placeholder">
-            Requirements form lands in a follow-up PR. For now, every
-            actuator in the catalog is shown as a candidate.
+            Matches use datasheet values only. A part missing one of these
+            specs is left out, so an empty list can mean the manufacturer
+            hasn't published that detail yet.
           </p>
         </aside>
 

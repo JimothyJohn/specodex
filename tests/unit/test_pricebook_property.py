@@ -86,7 +86,13 @@ def test_pairs_from_xlsx_band_and_shape(data_rows):
         assert isinstance(pair, PricePair)
         assert pair.part_number.strip()
         assert PRICE_MIN <= pair.price_usd <= PRICE_MAX
-        assert pair.price_usd == pair.price_usd  # not NaN
+        # Explicit non-finite check (CodeQL py/comparison-of-identical-
+        # expressions #79): the previous `x == x` self-comparison relied
+        # on Decimal NaN comparing unequal to itself, which is correct
+        # but reads as a copy-paste bug and doesn't catch Infinity
+        # (Decimal("Infinity") == Decimal("Infinity") is True). Decimal's
+        # own `is_finite()` says what we mean and covers both cases.
+        assert pair.price_usd.is_finite()
 
 
 # ── join_pairs: subset + key-equality + no-overwrite invariants ──────

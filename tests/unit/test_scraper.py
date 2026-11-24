@@ -530,7 +530,7 @@ class TestMinQualityOverride:
         client.product_exists.return_value = False
         client.read.return_value = None
         client.read_ingest.return_value = None
-        client.batch_create.side_effect = lambda models: len(models)
+        client.batch_create.side_effect = len
 
         with (
             patch("specodex.scraper.get_document", return_value=b"pdf bytes"),
