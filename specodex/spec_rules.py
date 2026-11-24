@@ -19,6 +19,7 @@ nulled-out fields correctly reduce the quality score.
 from __future__ import annotations
 
 import logging
+import math
 from typing import List, Optional
 
 from specodex.models.common import MinMaxUnit, ValueUnit
@@ -231,3 +232,101 @@ def validate_products(products: List[ProductBase]) -> List[ProductBase]:
         logger.info("Spec validation passed for all %d product(s)", len(products))
 
     return products
+
+
+# ---------------------------------------------------------------------------
+# Cross-field physics checks — FLAG, never null.
+#
+# A per-field magnitude rule can't tell a real 0.37 W subfractional
+# gearmotor or a real 5 MW WEG W60 from a kW-stored-as-W slip: all three
+# are inside any bound loose enough to keep the real extremes. What the
+# slip does break is physics. For a motor, rated power and rated torque ×
+# rated speed describe the same operating point, so
+#
+#     ratio = T[Nm] · n[rpm] · 2π/60  /  P[W]
+#
+# sits at ~1 for a bare motor and at the gear efficiency (≈0.1–0.95) for
+# a gearmotor whose P is input power and T/n are output-shaft values. A
+# kW↔W or mNm↔Nm slip moves it by 1000×.
+#
+# Band calibrated on 2026-11-24 against ~600 live motor rows carrying all
+# three fields: p1 = 0.09, p99 = 2.8. Outside [0.02, 10] the only rows
+# were genuine slips (Beckhoff AM 3111/3121 stored as 50,000 W for a
+# 0.16 Nm / 3000 rpm motor ≈ 50 W, ratio 0.001).
+#
+# We flag instead of nulling because the check can't say WHICH of the
+# three fields is wrong. Flagged products are held back from the DB write
+# by the scraper and recorded on the ingest log (`spec_flags`) for review.
+# ---------------------------------------------------------------------------
+
+POWER_BALANCE_BAND: tuple[float, float] = (0.02, 10.0)
+
+
+def _scalar(field: object, unit: str) -> Optional[float]:
+    """Single representative number for a field already in canonical ``unit``.
+
+    ValueUnit → value; MinMaxUnit → max (rated speed ranges are
+    "up to"), else min. Anything else, a different unit, or a
+    non-positive / non-finite number → None.
+    """
+    v: Optional[float] = None
+    if isinstance(field, ValueUnit) and field.unit == unit:
+        v = field.value
+    elif isinstance(field, MinMaxUnit) and field.unit == unit:
+        v = field.max if field.max is not None else field.min
+    if v is None or isinstance(v, bool):
+        return None
+    try:
+        v = float(v)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(v) or v <= 0:
+        return None
+    return v
+
+
+def power_balance_ratio(product: ProductBase) -> Optional[float]:
+    """``T·ω / P`` for a motor carrying all three rated fields, else None."""
+    if getattr(product, "product_type", None) != "motor":
+        return None
+    p = _scalar(getattr(product, "rated_power", None), "W")
+    t = _scalar(getattr(product, "rated_torque", None), "Nm")
+    n = _scalar(getattr(product, "rated_speed", None), "rpm")
+    if p is None or t is None or n is None:
+        return None
+    return t * n * 2 * math.pi / 60 / p
+
+
+def plausibility_flags(product: ProductBase) -> list[str]:
+    """Non-mutating cross-field checks. Empty list = nothing suspicious."""
+    flags: list[str] = []
+    part_id = product.part_number or product.product_name
+    ratio = power_balance_ratio(product)
+    lo, hi = POWER_BALANCE_BAND
+    if ratio is not None and not (lo <= ratio <= hi):
+        p = getattr(product, "rated_power", None)
+        t = getattr(product, "rated_torque", None)
+        n = getattr(product, "rated_speed", None)
+        flags.append(
+            f"[{part_id}] power_balance: rated_torque × rated_speed is "
+            f"{ratio:.3g}× rated_power (plausible {lo}–{hi}×) — likely a unit "
+            f"slip in one of rated_power={p}, rated_torque={t}, rated_speed={n}"
+        )
+    return flags
+
+
+def partition_plausible(
+    products: List[ProductBase],
+) -> tuple[List[ProductBase], List[tuple[ProductBase, list[str]]]]:
+    """Split products into (publishable, [(held, flags), ...])."""
+    ok: List[ProductBase] = []
+    held: List[tuple[ProductBase, list[str]]] = []
+    for product in products:
+        flags = plausibility_flags(product)
+        if flags:
+            for f in flags:
+                logger.warning("Spec plausibility HOLD: %s", f)
+            held.append((product, flags))
+        else:
+            ok.append(product)
+    return ok, held
