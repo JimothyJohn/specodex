@@ -28,7 +28,7 @@ from tenacity import (
     wait_exponential,
 )
 
-from specodex.config import MODEL
+from specodex.config import MODEL, GEMINI_HTTP_OPTIONS
 from specodex.models.common import FlangeMountingDimensions, Length, ShaftModification
 from specodex.models.llm_schema import to_gemini_schema
 from specodex.utils import parse_gemini_response
@@ -122,7 +122,7 @@ for that page's variants.
     retry=retry_if_exception(_should_retry),
 )
 def _call_gemini(page_images: List[bytes], api_key: str, response_schema: dict) -> Any:
-    client = genai.Client(api_key=api_key)
+    client = genai.Client(api_key=api_key, http_options=GEMINI_HTTP_OPTIONS)
 
     contents: list[Any] = [_PROMPT]
     for i, img_bytes in enumerate(page_images, start=1):

@@ -39,7 +39,9 @@ class TestGenerateContent:
         result = generate_content(b"pdf bytes", "test-key", "motor", content_type="pdf")
 
         assert result == mock_response
-        mock_genai.Client.assert_called_once_with(api_key="test-key")
+        mock_genai.Client.assert_called_once_with(
+            api_key="test-key", http_options={"api_version": "v1beta"}
+        )
         mock_genai.types.Part.from_bytes.assert_called_once_with(
             data=b"pdf bytes",
             mime_type="application/pdf",
@@ -61,7 +63,9 @@ class TestGenerateContent:
         )
 
         assert result == mock_response
-        mock_genai.Client.assert_called_once_with(api_key="test-key")
+        mock_genai.Client.assert_called_once_with(
+            api_key="test-key", http_options={"api_version": "v1beta"}
+        )
         # HTML content is passed as a single text string, no Part.from_bytes call
         mock_genai.types.Part.from_bytes.assert_not_called()
         call_args = mock_client.models.generate_content.call_args

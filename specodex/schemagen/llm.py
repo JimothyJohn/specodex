@@ -37,7 +37,7 @@ from tenacity import (
     wait_exponential,
 )
 
-from specodex.config import MODEL, SCHEMA_CHOICES
+from specodex.config import MODEL, SCHEMA_CHOICES, GEMINI_HTTP_OPTIONS
 from specodex.models.product import ProductBase
 from specodex.schemagen.meta_schema import ProposedModel
 from specodex.schemagen.prompt import build_system_prompt, build_user_prompt
@@ -133,7 +133,11 @@ def propose_model(
             ext = "png" if mimes[i].startswith("image/") else "pdf"
             labels.append(f"source-{i + 1}.{ext}")
 
-    client = genai.Client(api_key=api_key) if api_key else genai.Client()
+    client = (
+        genai.Client(api_key=api_key, http_options=GEMINI_HTTP_OPTIONS)
+        if api_key
+        else genai.Client(http_options=GEMINI_HTTP_OPTIONS)
+    )
 
     system_prompt = build_system_prompt(schema_choices)
     user_prompt = build_user_prompt(product_type, max_fields, source_labels=labels)

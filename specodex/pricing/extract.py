@@ -18,6 +18,8 @@ common failure mode is scraping a ``$5`` shipping label or a coupon.
 from __future__ import annotations
 
 import json
+
+from specodex.config import GEMINI_HTTP_OPTIONS
 import logging
 import re
 from dataclasses import dataclass
@@ -301,7 +303,7 @@ def _extract_llm(
     )
 
     try:
-        client = genai.Client(api_key=api_key)
+        client = genai.Client(api_key=api_key, http_options=GEMINI_HTTP_OPTIONS)
         resp = client.models.generate_content(
             model="gemini-2.5-flash",
             contents=prompt,
