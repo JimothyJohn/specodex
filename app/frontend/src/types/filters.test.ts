@@ -1277,3 +1277,45 @@ describe('inductive_sensor attributes', () => {
     expect(new Set(keys).size).toBe(keys.length);
   });
 });
+
+describe('physical envelope columns (2026-11-24)', () => {
+  const ENVELOPE_TYPES = [
+    'motor', 'drive', 'gearhead', 'robot_arm', 'contactor', 'electric_cylinder', 'inductive_sensor',
+  ] as const;
+
+  it.each(ENVELOPE_TYPES)('%s carries Largest Dimension (mm) and Weight (kg), each once', (t) => {
+    const attrs = getAttributesForType(t as never);
+    const keys = attrs.map(a => a.key);
+    expect(keys.filter(k => k === 'max_dimension')).toHaveLength(1);
+    expect(keys.filter(k => k === 'weight')).toHaveLength(1);
+    const maxDim = attrs.find(a => a.key === 'max_dimension')!;
+    const weight = attrs.find(a => a.key === 'weight')!;
+    expect(maxDim.unit).toBe('mm');
+    expect(weight.unit).toBe('kg');
+    expect(maxDim.applicableTypes).toEqual([t]);
+    // Lower-is-better: a cabinet/payload ceiling, not a floor.
+    expect(maxDim.defaultOperator).toBe('<');
+    expect(weight.defaultOperator).toBe('<');
+    // Visibility is the fill-rate rule's call, not forced.
+    expect(maxDim.defaultVisible).toBeUndefined();
+    expect(COLUMN_ORDER[t]).toEqual(expect.arrayContaining(['max_dimension', 'weight']));
+  });
+
+  it('a sparsely-populated envelope column stays hidden; a populated one shows', () => {
+    const attrs = orderColumnAttributes(getAttributesForType('gearhead'), 'gearhead');
+    const sparse = new Map([['max_dimension', 0.04], ['weight', 0.6]]);
+    const keys = computeVisibleColumnAttributes(attrs, [], [], 50, sparse).map(a => a.key);
+    expect(keys).not.toContain('max_dimension');
+    expect(keys).toContain('weight');
+  });
+
+  it('sorts mixed-vendor rows by the normalised largest dimension', () => {
+    const rows = [
+      { product_id: 'a', max_dimension: { value: 522.5, unit: 'mm' } },
+      { product_id: 'b', max_dimension: { value: 60, unit: 'mm' } },
+      { product_id: 'c' },
+    ] as unknown as Product[];
+    const sorted = sortProducts(rows, { attribute: 'max_dimension', direction: 'asc' } as SortConfig);
+    expect(sorted.map(r => (r as unknown as { product_id: string }).product_id).slice(0, 2)).toEqual(['b', 'a']);
+  });
+});

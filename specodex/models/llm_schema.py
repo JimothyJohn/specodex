@@ -45,6 +45,8 @@ EXCLUDED_FIELDS: frozenset[str] = frozenset(
         # The LLM must never be asked to fill them.
         "price_estimate",
         "lead_time_estimate",
+        # Derived from `dimensions` by ProductBase._derive_envelope.
+        "max_dimension",
     }
 )
 

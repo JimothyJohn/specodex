@@ -357,6 +357,7 @@ Every PR ships with a per-PR HTML doc in `docs/requests/<n>.html`
 | 19 | **HARDENING Phase 3.2** — atheris fuzz target for PDF intake | HARDENING | ⏳ code half shipped 2026-10-26 (harness + corpus replay, 3 crashes fixed); nightly `bench.yml` job touches `.github/workflows/` → human PR |
 | 20 | **HARDENING Phase 1.2** — `uv sync --locked` sweep across CI workflows | HARDENING | ✅ shipped #261 |
 | 21 | **HARDENING Phase 4.2** — lockfile-drift gate post-install | HARDENING | ⚪ queued (touches CI — needs human PR) |
+| 22 | **DIMENSIONS** — typed envelope (L/W/H mm, largest dim, weight kg) on every type → envelope backfill from outline drawings → exact interface geometry (cross-check or withhold). See [DIMENSIONS.md](DIMENSIONS.md) | DIMENSIONS | 🚧 Phase 1 in PR; Phase 2 next; Phase 3 planned |
 
 **Status legend.** 🟡 = ready to PR now. ⚪ = queued, no blockers
 beyond the row above. 🔴 = blocked on explicit human sign-off. ⏸ =
@@ -479,6 +480,7 @@ If your current task matches any "trigger" entry, the linked doc is queued and w
 | `specodex/models/encoder.py`, `EncoderDevice` / `EncoderProtocol` enums, structured `EncoderFeedback`, verifier-loop runner, bench A/B harness; user asks "encoder taxonomy", "verifier loop", "second-pass extraction", "encoder compat" | `specodex/models/encoder_taxonomy.md` — taxonomy reference next to the code. The DOUBLE_TAP plan-doc was retired; scope shipped via PR #91. |
 | `app/frontend/src/types/{categories,configuratorTemplates}.ts`, `app/frontend/src/components/ActuatorPage.tsx`; user asks "supercategory", "subcategory", "actuator landing page", "configurator template", "synthesise part number" | CATAGORIES — Phase 0+1 shipped (PRs #85/#87/#94). Phase 2+ unscoped; recover the design rationale via `git log --diff-filter=D --follow -- todo/CATAGORIES.md` |
 | `app/frontend/index.html` head metadata, `app/frontend/public/{robots.txt,sitemap.xml}`, JSON-LD blocks, OG/Twitter card tags, per-product page rendering, dynamic sitemap, prerender/SSR, "SEO", "canonical", "search ranking", "OG image" | [SEO.md](SEO.md) |
+| `ProductBase.dimensions` / `weight` / `max_dimension`, `specodex/admin/envelope_migration.py`, `specodex/mounting/`, shaft / flange / thread / collet fields; user asks "dimensions", "footprint", "how big", "weight", "form factor", "interface dimensions" | [DIMENSIONS.md](DIMENSIONS.md) |
 | Landing-page copy, "marketing", "launch", "audience", "Reddit / HN / mailing list", outreach plans, paid spend (don't), Stripe pricing surface | [MARKETING.md](MARKETING.md) |
 | `cli/growth.py`, `specodex/growth/`, "growth CLI", "engagement footprint", "Google Ads", "Meta Marketing", "LinkedIn Ads", Search Console / GitHub traffic / CloudFront logs into a weekly report | [longterm/GROWTH_CLI.md](longterm/GROWTH_CLI.md) — design-only, deferred |
 | Configurator template architecture beyond `/actuators` MVP; user asks about declarative YAML templates, derivation graph, cross-device compat | [longterm/CONFIGURATION.md](longterm/CONFIGURATION.md) — gated on ≥ 2-week MVP soak |

@@ -127,17 +127,19 @@ class TestMinMaxUnit:
 class TestDimensions:
     def test_dimensions_defaults(self):
         dims = Dimensions()
-        assert dims.unit == "mm"
         assert dims.width is None
         assert dims.length is None
         assert dims.height is None
+        assert dims.is_empty()
+        assert dims.largest() is None
 
-    def test_dimensions_custom(self):
-        dims = Dimensions(width=100.0, height=50.0, unit="in")
-        assert dims.width == 100.0
-        assert dims.height == 50.0
-        assert dims.unit == "in"
+    def test_legacy_shared_unit_shape_normalised_to_mm(self):
+        # Pre-2026-11-24 rows: bare floats + one shared unit.
+        dims = Dimensions.model_validate({"width": 4.0, "height": 2.0, "unit": "in"})
+        assert dims.width.model_dump() == {"value": 101.6, "unit": "mm"}
+        assert dims.height.model_dump() == {"value": 50.8, "unit": "mm"}
         assert dims.length is None
+        assert dims.largest() == 101.6
 
 
 @pytest.mark.unit

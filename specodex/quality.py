@@ -47,6 +47,9 @@ _META_FIELDS = frozenset(
         # toward extraction quality. Same rationale as lead_time.
         "price_estimate",
         "lead_time_estimate",
+        # Derived from `dimensions` (ProductBase._derive_envelope); scoring
+        # it would double-count the envelope.
+        "max_dimension",
     }
 )
 
