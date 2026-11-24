@@ -1,0 +1,47 @@
+/* Form / Fit / Function toggle group — matches the toolbar's square,
+   stencil-caps buttons (.add-column-btn / .page-toolbar-clear). Buttons
+   share borders so the three read as one segmented control. */
+.lens-selector {
+  display: inline-flex;
+  align-items: stretch;
+  flex: 0 0 auto;
+}
+
+.lens-selector-btn {
+  padding: 0.4rem 0.85rem;
+  font-family: var(--font-headline);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  border: 1px solid var(--text-primary);
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s linear, color 0.15s linear;
+}
+
+.lens-selector-btn + .lens-selector-btn,
+.lens-selector > * + * .lens-selector-btn {
+  margin-left: -1px;
+}
+
+.lens-selector-btn:hover {
+  background: var(--text-primary);
+  color: var(--bg-primary);
+}
+
+.lens-selector-btn.is-active {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: var(--bg-primary);
+}
+
+.lens-selector-btn:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+  position: relative;
+  z-index: 1;
+}

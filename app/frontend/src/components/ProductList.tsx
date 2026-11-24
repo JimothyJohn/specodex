@@ -26,6 +26,8 @@ import ColumnHeader from './ColumnHeader';
 import ActiveFilterChips from './ActiveFilterChips';
 import ProductDetailModal from './ProductDetailModal';
 import AttributeSelector from './AttributeSelector';
+import LensSelector from './LensSelector';
+import { computeLensColumns, isLensArray, type Lens } from '../types/lens';
 import Dropdown from './Dropdown';
 import FeedbackModal from './ui/FeedbackModal';
 import { ProgressBar } from './ui/ProgressBar';
@@ -136,6 +138,13 @@ export default function ProductList() {
     safeSave('productListHiddenColumns', userHiddenKeys);
   }, [userHiddenKeys]);
 
+  // Form / Fit / Function lenses (types/lens.ts). Empty = normal view.
+  const [activeLenses, setActiveLenses] = useState<Lens[]>(() =>
+    safeLoad('productListLenses', isLensArray, []),
+  );
+  useEffect(() => {
+    safeSave('productListLenses', activeLenses);
+  }, [activeLenses]);
   const [userRestoredKeys, setUserRestoredKeys] = useState<string[]>(() =>
     safeLoad('productListRestoredColumns', isStringArray, []),
   );
@@ -258,6 +267,13 @@ export default function ProductList() {
 
   const visibleColumnAttributes = useMemo<AttributeMetadata[]>(
     () =>
+      computeLensColumns(
+        columnAttributes,
+        activeLenses,
+        userHiddenKeys,
+        MAX_VISIBLE_COLUMNS,
+        columnFillRates,
+      ) ??
       computeVisibleColumnAttributes(
         columnAttributes,
         userHiddenKeys,
@@ -265,7 +281,7 @@ export default function ProductList() {
         MAX_VISIBLE_COLUMNS,
         columnFillRates,
       ),
-    [columnAttributes, userHiddenKeys, userRestoredKeys, MAX_VISIBLE_COLUMNS, columnFillRates],
+    [columnAttributes, activeLenses, userHiddenKeys, userRestoredKeys, MAX_VISIBLE_COLUMNS, columnFillRates],
   );
 
   // Restore-dropdown candidates: everything the user could bring back —
@@ -864,6 +880,9 @@ export default function ProductList() {
               }))}
               className="page-toolbar-type-select"
             />
+            {productType && productType !== 'datasheet' && (
+              <LensSelector active={activeLenses} onChange={setActiveLenses} />
+            )}
           </div>
           {/* Applied constraints, one chip each — the at-a-glance record
               now that the per-column controls live in popovers
@@ -904,7 +923,9 @@ export default function ProductList() {
             {/* Restore-hidden-column button — only rendered when
                 there's something to restore. Lives here, not at the end
                 of the header row, so it doesn't hang past the table. */}
-            {productType && hiddenColumnAttributes.length > 0 && (
+            {/* Hidden while a lens is active: the lens defines the column
+                set (types/lens.ts); clear the lens to mix specs by hand. */}
+            {productType && activeLenses.length === 0 && hiddenColumnAttributes.length > 0 && (
               <Tooltip content={`Add spec column (${hiddenColumnAttributes.length} available)`}>
                 <button
                   type="button"
