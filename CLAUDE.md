@@ -390,6 +390,7 @@ Each one was a bug where the docstring said one thing and the code did another. 
 | `specodex/configurators/stober.py:parse_requirements` + `parse_group_selection` (vendor-configurator JSON deserializer) | `test_configurators_property.py` | `test_configurators.py` |
 | `specodex/schemagen/renderer.py:render_model_file` + `render_product_type_patch` + `render_reasoning_doc`, and the `meta_schema.py` identifier gate (LLM proposal → generated Python source) | `test_schemagen_renderer_property.py` | `test_schemagen_renderer.py` |
 | `specodex/log_redact.py:redact_secrets` + `secret_values` (credential scrubber on the `except`-site log path) | `test_log_redact_property.py` | `test_log_redact.py` |
+| `cli/query.py:extract_numeric` + `parse_where` + `parse_sort` + `apply_where` + `sort_products` + `text_score` (CLI query surface — the local twin of the MCP `where`/`sort` validation) | `test_query_property.py` | `test_query_cli.py` |
 
 The 2026-05-14 sprint closed out the four "untested adversarial surfaces" from the 2026-05-10 callout (`cli/processor.py`, `compat.py`, `spec_rules.py`, `quality.py`) via PRs #149, #185, #202, #203. None of the four runs surfaced new bugs — every Hypothesis search confirmed the contract the example tests had already pinned. The boring-good outcome.
 
@@ -488,6 +489,29 @@ between instances — vary the count; and Hypothesis will not stumble
 onto `"AA[REDACTED]"` from free text, so give a shape that needs a
 specific co-occurrence its own strategy rather than trusting the
 general one, exactly as the drawing-page-finder negative cap required.
+
+The 2026-09-22 round added `cli/query.py` — the CLI's own `where` /
+`sort` surface, and the local twin of the MCP argument validation that
+`test_mcp_api_property.py` already pins. It surfaced one real bug with
+two smaller siblings, all the same "annotated `-> float | None`, actually
+raises" shape. `extract_numeric` pulls a number out of whatever a
+DynamoDB row carries, and both consumers — `sort_products`'s
+`cmp_to_key` comparator (`dsm list --sort <field>`) and `apply_where`
+(`dsm filter --where "<field><op><value>"`) — treat `None` as "not a
+number". But the `"<number>;<unit>"` spec-string path matched the
+leading run with `[\d.]+`, which happily eats `"1.2.3"` and `".."`, and
+then handed it straight to `float()`: **one malformed spec string
+anywhere in the result set crashed the whole query command** with a bare
+`ValueError`. Same path, two narrower crashes: `float(Decimal("sNaN"))`
+raises `ValueError` and `float(10**400)` raises `OverflowError`. Fix:
+`_finite_float` makes every conversion total, and non-finite results
+collapse to `None` rather than propagating — NaN makes the `cmp_to_key`
+comparator non-transitive (silent mis-ordering, no exception) and
+compares `False` for every `apply_where` operator except `!=`, which
+returns `True`. Note the reachability shape worth generalising: the
+crash needed an *unusable value in a field nobody filtered on* — sorting
+touches every row's sort key, so the blast radius of a bad coercer is
+the whole command, not the one row.
 
 When the next round of property-test gaps comes up, add them to the list above; don't leave the section empty for long.
 
