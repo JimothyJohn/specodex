@@ -284,6 +284,9 @@ s3*
 stripe/
 webscraper/
 *.pdf
+# Fuzz corpus: tiny synthetic seeds + minimised crash inputs, pinned by
+# tests/unit/test_fuzz_corpus_replay.py.
+!tests/fuzz/corpus/*.pdf
 
 # Node tooling cache/output anywhere in the tree (Vite cache, stray installs).
 # app/.gitignore covers the intended location; this catches accidents at root or other depths.
