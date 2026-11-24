@@ -1,0 +1,125 @@
+"""Envelope backfill matching + page selection (specodex/envelope/match.py)."""
+
+from __future__ import annotations
+
+import pytest
+
+from specodex.envelope.match import (
+    match_rows,
+    normalize_designator,
+    select_envelope_pages,
+    token_prefixes,
+)
+
+
+def row(pn=None, name=None, frame=None):
+    return {"part_number": pn, "product_name": name, "frame_size": frame}
+
+
+@pytest.mark.unit
+class TestNormalize:
+    def test_separators_and_case(self):
+        assert normalize_designator(" mr-j5-10a ") == "MRJ510A"
+        assert normalize_designator("SGM7J 01/A") == "SGM7J01A"
+
+    @pytest.mark.parametrize("v", [None, 42, 1.5, [], {}])
+    def test_non_strings(self, v):
+        assert normalize_designator(v) == ""
+
+    def test_token_prefixes_split_on_alpha_digit(self):
+        assert token_prefixes("AB042-005-S2")[:3] == ["AB", "AB042", "AB042005"]
+        assert "SGM7J01" in token_prefixes("SGM7J-01AFC6S")
+
+
+@pytest.mark.unit
+class TestMatchRows:
+    def test_exact_part_number(self):
+        rows = [row("MR-J5-10A"), row("MR-J5-20A")]
+        ex = [("MR-J5-10A", "a"), ("MR-J5-20A", "b")]
+        assert match_rows(ex, rows) == {0: 0, 1: 1}
+
+    def test_family_prefix_applies_to_every_variant(self):
+        rows = [row("AB042-005-S2-P2"), row("AB042-010-S2-P2"), row("AB060-005-S2-P2")]
+        ex = [("AB042", "small"), ("AB060", "big")]
+        assert match_rows(ex, rows) == {0: 0, 1: 0, 2: 1}
+
+    def test_prefix_must_end_on_token_boundary(self):
+        # AB042 is a different frame from AB0420.
+        assert match_rows([("AB042", "x")], [row("AB0420-005")]) == {}
+
+    def test_longer_prefix_wins(self):
+        rows = [row("SGM7J-01AFC6S")]
+        ex = [("SGM7J", "family"), ("SGM7J-01", "frame01")]
+        assert match_rows(ex, rows) == {0: 1}
+
+    def test_exact_beats_prefix(self):
+        rows = [row("PS060-10")]
+        ex = [("PS060", "family"), ("PS060-10", "exact")]
+        assert match_rows(ex, rows) == {0: 1}
+
+    def test_conflicting_tie_is_skipped(self):
+        rows = [row("AB042-005")]
+        ex = [("AB042", "one"), ("AB-042", "two")]
+        assert match_rows(ex, rows) == {}
+
+    def test_identical_tie_is_fine(self):
+        rows = [row("AB042-005")]
+        ex = [("AB042", "same"), ("AB 042", "same")]
+        assert match_rows(ex, rows) == {0: 0}
+
+    def test_frame_size_exact_only(self):
+        rows = [row("XYZ-123", frame="60"), row("XYZ-600", frame="80")]
+        assert match_rows([("60", "flange60")], rows) == {0: 0}
+
+    def test_short_or_digitless_designators_never_prefix_match(self):
+        rows = [row("ABC-100"), row("AB1-000")]
+        assert match_rows([("ABC", "x"), ("AB", "y")], rows) == {}
+
+    def test_product_name_used_when_no_part_number(self):
+        assert match_rows([("C500", "x")], [row(None, "C500 Series 2")]) == {0: 0}
+
+    @pytest.mark.parametrize("d", [None, "", "   ", "--"])
+    def test_empty_designators_match_nothing(self, d):
+        assert match_rows([(d, "x")], [row("", "", "")]) == {}
+
+
+@pytest.mark.unit
+class TestSelectPages:
+    def scores(self, *pairs):
+        return [{"page": p, "score": s} for p, s in pairs]
+
+    def test_spec_then_near_then_far(self):
+        sc = self.scores((1, 0.9), (10, 0.5), (11, 0.95), (30, 0.99))
+        assert select_envelope_pages(sc, [10], 3, total_pages=40) == [10, 11, 30]
+
+    def test_spec_pages_take_at_most_half_the_cap(self):
+        # 20 spec pages, two outline drawings right after the table block:
+        # the drawings still make the cut.
+        sc = self.scores((20, 0.9), (21, 0.9))
+        out = select_envelope_pages(sc, list(range(0, 20)), 4, total_pages=60)
+        assert out == [0, 1, 20, 21]
+
+    def test_remaining_spec_pages_before_unrelated_drawings(self):
+        sc = self.scores(
+            (50, 0.99),
+        )
+        out = select_envelope_pages(sc, [0, 1, 2], 3, total_pages=60)
+        assert out == [0, 1, 2]
+
+    @pytest.mark.parametrize("cap", [0, -1, -100])
+    def test_non_positive_cap_selects_nothing(self, cap):
+        sc = self.scores((1, 0.9), (2, 0.9))
+        assert select_envelope_pages(sc, [1, 2], cap, total_pages=5) == []
+
+    def test_out_of_range_and_junk_dropped(self):
+        sc = [
+            {"page": 99, "score": 1.0},
+            {"page": "3", "score": 1.0},
+            {"page": 2, "score": float("nan")},
+            {"page": 1, "score": 0.5},
+        ]
+        assert select_envelope_pages(sc, [-1, 7, True], 10, total_pages=5) == [1]
+
+    def test_low_scoring_pages_excluded(self):
+        sc = self.scores((1, 0.05), (2, 0.5))
+        assert select_envelope_pages(sc, [], 10, total_pages=5) == [2]
