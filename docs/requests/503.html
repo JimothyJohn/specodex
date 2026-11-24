@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Specodex PR #503 — typed product envelope: per-axis dimensions normalised to mm, weight to kg, a derived largest-dimension column, and a conditional DynamoDB migration.">
+    <meta name="theme-color" content="#3A2C1C">
+    <title>Specodex — PR #503: typed product envelope</title>
+    <link rel="icon" type="image/svg+xml" href="../logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-issue="PR-503">
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="band">
+        <div class="band-inner">
+            <a class="band-brand" href="../index.html">
+                <svg class="band-mark" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <rect width="120" height="120" fill="#E8E2C9"/>
+                    <rect x="14" y="14" width="92" height="92" fill="none" stroke="#1A1A14" stroke-width="3"/>
+                    <rect x="14" y="14" width="92" height="22" fill="#3A2C1C"/>
+                    <rect x="62" y="60" width="40" height="10" fill="#A88A1C"/>
+                    <line x1="14" y1="56" x2="106" y2="56" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="74" x2="106" y2="74" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="14" y1="92" x2="106" y2="92" stroke="#1A1A14" stroke-width="2"/>
+                    <line x1="60" y1="36" x2="60" y2="106" stroke="#1A1A14" stroke-width="2"/>
+                </svg>
+                <span class="wordmark">SPECODEX</span>
+            </a>
+            <nav class="band-nav" aria-label="Section">
+                <a href="../index.html">Catalog</a>
+                <a href="./" class="active">Pull Requests</a>
+                <a href="https://github.com/JimothyJohn/specodex" rel="noreferrer">GitHub</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="hero-tag">▮▮▮ PULL REQUEST #503 ▮▮▮</div>
+            <h1 class="hero-title">Typed product envelope: how big, how heavy</h1>
+            <p class="hero-sub">
+                Phase 1 of <code>todo/DIMENSIONS.md</code>. Every product
+                now carries a comparable physical envelope: length,
+                width and height normalised to <strong>mm</strong>,
+                weight to <strong>kg</strong>, and a derived
+                <strong>largest dimension</strong> you can sort and
+                filter on across vendors. Before this, 40% of stored
+                dimensions were inches, the unit was free text, and
+                nothing could be compared.
+            </p>
+            <dl class="pr-meta">
+                <div><dt>Branch</dt><dd><code>feat/envelope-dimensions-20261124</code></dd></div>
+                <div><dt>Diff</dt><dd>+1,293 / −38 across 21 files</dd></div>
+                <div><dt>Plan</dt><dd><code>todo/DIMENSIONS.md</code> Phase 1</dd></div>
+                <div><dt>CLI</dt><dd><code>./Quickstart admin normalize-envelope</code></dd></div>
+            </dl>
+            <div class="cta-row">
+                <a class="cta cta-primary" href="https://github.com/JimothyJohn/specodex/pull/503" rel="noreferrer">View on GitHub →</a>
+                <a class="cta cta-ghost" href="./">All requests</a>
+            </div>
+        </section>
+
+        <section aria-label="What changes">
+            <div class="divider"><span>▮▮▮ WHAT'S IN THE BOX ▮▮▮</span></div>
+            <ol class="cell-list">
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">E-1</span><h2 class="cell-title">Per-axis dimensions in mm</h2></div>
+                    <p class="cell-body">
+                        <code>ProductBase.dimensions</code> is now
+                        <code>{length, width, height}</code>, each a
+                        <code>{value, unit: "mm"}</code>. The legacy
+                        <code>{floats…, unit}</code> shape still loads.
+                        Axes that are ≤0, non-finite, over 20 m or in a
+                        non-length unit become <code>None</code>. One
+                        bad axis never kills the row.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">E-2</span><h2 class="cell-title">Weight in kg, largest dimension derived</h2></div>
+                    <p class="cell-body">
+                        lb / lbs / g / oz convert to kg.
+                        <code>max_dimension</code> is recomputed from
+                        the axes on every validation. It is never asked
+                        of the LLM and never counted toward extraction
+                        quality.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">E-3</span><h2 class="cell-title">Conditional migration</h2></div>
+                    <p class="cell-body">
+                        <code>./Quickstart admin normalize-envelope
+                        --stage dev|staging [--apply]</code> sends one
+                        <code>UpdateItem</code> per row and touches only
+                        the three envelope attributes. A condition on
+                        the old values skips rows a concurrent writer
+                        changed. It refuses prod. Dev dry run: 9,502 of
+                        37,263 rows to rewrite, 653 empty
+                        <code>{unit}</code> stubs dropped.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">E-4</span><h2 class="cell-title">Largest Dimension + Weight columns</h2></div>
+                    <p class="cell-body">
+                        Every curated product type gets both columns,
+                        placed in <code>COLUMN_ORDER</code>. Filter
+                        chips start at <code>&lt;</code> because you
+                        spec a ceiling for cabinet space or payload.
+                        A column shows once 25% of the loaded rows have
+                        a value.
+                    </p>
+                </li>
+            </ol>
+        </section>
+
+        <section aria-label="Baseline">
+            <div class="divider"><span>▮▮▮ BASELINE COVERAGE (PRODUCTS-DEV) ▮▮▮</span></div>
+            <table class="spec-table">
+                <thead><tr><th>Type</th><th>Rows</th><th>Any L/W/H</th><th>Weight</th></tr></thead>
+                <tbody>
+                    <tr><td>motor</td><td class="num">13,140</td><td class="num">35%</td><td class="num">32%</td></tr>
+                    <tr><td>drive</td><td class="num">13,295</td><td class="num">23%</td><td class="num">28%</td></tr>
+                    <tr><td>gearhead</td><td class="num">9,434</td><td class="num">4%</td><td class="num">13%</td></tr>
+                    <tr><td>electric_cylinder</td><td class="num">276</td><td class="num">36%</td><td class="num">32%</td></tr>
+                    <tr><td>robot_arm</td><td class="num">505</td><td class="num">2%</td><td class="num">27%</td></tr>
+                </tbody>
+            </table>
+            <p class="prose">
+                Coverage is the next problem. Phase 2 backfills the
+                envelope from outline-drawing pages. Phase 3 adds exact
+                interface geometry (shaft, collet bore, threads, pilot,
+                bolt circle): a value is stored only when a standard
+                table and the drawing agree, or two independent reads
+                agree. Otherwise it is withheld and the UI links to the
+                drawing page.
+            </p>
+        </section>
+
+        <section aria-label="How to verify">
+            <div class="divider"><span>▮▮▮ HOW TO VERIFY ▮▮▮</span></div>
+            <ol class="cell-list">
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">V-1</span><h2 class="cell-title">Suites</h2></div>
+                    <p class="cell-body">
+                        <code>tests/unit/test_envelope.py</code>,
+                        <code>test_envelope_property.py</code> (300
+                        examples) and <code>test_envelope_migration.py</code>
+                        (moto, with a concurrent-write race). Run
+                        <code>./Quickstart verify</code>.
+                    </p>
+                </li>
+                <li class="cell">
+                    <div class="cell-head"><span class="cell-code">V-2</span><h2 class="cell-title">Migration dry run</h2></div>
+                    <p class="cell-body">
+                        <code>./Quickstart admin normalize-envelope
+                        --stage dev</code> prints counts and sample
+                        before/after rows without writing.
+                    </p>
+                </li>
+            </ol>
+        </section>
+
+        <a class="back-link" href="./">← back to requests log</a>
+    </main>
+
+    <footer>
+        <div class="footer-inner">
+            <span>© 2026 Specodex · PR #503</span>
+            <span class="footer-rule" aria-hidden="true"></span>
+            <a class="footer-link" href="https://github.com/JimothyJohn/specodex/pull/503" rel="noreferrer">View on GitHub</a>
+            <a class="footer-link" href="./">All requests</a>
+        </div>
+    </footer>
+</body>
+</html>
