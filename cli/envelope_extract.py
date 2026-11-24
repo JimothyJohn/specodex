@@ -140,7 +140,9 @@ def extract_for_datasheet(
             record["extractions"] = [e.model_dump(mode="json") for e in found]
     except Exception as e:  # noqa: BLE001 — network / PDF / Gemini failures vary
         record["error"] = f"{type(e).__name__}: {e}"[:500]
-    if record["error"] is None or "download" not in record["error"]:
+    # Cache only clean outcomes (an empty extraction is clean). Download,
+    # PDF and Gemini errors are retried on the next run.
+    if record["error"] is None:
         CACHE_DIR.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(record))
     return record
@@ -167,7 +169,12 @@ def plan_updates(
         )
 
     updates: List[Tuple[Dict[str, Any], Dict[str, Any]]] = []
-    for ri, ei in match_rows(parsed, rows).items():
+
+    def envelope_size(payload: Tuple[str, str]) -> float:
+        dims = json.loads(payload[0]) or {}
+        return max((a["value"] for a in dims.values()), default=0.0)
+
+    for ri, ei in match_rows(parsed, rows, size_key=envelope_size).items():
         row = rows[ri]
         dims = json.loads(parsed[ei][1][0])
         weight = json.loads(parsed[ei][1][1])

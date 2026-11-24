@@ -123,3 +123,48 @@ class TestSelectPages:
     def test_low_scoring_pages_excluded(self):
         sc = self.scores((1, 0.05), (2, 0.5))
         assert select_envelope_pages(sc, [], 10, total_pages=5) == [2]
+
+
+@pytest.mark.unit
+class TestRealCatalogShapes:
+    """Designator/row pairs observed on the 2026-11-24 dev dry run."""
+
+    def test_yaskawa_qualifier_words_and_alpha_run_prefix(self):
+        rows = [row("SGMJV-01AAA61"), row("SGMJV-02AAA61")]
+        ex = [
+            ("SGMJV-01A A6 Without brake", "01"),
+            ("SGMJV-02A A6 Without brake", "02"),
+        ]
+        assert match_rows(ex, rows) == {0: 0, 1: 1}
+
+    def test_brake_variants_take_the_larger_envelope(self):
+        rows = [row("SGMJV-01AAA61")]
+        ex = [("SGMJV-01A A6 Without brake", 100), ("SGMJV-01A A6 With brake", 140)]
+        assert match_rows(ex, rows, size_key=lambda p: p) == {0: 1}
+        # No size_key → conflicting tie stays unmatched.
+        assert match_rows(ex, rows) == {}
+
+    def test_full_designator_conflict_is_never_size_broken(self):
+        ex = [("SGMJV-01A", 100), ("SGMJV-01A", 140)]
+        assert match_rows(ex, [row("SGMJV-01AAA61")], size_key=lambda p: p) == {}
+
+    def test_stage_qualifier_in_part_number_selects_that_stage(self):
+        rows = [row("ABR090 2-Stage 45:1"), row("ABR090 1-Stage 7:1")]
+        ex = [("ABR090 1-stage", "one"), ("ABR090 2-stage", "two")]
+        assert match_rows(ex, rows) == {0: 1, 1: 0}
+
+    def test_parker_infix(self):
+        rows = [row("637/K D6R 02.S3-7-DEV"), row("637/K D6R 16.S3-7-DEV")]
+        ex = [("K D6R 02", "02"), ("K D6R 16", "16")]
+        assert match_rows(ex, rows) == {0: 0, 1: 1}
+
+    def test_series_title_product_name_is_not_a_key_when_part_number_exists(self):
+        rows = [row("F10010-MEM", "FM060-5-CM")]
+        assert match_rows([("FM060-5-CM", "x")], rows) == {}
+
+    def test_frame_digit_run_never_cut(self):
+        assert match_rows([("ACS880-01-02", "x")], [row("ACS880-01-025A-3")]) == {}
+
+    def test_frame_only_designators_do_not_match_type_codes(self):
+        rows = [row("ACS880-01-105A-3+D150", "ACS880")]
+        assert match_rows([("R1 IP20", "x"), ("R2 IP21", "y")], rows) == {}

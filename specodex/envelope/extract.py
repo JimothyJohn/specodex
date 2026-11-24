@@ -19,8 +19,9 @@ from google import genai
 from pydantic import BaseModel, Field
 from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponential
 
-from specodex.config import MODEL
+from specodex.config import GEMINI_HTTP_OPTIONS, MODEL
 from specodex.models.common import Length, Mass
+from specodex.envelope.match import designator_on_page
 from specodex.models.llm_schema import to_gemini_schema
 from specodex.utils import parse_gemini_response
 
@@ -84,6 +85,14 @@ drawing for one model), emit one entry:
 - page_number: the 1-indexed page within THIS document where you read it.
 
 Rules:
+- Dimension-table letters (L, L1, LL, D1, A, B...) mean different things in \
+  every catalog. Use the DRAWING to decide which callout spans the whole \
+  product along each axis. If no single callout spans the overall length, \
+  add the segments that do (e.g. body L2 + housing L8 + adapter C8). A flange \
+  square (□) is a width/height, never a length.
+- Designators must be copied from the page itself. Never invent, extend or \
+  normalise a model name; if a column is labelled 'AB090', the designator is \
+  'AB090', not a longer part number.
 - Overall envelope only. Do NOT report bolt circles, pilot/spigot \
   diameters, shaft diameters, keyways, or hole sizes as width/height.
 - Use the unit printed on the drawing or table header (usually mm; inches \
@@ -109,7 +118,7 @@ def _should_retry(exc: BaseException) -> bool:
     retry=retry_if_exception(_should_retry),
 )
 def _call_gemini(pdf_bytes: bytes, api_key: str, response_schema: dict) -> Any:
-    client = genai.Client(api_key=api_key)
+    client = genai.Client(api_key=api_key, http_options=GEMINI_HTTP_OPTIONS)
     return client.models.generate_content(
         model=MODEL,
         contents=[
@@ -142,6 +151,17 @@ def build_page_subset(pdf_bytes: bytes, pages: List[int]) -> bytes:
         src.close()
 
 
+def page_text_layers(pdf_bytes: bytes, pages: List[int]) -> dict:
+    """0-indexed page → its extractable text ("" when it has none)."""
+    import fitz
+
+    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+    try:
+        return {p: doc[p].get_text() for p in pages if 0 <= p < len(doc)}
+    finally:
+        doc.close()
+
+
 def remap_pages(
     extractions: List[EnvelopeExtraction], page_numbers: List[int]
 ) -> List[EnvelopeExtraction]:
@@ -163,14 +183,19 @@ def remap_pages(
 
 
 def extract_envelopes(
-    pdf_bytes: bytes, pages: List[int], api_key: str
+    pdf_bytes: bytes,
+    pages: List[int],
+    api_key: str,
 ) -> List[EnvelopeExtraction]:
     """Extract envelopes from ``pages`` (0-indexed) of ``pdf_bytes``.
 
     One Gemini call per ``PAGES_PER_CALL`` chunk. A chunk that yields
-    nothing usable is a normal outcome, not an error.
+    nothing usable is a normal outcome, not an error. Every result's
+    designator is checked against the text layer of the page it claims
+    (``designator_on_page``); unverifiable labels are dropped.
     """
     schema = to_gemini_schema(EnvelopeExtraction, as_array=True, include_excluded=True)
+    page_texts = page_text_layers(pdf_bytes, pages)
     results: List[EnvelopeExtraction] = []
     for start in range(0, len(pages), PAGES_PER_CALL):
         chunk = pages[start : start + PAGES_PER_CALL]
@@ -183,5 +208,13 @@ def extract_envelopes(
         except ValueError as e:
             logger.info("no envelope extractions on pages %s: %s", chunk, e)
             continue
-        results.extend(remap_pages(parsed, chunk))
+        for e in remap_pages(parsed, chunk):
+            if designator_on_page(e.designator, page_texts.get(e.page_number)):
+                results.append(e)
+            else:
+                logger.info(
+                    "dropping unverifiable designator %r on page %d",
+                    e.designator,
+                    e.page_number,
+                )
     return results

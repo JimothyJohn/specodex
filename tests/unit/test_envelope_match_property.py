@@ -54,17 +54,25 @@ def test_match_rows_contract(ex, rows):
     out = match_rows(ex, rows)
     for ri, ei in out.items():
         assert 0 <= ri < len(rows) and 0 <= ei < len(ex)
-        d = normalize_designator(ex[ei][0])
-        assert d
+        d = ex[ei][0]
+        assert normalize_designator(d)
         r = rows[ri]
-        exact = any(
-            d == normalize_designator(r.get(k))
-            for k in ("part_number", "product_name", "frame_size")
-        )
-        prefix = any(
-            d in token_prefixes(r.get(k)) for k in ("part_number", "product_name")
-        )
-        assert exact or prefix
+        keys = [r.get("part_number"), r.get("frame_size")]
+        if not r.get("part_number"):
+            keys.append(r.get("product_name"))
+        # Some leading-words candidate of the designator shares its token
+        # run with a row key (exact, prefix or infix — never unrelated).
+        words = d.split()
+        cands = {
+            normalize_designator(" ".join(words[:n])) for n in range(1, len(words) + 1)
+        }
+        cands.discard("")
+        assert any(
+            c[:-1] in normalize_designator(k)
+            for c in cands
+            for k in keys
+            if normalize_designator(k)
+        ), (d, r)
 
 
 _scores = st.lists(
