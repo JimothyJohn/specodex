@@ -223,12 +223,15 @@ def extract_for_datasheet(
     return {**record, "cached": False}
 
 
-Payload = Tuple[str, str]
-
-
-def _parse_pass(extractions: Any) -> List[Tuple[Optional[str], Payload]]:
-    """Validated ``(designator, (dims_json, weight_json))`` for one reading."""
-    parsed: List[Tuple[Optional[str], Payload]] = []
+def _parse_pass(
+    extractions: Any,
+) -> Tuple[List[Tuple[Any, str]], List[Tuple[Any, str]]]:
+    """One reading → (dims entries, weight entries), each ``(designator,
+    payload_json)`` with only verified values. Dims and weight are matched
+    to rows separately: an outline drawing often labels a frame range (dims
+    only) while the weight sits in a spec-table row for the exact model."""
+    dims_out: List[Tuple[Any, str]] = []
+    weight_out: List[Tuple[Any, str]] = []
     for raw in extractions if isinstance(extractions, list) else []:
         try:
             e = EnvelopeExtraction.model_validate(raw)
@@ -239,33 +242,38 @@ def _parse_pass(extractions: Any) -> List[Tuple[Optional[str], Payload]]:
         if not isinstance(unverified, list):
             unverified = list(VERIFIED_FIELDS)
         axes = {"length": e.length, "width": e.width, "height": e.height}
-        # One axis not printed in line with the designator discredits the
-        # reading's whole envelope (it read some other column or computed).
-        dims_ok = not any(v is not None and k in unverified for k, v in axes.items())
-        dims = canonical_dimensions(axes) if dims_ok else None
-        weight = canonical_weight(e.weight) if "weight" not in unverified else None
-        if dims is None and weight is None:
-            continue
-        parsed.append(
-            (e.designator, (json.dumps(dims, sort_keys=True), json.dumps(weight)))
-        )
-    return parsed
+        # One unattributable axis discredits the reading's whole envelope
+        # (it read some other column, or computed a value).
+        if not any(v is not None and k in unverified for k, v in axes.items()):
+            dims = canonical_dimensions(axes)
+            if dims:
+                dims_out.append((e.designator, json.dumps(dims, sort_keys=True)))
+        if "weight" not in unverified:
+            weight = canonical_weight(e.weight)
+            if weight:
+                weight_out.append((e.designator, json.dumps(weight, sort_keys=True)))
+    return dims_out, weight_out
 
 
-def _envelope_size(payload: Payload) -> float:
-    dims = json.loads(payload[0]) or {}
-    return max((a["value"] for a in dims.values()), default=0.0)
+def _dims_size(payload: str) -> float:
+    return max((a["value"] for a in json.loads(payload).values()), default=0.0)
+
+
+def _weight_size(payload: str) -> float:
+    return json.loads(payload)["value"]
 
 
 def _match_pass(
     extractions: Any, rows: List[Dict[str, Any]]
 ) -> Dict[int, Tuple[Optional[dict], Optional[dict]]]:
     """Row index → (dims, weight) this reading assigns to it."""
-    parsed = _parse_pass(extractions)
-    return {
-        ri: (json.loads(parsed[ei][1][0]), json.loads(parsed[ei][1][1]))
-        for ri, ei in match_rows(parsed, rows, size_key=_envelope_size).items()
-    }
+    dims_entries, weight_entries = _parse_pass(extractions)
+    out: Dict[int, Tuple[Optional[dict], Optional[dict]]] = {}
+    for ri, ei in match_rows(dims_entries, rows, size_key=_dims_size).items():
+        out[ri] = (json.loads(dims_entries[ei][1]), None)
+    for ri, ei in match_rows(weight_entries, rows, size_key=_weight_size).items():
+        out[ri] = (out.get(ri, (None, None))[0], json.loads(weight_entries[ei][1]))
+    return out
 
 
 def _pick_weight(weights: List[dict]) -> Optional[dict]:

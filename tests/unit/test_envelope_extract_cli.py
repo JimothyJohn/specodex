@@ -155,6 +155,30 @@ class TestPlanUpdates:
         junk = {**EX_SMALL, "unverified": "nope"}
         assert plan_updates(rows, [[junk], [junk]]) == []
 
+    def test_dims_and_weight_match_independently(self):
+        # Parker 637: the outline drawing labels a frame range (dims only);
+        # the weight sits in a table row with the exact model. A row must
+        # take dims from one and weight from the other.
+        rows = [_row("a", part_number="637/K D6R 04.S3-7-DEV")]
+        drawing = {
+            "designator": "637/K D6R 02...10",
+            "length": {"value": 280, "unit": "mm"},
+            "width": {"value": 65, "unit": "mm"},
+            "height": {"value": 400, "unit": "mm"},
+            "weight": None,
+            "page_number": 18,
+            "unverified": [],
+        }
+        table = {
+            "designator": "K D6R 04 .S3-7",
+            "weight": {"value": 5.0, "unit": "kg"},
+            "page_number": 14,
+            "unverified": [],
+        }
+        ((_, to_set),) = plan_updates(rows, [[drawing, table], [drawing]])
+        assert to_set["weight"] == {"value": 5.0, "unit": "kg"}
+        assert to_set["max_dimension"] == {"value": 400.0, "unit": "mm"}
+
 
 @pytest.mark.unit
 class TestCache:
