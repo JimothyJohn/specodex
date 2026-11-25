@@ -134,3 +134,53 @@ def test_truncated_single_page_response_is_skipped(monkeypatch):
     monkeypatch.setattr(extract, "_call_gemini", fake_call)
     assert extract.extract_envelopes(_two_page_pdf(), [0], "k") == []
     assert calls == [1]
+
+
+@pytest.mark.unit
+def test_every_pdf_open_holds_the_pdf_lock(monkeypatch):
+    """PyMuPDF is not thread-safe: a 16-worker run segfaulted (exit 139,
+    2026-11-24). Every open on the envelope path must hold PDF_LOCK."""
+    import fitz
+
+    from cli import envelope_extract
+    from specodex.envelope import extract
+
+    real_open = fitz.open
+    seen = []
+
+    def spy(*a, **k):
+        seen.append(extract.PDF_LOCK.locked())
+        return real_open(*a, **k)
+
+    monkeypatch.setattr(fitz, "open", spy)
+    pdf = _two_page_pdf()
+    extract.build_page_subset(pdf, [0, 1])
+    extract.page_text_layers(pdf, [0, 1])
+    extract.page_words(pdf, [0, 1])
+    extract.reverify(pdf, [])
+    envelope_extract.drawing_page_scores(pdf)
+    assert seen and all(seen), seen
+
+
+@pytest.mark.unit
+def test_pdf_helpers_survive_many_threads():
+    from concurrent.futures import ThreadPoolExecutor
+
+    from cli import envelope_extract
+    from specodex.envelope import extract
+
+    pdf = _two_page_pdf()
+
+    def work(_):
+        subset = extract.build_page_subset(pdf, [1])
+        words = extract.page_words(pdf, [0, 1])
+        scores = envelope_extract.drawing_page_scores(pdf)
+        return (
+            extract.page_text_layers(subset, [0])[0].split(),
+            [w[4] for w in words[0]],
+            len(scores),
+        )
+
+    with ThreadPoolExecutor(max_workers=16) as pool:
+        results = list(pool.map(work, range(64)))
+    assert all(r == (["AB060", "121"], ["AB042", "94"], 2) for r in results), results[0]

@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import logging
+import threading
 from typing import Any, Dict, List, Optional
 
 from google import genai
@@ -29,6 +30,10 @@ from specodex.utils import parse_gemini_response
 logger: logging.Logger = logging.getLogger(__name__)
 
 PAGES_PER_CALL = 4
+# PyMuPDF is not thread-safe; concurrent opens segfaulted a 16-worker run
+# (exit 139, 2026-11-24). Every fitz call on this path holds this lock; the
+# Gemini calls (nearly all the wall time) stay parallel.
+PDF_LOCK = threading.Lock()
 # Thinking tokens are billed as output and share max_output_tokens. Left
 # uncapped, dense sensor tables spent the budget thinking and returned
 # truncated JSON (2026-11-24); 2048 leaves room for the answer and roughly
@@ -164,42 +169,45 @@ def _call_gemini(
 
 def build_page_subset(pdf_bytes: bytes, pages: List[int]) -> bytes:
     """Return a new PDF holding ``pages`` (0-indexed, in order) of ``pdf_bytes``."""
-    import fitz
+    with PDF_LOCK:
+        import fitz
 
-    src = fitz.open(stream=pdf_bytes, filetype="pdf")
-    try:
-        out = fitz.open()
+        src = fitz.open(stream=pdf_bytes, filetype="pdf")
         try:
-            for p in pages:
-                if 0 <= p < len(src):
-                    out.insert_pdf(src, from_page=p, to_page=p)
-            return out.tobytes(garbage=3, deflate=True)
+            out = fitz.open()
+            try:
+                for p in pages:
+                    if 0 <= p < len(src):
+                        out.insert_pdf(src, from_page=p, to_page=p)
+                return out.tobytes(garbage=3, deflate=True)
+            finally:
+                out.close()
         finally:
-            out.close()
-    finally:
-        src.close()
+            src.close()
 
 
 def page_text_layers(pdf_bytes: bytes, pages: List[int]) -> dict:
     """0-indexed page → its extractable text ("" when it has none)."""
-    import fitz
+    with PDF_LOCK:
+        import fitz
 
-    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-    try:
-        return {p: doc[p].get_text() for p in pages if 0 <= p < len(doc)}
-    finally:
-        doc.close()
+        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+        try:
+            return {p: doc[p].get_text() for p in pages if 0 <= p < len(doc)}
+        finally:
+            doc.close()
 
 
 def page_words(pdf_bytes: bytes, pages: List[int]) -> dict:
     """0-indexed page → its text-layer word boxes (``get_text("words")``)."""
-    import fitz
+    with PDF_LOCK:
+        import fitz
 
-    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-    try:
-        return {p: doc[p].get_text("words") for p in pages if 0 <= p < len(doc)}
-    finally:
-        doc.close()
+        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+        try:
+            return {p: doc[p].get_text("words") for p in pages if 0 <= p < len(doc)}
+        finally:
+            doc.close()
 
 
 VERIFIED_FIELDS = ("length", "width", "height", "weight")
