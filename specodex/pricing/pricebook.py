@@ -27,6 +27,8 @@ the live-crawl extractor (see ``specodex.pricing.extract``).
 from __future__ import annotations
 
 import logging
+
+from specodex.config import GEMINI_HTTP_OPTIONS
 import re
 import zipfile
 from dataclasses import dataclass
@@ -278,7 +280,11 @@ def pairs_from_pdf(
         )
         pages = pages[:max_pages]
 
-    client = genai.Client(api_key=api_key) if api_key else genai.Client()
+    client = (
+        genai.Client(api_key=api_key, http_options=GEMINI_HTTP_OPTIONS)
+        if api_key
+        else genai.Client(http_options=GEMINI_HTTP_OPTIONS)
+    )
     pairs: List[PricePair] = []
     for page_no, text in zip(pages, _page_texts(pdf_bytes, pages)):
         prompt = (

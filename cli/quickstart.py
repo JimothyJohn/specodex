@@ -27,6 +27,12 @@ Usage:
                                   Dry-run default; --apply writes (dev/staging
                                   only). See .claude/skills/mounting-dimension-extract.
                                   (try: ./Quickstart mounting-extract --help)
+    ./Quickstart envelope-extract Backfill product dimensions (L/W/H, mm) and
+                                  weight (kg) from spec + outline-drawing pages
+                                  onto rows missing them. --plan counts only;
+                                  dry-run default; --apply writes (dev/staging
+                                  only). Extractions cache in outputs/.
+                                  (try: ./Quickstart envelope-extract --help)
     ./Quickstart price-infer      Deterministic price estimates from DB
                                   comparables (price-comps-v1: family ladder /
                                   KNN). --lead-times mode instead applies
@@ -1375,6 +1381,13 @@ def main() -> None:
     if len(sys.argv) >= 2 and sys.argv[1] == "price-book":
         run(
             ["uv", "run", "python", "-m", "cli.price_book", *sys.argv[2:]],
+            cwd=ROOT,
+        )
+        return
+
+    if len(sys.argv) >= 2 and sys.argv[1] == "envelope-extract":
+        run(
+            ["uv", "run", "python", "-m", "cli.envelope_extract", *sys.argv[2:]],
             cwd=ROOT,
         )
         return

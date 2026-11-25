@@ -5,15 +5,24 @@
 
 from __future__ import annotations
 
+import math
+import re
+from decimal import Decimal
 from typing import Any, Literal, Optional
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, BeforeValidator, Field
+from pydantic import BaseModel, BeforeValidator, Field, model_validator
 from typing_extensions import Annotated
 
 
 from specodex.models.commercial import SourcedFigure
-from specodex.models.common import Mass, ProductType, LenientValueUnit
+from specodex.models.common import (
+    Length,
+    LenientValueUnit,
+    Mass,
+    ProductType,
+    ValueUnit,
+)
 from specodex.placeholders import is_placeholder
 
 
@@ -32,13 +41,166 @@ PlaceholderSanitizedStr = Annotated[
 ]
 
 
-class Dimensions(BaseModel):
-    """Represents physical dimensions of an object."""
+# --- Physical envelope ------------------------------------------------------
+#
+# The envelope answers "how big and heavy is the thing I'm ordering" — a
+# bounding box read off the outline drawing, not a mating dimension. It is
+# allowed to be approximate; interface geometry (shaft, pilot, bolt circle,
+# threads) lives in dedicated per-type fields and must be exact.
+#
+# Length and mass are deliberately NOT normalised globally (specodex/units.py
+# excludes them: cable length in m vs shaft diameter in mm). Here the field
+# context is unambiguous, so the envelope normalises itself: every axis to
+# mm, weight to kg. That is what makes "largest dimension" and weight
+# sortable across vendors that publish in inches and pounds.
 
-    width: Optional[float] = None
-    length: Optional[float] = None
-    height: Optional[float] = None
-    unit: Optional[str] = "mm"
+_LENGTH_TO_MM: dict[str, float] = {
+    "mm": 1.0,
+    "cm": 10.0,
+    "m": 1000.0,
+    "in": 25.4,
+    "in.": 25.4,
+    "inch": 25.4,
+    "inches": 25.4,
+    '"': 25.4,
+    "ft": 304.8,
+    "μm": 1e-3,
+    "um": 1e-3,
+}
+
+_MASS_TO_KG: dict[str, float] = {
+    "kg": 1.0,
+    "Kg": 1.0,
+    "KG": 1.0,
+    "kgs": 1.0,
+    "g": 1e-3,
+    "lb": 0.45359237,
+    "lbs": 0.45359237,
+    "lb.": 0.45359237,
+    "lbs.": 0.45359237,
+    "oz": 0.028349523125,
+}
+
+# Sanity ceilings: anything beyond these is an extraction error (a part
+# number or a µm value read as mm), not a real product. 20 m covers the
+# largest gantry robots and cabinet lineups; 50 t covers large motors.
+_MAX_ENVELOPE_MM = 20_000.0
+_MAX_WEIGHT_KG = 50_000.0
+
+
+def _round_sig(value: float) -> float:
+    """Round to 4 significant figures — envelope dims are not precision data,
+    and 25.4 conversions otherwise leave noise like 522.478000001."""
+    if value == 0:
+        return 0.0
+    return float(f"{value:.4g}")
+
+
+def _to_canonical(
+    v: Any, table: dict[str, float], canonical: str, ceiling: float
+) -> Optional[dict[str, Any]]:
+    """Coerce one envelope quantity to ``{"value", "unit": canonical}``.
+
+    Accepts a ValueUnit, a ``{value, unit}`` dict, or a ``"60 mm"`` /
+    ``"60;mm"`` string. Returns None for anything unparseable, in an
+    unknown unit, non-finite, non-positive, or above ``ceiling`` — the
+    field degrades to None instead of killing the row.
+    """
+    if v is None or is_placeholder(v):
+        return None
+    if isinstance(v, ValueUnit):
+        value, unit = v.value, v.unit
+    else:
+        if isinstance(v, dict) and isinstance(v.get("unit"), str):
+            # Normalise spellings before ValueUnit sees them so "inches"
+            # isn't lost to an alias set that doesn't know it.
+            v = {**v, "unit": v["unit"].strip()}
+        try:
+            parsed = ValueUnit.model_validate(v)
+        except (ValueError, TypeError):
+            return None
+        value, unit = parsed.value, parsed.unit
+    factor = table.get(unit.strip()) if isinstance(unit, str) else None
+    if factor is None:
+        return None
+    try:
+        out = float(value) * factor
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(out) or out <= 0 or out > ceiling:
+        return None
+    return {"value": _round_sig(out), "unit": canonical}
+
+
+def _coerce_envelope_length(v: Any) -> Any:
+    return _to_canonical(v, _LENGTH_TO_MM, "mm", _MAX_ENVELOPE_MM)
+
+
+def _coerce_weight(v: Any) -> Any:
+    return _to_canonical(v, _MASS_TO_KG, "kg", _MAX_WEIGHT_KG)
+
+
+def _coerce_dimensions_container(v: Any) -> Any:
+    """Anything that isn't an object (Gemini sometimes emits the envelope as
+    one ``"120 x 60 x 60 mm"`` string) drops the field, not the row."""
+    if v is None or isinstance(v, (dict, BaseModel)):
+        return v
+    return None
+
+
+EnvelopeLength = Annotated[Length, BeforeValidator(_coerce_envelope_length)]
+ProductWeight = Annotated[Mass, BeforeValidator(_coerce_weight)]
+
+
+class Dimensions(BaseModel):
+    """Overall physical envelope (bounding box), each axis in mm.
+
+    Axis convention: ``length`` along the product's main axis (motor and
+    gearhead: along the shaft, flange face to rear; actuator: overall
+    length at the stroke the row describes); ``width`` / ``height`` across
+    it (for a square flange both equal the flange edge). Drives and
+    cabinet parts: width × height × depth-as-length, as mounted.
+
+    Legacy rows stored ``{"width": 60.0, "length": 120.0, "unit": "in"}``
+    — bare floats plus one shared, unnormalised unit. The before-validator
+    lifts that shape into per-axis ValueUnits so old DynamoDB rows,
+    Gemini's habit of emitting the flat shape, and the new shape all load
+    the same way.
+    """
+
+    length: EnvelopeLength = None
+    width: EnvelopeLength = None
+    height: EnvelopeLength = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _lift_shared_unit(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+        shared = data.get("unit")
+        if not isinstance(shared, str) or not shared.strip():
+            return {k: data.get(k) for k in ("length", "width", "height")}
+        lifted: dict[str, Any] = {}
+        for axis in ("length", "width", "height"):
+            raw = data.get(axis)
+            if isinstance(raw, (int, float, Decimal)) and not isinstance(raw, bool):
+                lifted[axis] = {"value": raw, "unit": shared}
+            elif isinstance(raw, str) and _BARE_NUMBER.fullmatch(raw.strip()):
+                lifted[axis] = {"value": raw.strip(), "unit": shared}
+            else:
+                lifted[axis] = raw
+        return lifted
+
+    def largest(self) -> Optional[float]:
+        """Largest known axis in mm, or None when no axis is known."""
+        known = [a.value for a in (self.length, self.width, self.height) if a]
+        return max(known) if known else None
+
+    def is_empty(self) -> bool:
+        return self.length is None and self.width is None and self.height is None
+
+
+_BARE_NUMBER = re.compile(r"[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?")
 
 
 class ProductBase(BaseModel):
@@ -86,8 +248,26 @@ class ProductBase(BaseModel):
     part_number: PlaceholderSanitizedStr = Field(None, description="Part number")
     manufacturer: str = Field(..., description="Manufacturer name")
     release_year: Optional[int] = None
-    dimensions: Optional[Dimensions] = None
-    weight: Mass = None
+    dimensions: Annotated[
+        Optional[Dimensions], BeforeValidator(_coerce_dimensions_container)
+    ] = Field(
+        None,
+        description=(
+            "Overall envelope from the outline/dimension drawing: length "
+            "along the main axis (shaft axis for motors and gearheads), "
+            "width and height across it. Approximate is fine."
+        ),
+    )
+    weight: ProductWeight = Field(
+        None, description="Product mass (e.g., in kg). Normalised to kg."
+    )
+    max_dimension: Length = Field(
+        None,
+        description=(
+            "Largest known axis of `dimensions`, in mm. Derived on "
+            "validation, never LLM-extracted (llm_schema.EXCLUDED_FIELDS)."
+        ),
+    )
     msrp: LenientValueUnit = None
     msrp_source_url: Optional[str] = Field(
         None,
@@ -159,3 +339,17 @@ class ProductBase(BaseModel):
         None,
         description="1-indexed PDF pages where this product's specs were found. Used for #page=N deep-linking.",
     )
+
+    @model_validator(mode="after")
+    def _derive_envelope(self) -> "ProductBase":
+        # An all-None Dimensions (Gemini's empty-object stub, or a legacy
+        # {"unit": "mm"} row) carries no information — store nothing.
+        if self.dimensions is not None and self.dimensions.is_empty():
+            self.dimensions = None
+        # Always recomputed from `dimensions` so a stale stored value can't
+        # outlive an edit to the axes.
+        largest = self.dimensions.largest() if self.dimensions else None
+        self.max_dimension = (
+            None if largest is None else ValueUnit(value=largest, unit="mm")
+        )
+        return self

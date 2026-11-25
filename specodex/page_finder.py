@@ -20,6 +20,8 @@ from typing import Any, Dict, List, Optional
 
 from google import genai
 
+from specodex.config import GEMINI_HTTP_OPTIONS
+
 from specodex.log_redact import redact_secrets
 from specodex.utils import get_document
 
@@ -687,7 +689,7 @@ def classify_pages(
     Returns:
         List of dicts with page_number (0-indexed), has_specs (bool), description
     """
-    client = genai.Client(api_key=api_key)
+    client = genai.Client(api_key=api_key, http_options=GEMINI_HTTP_OPTIONS)
     results: List[Dict[str, Any]] = []
 
     type_hint = f" for {product_type} products" if product_type else ""

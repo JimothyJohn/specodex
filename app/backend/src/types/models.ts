@@ -48,6 +48,9 @@ export interface ProductBase {
   part_number?: string;
   dimensions?: Dimensions;
   weight?: ValueUnit;
+  // Derived from dimensions (largest axis, mm). Mirrors
+  // specodex/models/product.py ProductBase.max_dimension.
+  max_dimension?: ValueUnit;
   // Expected delivery / lead time. Mirrors specodex/models/product.py
   // ProductBase.lead_time — typically a ValueUnit with unit='days'.
   lead_time?: ValueUnit;

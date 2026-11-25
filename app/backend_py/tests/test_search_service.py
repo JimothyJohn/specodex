@@ -182,6 +182,18 @@ class TestProductSummary:
         # Per-type specs land in summary.
         assert summary["rated_power"] == {"value": 100.0, "unit": "W"}
 
+    def test_summary_carries_envelope(self) -> None:
+        m = _motor(
+            dimensions={"length": "179;mm", "width": "90;mm"},
+            weight="5.5;kg",
+        )
+        summary = product_summary(m)
+        assert summary["max_dimension"] == {"value": 179.0, "unit": "mm"}
+        assert summary["weight"] == {"value": 5.5, "unit": "kg"}
+        assert "dimensions" not in summary
+        bare = product_summary(_motor())
+        assert "max_dimension" not in bare and "weight" not in bare
+
     def test_inductive_sensor_summary_carries_selection_specs(self) -> None:
         """Without a SUMMARY_SPECS entry a search hit is identity-only."""
         s = InductiveSensor(

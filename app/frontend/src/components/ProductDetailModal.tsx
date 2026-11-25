@@ -227,7 +227,7 @@ export default function ProductDetailModal({ product, onClose, clickPosition }: 
       const electrical = ['voltage', 'current', 'power', 'resistance', 'inductance', 'phases'];
       const mechanical = ['torque', 'speed', 'inertia', 'poles'];
       const performance = ['rated', 'peak', 'constant', 'efficiency'];
-      const physical = ['weight', 'dimensions', 'mounting', 'shaft', 'ip_rating'];
+      const physical = ['weight', 'dimension', 'mounting', 'shaft', 'ip_rating'];
       const io = ['inputs', 'outputs', 'ethernet', 'fieldbus', 'encoder', 'feedback', 'control_modes'];
       const safety = ['safety', 'approvals', 'rating'];
       const environmental = ['temp', 'humidity', 'ambient', 'operating'];

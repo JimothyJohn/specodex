@@ -30,6 +30,11 @@ const SUMMARY_SPECS: Record<string, string[]> = {
   ],
 };
 
+// Physical envelope, carried by every product type (canonical mm / kg;
+// see specodex/models/product.py). Searchers use it to rule out parts that
+// won't fit before opening the full record.
+const ENVELOPE_SUMMARY_SPECS = ['max_dimension', 'weight'];
+
 // Searchable fields with weighted scoring: [field, exactScore, containsScore]
 const SEARCHABLE_FIELDS: [string, number, number][] = [
   ['part_number', 100, 80],
@@ -204,7 +209,7 @@ export function productSummary(product: Product, relevance?: number): ProductSum
   }
 
   // Add type-specific key specs
-  const specFields = SUMMARY_SPECS[ptype] || [];
+  const specFields = [...(SUMMARY_SPECS[ptype] || []), ...ENVELOPE_SUMMARY_SPECS];
   for (const key of specFields) {
     const val = getProductField(product, key);
     if (val !== null && val !== undefined) {

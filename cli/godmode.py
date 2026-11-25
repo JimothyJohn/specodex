@@ -37,13 +37,13 @@ import sys
 from collections import defaultdict
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
-from decimal import Decimal
 from html import escape
 from pathlib import Path
 from typing import Any, Iterable, Optional
 
 import boto3
 
+from specodex.aws import decimal_to_native
 from specodex.config import SCHEMA_CHOICES
 from specodex.models.common import (
     MinMaxUnit,
@@ -243,17 +243,6 @@ class Snapshot:
 # ---------------------------------------------------------------------------
 
 
-def _decimal_to_native(obj: Any) -> Any:
-    if isinstance(obj, Decimal):
-        f = float(obj)
-        return int(f) if f.is_integer() else f
-    if isinstance(obj, dict):
-        return {k: _decimal_to_native(v) for k, v in obj.items()}
-    if isinstance(obj, list):
-        return [_decimal_to_native(v) for v in obj]
-    return obj
-
-
 def scan_products(table: Any, limit: Optional[int] = None) -> list[dict]:
     kwargs: dict[str, Any] = {
         "FilterExpression": "begins_with(PK, :prefix)",
@@ -263,7 +252,7 @@ def scan_products(table: Any, limit: Optional[int] = None) -> list[dict]:
     while True:
         resp = table.scan(**kwargs)
         for item in resp.get("Items", []):
-            rows.append(_decimal_to_native(item))
+            rows.append(decimal_to_native(item))
             if limit is not None and len(rows) >= limit:
                 return rows
         if "LastEvaluatedKey" not in resp:

@@ -257,6 +257,7 @@ const CATEGORY_BY_KEY: Record<string, AttributeCategory> = {
   lubrication_type: 'mechanical',
   poles: 'mechanical',
   dimensions: 'mechanical',
+  max_dimension: 'mechanical',
   mechanical_durability: 'mechanical',
 
   // ----- Electrical -----
@@ -360,6 +361,21 @@ export const getCategoryForKey = (key: string): AttributeCategory =>
 // resistance, inductance) are pushed behind opt-in restore — they're
 // unit-bearing but not comparison-useful for product selection. See
 // specodex/models/motor.md.
+/**
+ * Physical envelope columns shared by every product type: the largest
+ * bounding-box axis (derived server-side from `dimensions`, always mm) and
+ * weight (always kg). "How big and heavy is the thing I'm ordering" is a
+ * first-glance question for every type, so both are authored into every
+ * COLUMN_ORDER entry — but visibility is left to the nested fill-rate rule
+ * (no `defaultVisible`), so a type whose rows mostly lack an envelope
+ * doesn't open on an empty column. Lower is the usual constraint (cabinet
+ * space, payload), so chips start at '<'.
+ */
+const envelopeAttributes = (productType: string): AttributeMetadata[] => [
+  { key: 'max_dimension', displayName: 'Largest Dimension', type: 'object', applicableTypes: [productType], nested: true, unit: 'mm', defaultOperator: '<' },
+  { key: 'weight', displayName: 'Weight', type: 'object', applicableTypes: [productType], nested: true, unit: 'kg', defaultOperator: '<' },
+];
+
 export const getMotorAttributes = (): AttributeMetadata[] => [
   { key: 'manufacturer', displayName: 'Manufacturer', type: 'string', applicableTypes: ['motor'], defaultVisible: true },
   { key: 'part_number', displayName: 'Part Number', type: 'string', applicableTypes: ['motor'] },
@@ -392,7 +408,7 @@ export const getMotorAttributes = (): AttributeMetadata[] => [
   { key: 'ip_rating', displayName: 'IP Rating', type: 'number', applicableTypes: ['motor'] },
   { key: 'shaft_diameter', displayName: 'Shaft Diameter', type: 'object', applicableTypes: ['motor'], nested: true, unit: 'mm', defaultVisible: false },
   { key: 'frame_size', displayName: 'Frame Size', type: 'string', applicableTypes: ['motor'] },
-  { key: 'weight', displayName: 'Weight', type: 'object', applicableTypes: ['motor'], nested: true, unit: 'kg', defaultVisible: false },
+  ...envelopeAttributes('motor'),
 ];
 
 /**
@@ -431,7 +447,7 @@ export const getRobotArmAttributes = (): AttributeMetadata[] => [
   { key: 'operating_temp', displayName: 'Operating Temperature', type: 'range', applicableTypes: ['robot_arm'], nested: true, unit: '°C', defaultVisible: false },
   { key: 'materials', displayName: 'Materials', type: 'array', applicableTypes: ['robot_arm'] },
   { key: 'safety_certifications', displayName: 'Safety Certifications', type: 'array', applicableTypes: ['robot_arm'] },
-  { key: 'weight', displayName: 'Weight', type: 'object', applicableTypes: ['robot_arm'], nested: true, unit: 'kg', defaultVisible: false },
+  ...envelopeAttributes('robot_arm'),
 ];
 
 /**
@@ -491,7 +507,7 @@ export const getGearheadAttributes = (): AttributeMetadata[] => [
   { key: 'operating_temp', displayName: 'Operating Temperature', type: 'range', applicableTypes: ['gearhead'], nested: true, unit: '°C', defaultVisible: false },
   { key: 'service_life', displayName: 'Service Life', type: 'object', applicableTypes: ['gearhead'], nested: true, unit: 'hours', defaultVisible: false },
   { key: 'lubrication_type', displayName: 'Lubrication Type', type: 'string', applicableTypes: ['gearhead'] },
-  { key: 'weight', displayName: 'Weight', type: 'object', applicableTypes: ['gearhead'], nested: true, unit: 'kg', defaultVisible: false },
+  ...envelopeAttributes('gearhead'),
 ];
 
 /**
@@ -568,7 +584,7 @@ export const getContactorAttributes = (): AttributeMetadata[] => [
   { key: 'standards_compliance', displayName: 'Standards', type: 'array', applicableTypes: ['contactor'] },
   { key: 'certifications', displayName: 'Certifications', type: 'array', applicableTypes: ['contactor'] },
   { key: 'mounting_types', displayName: 'Mounting', type: 'array', applicableTypes: ['contactor'] },
-  { key: 'weight', displayName: 'Weight', type: 'object', applicableTypes: ['contactor'], nested: true, unit: 'kg', defaultVisible: false },
+  ...envelopeAttributes('contactor'),
 ];
 
 /**
@@ -618,7 +634,7 @@ export const getDriveAttributes = (): AttributeMetadata[] => [
   { key: 'approvals', displayName: 'Approvals', type: 'array', applicableTypes: ['drive'] },
   { key: 'max_humidity', displayName: 'Max Humidity', type: 'number', applicableTypes: ['drive'], unit: '%' },
   { key: 'operating_temp', displayName: 'Operating Temperature', type: 'range', applicableTypes: ['drive'], nested: true, unit: '°C', defaultVisible: false },
-  { key: 'weight', displayName: 'Weight', type: 'object', applicableTypes: ['drive'], nested: true, unit: 'kg', defaultVisible: false },
+  ...envelopeAttributes('drive'),
 ];
 
 // Electric cylinder default-visible set: stroke + force + speed +
@@ -653,7 +669,7 @@ export const getElectricCylinderAttributes = (): AttributeMetadata[] => [
   { key: 'operating_temp', displayName: 'Operating Temperature', type: 'range', applicableTypes: ['electric_cylinder'], nested: true, unit: '°C', defaultVisible: false },
   { key: 'service_life', displayName: 'Service Life', type: 'object', applicableTypes: ['electric_cylinder'], nested: true, unit: 'h', defaultVisible: false },
   { key: 'noise_level', displayName: 'Noise Level', type: 'object', applicableTypes: ['electric_cylinder'], nested: true, unit: 'dBA', defaultVisible: false },
-  { key: 'weight', displayName: 'Weight', type: 'object', applicableTypes: ['electric_cylinder'], nested: true, unit: 'kg', defaultVisible: false },
+  ...envelopeAttributes('electric_cylinder'),
 ];
 
 // Inductive sensor default-visible set: size + sensing distance + mounting +
@@ -693,7 +709,7 @@ export const getInductiveSensorAttributes = (): AttributeMetadata[] => [
   { key: 'tightening_torque', displayName: 'Tightening Torque', type: 'object', applicableTypes: ['inductive_sensor'], nested: true, unit: 'Nm', defaultVisible: false },
   { key: 'short_circuit_protection', displayName: 'Short-Circuit Protection', type: 'boolean', applicableTypes: ['inductive_sensor'] },
   { key: 'reverse_polarity_protection', displayName: 'Reverse-Polarity Protection', type: 'boolean', applicableTypes: ['inductive_sensor'] },
-  { key: 'weight', displayName: 'Weight', type: 'object', applicableTypes: ['inductive_sensor'], nested: true, unit: 'kg', defaultVisible: false },
+  ...envelopeAttributes('inductive_sensor'),
 ];
 
 /**
@@ -883,7 +899,7 @@ export const buildDefaultSortsForType = (
 // metadata when keys collide so existing UI doesn't regress.
 
 /** Keys the filter UI should never offer (identity / bookkeeping). */
-const DERIVATION_EXCLUDED_KEYS: ReadonlySet<string> = new Set([
+export const DERIVATION_EXCLUDED_KEYS: ReadonlySet<string> = new Set([
   'PK',
   'SK',
   'product_id',

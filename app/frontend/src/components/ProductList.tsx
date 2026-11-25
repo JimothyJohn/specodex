@@ -6,16 +6,16 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useApp, isUnitSystem } from '../context/AppContext';
 import { UnitSystem } from '../utils/unitConversion';
 import { ProductType, Product } from '../types/models';
-import { FilterCriterion, SortConfig, applyFilters, sortProducts, getAttributesForType, deriveAttributesFromRecords, mergeAttributesByKey, AttributeMetadata, getAvailableOperators, buildDefaultFiltersForType } from '../types/filters';
+import { FilterCriterion, SortConfig, applyFilters, sortProducts, getAttributesForType, deriveAttributesFromRecords, mergeAttributesByKey, AttributeMetadata, getAvailableOperators, buildDefaultFiltersForType, DERIVATION_EXCLUDED_KEYS } from '../types/filters';
 // Column order is authored in types/columnOrder.ts — edit that file to
 // change what columns appear and in what order.
 import { orderColumnAttributes, computeVisibleColumnAttributes, computeFillRates } from '../types/columnOrder';
 import VendorDrawer from './VendorDrawer';
 import { formatValue, formatNumber, formatRange, computeAutoColumnWidths } from '../utils/formatting';
 import Tooltip from './ui/Tooltip';
-import { displayUnit, convertValueUnit, convertMinMaxUnit } from '../utils/unitConversion';
-import { numericFromValue } from '../utils/filterValues';
-import { applyGearCascade, GEARED_KEYS } from '../utils/gearCascade';
+import { convertValueUnit, convertMinMaxUnit } from '../utils/unitConversion';
+import { extractNumeric, numericFromValue } from '../utils/filterValues';
+import { applyGearCascade, outputTorqueTargets, GEARED_KEYS } from '../utils/gearCascade';
 import { useColumnResize } from '../utils/hooks';
 import {
   safeLoad,
@@ -26,6 +26,8 @@ import ColumnHeader from './ColumnHeader';
 import ActiveFilterChips from './ActiveFilterChips';
 import ProductDetailModal from './ProductDetailModal';
 import AttributeSelector from './AttributeSelector';
+import LensSelector from './LensSelector';
+import { computeLensColumns, isLensArray, type Lens } from '../types/lens';
 import Dropdown from './Dropdown';
 import FeedbackModal from './ui/FeedbackModal';
 import { ProgressBar } from './ui/ProgressBar';
@@ -89,6 +91,59 @@ export function defaultStateForType(type: ProductType): ProductListResetState {
   };
 }
 
+// Keys that never render as their own spec column: the identity /
+// bookkeeping / commercial keys the filter UI already excludes, plus
+// `part_number`, which the render code pins as the leading column.
+const COLUMN_EXCLUDED_KEYS: ReadonlySet<string> = new Set([
+  ...DERIVATION_EXCLUDED_KEYS,
+  'part_number',
+]);
+
+/** True when a filter/sort on `path` targets column `key` or one of its
+ *  nested children (e.g. `rated_voltage.min` targets `rated_voltage`). */
+const targetsColumn = (path: string, key: string): boolean =>
+  path === key || path.startsWith(key + '.');
+
+/** Numeric reading of a cell for a filter/sort `path` that targets the
+ *  cell's column `key` — the cell value itself, or its nested child. */
+const cellNumeric = (cellValue: any, key: string, path: string): number | null => {
+  if (path === key) return numericFromValue(cellValue);
+  if (!cellValue || typeof cellValue !== 'object') return null;
+  return extractNumeric(cellValue, path.slice(key.length + 1));
+};
+
+/** Auto-fit width for the part-number column plus every visible spec
+ *  column, floored per column and with the floor as the fallback. */
+function autoFitColumnWidths(args: {
+  products: readonly Product[];
+  columns: readonly AttributeMetadata[];
+  density: 'compact' | 'cozy';
+  unitSystem: UnitSystem;
+  partMin: number;
+  colMin: number;
+}): Record<string, number> {
+  const { products, columns, density, unitSystem, partMin, colMin } = args;
+  const cols = [
+    { key: 'part_number', displayName: 'Part Number' },
+    ...columns.map(a => ({ key: a.key, displayName: a.displayName })),
+  ];
+  // Floor every spec column at colMin (see defaultColWidth for why it is
+  // 96/72 and not the old 120/90). Auto-fit widens past the floor when
+  // data warrants; the floor only kicks in for naturally narrow columns.
+  const perKeyMin: Record<string, number> = {};
+  for (const col of cols) perKeyMin[col.key] = col.key === 'part_number' ? partMin : colMin;
+  const auto = computeAutoColumnWidths({
+    rows: products as unknown as Array<Record<string, unknown>>,
+    columns: cols,
+    density,
+    unitSystem,
+    perKeyMin,
+  });
+  const widths: Record<string, number> = {};
+  for (const col of cols) widths[col.key] = auto[col.key] ?? perKeyMin[col.key];
+  return widths;
+}
+
 export default function ProductList() {
   const { products, categories, loading, loadProgress, error, loadProducts, loadCategories, unitSystem, build, compatibleOnly, setCompatibleOnly, rowDensity } = useApp();
   const [productType, setProductType] = useState<ProductType>(null);
@@ -96,7 +151,7 @@ export default function ProductList() {
   const [sorts, setSorts] = useState<SortConfig[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [clickPosition, setClickPosition] = useState<{ x: number; y: number } | null>(null);
-  const [showSortSelector, setShowSortSelector] = useState(false);
+  const [showColumnSelector, setShowColumnSelector] = useState(false);
   const [columnSelectorCursor, setColumnSelectorCursor] = useState<{ x: number; y: number } | null>(null);
   // Empty-state feedback launcher. Stored alongside its category so the
   // same modal can be opened from "no products in DB" (missing_product)
@@ -136,6 +191,13 @@ export default function ProductList() {
     safeSave('productListHiddenColumns', userHiddenKeys);
   }, [userHiddenKeys]);
 
+  // Form / Fit / Function lenses (types/lens.ts). Empty = normal view.
+  const [activeLenses, setActiveLenses] = useState<Lens[]>(() =>
+    safeLoad('productListLenses', isLensArray, []),
+  );
+  useEffect(() => {
+    safeSave('productListLenses', activeLenses);
+  }, [activeLenses]);
   const [userRestoredKeys, setUserRestoredKeys] = useState<string[]>(() =>
     safeLoad('productListRestoredColumns', isStringArray, []),
   );
@@ -181,9 +243,6 @@ export default function ProductList() {
   // further than cozy on the assumption that part numbers will truncate
   // gracefully (they're scannable abbreviations, not prose).
   const defaultPartWidth = rowDensity === 'compact' ? 130 : 160;
-  // Spec column floor. Cozy keeps the slider+operator+value row legible
-  // (~120px). Compact strips the slider in PR 2 so the floor drops to
-  // ~90px — value+operator+unit fits comfortably.
   // Floor for spec columns. The 120/90 floors dated from the in-header
   // slider + operator + value pill (UI_CLEANUP Phase 1); the
   // popover-per-column header (Phase 2) only needs the label — which
@@ -193,50 +252,27 @@ export default function ProductList() {
   const defaultColWidth = rowDensity === 'compact' ? 72 : 96;
   const { columnWidths, setColumnWidths, startResize } = useColumnResize({ part_number: defaultPartWidth });
 
-  // Keys that should never render as their own column. `part_number` is
-  // pinned as the leading column by the existing render code; the rest are
-  // identity, bookkeeping, or per-record URLs that aren't useful in a
-  // spec table.
-  const COLUMN_EXCLUDED_KEYS = useMemo(
-    () =>
-      new Set<string>([
-        'part_number',
-        'datasheet_url',
-        'pages',
-        'PK',
-        'SK',
-        'product_id',
-        'product_type',
-        // Commercial fields — hidden while the commercial data stays
-        // unreliable; the UI focuses on technical specs only.
-        'msrp',
-        'msrp_source_url',
-        'msrp_fetched_at',
-        'availability',
-        'availability_source_url',
-        'availability_fetched_at',
-        'price_estimate',
-        'lead_time_estimate',
-        'lead_time',
-        'warranty',
-      ]),
-    [],
-  );
-
   // Full ordered column list — authored order from types/columnOrder.ts
   // first, then alphabetical for any unlisted keys. Excludes identity/
   // metadata keys. Does NOT yet filter by hidden set; we keep the full
   // list so AttributeSelector can tell what's hideable vs hidden.
   // `visibleColumnAttributes` below is the filtered view.
-  const columnAttributes = useMemo<AttributeMetadata[]>(() => {
+  const allAttributes = useMemo<AttributeMetadata[]>(() => {
     if (!productType) return [];
-    const staticAttrs = getAttributesForType(productType);
-    const derivedAttrs = deriveAttributesFromRecords(products, productType);
-    const merged = mergeAttributesByKey(staticAttrs, derivedAttrs).filter(
-      a => !COLUMN_EXCLUDED_KEYS.has(a.key),
+    return mergeAttributesByKey(
+      getAttributesForType(productType),
+      deriveAttributesFromRecords(products, productType),
     );
-    return orderColumnAttributes(merged, productType);
-  }, [productType, products, COLUMN_EXCLUDED_KEYS]);
+  }, [productType, products]);
+
+  const columnAttributes = useMemo<AttributeMetadata[]>(
+    () =>
+      orderColumnAttributes(
+        allAttributes.filter(a => !COLUMN_EXCLUDED_KEYS.has(a.key)),
+        productType,
+      ),
+    [allAttributes, productType],
+  );
 
   // Columns actually rendered in the table. The visibility rules + cap
   // live in `computeVisibleColumnAttributes` so the contract is unit-
@@ -258,6 +294,13 @@ export default function ProductList() {
 
   const visibleColumnAttributes = useMemo<AttributeMetadata[]>(
     () =>
+      computeLensColumns(
+        columnAttributes,
+        activeLenses,
+        userHiddenKeys,
+        MAX_VISIBLE_COLUMNS,
+        columnFillRates,
+      ) ??
       computeVisibleColumnAttributes(
         columnAttributes,
         userHiddenKeys,
@@ -265,7 +308,7 @@ export default function ProductList() {
         MAX_VISIBLE_COLUMNS,
         columnFillRates,
       ),
-    [columnAttributes, userHiddenKeys, userRestoredKeys, MAX_VISIBLE_COLUMNS, columnFillRates],
+    [columnAttributes, activeLenses, userHiddenKeys, userRestoredKeys, MAX_VISIBLE_COLUMNS, columnFillRates],
   );
 
   // Restore-dropdown candidates: everything the user could bring back —
@@ -282,31 +325,22 @@ export default function ProductList() {
   // the rest. Computed fresh whenever the productType, visible-column set,
   // or loaded data changes — but a user's manual resize (tracked in
   // columnWidths) wins and is preserved across these transitions.
-  useEffect(() => {
-    if (!productType) return;
-    const cols = [
-      { key: 'part_number', displayName: 'Part Number' },
-      ...visibleColumnAttributes.map(a => ({ key: a.key, displayName: a.displayName })),
-    ];
-    // Floor every spec column at defaultColWidth (see its comment for
-    // why it is 96/72 and not the old 120/90). Auto-fit widens past the
-    // floor when data warrants; the floor only kicks in for naturally
-    // narrow columns.
-    const specMin: Record<string, number> = { part_number: defaultPartWidth };
-    for (const a of visibleColumnAttributes) specMin[a.key] = defaultColWidth;
-    const auto = computeAutoColumnWidths({
-      rows: products as unknown as Array<Record<string, unknown>>,
-      columns: cols,
+  const autoWidths = () =>
+    autoFitColumnWidths({
+      products,
+      columns: visibleColumnAttributes,
       density: rowDensity,
       unitSystem,
-      perKeyMin: specMin,
+      partMin: defaultPartWidth,
+      colMin: defaultColWidth,
     });
+
+  useEffect(() => {
+    if (!productType) return;
+    const auto = autoWidths();
     setColumnWidths(prev => {
       const next: Record<string, number> = {};
-      for (const col of cols) {
-        next[col.key] = prev[col.key] ?? auto[col.key]
-          ?? (col.key === 'part_number' ? defaultPartWidth : defaultColWidth);
-      }
+      for (const key of Object.keys(auto)) next[key] = prev[key] ?? auto[key];
       return next;
     });
   }, [productType, visibleColumnAttributes, products, unitSystem, defaultPartWidth, defaultColWidth, setColumnWidths]);
@@ -317,27 +351,7 @@ export default function ProductList() {
   // an intentional density toggle.
   useEffect(() => {
     if (!productType) return;
-    const cols = [
-      { key: 'part_number', displayName: 'Part Number' },
-      ...visibleColumnAttributes.map(a => ({ key: a.key, displayName: a.displayName })),
-    ];
-    const specMin: Record<string, number> = { part_number: defaultPartWidth };
-    for (const a of visibleColumnAttributes) specMin[a.key] = defaultColWidth;
-    const auto = computeAutoColumnWidths({
-      rows: products as unknown as Array<Record<string, unknown>>,
-      columns: cols,
-      density: rowDensity,
-      unitSystem,
-      perKeyMin: specMin,
-    });
-    setColumnWidths(() => {
-      const next: Record<string, number> = {};
-      for (const col of cols) {
-        next[col.key] = auto[col.key]
-          ?? (col.key === 'part_number' ? defaultPartWidth : defaultColWidth);
-      }
-      return next;
-    });
+    setColumnWidths(autoWidths());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rowDensity]);
 
@@ -423,9 +437,17 @@ export default function ProductList() {
   // sliders, filters and sorts all read the same fields — see
   // utils/gearCascade.ts for why the old in-place rewrite of
   // rated_torque was split out.
+  //
+  // Keyed on the output-torque targets — the only part of `filters` the
+  // cascade reads — not on `filters` itself. Otherwise every filter
+  // change (each slider drag tick on any column) re-copies every motor
+  // row, and the fresh `gearedSource` identity defeats ColumnHeader's
+  // memo and its per-column range/option memos.
+  const gearTargetsKey = outputTorqueTargets(filters).join(',');
   const { products: gearedSource, gearMap, active: gearActive } = useMemo(
     () => applyGearCascade(compatNarrowed, filters, productType),
-    [compatNarrowed, filters, productType],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [compatNarrowed, gearTargetsKey, productType],
   );
 
   /* Gear ratio column appears on the motor view while an output-torque
@@ -440,15 +462,11 @@ export default function ProductList() {
   }, [gearedSource, filters]);
 
   // Apply sorting to filtered products
-  const sortedProducts = useMemo(
+  const displayProducts = useMemo(
     () => sortProducts(filteredProducts, sorts.length > 0 ? sorts : null),
     [filteredProducts, sorts]
   );
 
-  // The display set is now identical to the sorted set — linearization
-  // already happened upstream. Kept as an alias so call sites read the
-  // same as before.
-  const displayProducts = sortedProducts;
   const listBody = resolveListBody({
     productType,
     loading,
@@ -496,17 +514,6 @@ export default function ProductList() {
     observer.observe(node);
     return () => observer.disconnect();
   }, [hasMoreRows, itemsPerPage, paginatedProducts.length]);
-
-  // Column headers — label + unit per column. Unit strings flip through
-  // `displayUnit()` so e.g. Nm → in·lb when the per-column unit override
-  // is set to imperial.
-  const getColumnHeaders = (): Array<{ key: string; label: string; unit: string | null }> => {
-    return visibleColumnAttributes.map(attr => {
-      const label = attr.displayName;
-      const unit: string | null = attr.unit || null;
-      return { key: attr.key, label, unit: unit ? displayUnit(unit, unitSystemFor(attr.key)) : null };
-    });
-  };
 
   // Extract just the numeric value from a spec (no unit). Converts
   // through the supplied unit system so a column's per-column unit
@@ -560,17 +567,10 @@ export default function ProductList() {
     for (const filter of filters) {
       if (filter.value === undefined || filter.operator === '!=') continue;
       const path = filter.attribute;
-      const [baseAttr, ...rest] = path.split('.');
-      const nestedKeys = rest;
       let min = Infinity;
       let max = -Infinity;
       for (const p of filteredProducts) {
-        const root = (p as any)[baseAttr];
-        if (root == null) continue;
-        const sub = nestedKeys.length === 0
-          ? root
-          : nestedKeys.reduce((acc: any, k) => (acc == null ? acc : acc[k]), root);
-        const n = numericFromValue(sub);
+        const n = extractNumeric(p, path);
         if (n == null || !Number.isFinite(n)) continue;
         if (n < min) min = n;
         if (n > max) max = n;
@@ -586,8 +586,7 @@ export default function ProductList() {
   // visible result set. Direction follows the operator: `>`/`>=` brightens
   // high values, `<`/`<=` brightens low values, `=` brightens values nearest
   // the filter value. Opacity is a hint, not a banner.
-  const getProximityColor = (attribute: string, productValue: any): string => {
-    const filter = filters.find(f => f.attribute === attribute || f.attribute.startsWith(attribute + '.'));
+  const getProximityColor = (filter: FilterCriterion | null, attribute: string, productValue: any): string => {
     if (!filter || filter.operator === '!=') return '';
     // Default chips are seeded valueless ("any"); until the user dials
     // in a threshold there is nothing to be near, so no gradient. Without
@@ -596,16 +595,7 @@ export default function ProductList() {
     // (UI_CLEANUP N7).
     if (filter.value === undefined || filter.value === null) return '';
 
-    let numericProductValue: number | null = null;
-    if (filter.attribute === attribute) {
-      numericProductValue = numericFromValue(productValue);
-    } else if (filter.attribute.startsWith(attribute + '.')) {
-      const nestedKey = filter.attribute.split('.').slice(1).join('.');
-      if (nestedKey && productValue && typeof productValue === 'object') {
-        const sub = nestedKey.split('.').reduce((acc: any, k) => (acc == null ? acc : acc[k]), productValue);
-        numericProductValue = numericFromValue(sub);
-      }
-    }
+    const numericProductValue = cellNumeric(productValue, attribute, filter.attribute);
     if (numericProductValue === null) return '';
 
     const range = filteredAttrRanges.get(filter.attribute);
@@ -630,10 +620,6 @@ export default function ProductList() {
     return `hsla(45, 60%, 45%, ${opacity.toFixed(3)})`;
   };
 
-  const isSortedAttribute = (attribute: string): boolean => {
-    return sorts.some(sort => sort.attribute === attribute);
-  };
-
   // Per-sort-attribute sorted numeric arrays over the visible (post-filter,
   // post-linear-transform) set. Used to map each cell's value to its
   // empirical CDF position, so the sort highlight gradient is robust to
@@ -642,15 +628,9 @@ export default function ProductList() {
     const map = new Map<string, number[]>();
     for (const s of sorts) {
       const path = s.attribute;
-      const [baseAttr, ...rest] = path.split('.');
       const values: number[] = [];
       for (const p of displayProducts) {
-        const root = (p as any)[baseAttr];
-        if (root == null) continue;
-        const sub = rest.length === 0
-          ? root
-          : rest.reduce((acc: any, k) => (acc == null ? acc : acc[k]), root);
-        const n = numericFromValue(sub);
+        const n = extractNumeric(p, path);
         if (n != null && Number.isFinite(n)) values.push(n);
       }
       if (values.length > 0) {
@@ -666,25 +646,10 @@ export default function ProductList() {
   // at the top), asc → low values brightest. Linear min/max scaling would
   // let a single 10× outlier compress the rest of the column into a flat
   // band; percentile rank gives every row a fair share of the gradient.
-  const getSortGradientColor = (attribute: string, productValue: any): string => {
-    const sort = sorts.find(
-      s => s.attribute === attribute || s.attribute.startsWith(attribute + '.'),
-    );
+  const getSortGradientColor = (sort: SortConfig | null, attribute: string, productValue: any): string => {
     if (!sort) return '';
 
-    let numericProductValue: number | null = null;
-    if (sort.attribute === attribute) {
-      numericProductValue = numericFromValue(productValue);
-    } else if (sort.attribute.startsWith(attribute + '.')) {
-      const nestedKey = sort.attribute.split('.').slice(1).join('.');
-      if (nestedKey && productValue && typeof productValue === 'object') {
-        const sub = nestedKey.split('.').reduce(
-          (acc: any, k) => (acc == null ? acc : acc[k]),
-          productValue,
-        );
-        numericProductValue = numericFromValue(sub);
-      }
-    }
+    const numericProductValue = cellNumeric(productValue, attribute, sort.attribute);
     if (numericProductValue === null) return '';
 
     const sorted = sortedAttrValues.get(sort.attribute);
@@ -712,12 +677,24 @@ export default function ProductList() {
     return `hsla(45, 70%, 50%, ${opacity.toFixed(3)})`;
   };
 
-  const isFilteredAttribute = (attribute: string): boolean => {
-    return filters.some(filter => {
-      if (filter.value === undefined) return false;
-      return filter.attribute === attribute || filter.attribute.startsWith(attribute + '.');
-    });
-  };
+  // Per-column filter/sort state, resolved once per render and shared by
+  // the header row and every body row (it depends on the column only,
+  // never on the row).
+  const columns = visibleColumnAttributes.map(attribute => {
+    const key = attribute.key;
+    return {
+      key,
+      attribute,
+      unitSystem: unitSystemFor(key),
+      filter: filters.find(f => targetsColumn(f.attribute, key)) ?? null,
+      // Body cells tint on a sort of the column or a nested child of it…
+      sort: sorts.find(s => targetsColumn(s.attribute, key)) ?? null,
+      // …while the header arrow and the flat "sorted" cell class only
+      // answer to a sort on the column's own key.
+      sortIndex: sorts.findIndex(s => s.attribute === key),
+      hasFilterValue: filters.some(f => f.value !== undefined && targetsColumn(f.attribute, key)),
+    };
+  });
 
   const handleProductClick = (product: Product, event: React.MouseEvent) => {
     setClickPosition({ x: event.clientX, y: event.clientY });
@@ -730,10 +707,7 @@ export default function ProductList() {
   };
 
   const handleColumnSort = (attribute: string) => {
-    const staticAttrs = getAttributesForType(productType || 'motor');
-    const derivedAttrs = deriveAttributesFromRecords(products, productType);
-    const allAttrs = mergeAttributesByKey(staticAttrs, derivedAttrs);
-    const attributeMetadata = allAttrs.find(attr => attr.key === attribute);
+    const attributeMetadata = allAttributes.find(attr => attr.key === attribute);
 
     // Function-updater form is load-bearing: this handler is passed to
     // memo'd ColumnHeader instances via `onSort={() => handleColumnSort(...)}`.
@@ -803,10 +777,8 @@ export default function ProductList() {
     });
   };
 
-  // Hide a column: drop any active sort for it, add it to the user
-  // hidden set, and clear any prior restore (non-unit kinds only —
-  // unit-bearing columns can stay visible again just by removing them
-  // from userHiddenKeys).
+  // Hide a column: drop any active sort and filter for it, add it to
+  // the user hidden set, and clear any prior restore.
   const handleRemoveColumn = (attribute: string) => {
     // Function-updater form — see comment on handleColumnSort: this is
     // wired to ColumnHeader via `onRemove={...}`, whose identity is
@@ -818,14 +790,9 @@ export default function ProductList() {
     setUserRestoredKeys(prev => prev.filter(k => k !== attribute));
   };
 
-  // Restore a column. Two paths:
-  // - Unit-bearing column was user-hidden → remove from userHiddenKeys.
-  // - Non-unit column (hidden by default) → add to userRestoredKeys.
-  // With the cap locked (10 cozy / 16 compact), a restore that lands
-  // past the cap won't appear until the user hides one of the visible
-  // columns.
-  const handleAddColumn = (attribute: ReturnType<typeof getAttributesForType>[0]) => {
-    setUserHiddenKeys(userHiddenKeys.filter(k => k !== attribute.key));
+  // Restore a column: un-hide it and record the explicit restore.
+  const handleAddColumn = (attribute: AttributeMetadata) => {
+    setUserHiddenKeys(prev => prev.filter(k => k !== attribute.key));
     // EVERY added column goes into userRestoredKeys — that's the
     // "explicit restores always render, even past the cap" carve-out
     // in computeVisibleColumnAttributes. The old !attribute.nested
@@ -833,10 +800,8 @@ export default function ProductList() {
     // but past the cap they aren't: adding a nested spec (e.g.
     // input_shaft_diameter on gearheads, whose default set fills the
     // cap) silently did nothing. Reported 2026-07-25.
-    if (!userRestoredKeys.includes(attribute.key)) {
-      setUserRestoredKeys([...userRestoredKeys, attribute.key]);
-    }
-    setShowSortSelector(false);
+    setUserRestoredKeys(prev => (prev.includes(attribute.key) ? prev : [...prev, attribute.key]));
+    setShowColumnSelector(false);
   };
 
 
@@ -864,6 +829,9 @@ export default function ProductList() {
               }))}
               className="page-toolbar-type-select"
             />
+            {productType && productType !== 'datasheet' && (
+              <LensSelector active={activeLenses} onChange={setActiveLenses} />
+            )}
           </div>
           {/* Applied constraints, one chip each — the at-a-glance record
               now that the per-column controls live in popovers
@@ -904,7 +872,9 @@ export default function ProductList() {
             {/* Restore-hidden-column button — only rendered when
                 there's something to restore. Lives here, not at the end
                 of the header row, so it doesn't hang past the table. */}
-            {productType && hiddenColumnAttributes.length > 0 && (
+            {/* Hidden while a lens is active: the lens defines the column
+                set (types/lens.ts); clear the lens to mix specs by hand. */}
+            {productType && activeLenses.length === 0 && hiddenColumnAttributes.length > 0 && (
               <Tooltip content={`Add spec column (${hiddenColumnAttributes.length} available)`}>
                 <button
                   type="button"
@@ -912,7 +882,7 @@ export default function ProductList() {
                   className="add-column-btn"
                   onClick={(e) => {
                     setColumnSelectorCursor({ x: e.clientX, y: e.clientY });
-                    setShowSortSelector(true);
+                    setShowColumnSelector(true);
                   }}
                 >
                   + Add Spec
@@ -1069,34 +1039,23 @@ export default function ProductList() {
                   anchored histogram on top, sortable label, slider, and
                   inline operator/value/unit readout. Filters lazily promote
                   when the user first drags a column's slider. */}
-              {(() => {
-                const headers = getColumnHeaders();
-                return headers.map((header) => {
-                  const sortIndex = sorts.findIndex(s => s.attribute === header.key);
-                  const sortConfig = sortIndex !== -1 ? sorts[sortIndex] : null;
-                  const filter = filters.find(
-                    f => f.attribute === header.key
-                      || f.attribute.startsWith(header.key + '.')
-                  ) ?? null;
-                  const attribute = visibleColumnAttributes.find(a => a.key === header.key);
-                  if (!attribute) return null;
-
+              {columns.map(({ key, attribute, filter, sortIndex, unitSystem: columnUnitSystem }) => {
                   return (
                     <ColumnHeader
-                      key={header.key}
+                      key={key}
                       attribute={attribute}
-                      label={header.label}
+                      label={attribute.displayName}
                       products={displayProducts}
                       allProducts={gearedSource}
                       filter={filter}
                       allFilters={filters}
-                      sortConfig={sortConfig}
+                      sortConfig={sortIndex !== -1 ? sorts[sortIndex] : null}
                       sortIndex={sortIndex}
                       totalSorts={sorts.length}
-                      cascadeKey={cascadeKeys.includes(header.key)}
-                      width={columnWidths[header.key] ?? defaultColWidth}
-                      unitSystem={unitSystemFor(header.key)}
-                      onUnitToggle={() => toggleColumnUnit(header.key)}
+                      cascadeKey={cascadeKeys.includes(key)}
+                      width={columnWidths[key] ?? defaultColWidth}
+                      unitSystem={columnUnitSystem}
+                      onUnitToggle={() => toggleColumnUnit(key)}
                       onFilterChange={(updated) => {
                         // Function-updater form is load-bearing here:
                         // ColumnHeader is memo'd with `arePropsEqual` that
@@ -1119,13 +1078,12 @@ export default function ProductList() {
                           setFilters(prev => [...prev, updated]);
                         }
                       }}
-                      onSort={() => handleColumnSort(header.key)}
-                      onRemove={() => handleRemoveColumn(header.key)}
-                      onResizeStart={(e) => startResize(header.key, e)}
+                      onSort={() => handleColumnSort(key)}
+                      onRemove={() => handleRemoveColumn(key)}
+                      onResizeStart={(e) => startResize(key, e)}
                     />
                   );
-                });
-              })()}
+              })}
             </div>
 
               {paginatedProducts.map((product) => (
@@ -1157,15 +1115,13 @@ export default function ProductList() {
                   {/* Spec values - each as a direct grid cell. Unit
                       conversion uses the per-column override so a column
                       flipped to imperial doesn't drag its neighbors. */}
-                  {getColumnHeaders().map((header) => {
-                    const attrKey = header.key;
+                  {columns.map(({ key: attrKey, unitSystem: cellSys, filter, sort, sortIndex, hasFilterValue }) => {
                     const productValue = (product as any)[attrKey];
-                    const cellSys = unitSystemFor(attrKey);
                     const numericValue = extractNumericOnly(productValue, cellSys);
-                    const proximityColor = getProximityColor(attrKey, productValue);
+                    const proximityColor = getProximityColor(filter, attrKey, productValue);
                     const hasProximityColor = !!proximityColor;
                     const sortColor = !hasProximityColor
-                      ? getSortGradientColor(attrKey, productValue)
+                      ? getSortGradientColor(sort, attrKey, productValue)
                       : '';
                     const cellColor = proximityColor || sortColor || undefined;
 
@@ -1173,8 +1129,8 @@ export default function ProductList() {
                       <div
                         key={`default-value-${attrKey}`}
                         className={`spec-header-item ${
-                          !hasProximityColor && isFilteredAttribute(attrKey) ? 'spec-header-item-filtered' :
-                          !hasProximityColor && isSortedAttribute(attrKey) ? 'spec-header-item-sorted' : ''
+                          !hasProximityColor && hasFilterValue ? 'spec-header-item-filtered' :
+                          !hasProximityColor && sortIndex !== -1 ? 'spec-header-item-sorted' : ''
                         }`}
                         style={{
                           backgroundColor: cellColor
@@ -1287,10 +1243,10 @@ export default function ProductList() {
         attributes={hiddenColumnAttributes}
         onSelect={handleAddColumn}
         onClose={() => {
-          setShowSortSelector(false);
+          setShowColumnSelector(false);
           setColumnSelectorCursor(null);
         }}
-        isOpen={showSortSelector}
+        isOpen={showColumnSelector}
         anchorElement={addColumnBtnRef}
         cursorPosition={columnSelectorCursor}
       />

@@ -68,6 +68,10 @@ SUMMARY_SPECS: dict[str, list[str]] = {
     ],
 }
 
+# Physical envelope, carried by every product type (mirrors
+# ENVELOPE_SUMMARY_SPECS in search.ts).
+ENVELOPE_SUMMARY_SPECS: list[str] = ["max_dimension", "weight"]
+
 
 # (field, exact_score, contains_score)
 SEARCHABLE_FIELDS: list[tuple[str, int, int]] = [
@@ -287,7 +291,7 @@ def product_summary(
     if relevance is not None and relevance > 0:
         summary["relevance"] = relevance
 
-    for key in SUMMARY_SPECS.get(ptype, []):
+    for key in [*SUMMARY_SPECS.get(ptype, []), *ENVELOPE_SUMMARY_SPECS]:
         val = get_field(product, key)
         if val is not None:
             # ValueUnit/MinMaxUnit → serialise to dict form so the

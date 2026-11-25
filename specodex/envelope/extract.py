@@ -1,0 +1,372 @@
+"""Gemini call that reads overall envelope (L×W×H) and weight per variant.
+
+Input is a small PDF built from the selected pages of the source datasheet
+(``build_page_subset``), not rendered JPEGs: Gemini reads the PDF's text
+layer *and* the drawing, which matters for dimension tables where the
+numbers are text and the meaning of "L" is in the picture.
+
+Calls are chunked (``PAGES_PER_CALL``) so a dense catalog page set can't
+overflow the response and truncate the JSON mid-string, and so each
+reported ``page_number`` maps back to a real page unambiguously.
+"""
+
+from __future__ import annotations
+
+import json
+import logging
+import threading
+from typing import Any, Dict, List, Optional
+
+from google import genai
+from pydantic import BaseModel, Field
+from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponential
+
+from specodex.config import GEMINI_HTTP_OPTIONS, MODEL
+from specodex.models.common import Length, Mass
+from specodex.envelope.match import designator_on_page, value_on_page
+from specodex.models.llm_schema import to_gemini_schema
+from specodex.utils import parse_gemini_response
+
+logger: logging.Logger = logging.getLogger(__name__)
+
+PAGES_PER_CALL = 4
+# PyMuPDF is not thread-safe; concurrent opens segfaulted a 16-worker run
+# (exit 139, 2026-11-24). Every fitz call on this path holds this lock; the
+# Gemini calls (nearly all the wall time) stay parallel.
+PDF_LOCK = threading.Lock()
+# Thinking tokens are billed as output and share max_output_tokens. Left
+# uncapped, dense sensor tables spent the budget thinking and returned
+# truncated JSON (2026-11-24); 2048 leaves room for the answer and roughly
+# halves the cost per call.
+THINKING_BUDGET = 2048
+MAX_OUTPUT_TOKENS = 32768
+PASSES = ("a", "b")
+
+
+class EnvelopeExtraction(BaseModel):
+    """One variant's outline envelope as printed on a datasheet page."""
+
+    designator: Optional[str] = Field(
+        None,
+        description=(
+            "The model code, frame size, or part number that labels this "
+            "row/column of the dimension or spec table, copied exactly as "
+            "printed (e.g. 'AB042', 'SGM7J-01', 'MR-J5-10A', '60')."
+        ),
+    )
+    length: Length = Field(
+        None,
+        description=(
+            "Overall length along the product's main axis (motor/gearhead: "
+            "along the shaft, INCLUDING the output shaft; actuator: overall "
+            "length; drive/cabinet unit: depth front-to-back)."
+        ),
+    )
+    width: Length = Field(None, description="Overall width across the main axis.")
+    height: Length = Field(None, description="Overall height across the main axis.")
+    weight: Mass = Field(None, description="Product mass/weight for this variant.")
+    page_number: int = Field(
+        ...,
+        description="The 1-indexed page of THIS document the values were read from.",
+    )
+
+
+_PROMPT = """You are reading pages from an industrial product datasheet or \
+catalog (motors, servo drives, gearheads, actuators, robot arms, contactors, \
+sensors). Extract the OVERALL PHYSICAL ENVELOPE of each product variant: its \
+bounding-box length, width and height, and its weight.
+
+Where to look: outline / dimensional drawings and the dimension tables next \
+to them (columns like L, LL, LR, W, H, D, □, ØD, "A", "B"), and spec tables \
+for weight / mass.
+
+For EACH variant the pages dimension (a table row or column, or a single \
+drawing for one model), emit one entry:
+
+- designator: the model code / frame size / part number labelling that row \
+  or column, copied exactly as printed. If one drawing covers a whole \
+  series with a single set of numbers, use the series/model name printed in \
+  the drawing title.
+- length: overall length along the main axis. For motors and gearheads that \
+  is the full length INCLUDING the output shaft (e.g. LL + LR if the table \
+  splits body and shaft; use the overall "L" when printed). For drives and \
+  panel-mounted units it is the depth (front to back).
+- width, height: the overall outer extents across the main axis (for a \
+  square flange both are the flange edge; for a round body both are the \
+  outer diameter; for a drive the mounted width and height).
+- weight: the product's mass for that variant (kg, g, lb...).
+- page_number: the 1-indexed page within THIS document where you read it.
+
+Rules:
+- Dimension-table letters (L, L1, LL, D1, A, B...) mean different things in \
+  every catalog. Use the DRAWING to decide which callout spans the whole \
+  product along each axis. If no single callout spans the overall length, \
+  add the segments that do (e.g. body L2 + housing L8 + adapter C8). A flange \
+  square (□) is a width/height, never a length.
+- Designators must be copied from the page itself. Never invent, extend or \
+  normalise a model name; if a column is labelled 'AB090', the designator is \
+  'AB090', not a longer part number.
+- Overall envelope only. Do NOT report bolt circles, pilot/spigot \
+  diameters, shaft diameters, keyways, or hole sizes as width/height.
+- Use the unit printed on the drawing or table header (usually mm; inches \
+  for many US catalogs). Put the plain number in value and the unit in unit.
+- When a table gives several lengths for options (with/without brake, \
+  1-stage/2-stage), emit one entry per option with its own designator text \
+  as printed (e.g. 'AB042 1-stage').
+- Leave a field null when the pages do not give it. Never estimate, never \
+  scale off the drawing, never emit placeholders like "N/A" or "-".
+- If no page has envelope dimensions or weights, return an empty list.
+"""
+
+
+# The second reading is worded differently on purpose: the same prompt
+# twice tends to repeat the same misreading, which an agreement check
+# cannot catch. Pass "b" makes the model locate the extreme faces on the
+# drawing before it picks a callout.
+_PROMPT_B_ADDENDUM = """
+Second reader: work each axis out from the drawing before reading any \
+table. For every variant, find the two outermost faces of the product along \
+each axis (for length: the rear end cover / housing back to the tip of the \
+output shaft, or to the output flange face when the output is a hollow \
+bore; for a right-angle unit the height runs from the bottom of the housing \
+to the top of the input adapter). Then report the callout, or the sum of \
+callouts, that spans exactly between those faces. If you cannot tell which \
+callouts span an axis, leave that axis null rather than guess.
+"""
+
+PROMPTS = {"a": _PROMPT, "b": _PROMPT + _PROMPT_B_ADDENDUM}
+
+
+def _should_retry(exc: BaseException) -> bool:
+    from google.genai import errors as genai_errors
+
+    return not isinstance(exc, genai_errors.ClientError)
+
+
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=4, max=30),
+    retry=retry_if_exception(_should_retry),
+)
+def _call_gemini(
+    pdf_bytes: bytes, api_key: str, response_schema: dict, prompt: str = _PROMPT
+) -> Any:
+    client = genai.Client(api_key=api_key, http_options=GEMINI_HTTP_OPTIONS)
+    return client.models.generate_content(
+        model=MODEL,
+        contents=[
+            prompt,
+            genai.types.Part.from_bytes(data=pdf_bytes, mime_type="application/pdf"),
+        ],
+        config={
+            "response_mime_type": "application/json",
+            "response_schema": response_schema,
+            "max_output_tokens": MAX_OUTPUT_TOKENS,
+            "thinking_config": {"thinking_budget": THINKING_BUDGET},
+        },
+    )
+
+
+def build_page_subset(pdf_bytes: bytes, pages: List[int]) -> bytes:
+    """Return a new PDF holding ``pages`` (0-indexed, in order) of ``pdf_bytes``."""
+    with PDF_LOCK:
+        import fitz
+
+        src = fitz.open(stream=pdf_bytes, filetype="pdf")
+        try:
+            out = fitz.open()
+            try:
+                for p in pages:
+                    if 0 <= p < len(src):
+                        out.insert_pdf(src, from_page=p, to_page=p)
+                return out.tobytes(garbage=3, deflate=True)
+            finally:
+                out.close()
+        finally:
+            src.close()
+
+
+def page_text_layers(pdf_bytes: bytes, pages: List[int]) -> dict:
+    """0-indexed page → its extractable text ("" when it has none)."""
+    with PDF_LOCK:
+        import fitz
+
+        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+        try:
+            return {p: doc[p].get_text() for p in pages if 0 <= p < len(doc)}
+        finally:
+            doc.close()
+
+
+def page_words(pdf_bytes: bytes, pages: List[int]) -> dict:
+    """0-indexed page → its text-layer word boxes (``get_text("words")``)."""
+    with PDF_LOCK:
+        import fitz
+
+        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+        try:
+            return {p: doc[p].get_text("words") for p in pages if 0 <= p < len(doc)}
+        finally:
+            doc.close()
+
+
+VERIFIED_FIELDS = ("length", "width", "height", "weight")
+# Bump when ``match.value_in_line`` / ``designator_on_page`` change: cached
+# readings are then re-checked against the PDF without calling Gemini.
+VERIFIER_VERSION = 3
+
+
+def unverified_fields(
+    e: EnvelopeExtraction, words: Any, others: Optional[List[str]] = None
+) -> List[str]:
+    """Fields whose value is not attributable to the designator on its page
+    (``match.value_on_page``; ``others`` = the other labels the same reading
+    reported on that page). Those fields are never written."""
+    out = []
+    for name in VERIFIED_FIELDS:
+        v = getattr(e, name)
+        if v is not None and not value_on_page(e.designator, v.value, words, others):
+            out.append(name)
+    return out
+
+
+def _labels_by_page(extractions: List[EnvelopeExtraction]) -> Dict[int, List[str]]:
+    out: Dict[int, List[str]] = {}
+    for e in extractions:
+        if isinstance(e.designator, str):
+            out.setdefault(e.page_number, []).append(e.designator)
+    return out
+
+
+def reverify(pdf_bytes: bytes, extractions: List[Any]) -> List[Dict[str, Any]]:
+    """Recompute ``"unverified"`` for cached extraction dicts against the
+    PDF's text layer. Entries that no longer validate are dropped."""
+    pages = sorted(
+        {
+            e["page_number"]
+            for e in extractions
+            if isinstance(e, dict)
+            and isinstance(e.get("page_number"), int)
+            and not isinstance(e.get("page_number"), bool)
+        }
+    )
+    words = page_words(pdf_bytes, pages)
+    parsed: List[EnvelopeExtraction] = []
+    for raw in extractions:
+        try:
+            parsed.append(EnvelopeExtraction.model_validate(raw))
+        except Exception:  # noqa: BLE001 — malformed cache entry
+            continue
+    labels = _labels_by_page(parsed)
+    return [
+        {
+            **e.model_dump(mode="json"),
+            "unverified": unverified_fields(
+                e, words.get(e.page_number), labels.get(e.page_number)
+            ),
+        }
+        for e in parsed
+    ]
+
+
+def remap_pages(
+    extractions: List[EnvelopeExtraction], page_numbers: List[int]
+) -> List[EnvelopeExtraction]:
+    """Rewrite each 1-indexed in-call ``page_number`` to the true 0-indexed
+    source page; drop entries pointing outside the call's page set."""
+    kept: List[EnvelopeExtraction] = []
+    for e in extractions:
+        idx = e.page_number - 1
+        if 0 <= idx < len(page_numbers):
+            e.page_number = page_numbers[idx]
+            kept.append(e)
+        else:
+            logger.warning(
+                "dropping extraction with out-of-range page_number=%d (call had %d pages)",
+                e.page_number,
+                len(page_numbers),
+            )
+    return kept
+
+
+def _usage(response: Any) -> Dict[str, int]:
+    """Billable token counts from a response (thinking is billed as output)."""
+    meta = getattr(response, "usage_metadata", None)
+
+    def n(attr: str) -> int:
+        v = getattr(meta, attr, None)
+        return v if isinstance(v, int) and not isinstance(v, bool) else 0
+
+    return {
+        "input": n("prompt_token_count"),
+        "output": n("candidates_token_count") + n("thoughts_token_count"),
+    }
+
+
+def extract_envelopes(
+    pdf_bytes: bytes,
+    pages: List[int],
+    api_key: str,
+    variant: str = "a",
+    usage: Optional[Dict[str, int]] = None,
+) -> List[Dict[str, Any]]:
+    """Extract envelopes from ``pages`` (0-indexed) of ``pdf_bytes``.
+
+    One Gemini call per ``PAGES_PER_CALL`` chunk, with ``PROMPTS[variant]``;
+    a chunk whose response is truncated JSON is retried one page per call.
+    A chunk that yields nothing usable is a normal outcome, not an error.
+    Every result's designator is checked against the text layer of the page
+    it claims (``designator_on_page``); unverifiable labels are dropped.
+    Returns JSON-ready dicts: the extraction plus ``"unverified"``, the
+    fields whose value is not printed in line with the designator
+    (``unverified_fields``). Token counts are added into ``usage``
+    (``{"input", "output"}``) when given.
+    """
+    prompt = PROMPTS[variant]
+    schema = to_gemini_schema(EnvelopeExtraction, as_array=True, include_excluded=True)
+    page_texts = page_text_layers(pdf_bytes, pages)
+    words = page_words(pdf_bytes, pages)
+    results: List[Dict[str, Any]] = []
+    queue = [
+        pages[i : i + PAGES_PER_CALL] for i in range(0, len(pages), PAGES_PER_CALL)
+    ]
+    while queue:
+        chunk = queue.pop(0)
+        subset = build_page_subset(pdf_bytes, chunk)
+        response = _call_gemini(subset, api_key, schema, prompt)
+        if usage is not None:
+            for k, v in _usage(response).items():
+                usage[k] = usage.get(k, 0) + v
+        try:
+            parsed = parse_gemini_response(
+                response, EnvelopeExtraction, product_type="envelope"
+            )
+        except ValueError as e:
+            if isinstance(e.__cause__, json.JSONDecodeError) and len(chunk) > 1:
+                # A dense table overflowed the response; one page per call.
+                logger.info("truncated response on pages %s; retrying singly", chunk)
+                queue[:0] = [[p] for p in chunk]
+                continue
+            logger.info("no envelope extractions on pages %s: %s", chunk, e)
+            continue
+        kept = []
+        for e in remap_pages(parsed, chunk):
+            if not designator_on_page(e.designator, page_texts.get(e.page_number)):
+                logger.info(
+                    "dropping unverifiable designator %r on page %d",
+                    e.designator,
+                    e.page_number,
+                )
+                continue
+            kept.append(e)
+        labels = _labels_by_page(kept)
+        for e in kept:
+            results.append(
+                {
+                    **e.model_dump(mode="json"),
+                    "unverified": unverified_fields(
+                        e, words.get(e.page_number), labels.get(e.page_number)
+                    ),
+                }
+            )
+    return results

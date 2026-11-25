@@ -13,7 +13,29 @@ paginate until a match or table exhaustion.
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Iterator, List, Optional
+
+
+def iter_pages(
+    operation: Callable[..., Dict[str, Any]], **kwargs: Any
+) -> Iterator[Dict[str, Any]]:
+    """Yield every response page of a scan/query, following LastEvaluatedKey."""
+    while True:
+        response = operation(**kwargs)
+        yield response
+        if "LastEvaluatedKey" not in response:
+            return
+        kwargs = {**kwargs, "ExclusiveStartKey": response["LastEvaluatedKey"]}
+
+
+def collect_items(
+    operation: Callable[..., Dict[str, Any]], **kwargs: Any
+) -> List[Dict[str, Any]]:
+    """Every item of a scan/query across all pages."""
+    items: List[Dict[str, Any]] = []
+    for page in iter_pages(operation, **kwargs):
+        items.extend(page.get("Items", []))
+    return items
 
 
 def _first_match(

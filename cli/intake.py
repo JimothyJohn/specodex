@@ -15,6 +15,8 @@ Usage (via dsm-agent):
 from __future__ import annotations
 
 import hashlib
+
+from specodex.config import GEMINI_HTTP_OPTIONS
 import logging
 import os
 import re
@@ -22,6 +24,8 @@ import uuid
 from typing import Any
 
 from pydantic import BaseModel, Field
+
+from specodex import aws
 
 log = logging.getLogger("dsm-agent.intake")
 
@@ -88,12 +92,7 @@ MIN_SPEC_DENSITY = 0.2
 
 def _get_datasheet_table():
     """Return the DynamoDB Table resource for datasheets."""
-    import boto3
-
-    table_name = os.environ.get("DYNAMODB_TABLE_NAME", "products")
-    region = os.environ.get("AWS_REGION", "us-east-1")
-    ddb = boto3.resource("dynamodb", region_name=region)
-    return ddb.Table(table_name)
+    return aws.dynamo_table()
 
 
 def _find_by_content_hash(
@@ -190,7 +189,7 @@ def scan_pdf(pdf_bytes: bytes, api_key: str) -> IntakeScanResult:
     """
     from google import genai
 
-    client = genai.Client(api_key=api_key)
+    client = genai.Client(api_key=api_key, http_options=GEMINI_HTTP_OPTIONS)
 
     contents = [
         genai.types.Part.from_bytes(data=pdf_bytes, mime_type="application/pdf"),
@@ -242,11 +241,7 @@ def promote_pdf(
     from specodex.models.datasheet import Datasheet
 
     if s3_client is None:
-        import boto3
-
-        s3_client = boto3.client(
-            "s3", region_name=os.environ.get("AWS_REGION", "us-east-1")
-        )
+        s3_client = aws.s3_client()
 
     if dynamo_client is None:
         from specodex.db.dynamo import DynamoDBClient
@@ -327,11 +322,7 @@ def intake_single(
     Duplicate PDFs (by content hash or URL) are also cleaned up.
     """
     if s3_client is None:
-        import boto3
-
-        s3_client = boto3.client(
-            "s3", region_name=os.environ.get("AWS_REGION", "us-east-1")
-        )
+        s3_client = aws.s3_client()
 
     if dynamo_client is None:
         from specodex.db.dynamo import DynamoDBClient
@@ -432,11 +423,7 @@ def intake_single(
 def list_triage(bucket: str, *, s3_client: Any = None) -> list[dict[str, Any]]:
     """List all PDFs in the triage/ prefix."""
     if s3_client is None:
-        import boto3
-
-        s3_client = boto3.client(
-            "s3", region_name=os.environ.get("AWS_REGION", "us-east-1")
-        )
+        s3_client = aws.s3_client()
 
     items: list[dict[str, Any]] = []
     paginator = s3_client.get_paginator("list_objects_v2")

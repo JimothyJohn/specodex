@@ -143,15 +143,21 @@ class TestScalars:
 @pytest.mark.unit
 class TestNestedModel:
     def test_dimensions_recursed(self) -> None:
-        # Dimensions has width/length/height/unit scalars
+        # Dimensions is a per-axis envelope: each axis is a {value, unit}
+        # object (no shared top-level unit since 2026-11-24).
         props = to_gemini_schema(Drive)["items"]["properties"]
         dims = props["dimensions"]
         assert dims["type"] == "OBJECT"
         dp = dims["properties"]
-        assert dp["width"]["type"] == "NUMBER"
-        assert dp["length"]["type"] == "NUMBER"
-        assert dp["height"]["type"] == "NUMBER"
-        assert dp["unit"]["type"] == "STRING"
+        assert set(dp) == {"length", "width", "height"}
+        for axis in ("length", "width", "height"):
+            assert dp[axis]["type"] == "OBJECT"
+            assert dp[axis]["properties"]["value"]["type"] == "NUMBER"
+            assert dp[axis]["properties"]["unit"]["type"] == "STRING"
+
+    def test_max_dimension_never_asked_of_llm(self) -> None:
+        props = to_gemini_schema(Drive)["items"]["properties"]
+        assert "max_dimension" not in props
 
 
 @pytest.mark.unit

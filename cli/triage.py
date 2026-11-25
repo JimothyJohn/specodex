@@ -9,9 +9,9 @@ Usage:
 from __future__ import annotations
 
 import logging
-import os
 from urllib.parse import urlparse
 
+from specodex.aws import s3_client, upload_bucket
 from specodex.config import SCHEMA_CHOICES
 from specodex.models.product import ProductBase
 from specodex.quality import score_product, spec_fields_for_model
@@ -20,21 +20,10 @@ log = logging.getLogger("triage")
 
 
 def _resolve_bucket(bucket: str | None = None) -> str:
-    if bucket:
-        return bucket
-    if env := os.environ.get("UPLOAD_BUCKET"):
-        return env
-    stage = os.environ.get("STAGE", "dev")
-    account_id = os.environ.get("AWS_ACCOUNT_ID", "")
-    if account_id:
-        return f"datasheetminer-uploads-{stage}-{account_id}"
-    return f"datasheetminer-uploads-{stage}"
+    return upload_bucket(bucket)
 
 
-def _get_s3():
-    import boto3
-
-    return boto3.client("s3", region_name=os.environ.get("AWS_REGION", "us-east-1"))
+_get_s3 = s3_client
 
 
 def _get_dynamo():

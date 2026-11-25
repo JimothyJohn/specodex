@@ -421,7 +421,8 @@
               "height": { "$ref": "#/components/schemas/ValueUnit" }
             }
           },
-          "weight": { "$ref": "#/components/schemas/ValueUnit" }
+          "weight": { "$ref": "#/components/schemas/ValueUnit" },
+          "max_dimension": { "$ref": "#/components/schemas/ValueUnit" }
         },
         "required": ["product_id", "product_type", "manufacturer"]
       },
