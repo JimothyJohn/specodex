@@ -4,10 +4,7 @@
 //
 //   Single source of truth for the **default initial** column order in the
 //   results table. Every visitor's first paint shows exactly this order.
-//   Users can drag column headers to rearrange within a session — those
-//   tweaks are session-only (no localStorage) so refreshing the page
-//   restores this canonical view. Edit this file to change what every
-//   visitor sees on first load.
+//   Edit this file to change what every visitor sees on first load.
 //
 //   How to use:
 //     1. Find the product type below (motor, drive, contactor, ...).
