@@ -46,6 +46,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Iterable
 
+from specodex.aws import decimal_to_native
 from specodex.ids import _strip_family_prefix, compute_product_id, normalize_string
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -1028,20 +1029,6 @@ def fetch_rows_from_dynamo(table_name: str) -> list[dict]:
     return items
 
 
-def _decimal_to_native(obj: Any) -> Any:
-    """Recursively convert Decimal → int/float so json.dumps works."""
-    from decimal import Decimal
-
-    if isinstance(obj, Decimal):
-        as_int = int(obj)
-        return as_int if as_int == obj else float(obj)
-    if isinstance(obj, dict):
-        return {k: _decimal_to_native(v) for k, v in obj.items()}
-    if isinstance(obj, list):
-        return [_decimal_to_native(v) for v in obj]
-    return obj
-
-
 # ── CLI entry ──────────────────────────────────────────────────────────
 
 
@@ -1133,7 +1120,7 @@ def main(argv: list[str] | None = None) -> int:
         rows = raw
     else:
         table = args.table or f"products-{args.stage}"
-        rows = [_decimal_to_native(r) for r in fetch_rows_from_dynamo(table)]
+        rows = [decimal_to_native(r) for r in fetch_rows_from_dynamo(table)]
 
     reports = audit(rows)
     log.info(
