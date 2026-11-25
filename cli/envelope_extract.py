@@ -13,8 +13,8 @@ unless both readings carry a weight and they differ by more than 10%.
 Every value must also be printed on its page in line with the designator
 (same table row or column, ``match.value_in_line``) — two readings can
 share a misread, the PDF text layer cannot. Dimensions are filled only when
-both readings matched the row and agree within 10% on every axis, with the
-same axes (``match.agreed_dims``);
+both readings matched the row, carry all three axes, and agree within 10%
+on every axis (``match.agreed_dims``);
 anything else leaves them empty (Nick's policy, TODO.md
 ``envelope-dims-accuracy-policy``, option A).
 
@@ -87,6 +87,7 @@ STAGES = ("dev", "staging", "prod")
 CACHE_DIR = Path("outputs/envelope_extract")
 CACHE_VERSION = 3
 WEIGHT_CONFLICT_TOL = 0.10
+FULL_ENVELOPE = ("length", "width", "height")
 # Gemini 2.5 Flash list price, USD per 1M tokens (thinking billed as output).
 # Used only for the printed estimate.
 USD_PER_M_INPUT = 0.30
@@ -331,7 +332,9 @@ def plan_updates(
         to_set: Dict[str, Any] = {}
         if need_dims and len(matched) >= 2 and ri in matched[0] and ri in matched[1]:
             dims = agreed_dims(matched[0][ri][0], matched[1][ri][0])
-            if dims:
+            # A partial envelope's max_dimension would understate the
+            # product (a cylinder's stroke-dependent length left out).
+            if dims and set(dims) == set(FULL_ENVELOPE):
                 to_set["dimensions"] = dims
                 to_set["max_dimension"] = {
                     "value": max(a["value"] for a in dims.values()),
