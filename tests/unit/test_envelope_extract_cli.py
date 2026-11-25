@@ -191,6 +191,10 @@ class TestPlanUpdates:
         assert "weight" in to_set
 
 
+def _no_download(url):
+    raise AssertionError("cache hit must not download")
+
+
 @pytest.mark.unit
 class TestCache:
     def test_old_single_reading_record_is_not_a_hit(self, tmp_path, monkeypatch):
@@ -212,8 +216,10 @@ class TestCache:
         }
         envelope_extract._cache_path(url).write_text(json.dumps(rec))
         assert envelope_extract._is_cached(url)
+        assert not envelope_extract._is_cached(url, 40)
+        monkeypatch.setattr(envelope_extract, "get_document", _no_download)
         got = envelope_extract.extract_for_datasheet(url, [], "k", 12, refresh=False)
-        assert got["cached"] is True and got["url"] == url
+        assert got["url"] == url and got["run_usage"] == {"input": 0, "output": 0}
 
     def test_stale_verifier_rechecks_without_gemini(self, tmp_path, monkeypatch):
         import pymupdf
@@ -262,6 +268,90 @@ def test_page_fragments_share_one_document():
     assert envelope_extract.document_url(u + "#page=8") == u
     assert envelope_extract.document_url(u) == u
     assert envelope_extract.document_url("https://x/a.pdf#a#b") == "https://x/a.pdf"
+
+
+@pytest.mark.unit
+class TestIncrementalPages:
+    URL = "https://example.com/big.pdf"
+
+    def _seed(self, tmp_path, monkeypatch, **extra):
+        monkeypatch.setattr(envelope_extract, "CACHE_DIR", tmp_path)
+        rec = {
+            "version": envelope_extract.CACHE_VERSION,
+            "verifier": envelope_extract.VERIFIER_VERSION,
+            "url": self.URL,
+            "pages": [0, 1],
+            "passes": {"a": [EX_SMALL], "b": [EX_SMALL_B]},
+            "usage": {"input": 5, "output": 7},
+            "error": None,
+            **extra,
+        }
+        envelope_extract._cache_path(self.URL).write_text(json.dumps(rec))
+
+    def _fake_pdf(self, monkeypatch, n_pages, calls):
+        monkeypatch.setattr(envelope_extract, "get_document", lambda u: b"%PDF")
+        monkeypatch.setattr(
+            envelope_extract,
+            "drawing_page_scores",
+            lambda pdf: [{"page": i, "score": 1.0} for i in range(n_pages)],
+        )
+
+        def fake_extract(pdf, pages, api_key, variant, usage):
+            calls.append((variant, list(pages)))
+            usage["input"] += 100
+            usage["output"] += 10
+            return [
+                {**EX_SMALL, "designator": f"NEW{variant}", "page_number": pages[0]}
+            ]
+
+        monkeypatch.setattr(envelope_extract, "extract_envelopes", fake_extract)
+
+    def test_larger_cap_reads_only_new_pages(self, tmp_path, monkeypatch):
+        self._seed(tmp_path, monkeypatch)  # legacy record: no max_pages → 12
+        calls = []
+        self._fake_pdf(monkeypatch, 6, calls)
+        got = envelope_extract.extract_for_datasheet(self.URL, [], "k", 40, False)
+        assert calls == [("a", [2, 3, 4, 5]), ("b", [2, 3, 4, 5])]
+        assert got["pages"] == [0, 1, 2, 3, 4, 5] and got["max_pages"] == 40
+        assert [e["designator"] for e in got["passes"]["a"]] == ["AB042", "NEWa"]
+        assert [e["designator"] for e in got["passes"]["b"]] == ["AB042", "NEWb"]
+        assert got["run_usage"] == {"input": 200, "output": 20}
+        saved = json.loads(envelope_extract._cache_path(self.URL).read_text())
+        assert saved["usage"] == {"input": 205, "output": 27}
+        # Now covered: a rerun at the same cap neither downloads nor calls.
+        monkeypatch.setattr(envelope_extract, "get_document", _no_download)
+        again = envelope_extract.extract_for_datasheet(self.URL, [], "k", 40, False)
+        assert again["passes"] == got["passes"] and len(calls) == 2
+
+    def test_small_pdf_extends_without_gemini(self, tmp_path, monkeypatch):
+        self._seed(tmp_path, monkeypatch, max_pages=12)
+        calls = []
+        self._fake_pdf(monkeypatch, 2, calls)
+        got = envelope_extract.extract_for_datasheet(self.URL, [], "k", 40, False)
+        assert calls == [] and got["max_pages"] == 40 and got["pages"] == [0, 1]
+
+    def test_smaller_cap_is_covered(self, tmp_path, monkeypatch):
+        self._seed(tmp_path, monkeypatch, max_pages=40)
+        monkeypatch.setattr(envelope_extract, "get_document", _no_download)
+        got = envelope_extract.extract_for_datasheet(self.URL, [], "k", 12, False)
+        assert got["error"] is None and got["passes"]["a"] == [EX_SMALL]
+
+    def test_failed_extension_keeps_cache_and_readings(self, tmp_path, monkeypatch):
+        self._seed(tmp_path, monkeypatch, max_pages=12)
+        calls = []
+        self._fake_pdf(monkeypatch, 6, calls)
+
+        def boom(pdf, pages, api_key, variant, usage):
+            if variant == "b":
+                raise RuntimeError("gemini down")
+            return [{**EX_SMALL, "designator": "NEWa", "page_number": pages[0]}]
+
+        monkeypatch.setattr(envelope_extract, "extract_envelopes", boom)
+        before = envelope_extract._cache_path(self.URL).read_text()
+        got = envelope_extract.extract_for_datasheet(self.URL, [], "k", 40, False)
+        assert got["error"] and "gemini down" in got["error"]
+        assert got["passes"]["a"] == [EX_SMALL]  # half-extended reading discarded
+        assert envelope_extract._cache_path(self.URL).read_text() == before
 
 
 @pytest.mark.unit
