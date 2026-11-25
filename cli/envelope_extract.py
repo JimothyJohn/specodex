@@ -70,6 +70,7 @@ from specodex.admin.envelope_migration import (
 from specodex.admin.operations import make_client
 from specodex.envelope.extract import (
     PASSES,
+    PDF_LOCK,
     VERIFIED_FIELDS,
     VERIFIER_VERSION,
     EnvelopeExtraction,
@@ -141,6 +142,13 @@ def _spec_pages(rows: List[Dict[str, Any]]) -> List[int]:
     return sorted(pages)
 
 
+def drawing_page_scores(pdf: bytes) -> List[Dict[str, Any]]:
+    """Per-page drawing scores for every page (PyMuPDF, under PDF_LOCK)."""
+    with PDF_LOCK:
+        _, scores = find_drawing_pages_scored(pdf, max_pages=10_000)
+    return scores
+
+
 def document_url(url: str) -> str:
     """The PDF a datasheet URL points at: ``#page=N`` fragments name pages of
     one document (ingest stores one URL per spec page), so rows from every
@@ -210,7 +218,7 @@ def extract_for_datasheet(
         pdf = get_document(url)
         if not pdf:
             raise RuntimeError("empty or failed download")
-        _, scores = find_drawing_pages_scored(pdf, max_pages=10_000)
+        scores = drawing_page_scores(pdf)
         pages = select_envelope_pages(
             scores, _spec_pages(rows), max_pages, total_pages=len(scores)
         )
