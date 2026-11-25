@@ -51,7 +51,7 @@
         <article class="doc-body">
 <h1 id="dimensions-physical-envelope-for-every-product-exact-interface-geometry-for-mating-parts">DIMENSIONS — physical envelope for every product, exact interface geometry for mating parts</h1>
 <blockquote>
-<p><strong>Status:</strong> 🚧 in progress. Phase 1 (typed envelope + migration + columns) in PR; Phase 2 (envelope backfill) next; Phase 3 (interfaces) 📐 planned.</p>
+<p><strong>Status:</strong> 🚧 in progress. Phase 1 shipped (#503). Phase 2 shipped (#508–#511) and applied to dev + staging on 2026-11-25. Phase 3 (interfaces) 📐 planned, waiting on TODO.md <code>interface-dims-tolerance</code>.</p>
 </blockquote>
 <p>Nick, 2026-11-24: <em>"I want to have an idea of the physical form factor of what I'm
 ordering. Doesn't have to be 100% accurate since these aren't drawings but I should
@@ -161,16 +161,105 @@ Dimension" + "Weight" columns plus the detail modal; interfaces are cross-check-
 <p><strong>Rollback note:</strong> pre-Phase-1 Python (<code>Dimensions</code> with float fields) fails to
 validate a migrated row. Run the migration only after the PR is on <code>dev</code>; rebase
 long-lived worktrees that read <code>products-dev</code> through the models.</p>
-<h2 id="phase-2-envelope-backfill-next-pr">Phase 2 — envelope backfill (next PR)</h2>
-<p><code>./Quickstart envelope-extract</code> modelled on <code>mounting-extract</code>: for rows missing
-<code>dimensions</code> or <code>weight</code>, group by <code>datasheet_url</code>, pick outline/dimension pages with
-<code>page_finder.find_drawing_pages_scored</code> (capped), one Gemini call per page batch
-returning <code>{part_number | frame_designator, length, width, height, weight, page}</code>,
-match back by part number then frame/family, fill only empty fields (enrich-only),
-<code>--apply</code> dev/staging only. Also: make the main extraction prompt ask for the
-outline envelope so new ingests land populated. Report coverage before/after per type.</p>
-<p>Cost guard: estimate distinct datasheets × pages before running; <code>--limit</code> and
-<code>--manufacturer</code> flags; dry-run prints the plan and projected Gemini calls.</p>
+<h2 id="phase-2-envelope-backfill-shipped-508511-applied-2026-11-25">Phase 2 — envelope backfill (✅ shipped #508–#511, applied 2026-11-25)</h2>
+<p><code>./Quickstart envelope-extract</code> (see <code>.claude/rules/pipeline.md</code>). Policy (Nick, option A):
+weights for every type; dimensions only where two independent readings agree within 10%
+per axis; everything else stays empty. As built:</p>
+<ul>
+<li>Each datasheet PDF is read twice with differently-worded prompts. <code>#page=N</code> fragments
+  share one PDF. Up to 30 pages are sent per PDF, 4 per call, with thinking capped at 2048
+  tokens.</li>
+<li><strong>Text-layer check</strong> (<code>match.value_on_page</code>): a value must be printed on its page in
+  the designator's table row or column, or be a free drawing callout that is not in line
+  with another model's label. This was needed because the two readings share misreads:
+  both put ABR115's 152 on ABR090.</li>
+<li>Dimensions are written only as a full three-axis envelope agreed within 10% (the larger
+  reading is kept). Weight needs one verified reading, and is withheld when two readings
+  differ by more than 10%.</li>
+<li>Gemini cost for the whole task, including samples and re-runs: ≈ $34.</li>
+</ul>
+<p>Coverage after <code>--apply</code> (rows with dims / weight, before → after):</p>
+<table>
+<thead>
+<tr>
+<th>type</th>
+<th>dev dims</th>
+<th>dev weight</th>
+<th>staging dims</th>
+<th>staging weight</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>drive</td>
+<td>25 → 29%</td>
+<td>31 → 35%</td>
+<td>25 → 29%</td>
+<td>31 → 35%</td>
+</tr>
+<tr>
+<td>motor</td>
+<td>37 → 38%</td>
+<td>33 → 43%</td>
+<td>29 → 31%</td>
+<td>38 → 48%</td>
+</tr>
+<tr>
+<td>gearhead</td>
+<td>5 → 12%</td>
+<td>14 → 32%</td>
+<td>49%</td>
+<td>48%</td>
+</tr>
+<tr>
+<td>electric_cylinder</td>
+<td>38%</td>
+<td>34 → 66%</td>
+<td>38%</td>
+<td>34 → 66%</td>
+</tr>
+<tr>
+<td>robot_arm</td>
+<td>2%</td>
+<td>31 → 42%</td>
+<td>0%</td>
+<td>26 → 28%</td>
+</tr>
+<tr>
+<td>linear_actuator</td>
+<td>0%</td>
+<td>22 → 78%</td>
+<td>0%</td>
+<td>22 → 78%</td>
+</tr>
+<tr>
+<td>inductive_sensor</td>
+<td>0 → 2%</td>
+<td>0 → 2%</td>
+<td>0 → 2%</td>
+<td>0 → 2%</td>
+</tr>
+</tbody>
+</table>
+<p>Accuracy (spot-checked against the PDFs). The largest dimension is usually right or
+over-stated. Width, height and length can each be off by up to about ±30% when the model
+picks the wrong printed callout, which no text check can catch:</p>
+<ul>
+<li>Siemens 1FK2210: length read as k without the 80 mm shaft, width as the □244 diagonal
+  instead of □192.</li>
+<li>Apex ABR090: width and height read as the flange corner circle, and the right-angle drop
+  is missed.</li>
+</ul>
+<p>Weights in the sample all had the right magnitude.</p>
+<p>Not reached (follow-ups if wanted):</p>
+<ul>
+<li>Inductive sensors: drawings are labelled <code>M18 / 55 mm</code>, not by part number. A
+  sensor-specific rule (<code>housing_size</code> → diameter plus a length table) would cover them.</li>
+<li>61 PDFs fail to download: galco 403 (bot fingerprinting), 404s, the apexdyna SSL chain.</li>
+<li>NEMA catalogs (Leeson, Worldwide) still match little: frame-dimension tables are
+  labelled by frame (<code>56C</code>) while row <code>frame_size</code> values carry suffixes.</li>
+<li>The main ingest prompt should also ask for the envelope, so new rows arrive filled.</li>
+</ul>
 <h2 id="phase-3-interface-geometry-cross-check-or-withhold-planned">Phase 3 — interface geometry, cross-check or withhold (📐 planned)</h2>
 <p>Fields (new, per type, all exact-mm <code>Length</code> unless noted):</p>
 <ul>
