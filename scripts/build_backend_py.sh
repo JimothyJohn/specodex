@@ -63,6 +63,12 @@ _copy_backend_py() {
 
 bundle_with_docker() {
     echo "==> Bundling with Docker (${PYTHON_IMAGE})"
+    # The deps are spliced into a `bash -c` string, so each must be
+    # shell-quoted: unquoted, the inner shell reads `fastapi>=0.115.0` as
+    # `fastapi` plus a redirect to a file named `=0.115.0` (pins dropped,
+    # litter at the repo root). tests/unit/test_build_backend_py_script.py.
+    local deps_quoted
+    deps_quoted="$(printf '%q ' "${DEPS[@]}")"
     docker run --rm \
         -u "$(id -u):$(id -g)" \
         -v "${REPO_ROOT}:/asset-input:delegated" \
@@ -70,7 +76,7 @@ bundle_with_docker() {
         -w /asset-input \
         "${PYTHON_IMAGE}" \
         bash -c "
-            pip install --target /asset-output ${DEPS[*]} \
+            pip install --target /asset-output ${deps_quoted} \
             && cp -r /asset-input/specodex /asset-output/ \
             && touch /asset-output/app/__init__.py \
             && tar -C /asset-input/app \
