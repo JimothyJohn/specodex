@@ -39,7 +39,7 @@ _ATTRS = ("dimensions", "weight", "max_dimension")
 _WEIGHT = TypeAdapter(ProductWeight)
 
 
-def _canonical_dimensions(raw: Any) -> Optional[Dict[str, Any]]:
+def canonical_dimensions(raw: Any) -> Optional[Dict[str, Any]]:
     container = _coerce_dimensions_container(raw)
     if container is None:
         return None
@@ -52,7 +52,7 @@ def _canonical_dimensions(raw: Any) -> Optional[Dict[str, Any]]:
     return dims.model_dump(mode="json", exclude_none=True)
 
 
-def _canonical_weight(raw: Any) -> Optional[Dict[str, Any]]:
+def canonical_weight(raw: Any) -> Optional[Dict[str, Any]]:
     try:
         w = _WEIGHT.validate_python(raw)
     except ValidationError:
@@ -60,11 +60,11 @@ def _canonical_weight(raw: Any) -> Optional[Dict[str, Any]]:
     return None if w is None else w.model_dump(mode="json")
 
 
-def _to_dynamo(v: Any) -> Any:
+def to_dynamo(v: Any) -> Any:
     if isinstance(v, float):
         return Decimal(str(v))
     if isinstance(v, dict):
-        return {k: _to_dynamo(x) for k, x in v.items()}
+        return {k: to_dynamo(x) for k, x in v.items()}
     return v
 
 
@@ -86,13 +86,13 @@ def plan_envelope_update(
 
     Both empty means the row is already canonical. Pure: no I/O.
     """
-    dims = _canonical_dimensions(item.get("dimensions"))
+    dims = canonical_dimensions(item.get("dimensions"))
     largest = None
     if dims:
         largest = max(axis["value"] for axis in dims.values())
     target: Dict[str, Any] = {
         "dimensions": dims,
-        "weight": _canonical_weight(item.get("weight")),
+        "weight": canonical_weight(item.get("weight")),
         "max_dimension": None if largest is None else {"value": largest, "unit": "mm"},
     }
     to_set: Dict[str, Any] = {}
@@ -182,7 +182,7 @@ def migrate_envelopes(table: Any, *, apply: bool = False) -> EnvelopeMigrationRe
             clauses = []
             for attr, val in to_set.items():
                 names[f"#s_{attr}"] = attr
-                values[f":s_{attr}"] = _to_dynamo(val)
+                values[f":s_{attr}"] = to_dynamo(val)
                 clauses.append(f"#s_{attr} = :s_{attr}")
             expr = ""
             if clauses:
