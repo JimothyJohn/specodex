@@ -29,7 +29,7 @@ EX_SMALL = {
     "designator": "AB042",
     "length": {"value": 4, "unit": "in"},
     "width": {"value": 60, "unit": "mm"},
-    "height": None,
+    "height": {"value": 60, "unit": "mm"},
     "weight": {"value": 2, "unit": "lb"},
     "page_number": 3,
     "unverified": [],
@@ -58,6 +58,7 @@ class TestPlanUpdates:
             "dimensions": {
                 "length": {"value": 106.7, "unit": "mm"},
                 "width": {"value": 60.0, "unit": "mm"},
+                "height": {"value": 60.0, "unit": "mm"},
             },
             "max_dimension": {"value": 106.7, "unit": "mm"},
             "weight": {"value": 0.9072, "unit": "kg"},
@@ -178,6 +179,16 @@ class TestPlanUpdates:
         ((_, to_set),) = plan_updates(rows, [[drawing, table], [drawing]])
         assert to_set["weight"] == {"value": 5.0, "unit": "kg"}
         assert to_set["max_dimension"] == {"value": 400.0, "unit": "mm"}
+
+    def test_partial_envelope_never_written(self):
+        # Tolomatic GSWA: width/height only (length depends on stroke). A
+        # max_dimension from two axes would understate the product's size.
+        rows = [_row("a", part_number="AB042-005")]
+        a = {**EX_SMALL, "length": None, "height": {"value": 60, "unit": "mm"}}
+        b = {**EX_SMALL_B, "length": None, "height": {"value": 58, "unit": "mm"}}
+        ((_, to_set),) = plan_updates(rows, [[a], [b]])
+        assert "dimensions" not in to_set and "max_dimension" not in to_set
+        assert "weight" in to_set
 
 
 @pytest.mark.unit
