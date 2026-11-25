@@ -899,7 +899,7 @@ export const buildDefaultSortsForType = (
 // metadata when keys collide so existing UI doesn't regress.
 
 /** Keys the filter UI should never offer (identity / bookkeeping). */
-const DERIVATION_EXCLUDED_KEYS: ReadonlySet<string> = new Set([
+export const DERIVATION_EXCLUDED_KEYS: ReadonlySet<string> = new Set([
   'PK',
   'SK',
   'product_id',

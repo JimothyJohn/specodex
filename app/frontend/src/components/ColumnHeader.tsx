@@ -97,9 +97,8 @@ interface ColumnHeaderProps {
 
 const SLIDER_OPERATORS: ComparisonOperator[] = ['>=', '<'];
 
-const getNested = (obj: unknown, path: string): unknown => {
+const getNested = (obj: unknown, parts: readonly string[]): unknown => {
   if (!obj || typeof obj !== 'object') return undefined;
-  const parts = path.split('.');
   let v: any = obj;
   for (const p of parts) {
     if (v == null) return undefined;
@@ -174,8 +173,9 @@ function ColumnHeader({
   const rangeInfo = useMemo(() => {
     const values: number[] = [];
     let attrUnit: string | null = null;
+    const path = attribute.key.split('.');
     for (const p of allProducts) {
-      const raw = getNested(p, attribute.key);
+      const raw = getNested(p, path);
       if (raw == null) continue;
       const n = numericFromValue(raw);
       if (n != null && Number.isFinite(n)) {
@@ -224,8 +224,9 @@ function ColumnHeader({
     const source = otherFilters.length === 0 ? allProducts : applyFilters(allProducts, otherFilters);
     const seen = new Set<string>();
     const out: Array<string | number> = [];
+    const path = attribute.key.split('.');
     for (const p of source) {
-      const raw = getNested(p, attribute.key);
+      const raw = getNested(p, path);
       if (raw == null) continue;
       const push = (v: unknown) => {
         if (typeof v !== 'string' && typeof v !== 'number') return;
@@ -468,12 +469,6 @@ function ColumnHeader({
     if (filterOpen) sliderTrackRef.current?.focus();
   }, [filterOpen]);
 
-  // Click the unit text to flip *this* column's unit system. Other
-  // columns keep whatever unit they had — overrides are per-column.
-  const handleUnitClick = () => {
-    onUnitToggle();
-  };
-
   const headerClasses =
     'product-grid-header-item column-header'
     + (hasActiveFilter ? ' has-filter' : '')
@@ -503,19 +498,18 @@ function ColumnHeader({
   // string clears the filter rather than persisting a no-op that
   // would also confuse the cozy multi-select popover.
   const setSubstring = (raw: string) => {
-    const next = raw;
-    if (next.trim() === '') {
+    if (raw.trim() === '') {
       if (filter) onFilterChange(null);
       return;
     }
     if (filter) {
-      onFilterChange({ ...filter, value: next });
+      onFilterChange({ ...filter, value: raw });
     } else {
       onFilterChange({
         attribute: attribute.key,
         displayName: label,
         mode: 'include',
-        value: next,
+        value: raw,
       });
     }
   };
@@ -660,7 +654,7 @@ function ColumnHeader({
                 <button
                   type="button"
                   className="readout-unit compact-readout-unit"
-                  onClick={handleUnitClick}
+                  onClick={onUnitToggle}
                   aria-label={`Unit ${dispUnit} — click to swap unit system`}
                 >
                   {dispUnit}
@@ -943,7 +937,7 @@ function ColumnHeader({
                   <button
                     type="button"
                     className="readout-unit"
-                    onClick={handleUnitClick}
+                    onClick={onUnitToggle}
                     aria-label={`Unit ${dispUnit} — click to swap unit system`}
                   >
                     {dispUnit}
