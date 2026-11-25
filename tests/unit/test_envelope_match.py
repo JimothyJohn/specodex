@@ -66,6 +66,25 @@ class TestMatchRows:
         ex = [("AB042", "one"), ("AB-042", "two")]
         assert match_rows(ex, rows) == {}
 
+    def test_near_identical_tie_takes_largest(self):
+        # Apex ABR090 is printed in a 1-stage (203) and a 2-stage (206.5)
+        # table under the same label; within 10% they are one envelope for
+        # planning, and the larger is the safer error.
+        rows = [row("ABR090 1-Stage 7:1")]
+        ex = [("ABR090", 203.0), ("ABR090", 206.5)]
+        near = lambda a, b: abs(a - b) <= 0.10 * max(a, b)  # noqa: E731
+        assert match_rows(ex, rows, size_key=float, near=near) == {0: 1}
+        # Without the predicate, or when the tie is far apart, it is a conflict.
+        assert match_rows(ex, rows, size_key=float) == {}
+        far = [("ABR090", 203.0), ("ABR090", 300.0)]
+        assert match_rows(far, rows, size_key=float, near=near) == {}
+
+        # A predicate that raises is treated as "not near".
+        def boom(a, b):
+            raise ValueError
+
+        assert match_rows(ex, rows, size_key=float, near=boom) == {}
+
     def test_identical_tie_is_fine(self):
         rows = [row("AB042-005")]
         ex = [("AB042", "same"), ("AB 042", "same")]

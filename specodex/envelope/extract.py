@@ -12,6 +12,7 @@ reported ``page_number`` maps back to a real page unambiguously.
 
 from __future__ import annotations
 
+import json
 import logging
 from typing import Any, Dict, List, Optional
 
@@ -28,6 +29,12 @@ from specodex.utils import parse_gemini_response
 logger: logging.Logger = logging.getLogger(__name__)
 
 PAGES_PER_CALL = 4
+# Thinking tokens are billed as output and share max_output_tokens. Left
+# uncapped, dense sensor tables spent the budget thinking and returned
+# truncated JSON (2026-11-24); 2048 leaves room for the answer and roughly
+# halves the cost per call.
+THINKING_BUDGET = 2048
+MAX_OUTPUT_TOKENS = 32768
 PASSES = ("a", "b")
 
 
@@ -149,7 +156,8 @@ def _call_gemini(
         config={
             "response_mime_type": "application/json",
             "response_schema": response_schema,
-            "max_output_tokens": 16000,
+            "max_output_tokens": MAX_OUTPUT_TOKENS,
+            "thinking_config": {"thinking_budget": THINKING_BUDGET},
         },
     )
 
@@ -296,7 +304,8 @@ def extract_envelopes(
 ) -> List[Dict[str, Any]]:
     """Extract envelopes from ``pages`` (0-indexed) of ``pdf_bytes``.
 
-    One Gemini call per ``PAGES_PER_CALL`` chunk, with ``PROMPTS[variant]``.
+    One Gemini call per ``PAGES_PER_CALL`` chunk, with ``PROMPTS[variant]``;
+    a chunk whose response is truncated JSON is retried one page per call.
     A chunk that yields nothing usable is a normal outcome, not an error.
     Every result's designator is checked against the text layer of the page
     it claims (``designator_on_page``); unverifiable labels are dropped.
@@ -310,8 +319,11 @@ def extract_envelopes(
     page_texts = page_text_layers(pdf_bytes, pages)
     words = page_words(pdf_bytes, pages)
     results: List[Dict[str, Any]] = []
-    for start in range(0, len(pages), PAGES_PER_CALL):
-        chunk = pages[start : start + PAGES_PER_CALL]
+    queue = [
+        pages[i : i + PAGES_PER_CALL] for i in range(0, len(pages), PAGES_PER_CALL)
+    ]
+    while queue:
+        chunk = queue.pop(0)
         subset = build_page_subset(pdf_bytes, chunk)
         response = _call_gemini(subset, api_key, schema, prompt)
         if usage is not None:
@@ -322,6 +334,11 @@ def extract_envelopes(
                 response, EnvelopeExtraction, product_type="envelope"
             )
         except ValueError as e:
+            if isinstance(e.__cause__, json.JSONDecodeError) and len(chunk) > 1:
+                # A dense table overflowed the response; one page per call.
+                logger.info("truncated response on pages %s; retrying singly", chunk)
+                queue[:0] = [[p] for p in chunk]
+                continue
             logger.info("no envelope extractions on pages %s: %s", chunk, e)
             continue
         kept = []

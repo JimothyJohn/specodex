@@ -130,13 +130,16 @@ def match_rows(
     extractions: Sequence[Tuple[Optional[str], Any]],
     rows: Sequence[Dict[str, Any]],
     size_key: Optional[Callable[[Any], float]] = None,
+    near: Optional[Callable[[Any, Any], bool]] = None,
 ) -> Dict[int, int]:
     """Map row index → extraction index.
 
     ``extractions`` is ``(designator, payload)`` pairs; payloads are compared
     with ``==`` to tell a real conflict from the same envelope printed
     twice. ``size_key(payload)`` enables the largest-envelope tie-break for
-    qualifier-only ties (see module docstring).
+    qualifier-only ties (see module docstring), and for ties whose payloads
+    are all ``near`` each other (the same label printed in a 1-stage and a
+    2-stage table with envelopes within tolerance).
     """
     cands = [_candidates(d) for d, _ in extractions]
     full_words = [c[0][1] if c else 0 for c in cands]
@@ -169,7 +172,7 @@ def match_rows(
             out[ri] = best_idx[0]
             continue
         truncated = all(best_kept[i] < full_words[i] for i in best_idx)
-        if truncated and size_key is not None:
+        if (truncated or _all_near(payloads, near)) and size_key is not None:
             try:
                 out[ri] = max(best_idx, key=lambda i: size_key(extractions[i][1]))
             except (TypeError, ValueError):
@@ -219,6 +222,19 @@ def agreed_dims(
             return None
         out[axis] = {"value": hi, "unit": "mm"}
     return out
+
+
+def _all_near(payloads: List[Any], near: Optional[Callable[[Any, Any], bool]]) -> bool:
+    """Every tied payload is ``near`` every other (a predicate that raises
+    counts as not near)."""
+    if near is None:
+        return False
+    try:
+        return all(
+            near(a, b) for i, a in enumerate(payloads) for b in payloads[i + 1 :]
+        )
+    except Exception:  # noqa: BLE001 — caller-supplied predicate
+        return False
 
 
 def designator_on_page(designator: Any, page_text: Any) -> bool:

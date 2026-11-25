@@ -245,6 +245,15 @@ class TestCache:
 
 
 @pytest.mark.unit
+def test_page_fragments_share_one_document():
+    u = "https://example.com/cat.pdf"
+    assert envelope_extract.document_url(u + "#page=3") == u
+    assert envelope_extract.document_url(u + "#page=8") == u
+    assert envelope_extract.document_url(u) == u
+    assert envelope_extract.document_url("https://x/a.pdf#a#b") == "https://x/a.pdf"
+
+
+@pytest.mark.unit
 class TestApplyUpdate:
     def test_write_then_second_write_is_conflict(self, dynamodb_table):
         row = _row("a", part_number="AB042-005")

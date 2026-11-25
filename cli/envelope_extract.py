@@ -141,6 +141,13 @@ def _spec_pages(rows: List[Dict[str, Any]]) -> List[int]:
     return sorted(pages)
 
 
+def document_url(url: str) -> str:
+    """The PDF a datasheet URL points at: ``#page=N`` fragments name pages of
+    one document (ingest stores one URL per spec page), so rows from every
+    fragment share one download, one page selection and one cache entry."""
+    return url.split("#", 1)[0]
+
+
 def _cache_path(url: str) -> Path:
     return CACHE_DIR / f"{hashlib.sha1(url.encode()).hexdigest()}.json"
 
@@ -263,15 +270,28 @@ def _weight_size(payload: str) -> float:
     return json.loads(payload)["value"]
 
 
+def _dims_near(a: str, b: str) -> bool:
+    return agreed_dims(json.loads(a), json.loads(b)) is not None
+
+
+def _weight_near(a: str, b: str) -> bool:
+    x, y = _weight_size(a), _weight_size(b)
+    return abs(x - y) <= WEIGHT_CONFLICT_TOL * max(x, y)
+
+
 def _match_pass(
     extractions: Any, rows: List[Dict[str, Any]]
 ) -> Dict[int, Tuple[Optional[dict], Optional[dict]]]:
     """Row index → (dims, weight) this reading assigns to it."""
     dims_entries, weight_entries = _parse_pass(extractions)
     out: Dict[int, Tuple[Optional[dict], Optional[dict]]] = {}
-    for ri, ei in match_rows(dims_entries, rows, size_key=_dims_size).items():
+    for ri, ei in match_rows(
+        dims_entries, rows, size_key=_dims_size, near=_dims_near
+    ).items():
         out[ri] = (json.loads(dims_entries[ei][1]), None)
-    for ri, ei in match_rows(weight_entries, rows, size_key=_weight_size).items():
+    for ri, ei in match_rows(
+        weight_entries, rows, size_key=_weight_size, near=_weight_near
+    ).items():
         out[ri] = (out.get(ri, (None, None))[0], json.loads(weight_entries[ei][1]))
     return out
 
@@ -364,10 +384,10 @@ def run(args: argparse.Namespace) -> int:
     rows = scan_candidates(table, args.type, args.manufacturer)
     groups: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
     for r in rows:
-        groups[r["datasheet_url"]].append(r)
+        groups[document_url(r["datasheet_url"])].append(r)
     by_type = Counter(r.get("product_type") for r in rows)
     print(
-        f"candidates: {len(rows)} rows across {len(groups)} datasheets "
+        f"candidates: {len(rows)} rows across {len(groups)} datasheet PDFs "
         f"({', '.join(f'{k}={v}' for k, v in by_type.most_common())})"
     )
     urls = sorted(groups, key=lambda u: -len(groups[u]))

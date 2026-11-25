@@ -68,3 +68,69 @@ def test_remap_pages_maps_and_drops_out_of_range():
     ]
     kept = remap_pages(ex, [40, 41, 52])
     assert [(e.designator, e.page_number) for e in kept] == [("a", 40), ("b", 52)]
+
+
+def _two_page_pdf() -> bytes:
+    import pymupdf
+
+    doc = pymupdf.open()
+    for label, length in (("AB042", "94"), ("AB060", "121")):
+        page = doc.new_page()
+        page.insert_text((40, 100), label)
+        page.insert_text((200, 100), length)
+    return doc.tobytes()
+
+
+@pytest.mark.unit
+def test_truncated_multi_page_response_retries_page_by_page(monkeypatch):
+    """Dense tables overflow one 4-page response (inductive-sensor catalogs,
+    2026-11-24); the chunk is retried one page at a time, not dropped."""
+    import json
+    from types import SimpleNamespace
+
+    from specodex.envelope import extract
+
+    calls = []
+
+    def fake_call(pdf_bytes, api_key, schema, prompt):
+        import pymupdf
+
+        n = len(pymupdf.open(stream=pdf_bytes, filetype="pdf"))
+        calls.append(n)
+        if n > 1:
+            return SimpleNamespace(text='[{"designator": "AB04', usage_metadata=None)
+        text = pymupdf.open(stream=pdf_bytes, filetype="pdf")[0].get_text()
+        label = "AB042" if "AB042" in text else "AB060"
+        length = 94 if label == "AB042" else 121
+        body = [
+            {
+                "designator": label,
+                "length": {"value": length, "unit": "mm"},
+                "page_number": 1,
+            }
+        ]
+        return SimpleNamespace(text=json.dumps(body), usage_metadata=None)
+
+    monkeypatch.setattr(extract, "_call_gemini", fake_call)
+    out = extract.extract_envelopes(_two_page_pdf(), [0, 1], "k")
+    assert calls == [2, 1, 1]
+    got = {(e["designator"], e["page_number"], e["length"]["value"]) for e in out}
+    assert got == {("AB042", 0, 94.0), ("AB060", 1, 121.0)}
+    assert all(e["unverified"] == [] for e in out)
+
+
+@pytest.mark.unit
+def test_truncated_single_page_response_is_skipped(monkeypatch):
+    from types import SimpleNamespace
+
+    from specodex.envelope import extract
+
+    calls = []
+
+    def fake_call(pdf_bytes, api_key, schema, prompt):
+        calls.append(1)
+        return SimpleNamespace(text='[{"designator": "AB04', usage_metadata=None)
+
+    monkeypatch.setattr(extract, "_call_gemini", fake_call)
+    assert extract.extract_envelopes(_two_page_pdf(), [0], "k") == []
+    assert calls == [1]
