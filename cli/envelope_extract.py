@@ -88,6 +88,7 @@ CACHE_DIR = Path("outputs/envelope_extract")
 CACHE_VERSION = 3
 WEIGHT_CONFLICT_TOL = 0.10
 FULL_ENVELOPE = ("length", "width", "height")
+LEGACY_MAX_PAGES = 12  # page cap of cache records written before it was stored
 # Gemini 2.5 Flash list price, USD per 1M tokens (thinking billed as output).
 # Used only for the printed estimate.
 USD_PER_M_INPUT = 0.30
@@ -172,71 +173,90 @@ def _read_cache(url: str) -> Optional[Dict[str, Any]]:
     return None
 
 
-def _is_cached(url: str) -> bool:
-    return _read_cache(url) is not None
+def _is_cached(url: str, max_pages: int = LEGACY_MAX_PAGES) -> bool:
+    """A current record that already covers ``max_pages`` (no download)."""
+    rec = _read_cache(url)
+    return (
+        rec is not None
+        and rec.get("verifier") == VERIFIER_VERSION
+        and rec.get("max_pages", LEGACY_MAX_PAGES) >= max_pages
+    )
 
 
 def extract_for_datasheet(
     url: str, rows: List[Dict[str, Any]], api_key: str, max_pages: int, refresh: bool
 ) -> Dict[str, Any]:
-    """Return ``{"version", "url", "pages", "passes": {name: [...]}, "usage",
-    "error", "cached"}``; read from / written to the cache."""
+    """Return ``{"version", "url", "pages", "max_pages", "passes": {name:
+    [...]}, "usage", "run_usage", "error"}``; read from / written to the cache.
+
+    Incremental: a cached record already covers any cap ≤ its ``max_pages``
+    (no download). A larger cap downloads the PDF, re-selects pages and sends
+    only the pages not yet read to Gemini, appending to both readings. A
+    stale ``verifier`` is re-checked against the PDF without Gemini.
+    ``run_usage`` is the tokens spent by this call only.
+    """
     path = _cache_path(url)
     cached = None if refresh else _read_cache(url)
-    if cached is not None and cached.get("verifier") == VERIFIER_VERSION:
-        return {**cached, "cached": True}
+    run_usage = {"input": 0, "output": 0}
     if cached is not None:
-        # Readings are still good; the text-layer check changed. Re-run it
-        # against the PDF (no Gemini call).
-        try:
-            pdf = get_document(url)
-            if not pdf:
-                raise RuntimeError("empty or failed download")
-            cached["passes"] = {
-                name: reverify(pdf, cached.get("passes", {}).get(name, []))
-                for name in PASSES
-            }
-            cached["verifier"] = VERIFIER_VERSION
-            path.write_text(json.dumps(cached))
-            return {**cached, "cached": True}
-        except Exception as e:  # noqa: BLE001
-            return {
-                **cached,
-                "passes": {},
-                "error": f"reverify: {type(e).__name__}: {e}"[:500],
-                "cached": True,
-            }
-    record: Dict[str, Any] = {
-        "version": CACHE_VERSION,
-        "url": url,
-        "pages": [],
-        "passes": {name: [] for name in PASSES},
-        "usage": {"input": 0, "output": 0},
-        "verifier": VERIFIER_VERSION,
-        "error": None,
-    }
+        fresh = cached.get("verifier") == VERIFIER_VERSION
+        covered = cached.get("max_pages", LEGACY_MAX_PAGES) >= max_pages
+        if fresh and covered:
+            return {**cached, "run_usage": run_usage, "error": None}
+        record = {**cached, "max_pages": cached.get("max_pages", LEGACY_MAX_PAGES)}
+    else:
+        fresh = True
+        record = {
+            "version": CACHE_VERSION,
+            "url": url,
+            "pages": [],
+            "max_pages": 0,
+            "passes": {name: [] for name in PASSES},
+            "usage": {"input": 0, "output": 0},
+            "verifier": VERIFIER_VERSION,
+            "error": None,
+        }
+    error: Optional[str] = None
     try:
         pdf = get_document(url)
         if not pdf:
             raise RuntimeError("empty or failed download")
-        scores = drawing_page_scores(pdf)
-        pages = select_envelope_pages(
-            scores, _spec_pages(rows), max_pages, total_pages=len(scores)
-        )
-        record["pages"] = pages
-        for name in PASSES if pages else ():
-            found = extract_envelopes(
-                pdf, pages, api_key, variant=name, usage=record["usage"]
+        passes = {n: list(record.get("passes", {}).get(n, [])) for n in PASSES}
+        if not fresh:
+            # Readings are still good; the text-layer check changed.
+            passes = {n: reverify(pdf, passes[n]) for n in PASSES}
+        pages = list(record.get("pages") or [])
+        if record["max_pages"] < max_pages:
+            scores = drawing_page_scores(pdf)
+            selected = select_envelope_pages(
+                scores, _spec_pages(rows), max_pages, total_pages=len(scores)
             )
-            record["passes"][name] = found
+            new_pages = [p for p in selected if p not in set(pages)]
+            for name in PASSES if new_pages else ():
+                passes[name] = passes[name] + extract_envelopes(
+                    pdf, new_pages, api_key, variant=name, usage=run_usage
+                )
+            pages = sorted(set(pages) | set(selected))
+        # Merge only after every call succeeded, so a failure leaves the
+        # cached record untouched and the next run retries.
+        record.update(
+            passes=passes,
+            pages=pages,
+            max_pages=max(record["max_pages"], max_pages),
+            verifier=VERIFIER_VERSION,
+            usage={
+                k: record.get("usage", {}).get(k, 0) + run_usage[k] for k in run_usage
+            },
+        )
     except Exception as e:  # noqa: BLE001 — network / PDF / Gemini failures vary
-        record["error"] = f"{type(e).__name__}: {e}"[:500]
-    # Cache only clean outcomes (an empty extraction is clean). Download,
-    # PDF and Gemini errors are retried on the next run.
-    if record["error"] is None:
+        error = f"{type(e).__name__}: {e}"[:500]
+        if not fresh:
+            # Unchecked readings must not be planned from.
+            record = {**record, "passes": {}}
+    if error is None:
         CACHE_DIR.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(record))
-    return {**record, "cached": False}
+        path.write_text(json.dumps({**record, "error": None}))
+    return {**record, "run_usage": run_usage, "error": error}
 
 
 def _parse_pass(
@@ -404,7 +424,7 @@ def run(args: argparse.Namespace) -> int:
     urls = sorted(groups, key=lambda u: -len(groups[u]))
     if args.limit is not None:
         urls = urls[: max(args.limit, 0)]
-    cached = sum(1 for u in urls if _is_cached(u))
+    cached = sum(1 for u in urls if _is_cached(u, args.max_pages))
     print(
         f"this run: {len(urls)} datasheets, {cached} cached, up to "
         f"{(len(urls) - cached) * -(-args.max_pages // 4) * len(PASSES)} Gemini calls "
@@ -437,9 +457,8 @@ def run(args: argparse.Namespace) -> int:
             stats["datasheets"] += 1
             stats["errors"] += rec["error"] is not None
             stats["extractions"] += sum(len(p) for p in passes)
-            if not rec.get("cached"):
-                stats["tokens_in"] += rec["usage"]["input"]
-                stats["tokens_out"] += rec["usage"]["output"]
+            stats["tokens_in"] += rec["run_usage"]["input"]
+            stats["tokens_out"] += rec["run_usage"]["output"]
             stats["rows_matched"] += len(updates)
             stats["dims_filled"] += sum("dimensions" in u[1] for u in updates)
             stats["weight_filled"] += sum("weight" in u[1] for u in updates)
