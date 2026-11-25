@@ -20,6 +20,7 @@ from specodex.envelope.match import (
     match_rows,
     numbers_in,
     value_in_line,
+    value_on_page,
     normalize_designator,
     select_envelope_pages,
 )
@@ -249,3 +250,24 @@ def test_numbers_in_contract(text):
     out = numbers_in(text)
     assert isinstance(out, set)
     assert all(isinstance(n, float) and math.isfinite(n) and n >= 0 for n in out)
+
+
+@pytest.mark.unit
+@settings(max_examples=300)
+@given(
+    designator=_text,
+    value=_value,
+    words=st.one_of(st.none(), st.lists(_word, max_size=12)),
+    others=st.one_of(st.none(), st.lists(_text, max_size=4)),
+)
+def test_value_on_page_contract(designator, value, words, others):
+    """Never raises; in line implies on page; on page implies printed and
+    never in line with another listed designator unless in line with its own."""
+    out = value_on_page(designator, value, words, others)
+    assert isinstance(out, bool)
+    if value_in_line(designator, value, words):
+        assert out
+    if out and not value_in_line(designator, value, words):
+        for o in others or []:
+            if isinstance(o, str) and o != designator:
+                assert not value_in_line(o, value, words)

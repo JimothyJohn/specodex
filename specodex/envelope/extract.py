@@ -21,7 +21,7 @@ from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponen
 
 from specodex.config import GEMINI_HTTP_OPTIONS, MODEL
 from specodex.models.common import Length, Mass
-from specodex.envelope.match import designator_on_page, value_in_line
+from specodex.envelope.match import designator_on_page, value_on_page
 from specodex.models.llm_schema import to_gemini_schema
 from specodex.utils import parse_gemini_response
 
@@ -197,17 +197,28 @@ def page_words(pdf_bytes: bytes, pages: List[int]) -> dict:
 VERIFIED_FIELDS = ("length", "width", "height", "weight")
 # Bump when ``match.value_in_line`` / ``designator_on_page`` change: cached
 # readings are then re-checked against the PDF without calling Gemini.
-VERIFIER_VERSION = 2
+VERIFIER_VERSION = 3
 
 
-def unverified_fields(e: EnvelopeExtraction, words: Any) -> List[str]:
-    """Fields with a value that is not printed in line with the designator
-    on its page (``match.value_in_line``); those are never written."""
+def unverified_fields(
+    e: EnvelopeExtraction, words: Any, others: Optional[List[str]] = None
+) -> List[str]:
+    """Fields whose value is not attributable to the designator on its page
+    (``match.value_on_page``; ``others`` = the other labels the same reading
+    reported on that page). Those fields are never written."""
     out = []
     for name in VERIFIED_FIELDS:
         v = getattr(e, name)
-        if v is not None and not value_in_line(e.designator, v.value, words):
+        if v is not None and not value_on_page(e.designator, v.value, words, others):
             out.append(name)
+    return out
+
+
+def _labels_by_page(extractions: List[EnvelopeExtraction]) -> Dict[int, List[str]]:
+    out: Dict[int, List[str]] = {}
+    for e in extractions:
+        if isinstance(e.designator, str):
+            out.setdefault(e.page_number, []).append(e.designator)
     return out
 
 
@@ -224,19 +235,22 @@ def reverify(pdf_bytes: bytes, extractions: List[Any]) -> List[Dict[str, Any]]:
         }
     )
     words = page_words(pdf_bytes, pages)
-    out: List[Dict[str, Any]] = []
+    parsed: List[EnvelopeExtraction] = []
     for raw in extractions:
         try:
-            e = EnvelopeExtraction.model_validate(raw)
+            parsed.append(EnvelopeExtraction.model_validate(raw))
         except Exception:  # noqa: BLE001 — malformed cache entry
             continue
-        out.append(
-            {
-                **e.model_dump(mode="json"),
-                "unverified": unverified_fields(e, words.get(e.page_number)),
-            }
-        )
-    return out
+    labels = _labels_by_page(parsed)
+    return [
+        {
+            **e.model_dump(mode="json"),
+            "unverified": unverified_fields(
+                e, words.get(e.page_number), labels.get(e.page_number)
+            ),
+        }
+        for e in parsed
+    ]
 
 
 def remap_pages(
@@ -310,6 +324,7 @@ def extract_envelopes(
         except ValueError as e:
             logger.info("no envelope extractions on pages %s: %s", chunk, e)
             continue
+        kept = []
         for e in remap_pages(parsed, chunk):
             if not designator_on_page(e.designator, page_texts.get(e.page_number)):
                 logger.info(
@@ -318,10 +333,15 @@ def extract_envelopes(
                     e.page_number,
                 )
                 continue
+            kept.append(e)
+        labels = _labels_by_page(kept)
+        for e in kept:
             results.append(
                 {
                     **e.model_dump(mode="json"),
-                    "unverified": unverified_fields(e, words.get(e.page_number)),
+                    "unverified": unverified_fields(
+                        e, words.get(e.page_number), labels.get(e.page_number)
+                    ),
                 }
             )
     return results

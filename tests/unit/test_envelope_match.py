@@ -9,6 +9,7 @@ from specodex.envelope.match import (
     match_rows,
     numbers_in,
     value_in_line,
+    value_on_page,
     normalize_designator,
     select_envelope_pages,
     token_prefixes,
@@ -321,6 +322,11 @@ class TestValueInLine:
         assert not value_in_line("ABR090", 251, words)
         assert value_in_line("ABR090A", 251, words)
 
+    def test_touching_rows_are_not_the_same_row(self):
+        # Omron rows sit edge to edge (y1 205 / y0 206); 107.5 is 01A's.
+        assert not value_in_line("SGMJV-A5A A6", 107.5, OMRON_WORDS)
+        assert value_in_line("SGMJV-01A A6", 107.5, OMRON_WORDS)
+
     def test_designator_absent_or_junk(self):
         assert not value_in_line("ZZ999", 179, ROW_WORDS)
         for d in (None, "", "  ", 42):
@@ -329,3 +335,46 @@ class TestValueInLine:
             assert not value_in_line("SGMGV-05D", v, ROW_WORDS)
         assert not value_in_line("SGMGV-05D", 179, [])
         assert not value_in_line("SGMGV-05D", 179, None)
+
+
+# Omron I74E p.10: two-model table on top, a series drawing below it whose
+# flange square is only a callout ("□40") on the drawing.
+OMRON_WORDS = [
+    (35.0, 197.0, 94.0, 205.0, "SGMJV-A5A@A6@", 6, 0, 0),
+    (183.0, 197.0, 191.0, 205.0, "94", 6, 1, 0),
+    (35.0, 206.0, 94.0, 214.0, "SGMJV-01A@A6@", 6, 13, 0),
+    (179.0, 206.0, 196.0, 214.0, "107.5", 6, 14, 0),
+    (560.0, 323.0, 580.0, 331.0, "□40", 20, 0, 0),
+]
+
+
+@pytest.mark.unit
+class TestValueOnPage:
+    def test_in_line_value_passes(self):
+        assert value_on_page("ABR090", 206.5, ABR_WORDS, ["ABR090", "ABR115"])
+
+    def test_unowned_drawing_callout_passes(self):
+        others = ["SGMJV-A5A A6", "SGMJV-01A A6"]
+        assert value_on_page("SGMJV-A5A A6", 40, OMRON_WORDS, others)
+        assert value_on_page("SGMJV-01A A6", 40, OMRON_WORDS, others)
+
+    def test_value_owned_by_another_model_rejected(self):
+        # The shifted column: 152 is ABR115's, in line with its label.
+        assert not value_on_page("ABR090", 152, ABR_WORDS, ["ABR090", "ABR115"])
+        # 107.5 is the 01A row's length, not A5A's.
+        others = ["SGMJV-A5A A6", "SGMJV-01A A6"]
+        assert not value_on_page("SGMJV-A5A A6", 107.5, OMRON_WORDS, others)
+
+    def test_unprinted_value_rejected(self):
+        assert not value_on_page("ABR090", 7.8, ABR_WORDS, ["ABR090"])
+        assert not value_on_page("SGMJV-A5A A6", 45, OMRON_WORDS, [])
+
+    def test_designator_not_on_page_rejected(self):
+        # Without its own label on the page nothing can be attributed to it.
+        assert not value_on_page("ZZ999", 40, OMRON_WORDS, [])
+
+    def test_junk(self):
+        for others in (None, 5, [None, 3, ""]):
+            assert value_on_page("SGMJV-A5A A6", 40, OMRON_WORDS, others)
+        assert not value_on_page("SGMJV-A5A A6", float("nan"), OMRON_WORDS, [])
+        assert not value_on_page("SGMJV-A5A A6", 40, None, [])

@@ -260,7 +260,6 @@ _CELL_NUMBER = re.compile(
     r"[^0-9A-Za-z]*(\d+(?:[.,]\d+)?)\s*(?:mm|kg|g|lbs?|in|\")?[^0-9A-Za-z]*",
     re.IGNORECASE,
 )
-_ALIGN_SLACK = 1.0  # PDF points
 
 
 def _as_numbers(token: str) -> Set[float]:
@@ -328,8 +327,16 @@ def _boundary_prefixes(raw: str) -> Set[str]:
     return out
 
 
-def _overlaps(a0: float, a1: float, b0: float, b1: float) -> bool:
-    return a0 <= b1 + _ALIGN_SLACK and b0 <= a1 + _ALIGN_SLACK
+def _same_column(a0: float, a1: float, b0: float, b1: float) -> bool:
+    """Horizontal spans intersect (a merged cell may only clip the label)."""
+    return min(a1, b1) - max(a0, b0) > 0
+
+
+def _same_row(a0: float, a1: float, b0: float, b1: float) -> bool:
+    """Vertical spans share at least half the shorter box: rows of a tight
+    table touch edge to edge, and touching is not sharing a row."""
+    shared = min(a1, b1) - max(a0, b0)
+    return shared > 0 and shared >= 0.5 * min(a1 - a0, b1 - b0)
 
 
 def value_in_line(designator: Any, value: Any, words: Any) -> bool:
@@ -353,49 +360,102 @@ def value_in_line(designator: Any, value: Any, words: Any) -> bool:
     designator. Computed sums (L2 + L8) and unit conversions are never
     printed, so they are withheld too. Never raises.
     """
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
-        return False
-    if not math.isfinite(value):
-        return False
-    head = _designator_head(designator)
-    if head is None:
+    if not _finite_number(value):
         return False
     boxes = _word_boxes(words)
-    anchors = []
+    anchors, anchor_words = _anchors(_designator_head(designator), boxes)
+    if not anchors:
+        return False
+    for k in _value_words(value, boxes):
+        if k in anchor_words:
+            continue
+        x0, y0, x1, y1 = boxes[k][:4]
+        for ax0, ay0, ax1, ay1 in anchors:
+            if _same_column(x0, x1, ax0, ax1) or _same_row(y0, y1, ay0, ay1):
+                return True
+    return False
+
+
+def value_on_page(designator: Any, value: Any, words: Any, others: Any) -> bool:
+    """``value_in_line``, or a free-standing drawing callout.
+
+    Many outline drawings print the flange square or body width only as a
+    callout on the drawing (Omron "□40"), not in the designator's table row.
+    Such a value passes when the designator is itself on the page, the
+    value is printed as a cell number somewhere on it, and it is not in line
+    with any *other* designator in ``others`` (the labels the same reading
+    reported on this page) — a number in another model's row or column is
+    that model's (the shifted-column failure), never a free callout.
+    Never raises.
+    """
+    if value_in_line(designator, value, words):
+        return True
+    if not _finite_number(value):
+        return False
+    boxes = _word_boxes(words)
+    anchors, anchor_words = _anchors(_designator_head(designator), boxes)
+    if not anchors:
+        return False
+    if not any(k not in anchor_words for k in _value_words(value, boxes)):
+        return False
+    for other in others if isinstance(others, (list, tuple, set)) else ():
+        if isinstance(other, str) and other != designator:
+            if value_in_line(other, value, words):
+                return False
+    return True
+
+
+def _finite_number(value: Any) -> bool:
+    return (
+        isinstance(value, (int, float))
+        and not isinstance(value, bool)
+        and math.isfinite(value)
+    )
+
+
+def _anchors(
+    head: Optional[str], boxes: List[Tuple[float, float, float, float, str, Any]]
+) -> Tuple[List[Tuple[float, float, float, float]], Set[int]]:
+    """Boxes where ``head`` is printed (one word or up to three on a line,
+    ending at a separator) and the indices of the words they cover."""
+    anchors: List[Tuple[float, float, float, float]] = []
     anchor_words: Set[int] = set()
+    if head is None:
+        return anchors, anchor_words
     for i in range(len(boxes)):
         raw = ""
         for j in range(i, min(i + 3, len(boxes))):
             if boxes[j][5] != boxes[i][5]:
                 break
             raw = f"{raw} {boxes[j][4]}" if raw else boxes[j][4]
-            acc = normalize_designator(raw)
             if head in _boundary_prefixes(raw):
+                span = boxes[i : j + 1]
                 anchors.append(
                     (
-                        min(b[0] for b in boxes[i : j + 1]),
-                        min(b[1] for b in boxes[i : j + 1]),
-                        max(b[2] for b in boxes[i : j + 1]),
-                        max(b[3] for b in boxes[i : j + 1]),
+                        min(b[0] for b in span),
+                        min(b[1] for b in span),
+                        max(b[2] for b in span),
+                        max(b[3] for b in span),
                     )
                 )
                 anchor_words.update(range(i, j + 1))
                 break
-            if not head.startswith(acc):
+            if not head.startswith(normalize_designator(raw)):
                 break
-    if not anchors:
-        return False
+    return anchors, anchor_words
+
+
+def _value_words(
+    value: float, boxes: List[Tuple[float, float, float, float, str, Any]]
+) -> List[int]:
+    """Indices of words that are a single (decorated) number equal to value."""
     tol = 1e-6 * max(1.0, abs(value))
-    for k, (x0, y0, x1, y1, text, _) in enumerate(boxes):
-        if k in anchor_words:
-            continue
-        m = _CELL_NUMBER.fullmatch(text.strip())
-        if not m or not any(abs(n - value) <= tol for n in _as_numbers(m.group(1))):
-            continue
-        for ax0, ay0, ax1, ay1 in anchors:
-            if _overlaps(x0, x1, ax0, ax1) or _overlaps(y0, y1, ay0, ay1):
-                return True
-    return False
+    out = []
+    for k, b in enumerate(boxes):
+        m = _CELL_NUMBER.fullmatch(b[4].strip())
+        if m and any(abs(n - value) <= tol for n in _as_numbers(m.group(1))):
+            out.append(k)
+    return out
 
 
 def select_envelope_pages(
