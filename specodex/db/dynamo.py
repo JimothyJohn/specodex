@@ -20,7 +20,12 @@ from botocore.exceptions import ClientError  # type: ignore
 from specodex.log_redact import quiet_sdk_debug_logging
 
 from specodex.config import REGION, SCHEMA_CHOICES, TABLE_NAME
-from specodex.db.lookups import query_first_match, scan_first_match
+from specodex.db.lookups import (
+    collect_items,
+    iter_pages,
+    query_first_match,
+    scan_first_match,
+)
 from specodex.models.datasheet import Datasheet
 from specodex.models.product import ProductBase
 
@@ -245,21 +250,9 @@ class DynamoDBClient:
             List of Datasheet objects.
         """
         try:
-            response = self.table.scan(
-                FilterExpression="product_name = :name AND begins_with(PK, :pk_prefix)",
-                ExpressionAttributeValues={
-                    ":name": product_name,
-                    ":pk_prefix": "DATASHEET#",
-                },
+            return self._scan_datasheets(
+                "product_name = :name", {":name": product_name}
             )
-            items = response.get("Items", [])
-
-            results = []
-            for item in items:
-                ds = self._deserialize_item(item, Datasheet)
-                if ds:
-                    results.append(ds)
-            return results
         except Exception as e:
             print(f"Error getting datasheets by name: {e}")
             return []
@@ -274,21 +267,9 @@ class DynamoDBClient:
             List of Datasheet objects.
         """
         try:
-            response = self.table.scan(
-                FilterExpression="product_family = :family AND begins_with(PK, :pk_prefix)",
-                ExpressionAttributeValues={
-                    ":family": family,
-                    ":pk_prefix": "DATASHEET#",
-                },
+            return self._scan_datasheets(
+                "product_family = :family", {":family": family}
             )
-            items = response.get("Items", [])
-
-            results = []
-            for item in items:
-                ds = self._deserialize_item(item, Datasheet)
-                if ds:
-                    results.append(ds)
-            return results
         except Exception as e:
             print(f"Error getting datasheets by family: {e}")
             return []
@@ -300,31 +281,30 @@ class DynamoDBClient:
             List of all Datasheet objects.
         """
         try:
-            # Scan for all items where PK starts with "DATASHEET#"
-            response = self.table.scan(
-                FilterExpression="begins_with(PK, :pk_prefix)",
-                ExpressionAttributeValues={":pk_prefix": "DATASHEET#"},
-            )
-            items = response.get("Items", [])
-
-            # Handle pagination
-            while "LastEvaluatedKey" in response:
-                response = self.table.scan(
-                    FilterExpression="begins_with(PK, :pk_prefix)",
-                    ExpressionAttributeValues={":pk_prefix": "DATASHEET#"},
-                    ExclusiveStartKey=response["LastEvaluatedKey"],
-                )
-                items.extend(response.get("Items", []))
-
-            results = []
-            for item in items:
-                ds = self._deserialize_item(item, Datasheet)
-                if ds:
-                    results.append(ds)
-            return results
+            return self._scan_datasheets()
         except Exception as e:
             print(f"Error getting all datasheets: {e}")
             return []
+
+    def _scan_datasheets(
+        self,
+        extra_filter: Optional[str] = None,
+        extra_values: Optional[Dict[str, Any]] = None,
+    ) -> List[Datasheet]:
+        """Scan every DATASHEET# row (all pages), optionally narrowed."""
+        prefix_filter = "begins_with(PK, :pk_prefix)"
+        items = collect_items(
+            self.table.scan,
+            FilterExpression=(
+                f"{extra_filter} AND {prefix_filter}" if extra_filter else prefix_filter
+            ),
+            ExpressionAttributeValues={
+                **(extra_values or {}),
+                ":pk_prefix": "DATASHEET#",
+            },
+        )
+        datasheets = (self._deserialize_item(item, Datasheet) for item in items)
+        return [ds for ds in datasheets if ds]
 
     def product_exists(
         self,
@@ -500,15 +480,12 @@ class DynamoDBClient:
             if limit:
                 query_kwargs["Limit"] = limit
 
-            # Perform query
-            response: Dict[str, Any] = self.table.query(**query_kwargs)
-            items: List[Dict[str, Any]] = response.get("Items", [])
-
-            # Handle pagination if needed (when no limit is specified)
-            while "LastEvaluatedKey" in response and not limit:
-                query_kwargs["ExclusiveStartKey"] = response["LastEvaluatedKey"]
-                response = self.table.query(**query_kwargs)
-                items.extend(response.get("Items", []))
+            # A limited query is a single page; otherwise follow pagination.
+            items: List[Dict[str, Any]] = (
+                self.table.query(**query_kwargs).get("Items", [])
+                if limit
+                else collect_items(self.table.query, **query_kwargs)
+            )
 
             # Deserialize items
             results: List[T] = []
@@ -539,13 +516,11 @@ class DynamoDBClient:
             if limit:
                 scan_kwargs["Limit"] = limit
 
-            response = self.table.scan(**scan_kwargs)
-            items = response.get("Items", [])
-
-            while "LastEvaluatedKey" in response and not limit:
-                scan_kwargs["ExclusiveStartKey"] = response["LastEvaluatedKey"]
-                response = self.table.scan(**scan_kwargs)
-                items.extend(response.get("Items", []))
+            items = (
+                self.table.scan(**scan_kwargs).get("Items", [])
+                if limit
+                else collect_items(self.table.scan, **scan_kwargs)
+            )
 
             results: List[ProductBase] = []
             # Map every product_type to its model class from the auto-
@@ -662,12 +637,9 @@ class DynamoDBClient:
 
         items: List[Dict[str, Any]] = []
         try:
-            while True:
-                response = self.table.scan(**scan_kwargs)
-                items.extend(response.get("Items", []))
-                if "LastEvaluatedKey" not in response:
-                    break
-                scan_kwargs["ExclusiveStartKey"] = response["LastEvaluatedKey"]
+            # Page by page so a mid-scan failure still returns what was read.
+            for page in iter_pages(self.table.scan, **scan_kwargs):
+                items.extend(page.get("Items", []))
             return items
         except ClientError as e:
             print(f"Error listing ingest log: {e.response['Error']['Message']}")
@@ -797,18 +769,8 @@ class DynamoDBClient:
         try:
             # Scan the entire table to get all items
             print(f"Scanning table '{self.table_name}'...")
-            items: List[Dict[str, Any]] = []
-            scan_kwargs: Dict[str, Any] = {
-                "ProjectionExpression": "PK, SK"  # Only fetch keys for efficiency
-            }
-
-            while True:
-                response = self.table.scan(**scan_kwargs)
-                items.extend(response.get("Items", []))
-
-                if "LastEvaluatedKey" not in response:
-                    break
-                scan_kwargs["ExclusiveStartKey"] = response["LastEvaluatedKey"]
+            # Only fetch keys for efficiency
+            items = collect_items(self.table.scan, ProjectionExpression="PK, SK")
 
             item_count: int = len(items)
             print(f"Found {item_count} items in table '{self.table_name}'")
@@ -928,16 +890,7 @@ class DynamoDBClient:
         try:
             # Scan the entire table
             print(f"Scanning table '{self.table_name}' for duplicates...")
-            items: List[Dict[str, Any]] = []
-            scan_kwargs: Dict[str, Any] = {}
-
-            while True:
-                response = self.table.scan(**scan_kwargs)
-                items.extend(response.get("Items", []))
-
-                if "LastEvaluatedKey" not in response:
-                    break
-                scan_kwargs["ExclusiveStartKey"] = response["LastEvaluatedKey"]
+            items = collect_items(self.table.scan)
 
             total_items: int = len(items)
             print(f"Found {total_items} total items")
@@ -1096,157 +1049,19 @@ class DynamoDBClient:
             )
             print(f"Partition key: {pk_value}")
 
-            items: List[Dict[str, Any]] = []
             query_kwargs: Dict[str, Any] = {
                 "KeyConditionExpression": "PK = :pk",
                 "ExpressionAttributeValues": {":pk": pk_value},
                 "ProjectionExpression": "PK, SK, manufacturer, product_name, part_number",
             }
 
-            while True:
-                response = self.table.query(**query_kwargs)
-                items.extend(response.get("Items", []))
-
-                if "LastEvaluatedKey" not in response:
-                    break
-                query_kwargs["ExclusiveStartKey"] = response["LastEvaluatedKey"]
+            items = collect_items(self.table.query, **query_kwargs)
 
             item_count = len(items)
             print(f"Found {item_count} items with product_type='{product_type}'")
 
             if item_count == 0:
                 print(f"No {product_type} products found - nothing to delete")
-                return 0
-
-            # Show sample
-            print("\nSample of items to be deleted:")
-            for item in items[:10]:
-                manufacturer = item.get("manufacturer", "N/A")
-                product_name = item.get("product_name", "N/A")
-                part_number = item.get("part_number", "N/A")
-                print(f"  - {manufacturer} {product_name} ({part_number})")
-            if item_count > 10:
-                print(f"  ... and {item_count - 10} more")
-
-            if dry_run:
-                print("\nDRY RUN - No items were deleted")
-                return item_count
-
-            # Delete
-            print(f"\nDeleting {item_count} items...")
-            deleted_count = 0
-            batch_size = 25
-
-            for i in range(0, len(items), batch_size):
-                batch = items[i : i + batch_size]
-
-                with self.table.batch_writer() as writer:
-                    for item in batch:
-                        try:
-                            writer.delete_item(Key={"PK": item["PK"], "SK": item["SK"]})
-                            deleted_count += 1
-                        except Exception as e:
-                            print(
-                                f"Error deleting item {item.get('SK', 'unknown')}: {e}"
-                            )
-                            continue
-
-                if deleted_count % 50 == 0:
-                    print(f"  Deleted {deleted_count}/{item_count} items...")
-
-            print(f"\n✓ Successfully deleted {deleted_count} items")
-            return deleted_count
-
-        except ClientError as e:
-            print(f"Error querying/deleting items: {e.response['Error']['Message']}")
-            return 0
-        except Exception as e:
-            print(f"Unexpected error: {e}")
-            return 0
-
-    def delete_by_product_family(
-        self,
-        product_family: str,
-        product_type: Optional[str] = None,
-        confirm: bool = False,
-        dry_run: bool = False,
-    ) -> int:
-        """Delete all products of a specific family from DynamoDB.
-
-        Args:
-            product_family: The product family to delete.
-            product_type: Optional product type to optimize the search.
-            confirm: Must be True to proceed with deletion
-            dry_run: If True, only count items without deleting.
-
-        Returns:
-            Number of items deleted (or counted).
-        """
-        if not confirm and not dry_run:
-            print("ERROR: delete_by_product_family() requires confirm=True parameter")
-            print(
-                f"This operation will delete ALL products in family '{product_family}'!"
-            )
-            print("Use dry_run=True to see item count without deleting")
-            return 0
-
-        print(f"Searching for products with family='{product_family}'...")
-
-        items: List[Dict[str, Any]] = []
-
-        try:
-            if product_type:
-                # Optimize by querying the partition key if product_type is known
-                pk_value = f"PRODUCT#{product_type.upper()}"
-                print(
-                    f"Optimization: Querying by product_type='{product_type}' (PK={pk_value})"
-                )
-
-                query_kwargs = {
-                    "KeyConditionExpression": "PK = :pk",
-                    "FilterExpression": "product_family = :family",
-                    "ExpressionAttributeValues": {
-                        ":pk": pk_value,
-                        ":family": product_family,
-                    },
-                    "ProjectionExpression": "PK, SK, manufacturer, product_name, part_number, product_family",
-                }
-
-                while True:
-                    response = self.table.query(**query_kwargs)
-                    items.extend(response.get("Items", []))
-
-                    if "LastEvaluatedKey" not in response:
-                        break
-                    query_kwargs["ExclusiveStartKey"] = response["LastEvaluatedKey"]
-
-            else:
-                # Full table scan if product_type is not provided
-                print(
-                    "Warning: No product_type provided. Performing full table scan (slower)..."
-                )
-
-                scan_kwargs = {
-                    "FilterExpression": "product_family = :family",
-                    "ExpressionAttributeValues": {":family": product_family},
-                    "ProjectionExpression": "PK, SK, manufacturer, product_name, part_number, product_family",
-                }
-
-                while True:
-                    response = self.table.scan(**scan_kwargs)
-                    items.extend(response.get("Items", []))
-
-                    if "LastEvaluatedKey" not in response:
-                        break
-                    scan_kwargs["ExclusiveStartKey"] = response["LastEvaluatedKey"]
-
-            item_count = len(items)
-            print(f"Found {item_count} items with product_family='{product_family}'")
-
-            if item_count == 0:
-                print(
-                    f"No products found for family '{product_family}' - nothing to delete"
-                )
                 return 0
 
             # Show sample

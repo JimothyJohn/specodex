@@ -28,10 +28,10 @@ import logging
 import os
 import sys
 from datetime import datetime, timezone
-from decimal import Decimal
 from pathlib import Path
 from typing import Any, Iterable
 
+from specodex.aws import decimal_to_native
 from specodex.config import SCHEMA_CHOICES
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -261,18 +261,7 @@ def fetch_rows_from_dynamo(table_name: str) -> list[dict]:
             break
         kwargs["ExclusiveStartKey"] = resp["LastEvaluatedKey"]
     log.info("Scanned %s items from %s", len(items), table_name)
-    return [_decimal_to_native(r) for r in items]
-
-
-def _decimal_to_native(obj: Any) -> Any:
-    if isinstance(obj, Decimal):
-        as_int = int(obj)
-        return as_int if as_int == obj else float(obj)
-    if isinstance(obj, dict):
-        return {k: _decimal_to_native(v) for k, v in obj.items()}
-    if isinstance(obj, list):
-        return [_decimal_to_native(v) for v in obj]
-    return obj
+    return [decimal_to_native(r) for r in items]
 
 
 def main(argv: list[str] | None = None) -> int:

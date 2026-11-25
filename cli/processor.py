@@ -17,18 +17,19 @@ import time
 from pathlib import Path
 from typing import Any
 
+from specodex.aws import dynamo_table, s3_client
+
 log = logging.getLogger("processor")
 
 # Resolved at import time so the module works standalone
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def _get_s3_client():
-    """Lazy-load boto3 S3 client."""
-    import boto3
+_get_s3_client = s3_client
 
-    region = os.environ.get("AWS_REGION", "us-east-1")
-    return boto3.client("s3", region_name=region)
+# The upload-queue processor falls back to the dev table, not ``products``,
+# when DYNAMODB_TABLE_NAME is unset.
+_DEFAULT_TABLE = "products-dev"
 
 
 def _get_dynamo_client():
@@ -109,16 +110,11 @@ def move_to_done(bucket: str, key: str) -> None:
 def find_datasheet_record(dynamo, datasheet_id: str) -> dict | None:
     """Find a datasheet record by ID with status approved or queued."""
 
-    import boto3
     from boto3.dynamodb.conditions import Attr
 
-    table_name = os.environ.get("DYNAMODB_TABLE_NAME", "products-dev")
-    dynamodb = boto3.resource(
-        "dynamodb", region_name=os.environ.get("AWS_REGION", "us-east-1")
-    )
-    table = dynamodb.Table(table_name)
-
     from specodex.db.lookups import scan_first_match
+
+    table = dynamo_table(_DEFAULT_TABLE)
 
     # Primary: look for approved (intake flow) then fall back to queued (legacy)
     # No Limit — DynamoDB applies Limit before FilterExpression, so Limit=1
@@ -246,13 +242,7 @@ def process_pdf(
 
 def update_datasheet_status(datasheet_id: str, status: str) -> None:
     """Update the status of a datasheet record (queued -> processed/failed)."""
-    import boto3
-
-    table_name = os.environ.get("DYNAMODB_TABLE_NAME", "products-dev")
-    dynamodb = boto3.resource(
-        "dynamodb", region_name=os.environ.get("AWS_REGION", "us-east-1")
-    )
-    table = dynamodb.Table(table_name)
+    table = dynamo_table(_DEFAULT_TABLE)
 
     # Find the record first to get PK/SK
     from boto3.dynamodb.conditions import Attr

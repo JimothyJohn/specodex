@@ -30,6 +30,7 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+from specodex.aws import decimal_to_native, dynamo_table, s3_client, upload_bucket
 from specodex.db.lookups import scan_first_match
 
 # ---------------------------------------------------------------------------
@@ -78,20 +79,10 @@ def _json_out(data: Any, *, exit_code: int = 0) -> None:
 
 
 def _resolve_bucket(args: argparse.Namespace) -> str:
-    bucket = getattr(args, "bucket", None) or os.environ.get("UPLOAD_BUCKET")
-    if bucket:
-        return bucket
-    stage = getattr(args, "stage", None) or os.environ.get("STAGE", "dev")
-    account_id = os.environ.get("AWS_ACCOUNT_ID", "")
-    if account_id:
-        return f"datasheetminer-uploads-{stage}-{account_id}"
-    return f"datasheetminer-uploads-{stage}"
+    return upload_bucket(getattr(args, "bucket", None), getattr(args, "stage", None))
 
 
-def _get_s3():
-    import boto3
-
-    return boto3.client("s3", region_name=os.environ.get("AWS_REGION", "us-east-1"))
+_get_s3 = s3_client
 
 
 def _get_dynamo():
@@ -336,15 +327,10 @@ def cmd_list(args: argparse.Namespace) -> None:
 
 def cmd_status(args: argparse.Namespace) -> None:
     """Check the status of a datasheet by ID."""
-    import boto3
     from boto3.dynamodb.conditions import Attr
 
     datasheet_id = args.datasheet_id
-    table_name = os.environ.get("DYNAMODB_TABLE_NAME", "products")
-    region = os.environ.get("AWS_REGION", "us-east-1")
-
-    dynamodb = boto3.resource("dynamodb", region_name=region)
-    table = dynamodb.Table(table_name)
+    table = dynamo_table()
 
     resp = table.scan(
         FilterExpression=Attr("datasheet_id").eq(datasheet_id),
@@ -355,23 +341,11 @@ def cmd_status(args: argparse.Namespace) -> None:
     if not items:
         _json_out({"datasheet_id": datasheet_id, "found": False}, exit_code=2)
 
-    # Convert Decimal to float for JSON
-    import decimal
-
-    def _clean(obj: Any) -> Any:
-        if isinstance(obj, decimal.Decimal):
-            return float(obj) if obj % 1 else int(obj)
-        if isinstance(obj, dict):
-            return {k: _clean(v) for k, v in obj.items()}
-        if isinstance(obj, list):
-            return [_clean(i) for i in obj]
-        return obj
-
     _json_out(
         {
             "datasheet_id": datasheet_id,
             "found": True,
-            "records": [_clean(i) for i in items],
+            "records": [decimal_to_native(i) for i in items],
         }
     )
 
@@ -513,13 +487,9 @@ def cmd_process_all(args: argparse.Namespace) -> None:
     log.info("Processing %d queued PDFs", len(queue_items))
 
     # Look up metadata for each from DynamoDB
-    import boto3
     from boto3.dynamodb.conditions import Attr
 
-    table_name = os.environ.get("DYNAMODB_TABLE_NAME", "products")
-    region = os.environ.get("AWS_REGION", "us-east-1")
-    ddb_resource = boto3.resource("dynamodb", region_name=region)
-    table = ddb_resource.Table(table_name)
+    table = dynamo_table()
 
     results: list[dict] = []
     success_count = 0
@@ -724,13 +694,9 @@ def _update_datasheet_status(table: Any, datasheet_id: str, status: str) -> None
 
 def _lookup_datasheet_by_s3_key(s3_key: str) -> dict[str, Any] | None:
     """Find a Datasheet record in DynamoDB by its s3_key."""
-    import boto3
     from boto3.dynamodb.conditions import Attr
 
-    table_name = os.environ.get("DYNAMODB_TABLE_NAME", "products")
-    region = os.environ.get("AWS_REGION", "us-east-1")
-    ddb = boto3.resource("dynamodb", region_name=region)
-    table = ddb.Table(table_name)
+    table = dynamo_table()
 
     # No Limit — scan evaluates items before filtering, so Limit=1 can miss matches
     return scan_first_match(
@@ -753,14 +719,10 @@ def _is_blacklisted(ds_record: dict[str, Any] | None) -> bool:
 
 def _record_failure(s3_key: str) -> None:
     """Increment failure_count on a Datasheet record; auto-blacklist at threshold."""
-    import boto3
     from boto3.dynamodb.conditions import Attr
     import datetime
 
-    table_name = os.environ.get("DYNAMODB_TABLE_NAME", "products")
-    region = os.environ.get("AWS_REGION", "us-east-1")
-    ddb = boto3.resource("dynamodb", region_name=region)
-    table = ddb.Table(table_name)
+    table = dynamo_table()
 
     # Find by s3_key
     resp = table.scan(
